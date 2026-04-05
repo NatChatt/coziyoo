@@ -3113,9 +3113,6 @@ export default function HomeScreen({
                       </Text>
                     </View>
                   ) : null}
-                  {paymentError ? (
-                    <Text style={styles.paymentErrorText}>{paymentError}</Text>
-                  ) : null}
                   {paymentInfo ? (
                     <Text style={styles.paymentInfoText}>{paymentInfo}</Text>
                   ) : null}
@@ -3261,9 +3258,6 @@ export default function HomeScreen({
                     {paymentStatus.paymentCompleted ? t('status.home.paymentDone') : formatPaymentAttemptLabel(paymentStatus.latestAttemptStatus)}
                   </Text>
                 </View>
-              ) : null}
-              {paymentError ? (
-                <Text style={styles.paymentErrorText}>{paymentError}</Text>
               ) : null}
               {paymentInfo ? (
                 <Text style={styles.paymentInfoText}>{paymentInfo}</Text>
@@ -3508,6 +3502,11 @@ export default function HomeScreen({
     <>
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#F3EFE6" />
+      {paymentError ? (
+        <View style={styles.topErrorBanner}>
+          <Text style={styles.topErrorBannerText}>{paymentError}</Text>
+        </View>
+      ) : null}
 
       <Modal
         visible={locationModalVisible}
@@ -4520,6 +4519,17 @@ const cpStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   /* --- Layout --- */
   safe: { flex: 1, backgroundColor: '#F3EFE6' },
+  topErrorBanner: {
+    backgroundColor: theme.error,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  topErrorBannerText: {
+    color: theme.onPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   container: { flex: 1, backgroundColor: '#F3EFE6' },
   content: { flex: 1, zIndex: 10 },
   scroll: { flex: 1 },
@@ -5209,7 +5219,6 @@ const styles = StyleSheet.create({
   },
   paymentStatusTitle: { color: '#3D3229', fontSize: 13, fontWeight: '700', marginBottom: 2 },
   paymentStatusText: { color: '#6B5D4F', fontSize: 12, lineHeight: 18 },
-  paymentErrorText: { color: '#B42318', fontSize: 12, fontWeight: '600', marginTop: 8 },
   paymentInfoText: { color: '#2F6F4A', fontSize: 12, fontWeight: '600', marginTop: 8 },
   paymentActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   paymentActionBtn: {
