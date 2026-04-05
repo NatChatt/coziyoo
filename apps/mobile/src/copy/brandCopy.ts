@@ -9,7 +9,7 @@ export const brandCopy = {
   'helper.home.stockLinePrefix': 'kaldı',
   'status.home.stockLineSuffix': 'porsiyon',
   'helper.home.cartEmptyTitle': 'Yemek listen şu an boş.',
-  'cta.home.cartCheckout': 'Sofranı gönder',
+  'cta.home.cartCheckout': 'Şefe sor',
   'cta.home.paymentRefresh': 'Durumu yenile',
   'cta.home.paymentNext': 'Sonraki ödeme',
   'status.home.paymentTitle': 'Sofra durumu',
@@ -294,7 +294,7 @@ type SupportedLocale = 'tr' | 'en';
 const brandCopyEn: Partial<Record<BrandCopyKey, string>> = {
   'helper.home.stockLimitMessage': 'You can add only the remaining portions to your list.',
   'helper.home.cartEmptyTitle': 'Your food list is empty right now.',
-  'cta.home.cartCheckout': 'Send your table',
+  'cta.home.cartCheckout': 'Ask the cook',
   'status.home.paymentTitle': 'Table status',
   'status.home.orderLabel': 'List:',
   'status.home.orderStatusLabel': 'Status:',
