@@ -1561,40 +1561,52 @@ export default function HomeScreen({
     () => (recommendedMeals.length > 0 ? recommendedMeals : fallbackRecommendedMeals),
     [recommendedMeals, fallbackRecommendedMeals],
   );
-  const latestActionableOrder = useMemo<HomeOrderSummary | null>(() => {
+  const actionableHomeOrders = useMemo<HomeOrderSummary[]>(() => {
     const sortedOrders = [...recentBuyerOrders].sort((a, b) => homeOrderTime(b) - homeOrderTime(a));
-    const recentActionable = sortedOrders.find((order) => isHomeActionableOrderStatus(order.status)) ?? null;
-
-    if (recentActionable && paymentStatus?.orderId === recentActionable.id && isHomeActionableOrderStatus(paymentStatus.orderStatus)) {
-      return { ...recentActionable, status: paymentStatus.orderStatus };
-    }
-
-    if (recentActionable) return recentActionable;
+    const mappedActionable = sortedOrders
+      .filter((order) => isHomeActionableOrderStatus(order.status))
+      .map((order) => {
+        if (
+          paymentStatus?.orderId === order.id &&
+          isHomeActionableOrderStatus(paymentStatus.orderStatus)
+        ) {
+          return { ...order, status: paymentStatus.orderStatus };
+        }
+        return order;
+      });
 
     const fallbackOrderId = paymentStatus?.orderId || activeOrderIds[0] || activeOrderId;
-    if (!fallbackOrderId) return null;
+    if (!fallbackOrderId) return mappedActionable;
 
     const fallbackStatus = paymentStatus?.orderStatus || 'pending_seller_approval';
-    if (!isHomeActionableOrderStatus(fallbackStatus)) return null;
+    if (!isHomeActionableOrderStatus(fallbackStatus)) return mappedActionable;
 
-    return {
-      id: fallbackOrderId,
-      orderNo: null,
-      status: fallbackStatus,
-      sellerName: t('status.orders.sellerFallback'),
-      items: [],
-      totalPrice: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      deliveryType: 'pickup',
-    };
+    const hasFallbackAlready = mappedActionable.some((order) => order.id === fallbackOrderId);
+    if (hasFallbackAlready) return mappedActionable;
+
+    return [
+      {
+        id: fallbackOrderId,
+        orderNo: null,
+        status: fallbackStatus,
+        sellerName: t('status.orders.sellerFallback'),
+        items: [],
+        totalPrice: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        deliveryType: 'pickup',
+      },
+      ...mappedActionable,
+    ];
   }, [activeOrderId, activeOrderIds, paymentStatus, recentBuyerOrders]);
-  const showHomeOrderPromo = Boolean(latestActionableOrder);
-  const showCartQuickOrderCard = cartItems.length === 0 && Boolean(latestActionableOrder);
-  const shouldShowQuickOrderRefresh = Boolean(
-    latestActionableOrder &&
-    (paymentLoading || paymentStatus?.orderId === latestActionableOrder.id || activeOrderId === latestActionableOrder.id || activeOrderIds.includes(latestActionableOrder.id)),
-  );
+  const showHomeOrderPromo = actionableHomeOrders.length > 0;
+  const showCartQuickOrderCard = cartItems.length === 0 && actionableHomeOrders.length > 0;
+  const shouldShowQuickOrderRefresh = useCallback((orderId: string) => Boolean(
+    paymentLoading ||
+    paymentStatus?.orderId === orderId ||
+    activeOrderId === orderId ||
+    activeOrderIds.includes(orderId)
+  ), [activeOrderId, activeOrderIds, paymentLoading, paymentStatus?.orderId]);
 
   // FAB animations
   const breatheScale = useRef(new Animated.Value(1)).current;
@@ -2923,74 +2935,94 @@ export default function HomeScreen({
   }
 
   function renderQuickOrderCard(context: 'home' | 'cart') {
-    if (!latestActionableOrder) return null;
+    if (actionableHomeOrders.length === 0) return null;
     const wrapperStyle = context === 'home' ? styles.quickOrderPromoCard : styles.quickOrderCartCard;
-    const showRefresh = shouldShowQuickOrderRefresh;
+    const cardStyle = context === 'home' ? styles.quickOrderScrollCardHome : styles.quickOrderScrollCardCart;
 
     return (
-      <TouchableOpacity style={wrapperStyle} activeOpacity={0.9} onPress={onOpenOrders}>
-        <View style={styles.quickOrderTopRow}>
-          <View style={styles.quickOrderTitleBlock}>
-            <Text style={styles.quickOrderEyebrow}>{t('headline.orders.quickActiveTitle')}</Text>
-            <Text style={styles.quickOrderSeller} numberOfLines={1}>{latestActionableOrder.sellerName}</Text>
-            <Text style={styles.quickOrderMeta}>
-              {formatHomeOrderNo(latestActionableOrder.id, latestActionableOrder.orderNo)} · {formatHomeOrderDate(latestActionableOrder.createdAt)}
-            </Text>
-          </View>
-          <StatusBadge
-            status={latestActionableOrder.status}
-            deliveryType={latestActionableOrder.deliveryType}
-            audience="buyer"
-          />
-        </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.quickOrderScrollerContent}
+        style={styles.quickOrderScroller}
+      >
+        {actionableHomeOrders.map((order, index) => {
+          const showRefresh = shouldShowQuickOrderRefresh(order.id);
 
-        <Text style={styles.quickOrderHint}>{latestHomeOrderHint(latestActionableOrder.status)}</Text>
-        <Text style={styles.quickOrderItems} numberOfLines={1}>
-          {summarizeHomeOrderItems(latestActionableOrder.items)}
-        </Text>
-
-        <View style={styles.quickOrderFooter}>
-          <View style={styles.quickOrderPriceWrap}>
-            {latestActionableOrder.totalPrice > 0 ? (
-              <Text style={styles.quickOrderPrice}>{formatPrice(latestActionableOrder.totalPrice)}</Text>
-            ) : null}
-            <Text style={styles.quickOrderDelivery}>
-              {latestActionableOrder.deliveryType === 'delivery'
-                ? t('status.orders.deliveryType.delivery')
-                : t('status.orders.deliveryType.pickup')}
-            </Text>
-          </View>
-          <View style={styles.quickOrderActions}>
-            {showRefresh ? (
-              <TouchableOpacity
-                style={[styles.quickOrderRefreshBtn, paymentLoading && styles.paymentRefreshBtnDisabled]}
-                activeOpacity={0.88}
-                onPress={(event) => {
-                  event.stopPropagation();
-                  void refreshPaymentStatus();
-                }}
-                disabled={paymentLoading}
-              >
-                {paymentLoading ? (
-                  <ActivityIndicator size="small" color="#5F5246" />
-                ) : (
-                  <Text style={styles.quickOrderRefreshText}>{t('cta.home.paymentRefresh')}</Text>
-                )}
-              </TouchableOpacity>
-            ) : null}
+          return (
             <TouchableOpacity
-              style={styles.quickOrderPrimaryBtn}
-              activeOpacity={0.88}
-              onPress={(event) => {
-                event.stopPropagation();
-                onOpenOrders();
-              }}
+              key={order.id}
+              style={[wrapperStyle, cardStyle, index === actionableHomeOrders.length - 1 && styles.quickOrderScrollCardLast]}
+              activeOpacity={0.9}
+              onPress={onOpenOrders}
             >
-              <Text style={styles.quickOrderPrimaryText}>{t('cta.orders.viewAll')}</Text>
+              <View style={styles.quickOrderTopRow}>
+                <View style={styles.quickOrderTitleBlock}>
+                  <Text style={styles.quickOrderEyebrow}>
+                    {index === 0 ? t('headline.orders.quickActiveTitle') : t('status.orders.newBadge')}
+                  </Text>
+                  <Text style={styles.quickOrderSeller} numberOfLines={1}>{order.sellerName}</Text>
+                  <Text style={styles.quickOrderMeta}>
+                    {formatHomeOrderNo(order.id, order.orderNo)} · {formatHomeOrderDate(order.createdAt)}
+                  </Text>
+                </View>
+                <StatusBadge
+                  status={order.status}
+                  deliveryType={order.deliveryType}
+                  audience="buyer"
+                />
+              </View>
+
+              <Text style={styles.quickOrderHint}>{latestHomeOrderHint(order.status)}</Text>
+              <Text style={styles.quickOrderItems} numberOfLines={1}>
+                {summarizeHomeOrderItems(order.items)}
+              </Text>
+
+              <View style={styles.quickOrderFooter}>
+                <View style={styles.quickOrderPriceWrap}>
+                  {order.totalPrice > 0 ? (
+                    <Text style={styles.quickOrderPrice}>{formatPrice(order.totalPrice)}</Text>
+                  ) : null}
+                  <Text style={styles.quickOrderDelivery}>
+                    {order.deliveryType === 'delivery'
+                      ? t('status.orders.deliveryType.delivery')
+                      : t('status.orders.deliveryType.pickup')}
+                  </Text>
+                </View>
+                <View style={styles.quickOrderActions}>
+                  {showRefresh ? (
+                    <TouchableOpacity
+                      style={[styles.quickOrderRefreshBtn, paymentLoading && styles.paymentRefreshBtnDisabled]}
+                      activeOpacity={0.88}
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        void refreshPaymentStatus();
+                      }}
+                      disabled={paymentLoading}
+                    >
+                      {paymentLoading ? (
+                        <ActivityIndicator size="small" color="#5F5246" />
+                      ) : (
+                        <Text style={styles.quickOrderRefreshText}>{t('cta.home.paymentRefresh')}</Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity
+                    style={styles.quickOrderPrimaryBtn}
+                    activeOpacity={0.88}
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      onOpenOrders();
+                    }}
+                  >
+                    <Text style={styles.quickOrderPrimaryText}>{t('cta.orders.viewAll')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
     );
   }
 
@@ -5123,6 +5155,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
     paddingVertical: 12,
+  },
+  quickOrderScroller: {
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  quickOrderScrollerContent: {
+    paddingRight: 4,
+  },
+  quickOrderScrollCardHome: {
+    width: Math.min(Dimensions.get('window').width - 44, 340),
+    marginRight: 10,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  quickOrderScrollCardCart: {
+    width: Math.min(Dimensions.get('window').width - 64, 320),
+    marginRight: 10,
+  },
+  quickOrderScrollCardLast: {
+    marginRight: 0,
   },
   quickOrderTopRow: {
     flexDirection: 'row',
