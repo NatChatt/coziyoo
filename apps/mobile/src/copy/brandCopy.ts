@@ -129,6 +129,7 @@ export const brandCopy = {
   'headline.home.processingSuccess': 'Sofran hazır!',
   'headline.home.tabHome': 'Ana Sayfa',
   'headline.home.tabMessages': 'Mesajlar',
+  'headline.home.tabOrders': 'Orders',
   'headline.home.tabNotifications': 'Bildirim',
 
   'headline.login.title': 'Coziyoo',
@@ -356,6 +357,7 @@ const brandCopyEn: Partial<Record<BrandCopyKey, string>> = {
   'headline.home.processingSuccess': 'Your table is ready!',
   'headline.home.tabHome': 'Home',
   'headline.home.tabMessages': 'Messages',
+  'headline.home.tabOrders': 'Orders',
   'headline.home.tabNotifications': 'Notifications',
   'status.voice.addedAction': 'Added to your food list',
   'status.voice.orderSummaryAction': 'Your food list is ready',

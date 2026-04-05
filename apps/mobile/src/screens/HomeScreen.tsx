@@ -4219,7 +4219,7 @@ export default function HomeScreen({
                   activeTab === 'cart' && styles.navLabelActive,
                 ]}
               >
-                {t('headline.home.foodListTitle')}{cartCount > 0 ? ` (${cartCount})` : ''}
+                {t('headline.home.tabOrders')}{cartCount > 0 ? ` (${cartCount})` : ''}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
