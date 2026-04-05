@@ -664,6 +664,8 @@ sellerRouter.put("/profile", async (req, res) => {
     const userId = req.auth!.userId;
 
     try {
+      const profileColumns = await getUsersSellerProfileColumns();
+      const hasColumn = (columnName: string): boolean => profileColumns.has(columnName);
       const addressResult = await pool.query<{ has_default: boolean }>(
         `SELECT EXISTS (
           SELECT 1 FROM user_addresses WHERE user_id = $1 AND is_default = TRUE
@@ -682,7 +684,15 @@ sellerRouter.put("/profile", async (req, res) => {
         phone: string | null;
         seller_profile_status: "incomplete" | "pending_review" | "active";
       }>(
-        `SELECT kitchen_title, kitchen_description, delivery_radius_km::text, delivery_enabled, delivery_terms, working_hours_json, phone, seller_profile_status
+        `SELECT
+           ${hasColumn("kitchen_title") ? "kitchen_title" : "NULL::text AS kitchen_title"},
+           ${hasColumn("kitchen_description") ? "kitchen_description" : "NULL::text AS kitchen_description"},
+           ${hasColumn("delivery_radius_km") ? "delivery_radius_km::text" : "NULL::text AS delivery_radius_km"},
+           ${hasColumn("delivery_enabled") ? "delivery_enabled" : "FALSE AS delivery_enabled"},
+           ${hasColumn("delivery_terms") ? "delivery_terms" : "NULL::text AS delivery_terms"},
+           ${hasColumn("working_hours_json") ? "working_hours_json" : "'[]'::jsonb AS working_hours_json"},
+           phone,
+           ${hasColumn("seller_profile_status") ? "seller_profile_status" : "'incomplete'::text AS seller_profile_status"}
          FROM users
          WHERE id = $1 FOR UPDATE`,
         [userId],
@@ -691,13 +701,18 @@ sellerRouter.put("/profile", async (req, res) => {
         return res.status(404).json({ error: { code: "USER_NOT_FOUND", message: "User not found" } });
       }
       const current = currentResult.rows[0];
+      const rawProfileStatus = String(current.seller_profile_status ?? "").trim().toLowerCase();
+      const profileStatusSeed: "incomplete" | "pending_review" | "active" =
+        rawProfileStatus === "active" || rawProfileStatus === "pending_review" || rawProfileStatus === "incomplete"
+          ? (rawProfileStatus as "incomplete" | "pending_review" | "active")
+          : "incomplete";
 
       const kitchenTitle = input.kitchenTitle ?? current.kitchen_title;
       const kitchenDescription = input.kitchenDescription ?? current.kitchen_description;
       const deliveryRadiusKm = input.deliveryRadiusKm ?? (current.delivery_radius_km ? Number(current.delivery_radius_km) : null);
       const workingHours = input.workingHours ?? (Array.isArray(current.working_hours_json) ? current.working_hours_json : []);
       const nextStatus = computeSellerProfileStatus({
-        profileStatus: current.seller_profile_status ?? "incomplete",
+        profileStatus: profileStatusSeed,
         kitchenTitle,
         kitchenDescription,
         deliveryRadiusKm,
@@ -707,7 +722,46 @@ sellerRouter.put("/profile", async (req, res) => {
         submitForReview: Boolean(input.submitForReview),
       });
 
-      const updated = await pool.query<{
+      const updateValues: Array<string | number | boolean | null> = [userId];
+      const bind = (value: string | number | boolean | null): string => {
+        updateValues.push(value);
+        return `$${updateValues.length}`;
+      };
+      const setClauses: string[] = ["updated_at = now()"];
+
+      if (hasColumn("kitchen_title") && input.kitchenTitle !== undefined) {
+        setClauses.push(`kitchen_title = ${bind(input.kitchenTitle)}`);
+      }
+      if (hasColumn("kitchen_description") && input.kitchenDescription !== undefined) {
+        setClauses.push(`kitchen_description = ${bind(input.kitchenDescription)}`);
+      }
+      if (hasColumn("delivery_radius_km") && input.deliveryRadiusKm !== undefined) {
+        setClauses.push(`delivery_radius_km = ${bind(input.deliveryRadiusKm)}::numeric`);
+      }
+      if (hasColumn("working_hours_json") && input.workingHours !== undefined) {
+        setClauses.push(`working_hours_json = ${bind(JSON.stringify(input.workingHours))}::jsonb`);
+      }
+      if (hasColumn("kitchen_specialties") && input.kitchenSpecialties !== undefined) {
+        setClauses.push(`kitchen_specialties = ${bind(JSON.stringify(input.kitchenSpecialties))}::jsonb`);
+      }
+      if (hasColumn("delivery_enabled") && input.deliveryEnabled !== undefined) {
+        setClauses.push(`delivery_enabled = ${bind(input.deliveryEnabled)}::boolean`);
+      }
+      if (hasColumn("delivery_terms") && input.deliveryTerms !== undefined) {
+        setClauses.push(`delivery_terms = ${bind(input.deliveryTerms.trim())}::text`);
+      }
+      if (hasColumn("seller_profile_status")) {
+        setClauses.push(`seller_profile_status = ${bind(nextStatus)}`);
+      }
+
+      await pool.query(
+        `UPDATE users
+         SET ${setClauses.join(", ")}
+         WHERE id = $1`,
+        updateValues,
+      );
+
+      const updatedResult = await pool.query<{
         kitchen_title: string | null;
         kitchen_description: string | null;
         kitchen_specialties: unknown;
@@ -717,44 +771,35 @@ sellerRouter.put("/profile", async (req, res) => {
         working_hours_json: unknown;
         seller_profile_status: "incomplete" | "pending_review" | "active";
       }>(
-        `UPDATE users
-         SET kitchen_title = COALESCE($2, kitchen_title),
-             kitchen_description = COALESCE($3, kitchen_description),
-             delivery_radius_km = COALESCE($4::numeric, delivery_radius_km),
-             working_hours_json = COALESCE($5::jsonb, working_hours_json),
-             kitchen_specialties = COALESCE($7::jsonb, kitchen_specialties),
-             delivery_enabled = COALESCE($8::boolean, delivery_enabled),
-             delivery_terms = CASE
-               WHEN $9::text IS NULL THEN delivery_terms
-               ELSE $9::text
-             END,
-             seller_profile_status = $6,
-             updated_at = now()
+        `SELECT
+           ${hasColumn("kitchen_title") ? "kitchen_title" : "NULL::text AS kitchen_title"},
+           ${hasColumn("kitchen_description") ? "kitchen_description" : "NULL::text AS kitchen_description"},
+           ${hasColumn("kitchen_specialties") ? "kitchen_specialties" : "'[]'::jsonb AS kitchen_specialties"},
+           ${hasColumn("delivery_radius_km") ? "delivery_radius_km::text" : "NULL::text AS delivery_radius_km"},
+           ${hasColumn("delivery_enabled") ? "delivery_enabled" : "FALSE AS delivery_enabled"},
+           ${hasColumn("delivery_terms") ? "delivery_terms" : "NULL::text AS delivery_terms"},
+           ${hasColumn("working_hours_json") ? "working_hours_json" : "'[]'::jsonb AS working_hours_json"},
+           ${hasColumn("seller_profile_status") ? "seller_profile_status" : `'${nextStatus}'::text AS seller_profile_status`}
+         FROM users
          WHERE id = $1
-         RETURNING kitchen_title, kitchen_description, kitchen_specialties, delivery_radius_km::text, delivery_enabled, delivery_terms, working_hours_json, seller_profile_status`,
-        [
-          userId,
-          input.kitchenTitle ?? null,
-          input.kitchenDescription ?? null,
-          input.deliveryRadiusKm ?? null,
-          input.workingHours ? JSON.stringify(input.workingHours) : null,
-          nextStatus,
-          input.kitchenSpecialties ? JSON.stringify(input.kitchenSpecialties) : null,
-          input.deliveryEnabled ?? null,
-          input.deliveryTerms !== undefined ? input.deliveryTerms.trim() : null,
-        ],
+         LIMIT 1`,
+        [userId],
       );
+      if ((updatedResult.rowCount ?? 0) === 0) {
+        return res.status(404).json({ error: { code: "USER_NOT_FOUND", message: "User not found" } });
+      }
+      const updated = updatedResult.rows[0];
 
       return res.json({
         data: {
-          kitchenTitle: updated.rows[0].kitchen_title,
-          kitchenDescription: updated.rows[0].kitchen_description,
-          kitchenSpecialties: Array.isArray(updated.rows[0].kitchen_specialties) ? updated.rows[0].kitchen_specialties : [],
-          deliveryRadiusKm: updated.rows[0].delivery_radius_km ? Number(updated.rows[0].delivery_radius_km) : null,
-          deliveryEnabled: Boolean(updated.rows[0].delivery_enabled),
-          deliveryTerms: updated.rows[0].delivery_terms,
-          workingHours: Array.isArray(updated.rows[0].working_hours_json) ? updated.rows[0].working_hours_json : [],
-          status: updated.rows[0].seller_profile_status,
+          kitchenTitle: updated.kitchen_title,
+          kitchenDescription: updated.kitchen_description,
+          kitchenSpecialties: Array.isArray(updated.kitchen_specialties) ? updated.kitchen_specialties : [],
+          deliveryRadiusKm: updated.delivery_radius_km ? Number(updated.delivery_radius_km) : null,
+          deliveryEnabled: Boolean(updated.delivery_enabled),
+          deliveryTerms: updated.delivery_terms,
+          workingHours: Array.isArray(updated.working_hours_json) ? updated.working_hours_json : [],
+          status: updated.seller_profile_status,
         },
       });
     } catch (error) {
