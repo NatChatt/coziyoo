@@ -2328,22 +2328,7 @@ export default function HomeScreen({
       return;
     }
 
-    const deliveryTypeSupportedByCart = payableItems.every((item) => {
-      const options = item.meal.deliveryOptions ?? { pickup: true, delivery: false };
-      return deliveryType === 'delivery' ? options.delivery : options.pickup;
-    });
-    if (!deliveryTypeSupportedByCart) {
-      setPaymentError('Sepetteki ürünler seçilen teslimat tipini desteklemiyor.');
-      return;
-    }
-
-    const activeAddress = selectedCheckoutAddress;
-    if (deliveryType === 'delivery' && !activeAddress) {
-      setCheckoutAddressModalVisible(true);
-      void fetchUserAddresses();
-      setPaymentError(t('helper.home.addressRequiredCheckout'));
-      return;
-    }
+    const checkoutDeliveryType: 'pickup' = 'pickup';
 
     const groupedBySeller = new Map<string, CartItem[]>();
     for (const item of payableItems) {
@@ -2373,16 +2358,7 @@ export default function HomeScreen({
           },
           body: JSON.stringify({
             sellerId,
-            deliveryType,
-            ...(deliveryType === 'delivery' && activeAddress
-              ? {
-                  deliveryAddress: {
-                    addressId: activeAddress.id,
-                    title: activeAddress.title,
-                    line: activeAddress.addressLine,
-                  },
-                }
-              : {}),
+            deliveryType: checkoutDeliveryType,
             items: sellerItems.map((item) => ({
               lotId: item.meal.lotId,
               quantity: item.quantity,
@@ -3119,18 +3095,7 @@ export default function HomeScreen({
         );
         return sum + (value * item.quantity) + addonsTotal;
       }, 0);
-      const deliveryFeesBySeller = new Map<string, number>();
-      if (deliveryType === 'delivery') {
-        for (const item of cartItems) {
-          const sellerId = item.meal.sellerId;
-          const fee = Number(item.meal.deliveryFee ?? 0);
-          const prev = deliveryFeesBySeller.get(sellerId) ?? 0;
-          // Aynı satıcıdan kaç ürün olursa olsun tek kez; birden fazla yemekte en yüksek ücreti baz al.
-          if (fee > prev) deliveryFeesBySeller.set(sellerId, fee);
-        }
-      }
-      const deliveryTotal = Array.from(deliveryFeesBySeller.values()).reduce((sum, fee) => sum + fee, 0);
-      const total = subtotal + deliveryTotal;
+      const total = subtotal;
       return (
         <View style={styles.cartWrap}>
           <View style={styles.cartHeader}>
@@ -3233,99 +3198,31 @@ export default function HomeScreen({
                 })}
               </ScrollView>
               <View style={styles.cartFooter}>
-                {deliveryType === 'delivery' ? (
-                  <View style={styles.cartDeliveryFeeRow}>
-                    <Text style={styles.cartDeliveryFeeLabel}>Teslimat</Text>
-                    <Text style={styles.cartDeliveryFeeValue}>₺{deliveryTotal.toFixed(2)}</Text>
-                  </View>
-                ) : null}
                 <View style={styles.cartTotalRow}>
                   <Text style={styles.cartTotalLabel}>Toplam</Text>
                   <Text style={styles.cartTotalValue}>₺{total.toFixed(2)}</Text>
                 </View>
               </View>
               <View style={styles.checkoutAddressCard}>
-                <Text style={styles.checkoutAddressTitle}>{t('helper.home.checkoutDeliveryType')}</Text>
-                <View style={styles.deliveryTypeRow}>
-                  {cartSupportedDeliveryOptions.delivery ? (
-                    <TouchableOpacity
-                      style={[
-                        styles.deliveryTypeChip,
-                        deliveryType === 'delivery' && styles.deliveryTypeChipActive,
-                      ]}
-                      onPress={() => setDeliveryType('delivery')}
-                      activeOpacity={0.85}
-                    >
-                      <Text
-                        style={[
-                          styles.deliveryTypeChipText,
-                          deliveryType === 'delivery' && styles.deliveryTypeChipTextActive,
-                        ]}
-                      >
-                        Getir
-                      </Text>
-                    </TouchableOpacity>
-                  ) : null}
-                  {cartSupportedDeliveryOptions.pickup ? (
-                    <TouchableOpacity
-                      style={[
-                        styles.deliveryTypeChip,
-                        deliveryType === 'pickup' && styles.deliveryTypeChipActive,
-                      ]}
-                      onPress={() => setDeliveryType('pickup')}
-                      activeOpacity={0.85}
-                    >
-                      <Text
-                        style={[
-                          styles.deliveryTypeChipText,
-                          deliveryType === 'pickup' && styles.deliveryTypeChipTextActive,
-                        ]}
-                      >
-                        {t('cta.home.pickup')}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : null}
+                <Text style={styles.checkoutAddressTitle}>Sipariş Akışı</Text>
+                <View style={styles.checkoutAddressBox}>
+                  <Text style={styles.checkoutAddressLabel}>Başlangıç tipi</Text>
+                  <Text style={styles.checkoutAddressValue}>Gel Al</Text>
+                  <Text style={styles.checkoutAddressLabel}>Alınacak adres</Text>
+                  <Text style={styles.checkoutAddressValue} numberOfLines={2}>
+                    {pickupSellerAddressLoading
+                      ? 'Satıcı adresi yükleniyor...'
+                      : pickupSellerAddressError
+                        ? pickupSellerAddressError
+                        : pickupSellerAddress
+                          ? [pickupSellerAddress.title, pickupSellerAddress.addressLine].filter(Boolean).join(' · ')
+                          : 'Satıcı adresi bulunamadı.'}
+                  </Text>
+                  <Text style={styles.checkoutAddressLabel}>Not</Text>
+                  <Text style={styles.checkoutAddressValue}>
+                    Sipariş varsayılan olarak Gel Al başlar. Satıcı isterse sonradan teslimat teklif edebilir.
+                  </Text>
                 </View>
-                {deliveryType === 'delivery' ? (
-                  <View style={styles.checkoutAddressBox}>
-                    <Text style={styles.checkoutAddressLabel}>{t('helper.home.checkoutAddress')}</Text>
-                    <Text style={styles.checkoutAddressValue} numberOfLines={2}>
-                      {formatAddressLine(selectedCheckoutAddress)}
-                    </Text>
-                    <View style={styles.checkoutAddressActions}>
-                      <TouchableOpacity
-                        style={styles.checkoutAddressActionBtn}
-                        onPress={() => {
-                          setCheckoutAddressModalVisible(true);
-                          void fetchUserAddresses();
-                        }}
-                        activeOpacity={0.85}
-                      >
-                        <Text style={styles.checkoutAddressActionText}>{t('cta.home.changeAddress')}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.checkoutAddressManageBtn}
-                        onPress={() => setAddressModalVisible(true)}
-                        activeOpacity={0.85}
-                      >
-                        <Text style={styles.checkoutAddressManageText}>{t('cta.home.manageAddresses')}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.checkoutAddressBox}>
-                    <Text style={styles.checkoutAddressLabel}>Alınacak Adres</Text>
-                    <Text style={styles.checkoutAddressValue} numberOfLines={2}>
-                      {pickupSellerAddressLoading
-                        ? 'Satıcı adresi yükleniyor...'
-                        : pickupSellerAddressError
-                          ? pickupSellerAddressError
-                          : pickupSellerAddress
-                            ? [pickupSellerAddress.title, pickupSellerAddress.addressLine].filter(Boolean).join(' · ')
-                            : 'Satıcı adresi bulunamadı.'}
-                    </Text>
-                  </View>
-                )}
               </View>
               {paymentStatus ? (
                 <View style={styles.paymentStatusCard}>
