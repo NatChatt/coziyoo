@@ -2566,6 +2566,12 @@ export default function HomeScreen({
   }
 
   function handleCartBackPress() {
+    const hasPendingListState =
+      cartItems.length === 0 && (paymentLoading || !!paymentStatus || !!paymentInfo || !!paymentError);
+    if (hasPendingListState) {
+      setActiveTab('home');
+      return;
+    }
     const fallbackFromCart = cartItems.length > 0 ? cartItems[cartItems.length - 1].meal : null;
     const mealToOpen = lastCartMealDetail ?? fallbackFromCart;
     if (!mealToOpen) {
