@@ -4238,12 +4238,14 @@ export default function HomeScreen({
                 size={21}
                 style={[
                   styles.navIcon,
+                  cartCount > 0 && styles.navIconFilled,
                   activeTab === 'cart' && styles.navIconActive,
                 ]}
               />
               <Text
                 style={[
                   styles.navLabel,
+                  cartCount > 0 && styles.navLabelFilled,
                   activeTab === 'cart' && styles.navLabelActive,
                 ]}
               >
@@ -5773,8 +5775,10 @@ const styles = StyleSheet.create({
   },
   navSpacer: { width: 72 },
   navIcon: { color: '#A89B8C', marginBottom: 3 },
+  navIconFilled: { color: '#7A8B6E' },
   navIconActive: { color: '#4A7C59' },
   navLabel: { color: '#A89B8C', fontSize: 12, lineHeight: 14, fontWeight: '600' },
+  navLabelFilled: { color: '#7A8B6E' },
   navLabelActive: { color: '#4A7C59' },
 
   /* --- Meal detail modal --- */
