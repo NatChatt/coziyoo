@@ -5363,7 +5363,7 @@ const styles = StyleSheet.create({
   },
   quickOrderSecondaryText: { color: '#2F6F4A', fontSize: 12, fontWeight: '800' },
   quickOrderPrimaryBtn: {
-    backgroundColor: '#4A7C59',
+    backgroundColor: '#5D8E6C',
     paddingHorizontal: 14,
     flexShrink: 1,
   },
