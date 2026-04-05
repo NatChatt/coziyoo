@@ -5,20 +5,20 @@ export const brandCopy = {
   'helper.home.sloganSubline': 'Yakınındaki ev şeflerinden sıcacık yemekler',
   'helper.home.searchPlaceholder': 'Yemek ya da usta ara...',
   'helper.home.stockLimitTitle': 'Stok sınırı',
-  'helper.home.stockLimitMessage': 'Bu yemekte kalan kadar sepete ekleyebilirsin.',
+  'helper.home.stockLimitMessage': 'Bu yemekten kalan kadar listene ekleyebilirsin.',
   'helper.home.stockLinePrefix': 'kaldı',
   'status.home.stockLineSuffix': 'porsiyon',
-  'helper.home.cartEmptyTitle': 'Sepetin şu an boş.',
-  'cta.home.cartCheckout': 'Sofranı hazırla',
+  'helper.home.cartEmptyTitle': 'Yemek listen şu an boş.',
+  'cta.home.cartCheckout': 'Sofranı gönder',
   'cta.home.paymentRefresh': 'Durumu yenile',
   'cta.home.paymentNext': 'Sonraki ödeme',
-  'status.home.paymentTitle': 'Ödeme durumu',
-  'status.home.orderLabel': 'Sipariş:',
+  'status.home.paymentTitle': 'Sofra durumu',
+  'status.home.orderLabel': 'Liste:',
   'status.home.orderStatusLabel': 'Durum:',
   'status.home.paymentDone': 'Ödeme tamamlandı',
   'status.home.paymentWaiting': 'Satıcı onayı bekleniyor',
   'status.home.orderStatus.pending_seller_approval': 'Satıcı onayı bekleniyor',
-  'status.home.orderStatus.seller_approved': 'Sipariş onaylandı',
+  'status.home.orderStatus.seller_approved': 'Usta onayladı',
   'status.home.orderStatus.awaiting_payment': 'Ödeme alınıyor',
   'status.home.orderStatus.preparing': 'Hazırlanıyor',
   'status.home.orderStatus.ready': 'Hazır',
@@ -58,7 +58,7 @@ export const brandCopy = {
   'error.home.paymentModuleMissing': 'Uygulama içi ödeme modülü bulunamadı.',
   'cta.home.openInBrowser': 'Tarayıcıda aç',
   'error.home.checkoutMissing': 'Ödeme bağlantısı şu an bulunamıyor.',
-  'cta.home.addToCart': 'Sepete ekle',
+  'cta.home.addToCart': 'Listeye ekle',
   'status.home.sellerKitchen': 'Usta Mutfağı',
   'status.home.sellerReviews': 'Yorumlar',
   'status.home.sellerReviewsLoading': 'Yorumlar yükleniyor...',
@@ -78,9 +78,9 @@ export const brandCopy = {
   'error.home.noMealsInResponse': 'Şu an yemek listesi alınmıyor.',
   'error.home.retryLater': 'Şu an ulaşılamıyor. Lütfen tekrar dene.',
   'error.home.sessionExpired': 'Oturumun bitmiş. Tekrar giriş yap.',
-  'helper.home.cartEmptyAlertTitle': 'Sepet boş',
-  'helper.home.cartEmptyAlertMessage': 'Önce sepete bir yemek ekleyelim.',
-  'error.home.payableLotsMissing': 'Sepette ödemeye uygun ürün kalmadı.',
+  'helper.home.cartEmptyAlertTitle': 'Yemek listen boş',
+  'helper.home.cartEmptyAlertMessage': 'Önce listene bir yemek ekleyelim.',
+  'error.home.payableLotsMissing': 'Yemek listende gönderilecek ürün kalmadı.',
   'helper.home.checkoutDeliveryType': 'Teslimat tipi',
   'cta.home.delivery': 'Teslimat',
   'cta.home.pickup': 'Gel Al',
@@ -98,6 +98,38 @@ export const brandCopy = {
   'headline.home.selectAddress': 'Teslimat adresi seç',
   'helper.home.selectAddressSubtitle': 'Bu sipariş için kayıtlı bir adres seç.',
   'helper.home.addressListEmpty': 'Kayıtlı adres bulunamadı.',
+  'headline.home.foodListTitle': 'Yemek Listesi',
+  'status.home.foodListCountSuffix': 'yemek',
+  'helper.home.flowTitle': 'Sofra planı',
+  'helper.home.flowStartTypeLabel': 'Başlangıç planı',
+  'helper.home.pickupAddressLabel': 'Alım adresi',
+  'helper.home.flowNoteLabel': 'Kısa not',
+  'helper.home.flowDefaultPickupNote': 'Yemek listen önce satıcıya gider. Satıcı isterse sonradan teslimat teklif edebilir.',
+  'helper.home.pickupAddressLoading': 'Satıcı adresi yükleniyor...',
+  'helper.home.pickupAddressMissing': 'Satıcı adresi bulunamadı.',
+  'error.home.pickupAddressFailed': 'Satıcı adresi alınamadı.',
+  'helper.home.paymentCapturePendingSingle': 'Listen alındı. Satıcı onaylayınca ödeme otomatik alınacak.',
+  'helper.home.paymentCapturePendingMultiple': 'Listen alındı. Satıcılar onaylayınca ödemeler otomatik alınacak.',
+  'helper.home.paymentCaptureDoneSingle': 'Ödeme tamamlandı! Listen satıcıya iletildi.',
+  'helper.home.paymentProgress': '{completed}/{total} ödeme tamamlandı.',
+  'helper.home.flowSellerMissing': 'Satıcı bilgisi eksik.',
+  'error.home.checkoutCreateFailed': 'Liste gönderilemedi.',
+  'error.home.checkoutMissingOrderId': 'Liste kimliği dönmedi.',
+  'error.home.checkoutStartFailed': 'Sofra akışı başlatılamadı.',
+  'error.home.paymentStatusFailed': 'Ödeme durumu alınamadı.',
+  'helper.home.toastAddedToList': 'Yemek listene eklendi',
+  'helper.home.allergenTitle': 'Alerjen uyarısı',
+  'helper.home.allergenConfirm': 'Bu yemek şu alerjenleri içeriyor:\n\n🔴 {allergens}\n\nYine de listene eklemek istiyor musun?',
+  'cta.home.addAnyway': 'Yine de ekle',
+  'headline.home.processingTitle': 'Sofra hazırlanıyor',
+  'helper.home.processingCreateList': 'Liste hazırlanıyor...',
+  'helper.home.processingCapturePayment': 'Ödeme alınıyor...',
+  'helper.home.processingSendSeller': 'Satıcıya iletiliyor...',
+  'helper.home.processingDone': 'Tamamlandı!',
+  'headline.home.processingSuccess': 'Sofran hazır!',
+  'headline.home.tabHome': 'Ana Sayfa',
+  'headline.home.tabMessages': 'Mesajlar',
+  'headline.home.tabNotifications': 'Bildirim',
 
   'headline.login.title': 'Coziyoo',
   'headline.login.subtitle': 'Komşunun mutfağından sıcacık yemeklere hoş geldin',
@@ -215,8 +247,8 @@ export const brandCopy = {
   'status.voice.listening': 'Seni dinliyorum...',
   'helper.voice.subtitle': 'Ne yemek istediğini söyle',
   'status.voice.navAction': 'Sayfa açılıyor',
-  'status.voice.addedAction': 'Sepete eklendi',
-  'status.voice.orderSummaryAction': 'Sipariş toplamı hazır',
+  'status.voice.addedAction': 'Yemek listene eklendi',
+  'status.voice.orderSummaryAction': 'Yemek listen hazır',
 
   'headline.settings.title': 'Güvenlik',
   'cta.settings.back': 'Geri',
@@ -256,6 +288,79 @@ export const brandCopy = {
 
 export type BrandCopyKey = keyof typeof brandCopy;
 
+type SupportedLocale = 'tr' | 'en';
+
+const brandCopyEn: Partial<Record<BrandCopyKey, string>> = {
+  'helper.home.stockLimitMessage': 'You can add only the remaining portions to your list.',
+  'helper.home.cartEmptyTitle': 'Your food list is empty right now.',
+  'cta.home.cartCheckout': 'Send your table',
+  'status.home.paymentTitle': 'Table status',
+  'status.home.orderLabel': 'List:',
+  'status.home.orderStatusLabel': 'Status:',
+  'status.home.paymentDone': 'Payment completed',
+  'status.home.paymentWaiting': 'Waiting for seller approval',
+  'status.home.orderStatus.pending_seller_approval': 'Waiting for seller approval',
+  'status.home.orderStatus.seller_approved': 'Seller confirmed',
+  'status.home.orderStatus.awaiting_payment': 'Collecting payment',
+  'status.home.orderStatus.preparing': 'Preparing',
+  'status.home.orderStatus.ready': 'Ready',
+  'status.home.orderStatus.in_delivery': 'On the way',
+  'status.home.orderStatus.at_door': 'At the door',
+  'status.home.orderStatus.delivered': 'Delivered',
+  'status.home.orderStatus.completed': 'Delivered',
+  'status.home.orderStatus.cancelled': 'Cancelled',
+  'status.home.orderStatus.rejected': 'Cancelled',
+  'status.home.paymentAttempt.initiated': 'Payment started',
+  'status.home.paymentAttempt.pending': 'Payment pending',
+  'status.home.paymentAttempt.processing': 'Payment processing',
+  'status.home.paymentAttempt.succeeded': 'Payment successful',
+  'status.home.paymentAttempt.failed': 'Payment failed',
+  'status.home.paymentAttempt.canceled': 'Payment canceled',
+  'status.home.paymentAttempt.requires_action': 'Payment action required',
+  'status.home.notificationsTitle': 'Notifications',
+  'helper.home.notificationsEmpty': 'You will see your new notifications here.',
+  'status.home.messagesTitle': 'Messages',
+  'helper.home.messagesSubtitle': 'Chat quickly with sellers',
+  'cta.home.addToCart': 'Add to list',
+  'helper.home.cartEmptyAlertTitle': 'Your food list is empty',
+  'helper.home.cartEmptyAlertMessage': 'Let’s add a meal to your list first.',
+  'error.home.payableLotsMissing': 'There are no available items left to send from your food list.',
+  'headline.home.foodListTitle': 'Food List',
+  'status.home.foodListCountSuffix': 'items',
+  'helper.home.flowTitle': 'Table plan',
+  'helper.home.flowStartTypeLabel': 'Starting plan',
+  'helper.home.pickupAddressLabel': 'Pickup address',
+  'helper.home.flowNoteLabel': 'Quick note',
+  'helper.home.flowDefaultPickupNote': 'Your food list goes to the seller first. If suitable, they can offer delivery later.',
+  'helper.home.pickupAddressLoading': 'Seller address is loading...',
+  'helper.home.pickupAddressMissing': 'Seller address could not be found.',
+  'error.home.pickupAddressFailed': 'Seller address could not be loaded.',
+  'helper.home.paymentCapturePendingSingle': 'Your list is in. Payment will be taken automatically once the seller confirms.',
+  'helper.home.paymentCapturePendingMultiple': 'Your list is in. Payments will be taken automatically as sellers confirm.',
+  'helper.home.paymentCaptureDoneSingle': 'Payment completed! Your list has been sent to the seller.',
+  'helper.home.paymentProgress': '{completed}/{total} payments completed.',
+  'helper.home.flowSellerMissing': 'Seller information is missing.',
+  'error.home.checkoutCreateFailed': 'The list could not be sent.',
+  'error.home.checkoutMissingOrderId': 'The list identifier did not return.',
+  'error.home.checkoutStartFailed': 'The table flow could not be started.',
+  'error.home.paymentStatusFailed': 'Payment status could not be loaded.',
+  'helper.home.toastAddedToList': 'Added to your food list',
+  'helper.home.allergenTitle': 'Allergen warning',
+  'helper.home.allergenConfirm': 'This meal contains these allergens:\n\n🔴 {allergens}\n\nDo you still want to add it to your list?',
+  'cta.home.addAnyway': 'Add anyway',
+  'headline.home.processingTitle': 'Your table is being prepared',
+  'helper.home.processingCreateList': 'Preparing your list...',
+  'helper.home.processingCapturePayment': 'Collecting payment...',
+  'helper.home.processingSendSeller': 'Sending to seller...',
+  'helper.home.processingDone': 'Done!',
+  'headline.home.processingSuccess': 'Your table is ready!',
+  'headline.home.tabHome': 'Home',
+  'headline.home.tabMessages': 'Messages',
+  'headline.home.tabNotifications': 'Notifications',
+  'status.voice.addedAction': 'Added to your food list',
+  'status.voice.orderSummaryAction': 'Your food list is ready',
+};
+
 const HOME_SUBTITLE_GENERIC_VARIANTS = [
   'Bugün ne yemek istersin?',
   'Canın ne çekiyorsa ona bakalım.',
@@ -286,8 +391,30 @@ const HOME_SUBTITLE_DAYPART_VARIANTS = {
   ],
 } as const;
 
+function getPreferredLocale(): SupportedLocale {
+  try {
+    const locale = Intl.DateTimeFormat().resolvedOptions().locale?.toLowerCase?.() ?? 'tr';
+    return locale.startsWith('en') ? 'en' : 'tr';
+  } catch {
+    return 'tr';
+  }
+}
+
 export function t(key: BrandCopyKey): string {
+  if (getPreferredLocale() === 'en') {
+    return brandCopyEn[key] ?? brandCopy[key];
+  }
   return brandCopy[key];
+}
+
+export function formatCopy(
+  key: BrandCopyKey,
+  values: Record<string, string | number>,
+): string {
+  return Object.entries(values).reduce(
+    (message, [token, value]) => message.replace(new RegExp(`\\{${token}\\}`, 'g'), String(value)),
+    t(key),
+  );
 }
 
 export function randomHomeGreetingSubtitle(date = new Date()): string {

@@ -6,6 +6,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import ActionButton from '../components/ActionButton';
 import StarRating from '../components/StarRating';
 import SectionDivider from '../components/SectionDivider';
+import { t } from '../copy/brandCopy';
 
 export type FoodItem = {
   id: string;
@@ -223,7 +224,7 @@ export default function FoodDetailScreen({ food, onBack, onAddToCart, onOpenSell
               />
             </View>
             <ActionButton
-              label={`Sepete Ekle — ${formatPrice(food.price * quantity)}`}
+              label={`${t('cta.home.addToCart')} — ${formatPrice(food.price * quantity)}`}
               onPress={handleAdd}
               variant="primary"
               fullWidth

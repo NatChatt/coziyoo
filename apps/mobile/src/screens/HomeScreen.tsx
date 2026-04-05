@@ -84,7 +84,7 @@ import { readJsonSafe } from '../utils/http';
 import VoiceSessionScreen from './VoiceSessionScreen';
 import ProfileEditScreen from './ProfileEditScreen';
 import AddressScreen from './AddressScreen';
-import { randomHomeGreetingSubtitle, requestErrorLine, t } from '../copy/brandCopy';
+import { formatCopy, randomHomeGreetingSubtitle, requestErrorLine, t } from '../copy/brandCopy';
 import { HOME_FEED_CATEGORIES } from '../constants/foodCategories';
 
 /* ------------------------------------------------------------------ */
@@ -1397,7 +1397,7 @@ export default function HomeScreen({
         const nextAddress = json?.data ?? null;
         setPickupSellerAddress(nextAddress);
         if (!nextAddress?.title && !nextAddress?.addressLine) {
-          setPickupSellerAddressError('Satıcı adresi bulunamadı.');
+          setPickupSellerAddressError(t('helper.home.pickupAddressMissing'));
         } else {
           setPickupSellerAddressError(null);
         }
@@ -1405,7 +1405,7 @@ export default function HomeScreen({
       .catch((error: unknown) => {
         if (cancelled) return;
         setPickupSellerAddress(null);
-        setPickupSellerAddressError(error instanceof Error ? error.message : 'Satıcı adresi alınamadı.');
+        setPickupSellerAddressError(error instanceof Error ? error.message : t('error.home.pickupAddressFailed'));
       })
       .finally(() => {
         if (cancelled) return;
@@ -2193,11 +2193,11 @@ export default function HomeScreen({
     const allergens = Array.isArray(meal.allergens) ? meal.allergens.filter(Boolean) : [];
     if (allergens.length > 0) {
       Alert.alert(
-        '⚠️ Alerjen Uyarısı',
-        `Bu yemek şu alerjenler içermektedir:\n\n🔴 ${allergens.join('\n🔴 ')}\n\nYine de sepete eklemek istiyor musunuz?`,
+        t('helper.home.allergenTitle'),
+        formatCopy('helper.home.allergenConfirm', { allergens: allergens.join('\n🔴 ') }),
         [
           { text: 'İptal', style: 'cancel' },
-          { text: 'Yine de Ekle', style: 'destructive', onPress: () => doAddMealToCart(meal, selectedAddons) },
+          { text: t('cta.home.addAnyway'), style: 'destructive', onPress: () => doAddMealToCart(meal, selectedAddons) },
         ],
       );
       return;
@@ -2334,7 +2334,7 @@ export default function HomeScreen({
     for (const item of payableItems) {
       const sellerId = item.meal.sellerId;
       if (!sellerId) {
-        setPaymentError('Satıcı bilgisi eksik.');
+        setPaymentError(t('helper.home.flowSellerMissing'));
         return;
       }
       const existing = groupedBySeller.get(sellerId) ?? [];
@@ -2371,17 +2371,17 @@ export default function HomeScreen({
           error?: { message?: string };
         }>(orderRes);
         if (!orderRes.ok) {
-          throw new Error(orderJson?.error?.message ?? `Sipariş oluşturulamadı (${orderRes.status})`);
+          throw new Error(orderJson?.error?.message ?? `${t('error.home.checkoutCreateFailed')} (${orderRes.status})`);
         }
         const orderId = String(orderJson?.data?.orderId ?? '');
         if (!orderId) {
-          throw new Error('Sipariş kimliği dönmedi.');
+          throw new Error(t('error.home.checkoutMissingOrderId'));
         }
         createdOrderIds.push(orderId);
       }
       setCheckoutFlowResult({ ok: true, orderIds: createdOrderIds });
     } catch (err) {
-      setCheckoutFlowResult({ ok: false, error: err instanceof Error ? err.message : 'Ödeme başlatma hatası' });
+      setCheckoutFlowResult({ ok: false, error: err instanceof Error ? err.message : t('error.home.checkoutStartFailed') });
     } finally {
       setPaymentLoading(false);
     }
@@ -2396,7 +2396,7 @@ export default function HomeScreen({
     setCartPaymentAnimationDone(false);
 
     if (!checkoutFlowResult.ok) {
-      setPaymentError(checkoutFlowResult.error ?? 'Ödeme başlatma hatası');
+      setPaymentError(checkoutFlowResult.error ?? t('error.home.checkoutStartFailed'));
       setCheckoutFlowResult(null);
       return;
     }
@@ -2415,8 +2415,8 @@ export default function HomeScreen({
     );
     setPaymentInfo(
       createdOrderIds.length > 1
-        ? `${createdOrderIds.length} sipariş oluşturuldu. Satıcı onaylayınca ödeme otomatik alınacak.`
-        : 'Siparişin oluşturuldu. Satıcı onaylayınca ödeme otomatik alınacak.',
+        ? t('helper.home.paymentCapturePendingMultiple')
+        : t('helper.home.paymentCapturePendingSingle'),
     );
     void refreshPaymentStatus(true, createdOrderIds);
     setPaymentError(null);
@@ -2477,15 +2477,15 @@ export default function HomeScreen({
       const completedCount = snapshots.filter((s) => s.paymentCompleted).length;
       setPaymentStatus(snapshots[0] ?? null);
       if (snapshots.length > 1) {
-        setPaymentInfo(`${completedCount}/${snapshots.length} ödeme tamamlandı.`);
+        setPaymentInfo(formatCopy('helper.home.paymentProgress', { completed: completedCount, total: snapshots.length }));
       } else if (completedCount === 1) {
-        setPaymentInfo('Ödeme tamamlandı! Siparişin satıcıya iletildi.');
+        setPaymentInfo(t('helper.home.paymentCaptureDoneSingle'));
       }
       if (completedCount === snapshots.length && snapshots.length > 0) {
         setCartItems([]);
       }
     } catch (err) {
-      setPaymentError(err instanceof Error ? err.message : 'Ödeme durumu alınamadı');
+      setPaymentError(err instanceof Error ? err.message : t('error.home.paymentStatusFailed'));
     } finally {
       setPaymentLoading(false);
     }
@@ -3048,8 +3048,8 @@ export default function HomeScreen({
           </View>
           <View style={styles.messagesTabHeader}>
             <View style={styles.messagesTabHeaderText}>
-              <Text style={styles.messagesTabTitle}>Mesajlar</Text>
-              <Text style={styles.messagesTabSubtitle}>Ustalarla iletisim kur</Text>
+              <Text style={styles.messagesTabTitle}>{t('status.home.messagesTitle')}</Text>
+              <Text style={styles.messagesTabSubtitle}>{t('helper.home.messagesSubtitle')}</Text>
             </View>
             <TouchableOpacity
               style={styles.messagesWallpaperBtn}
@@ -3107,9 +3107,9 @@ export default function HomeScreen({
               >
                 <Ionicons name="chevron-back" size={22} color="#4E433A" />
               </TouchableOpacity>
-              <Text style={styles.tabPanelTitle}>Sepet</Text>
+              <Text style={styles.tabPanelTitle}>{t('headline.home.foodListTitle')}</Text>
             </View>
-            <Text style={styles.cartHeaderCount}>{cartCount} urun</Text>
+            <Text style={styles.cartHeaderCount}>{cartCount} {t('status.home.foodListCountSuffix')}</Text>
           </View>
           {cartItems.length === 0 ? (
             <View style={styles.tabPanelCard}>
@@ -3204,23 +3204,23 @@ export default function HomeScreen({
                 </View>
               </View>
               <View style={styles.checkoutAddressCard}>
-                <Text style={styles.checkoutAddressTitle}>Sipariş Akışı</Text>
+                <Text style={styles.checkoutAddressTitle}>{t('helper.home.flowTitle')}</Text>
                 <View style={styles.checkoutAddressBox}>
-                  <Text style={styles.checkoutAddressLabel}>Başlangıç tipi</Text>
-                  <Text style={styles.checkoutAddressValue}>Gel Al</Text>
-                  <Text style={styles.checkoutAddressLabel}>Alınacak adres</Text>
+                  <Text style={styles.checkoutAddressLabel}>{t('helper.home.flowStartTypeLabel')}</Text>
+                  <Text style={styles.checkoutAddressValue}>{t('cta.home.pickup')}</Text>
+                  <Text style={styles.checkoutAddressLabel}>{t('helper.home.pickupAddressLabel')}</Text>
                   <Text style={styles.checkoutAddressValue} numberOfLines={2}>
                     {pickupSellerAddressLoading
-                      ? 'Satıcı adresi yükleniyor...'
+                      ? t('helper.home.pickupAddressLoading')
                       : pickupSellerAddressError
                         ? pickupSellerAddressError
                         : pickupSellerAddress
                           ? [pickupSellerAddress.title, pickupSellerAddress.addressLine].filter(Boolean).join(' · ')
-                          : 'Satıcı adresi bulunamadı.'}
+                          : t('helper.home.pickupAddressMissing')}
                   </Text>
-                  <Text style={styles.checkoutAddressLabel}>Not</Text>
+                  <Text style={styles.checkoutAddressLabel}>{t('helper.home.flowNoteLabel')}</Text>
                   <Text style={styles.checkoutAddressValue}>
-                    Sipariş varsayılan olarak Gel Al başlar. Satıcı isterse sonradan teslimat teklif edebilir.
+                    {t('helper.home.flowDefaultPickupNote')}
                   </Text>
                 </View>
               </View>
@@ -4130,7 +4130,7 @@ export default function HomeScreen({
 
       {/* Cart toast */}
       <Animated.View style={[styles.cartToast, { opacity: cartToastOpacity }]} pointerEvents="none">
-        <Text style={styles.cartToastText}>✓ Sepete eklendi</Text>
+        <Text style={styles.cartToastText}>✓ {t('helper.home.toastAddedToList')}</Text>
       </Animated.View>
 
       {/* Main screen */}
@@ -4176,7 +4176,7 @@ export default function HomeScreen({
                   activeTab === 'home' && styles.navLabelActive,
                 ]}
               >
-                Ana Sayfa
+                {t('headline.home.tabHome')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -4197,7 +4197,7 @@ export default function HomeScreen({
                   activeTab === 'messages' && styles.navLabelActive,
                 ]}
               >
-                Mesajlar
+                {t('headline.home.tabMessages')}
               </Text>
             </TouchableOpacity>
             <View style={styles.navSpacer} />
@@ -4219,7 +4219,7 @@ export default function HomeScreen({
                   activeTab === 'cart' && styles.navLabelActive,
                 ]}
               >
-                Sepet{cartCount > 0 ? ` (${cartCount})` : ''}
+                {t('headline.home.foodListTitle')}{cartCount > 0 ? ` (${cartCount})` : ''}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -4240,7 +4240,7 @@ export default function HomeScreen({
                   activeTab === 'notifications' && styles.navLabelActive,
                 ]}
               >
-                Bildirim
+                {t('headline.home.tabNotifications')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -4256,10 +4256,10 @@ export default function HomeScreen({
 /* ------------------------------------------------------------------ */
 
 const CART_PAY_STEPS = [
-  'Sipariş oluşturuluyor...',
-  'Ödeme alınıyor...',
-  'Satıcıya iletiliyor...',
-  'Tamamlandı!',
+  t('helper.home.processingCreateList'),
+  t('helper.home.processingCapturePayment'),
+  t('helper.home.processingSendSeller'),
+  t('helper.home.processingDone'),
 ];
 
 function CartPaymentAnimation({ onDone }: { onDone: () => void }) {
@@ -4376,7 +4376,7 @@ function CartPaymentAnimation({ onDone }: { onDone: () => void }) {
           </Animated.View>
         </View>
 
-        <Text style={cpStyles.title}>Ödeme İşleniyor</Text>
+        <Text style={cpStyles.title}>{t('headline.home.processingTitle')}</Text>
 
         {/* Dots */}
         <View style={cpStyles.dots}>
@@ -4401,7 +4401,7 @@ function CartPaymentAnimation({ onDone }: { onDone: () => void }) {
         {/* Success */}
         <Animated.View style={[cpStyles.successWrap, { opacity: successOpacity, transform: [{ scale: successScale }] }]}>
           <Ionicons name="checkmark-circle" size={52} color="#4A7C59" />
-          <Text style={cpStyles.successText}>Siparişin Alındı!</Text>
+          <Text style={cpStyles.successText}>{t('headline.home.processingSuccess')}</Text>
         </Animated.View>
       </View>
     </Animated.View>
