@@ -22,6 +22,7 @@ import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import StatusBadge from "../components/StatusBadge";
 import { subscribeOrderRealtime } from "../utils/realtime";
+import { t } from "../copy/brandCopy";
 
 type Props = {
   auth: AuthSession;
@@ -278,11 +279,15 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
 
   useEffect(() => {
     if (!order) return;
-    setDecisionDeliveryType(order.activeDeliveryType === "delivery" ? "delivery" : "pickup");
+    setDecisionDeliveryType(
+      order.activeDeliveryType === "delivery" || order.requestedDeliveryType === "delivery"
+        ? "delivery"
+        : "pickup"
+    );
     setDecisionEtaMinutes(order.sellerEtaMinutes ? String(order.sellerEtaMinutes) : "30");
     setDecisionNote(order.sellerDeliveryNote?.trim() ?? "");
     setDecisionReason("");
-  }, [order?.id, order?.activeDeliveryType, order?.sellerEtaMinutes, order?.sellerDeliveryNote]);
+  }, [order?.id, order?.activeDeliveryType, order?.requestedDeliveryType, order?.sellerEtaMinutes, order?.sellerDeliveryNote]);
 
   useEffect(() => {
     const handleShow = (event: { endCoordinates?: { height?: number } }) => {
@@ -358,6 +363,14 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     }
     return normalized;
   }, [order]);
+  const buyerRequestedDelivery = useMemo(
+    () => Boolean(
+      order &&
+      order.requestedDeliveryType === "delivery" &&
+      order.activeDeliveryType !== "delivery"
+    ),
+    [order]
+  );
 
   useEffect(() => {
     if (!shouldCheckPinBeforeComplete) {
@@ -494,6 +507,12 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
             </View>
             <Text style={styles.meta}>Alıcı: {order.buyerName || "-"}</Text>
             <Text style={styles.meta}>Sipariş Türü: {order.deliveryType === "delivery" ? "Teslimat" : "Gel Al"}</Text>
+            {buyerRequestedDelivery ? (
+              <View style={styles.deliveryRequestBanner}>
+                <Text style={styles.deliveryRequestTitle}>{t('helper.seller.orderDetail.deliveryRequestTitle')}</Text>
+                <Text style={styles.deliveryRequestText}>{t('helper.seller.orderDetail.deliveryRequestBody')}</Text>
+              </View>
+            ) : null}
             {order.createdAt ? <Text style={styles.meta}>Tarih: {formatOrderDate(order.createdAt)}</Text> : null}
             {order.deliveryType === "delivery" ? (
               <Text style={styles.meta}>Teslimat Ücreti: {deliveryFee.toFixed(2)} TL</Text>
@@ -520,7 +539,11 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           {isDecisionStage ? (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Sipariş Kararı</Text>
-              <Text style={styles.meta}>Bu sipariş varsayılan olarak Gel Al başladı. İstersen teslimata çevirip şartlarını belirleyebilirsin.</Text>
+              <Text style={styles.meta}>
+                {buyerRequestedDelivery
+                  ? t('helper.seller.orderDetail.deliveryRequestBody')
+                  : "Bu sipariş varsayılan olarak Gel Al başladı. İstersen teslimata çevirip şartlarını belirleyebilirsin."}
+              </Text>
 
               <Text style={styles.inlineFieldLabel}>Teslimat tipi</Text>
               <View style={styles.choiceRow}>
@@ -529,14 +552,18 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                   activeOpacity={0.85}
                   onPress={() => setDecisionDeliveryType("pickup")}
                 >
-                  <Text style={[styles.choiceChipText, decisionDeliveryType === "pickup" && styles.choiceChipTextActive]}>Gel Al</Text>
+                  <Text style={[styles.choiceChipText, decisionDeliveryType === "pickup" && styles.choiceChipTextActive]}>
+                    {buyerRequestedDelivery ? t('cta.seller.orderDetail.keepPickup') : "Gel Al"}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.choiceChip, decisionDeliveryType === "delivery" && styles.choiceChipActive]}
                   activeOpacity={0.85}
                   onPress={() => setDecisionDeliveryType("delivery")}
                 >
-                  <Text style={[styles.choiceChipText, decisionDeliveryType === "delivery" && styles.choiceChipTextActive]}>Teslimat</Text>
+                  <Text style={[styles.choiceChipText, decisionDeliveryType === "delivery" && styles.choiceChipTextActive]}>
+                    {buyerRequestedDelivery ? t('cta.seller.orderDetail.canDeliver') : "Teslimat"}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -656,7 +683,15 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
             disabled={updating}
             onPress={() => { void submitSellerDecision("approve"); }}
           >
-            <Text style={styles.actionText}>{updating ? "İşleniyor..." : "Onayla ve Ödemeyi Al"}</Text>
+            <Text style={styles.actionText}>
+              {updating
+                ? "İşleniyor..."
+                : buyerRequestedDelivery
+                  ? (decisionDeliveryType === "delivery"
+                    ? t('cta.seller.orderDetail.approveDelivery')
+                    : t('cta.seller.orderDetail.approvePickup'))
+                  : "Onayla ve Ödemeyi Al"}
+            </Text>
           </TouchableOpacity>
         </View>
       ) : action ? (
@@ -740,6 +775,17 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   orderNo: { fontSize: 17, fontWeight: "800", color: "#2E241C" },
   meta: { marginTop: 4, color: "#6C6055" },
+  deliveryRequestBanner: {
+    marginTop: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#CFE4D5",
+    backgroundColor: "#F3FAF5",
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  deliveryRequestTitle: { color: "#2F6F4A", fontWeight: "800", marginBottom: 4 },
+  deliveryRequestText: { color: "#456957", lineHeight: 18 },
   sectionTitle: { color: "#2E241C", fontWeight: "800", marginBottom: 4 },
   linkText: { textDecorationLine: "underline" },
   itemRowWrap: { marginTop: 4 },

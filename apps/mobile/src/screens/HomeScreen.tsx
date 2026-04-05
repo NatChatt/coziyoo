@@ -400,6 +400,9 @@ type HomeOrdersApiItem = {
   id: string;
   status: string;
   deliveryType: 'pickup' | 'delivery';
+  requestedDeliveryType?: 'pickup' | 'delivery';
+  activeDeliveryType?: 'pickup' | 'delivery';
+  sellerDecisionState?: string | null;
   totalPrice: number;
   createdAt: string;
   updatedAt?: string;
@@ -418,6 +421,9 @@ type HomeOrderSummary = {
   createdAt: string;
   updatedAt?: string;
   deliveryType: 'pickup' | 'delivery';
+  requestedDeliveryType: 'pickup' | 'delivery';
+  activeDeliveryType: 'pickup' | 'delivery';
+  sellerDecisionState?: string | null;
 };
 
 const HOME_ACTIONABLE_ORDER_STATUSES = new Set([
@@ -502,6 +508,14 @@ function latestHomeOrderHint(status: string): string {
     return t('helper.orders.quickPendingSubtitle');
   }
   return t('helper.orders.quickPreparingSubtitle');
+}
+
+function hasPendingBuyerDeliveryRequest(order: HomeOrderSummary): boolean {
+  return order.requestedDeliveryType === 'delivery' && order.activeDeliveryType !== 'delivery';
+}
+
+function canRequestBuyerDelivery(order: HomeOrderSummary): boolean {
+  return order.status === 'pending_seller_approval' && !hasPendingBuyerDeliveryRequest(order);
 }
 
 function parseDistanceKm(distanceText: string): number | null {
@@ -1402,6 +1416,7 @@ export default function HomeScreen({
   const [paymentInfo, setPaymentInfo] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatusSnapshot | null>(null);
   const [recentBuyerOrders, setRecentBuyerOrders] = useState<HomeOrderSummary[]>([]);
+  const [deliveryRequestOrderIds, setDeliveryRequestOrderIds] = useState<Record<string, true>>({});
   const cartPaymentAnimationVisible = false;
   const setCartPaymentAnimationDone = (_value: boolean) => {};
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -1595,6 +1610,9 @@ export default function HomeScreen({
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         deliveryType: 'pickup',
+        requestedDeliveryType: 'pickup',
+        activeDeliveryType: 'pickup',
+        sellerDecisionState: null,
       },
       ...mappedActionable,
     ];
@@ -1653,10 +1671,53 @@ export default function HomeScreen({
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       deliveryType: order.deliveryType === 'delivery' ? 'delivery' : 'pickup',
+      requestedDeliveryType: order.requestedDeliveryType === 'delivery' ? 'delivery' : 'pickup',
+      activeDeliveryType: order.activeDeliveryType === 'delivery' ? 'delivery' : (order.deliveryType === 'delivery' ? 'delivery' : 'pickup'),
+      sellerDecisionState: order.sellerDecisionState ?? null,
     }));
 
     setRecentBuyerOrders(mapped);
   }, [currentAuth, handleAuthRefresh]);
+
+  const requestDeliveryForOrder = useCallback(async (order: HomeOrderSummary) => {
+    if (!canRequestBuyerDelivery(order) || deliveryRequestOrderIds[order.id]) return;
+    setDeliveryRequestOrderIds((prev) => ({ ...prev, [order.id]: true }));
+    try {
+      const response = await authedJsonFetch(`${apiUrl}/v1/orders/${order.id}/buyer-delivery-request`, {
+        method: 'POST',
+        headers: {
+          'x-actor-role': 'buyer',
+        },
+        body: JSON.stringify({ requestedDeliveryType: 'delivery' }),
+      });
+      const json = await readJsonSafe<{
+        error?: { message?: string };
+      }>(response);
+      if (!response.ok) {
+        throw new Error(json?.error?.message ?? t('error.home.deliveryRequestFailed'));
+      }
+
+      setRecentBuyerOrders((prev) => prev.map((item) => (
+        item.id === order.id
+          ? { ...item, requestedDeliveryType: 'delivery' }
+          : item
+      )));
+      setPaymentInfo(t('helper.home.deliveryRequestSuccess'));
+      Alert.alert(t('headline.common.saved'), t('helper.home.deliveryRequestSuccess'));
+    } catch (error) {
+      Alert.alert(
+        t('headline.common.error'),
+        error instanceof Error ? error.message : t('error.home.deliveryRequestFailed'),
+      );
+    } finally {
+      setDeliveryRequestOrderIds((prev) => {
+        const next = { ...prev };
+        delete next[order.id];
+        return next;
+      });
+      void fetchRecentBuyerOrders();
+    }
+  }, [apiUrl, deliveryRequestOrderIds, fetchRecentBuyerOrders]);
 
   useEffect(() => {
     loadSettings().then((s) => setApiUrl(s.apiUrl));
@@ -2974,6 +3035,12 @@ export default function HomeScreen({
               </View>
 
               <Text style={styles.quickOrderHint}>{latestHomeOrderHint(order.status)}</Text>
+              {hasPendingBuyerDeliveryRequest(order) ? (
+                <View style={styles.quickOrderNotePill}>
+                  <Ionicons name="bicycle-outline" size={14} color="#2F6F4A" />
+                  <Text style={styles.quickOrderNotePillText}>{t('helper.home.deliveryRequestPending')}</Text>
+                </View>
+              ) : null}
               <Text style={styles.quickOrderItems} numberOfLines={1}>
                 {summarizeHomeOrderItems(order.items)}
               </Text>
@@ -2990,6 +3057,26 @@ export default function HomeScreen({
                   </Text>
                 </View>
                 <View style={styles.quickOrderActions}>
+                  {canRequestBuyerDelivery(order) ? (
+                    <TouchableOpacity
+                      style={[
+                        styles.quickOrderSecondaryBtn,
+                        deliveryRequestOrderIds[order.id] && styles.paymentRefreshBtnDisabled,
+                      ]}
+                      activeOpacity={0.88}
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        void requestDeliveryForOrder(order);
+                      }}
+                      disabled={Boolean(deliveryRequestOrderIds[order.id])}
+                    >
+                      {deliveryRequestOrderIds[order.id] ? (
+                        <ActivityIndicator size="small" color="#2F6F4A" />
+                      ) : (
+                        <Text style={styles.quickOrderSecondaryText}>{t('cta.home.requestDelivery')}</Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
                   {showRefresh ? (
                     <TouchableOpacity
                       style={[styles.quickOrderRefreshBtn, paymentLoading && styles.paymentRefreshBtnDisabled]}
@@ -5187,6 +5274,20 @@ const styles = StyleSheet.create({
   quickOrderSeller: { color: '#3A281F', fontSize: 18, fontWeight: '800' },
   quickOrderMeta: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', marginTop: 4 },
   quickOrderHint: { color: '#5E5247', fontSize: 13, lineHeight: 18, marginTop: 10 },
+  quickOrderNotePill: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#CFE4D5',
+    backgroundColor: '#F3FAF5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  quickOrderNotePillText: { color: '#2F6F4A', fontSize: 12, fontWeight: '700' },
   quickOrderItems: { color: '#7A6D5D', fontSize: 12, lineHeight: 18, marginTop: 6 },
   quickOrderFooter: {
     marginTop: 12,
@@ -5210,6 +5311,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   quickOrderRefreshText: { color: '#5F5246', fontSize: 12, fontWeight: '700' },
+  quickOrderSecondaryBtn: {
+    minHeight: 36,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#CFE4D5',
+    backgroundColor: '#F3FAF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickOrderSecondaryText: { color: '#2F6F4A', fontSize: 12, fontWeight: '800' },
   quickOrderPrimaryBtn: {
     minHeight: 36,
     borderRadius: 10,

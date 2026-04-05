@@ -74,6 +74,10 @@ const SellerDecisionSchema = z.object({
   reason: z.string().min(3).max(500).optional(),
 });
 
+const BuyerDeliveryRequestSchema = z.object({
+  requestedDeliveryType: z.enum(["delivery"]).optional().default("delivery"),
+});
+
 type OrderRow = {
   id: string;
   buyer_id: string;
@@ -977,6 +981,101 @@ ordersRouter.post("/:id/seller-decision", requireAuth("app"), async (req, res) =
     await client.query("ROLLBACK");
     console.error("[orders] seller decision failed", error);
     return res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Seller decision failed" } });
+  } finally {
+    client.release();
+  }
+});
+
+ordersRouter.post("/:id/buyer-delivery-request", requireAuth("app"), async (req, res) => {
+  const actorRole = resolveActorRole(req);
+  if (actorRole !== "buyer") {
+    return res.status(403).json({ error: { code: "ROLE_NOT_ALLOWED", message: "Buyer role required" } });
+  }
+
+  const parsed = BuyerDeliveryRequestSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: { code: "VALIDATION_ERROR", details: parsed.error.flatten() } });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const orderResult = await client.query<OrderRow>(
+      `SELECT id, buyer_id, seller_id, status, total_price::text, payment_completed, delivery_type,
+              requested_delivery_type, active_delivery_type, seller_decision_state, seller_eta_minutes,
+              seller_promised_at::text, seller_delivery_note, seller_delivery_terms_snapshot,
+              approved_at::text, payment_captured_at::text, delivery_address_json, estimated_delivery_time::text
+       FROM orders
+       WHERE id = $1
+       FOR UPDATE`,
+      [req.params.id],
+    );
+
+    if ((orderResult.rowCount ?? 0) === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: { code: "ORDER_NOT_FOUND", message: "Order not found" } });
+    }
+
+    const order = orderResult.rows[0];
+    if (order.buyer_id !== req.auth!.userId) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ error: { code: "FORBIDDEN_ORDER_SCOPE", message: "Not buyer of this order" } });
+    }
+    if (isTerminalStatus(order.status)) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: { code: "ORDER_TERMINAL", message: "Order is already terminal" } });
+    }
+    if (order.status !== "pending_seller_approval") {
+      await client.query("ROLLBACK");
+      return res.status(409).json({
+        error: { code: "ORDER_INVALID_STATE", message: "Teslimat isteği sadece satıcı kararı beklenirken gönderilebilir." },
+      });
+    }
+
+    const requestedDeliveryType = normalizeDeliveryType(parsed.data.requestedDeliveryType) ?? "delivery";
+    if (requestedDeliveryType !== "delivery") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: { code: "INVALID_DELIVERY_REQUEST", message: "Geçersiz teslimat isteği." } });
+    }
+
+    const alreadyRequested = normalizeDeliveryType(order.requested_delivery_type) === "delivery";
+    if (!alreadyRequested) {
+      await client.query(
+        `UPDATE orders
+         SET requested_delivery_type = 'delivery',
+             updated_at = now()
+         WHERE id = $1`,
+        [order.id],
+      );
+      await client.query(
+        `INSERT INTO order_events (order_id, actor_user_id, event_type, from_status, to_status, payload_json)
+         VALUES ($1, $2, 'buyer_delivery_requested', $3, $4, $5)`,
+        [
+          order.id,
+          req.auth!.userId,
+          order.status,
+          order.status,
+          JSON.stringify({
+            requestedDeliveryType: "delivery",
+            source: "buyer_cart",
+          }),
+        ],
+      );
+    }
+
+    await client.query("COMMIT");
+    return res.json({
+      data: {
+        orderId: order.id,
+        requestedDeliveryType: "delivery",
+        status: order.status,
+        alreadyRequested,
+      },
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("[orders] buyer delivery request failed", error);
+    return res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Buyer delivery request failed" } });
   } finally {
     client.release();
   }
