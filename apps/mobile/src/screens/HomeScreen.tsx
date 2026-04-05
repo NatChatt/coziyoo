@@ -3061,6 +3061,7 @@ export default function HomeScreen({
                     {canRequestBuyerDelivery(order) ? (
                       <TouchableOpacity
                         style={[
+                          styles.quickOrderMainActionBtn,
                           styles.quickOrderSecondaryBtn,
                           deliveryRequestOrderIds[order.id] && styles.paymentRefreshBtnDisabled,
                         ]}
@@ -3081,7 +3082,7 @@ export default function HomeScreen({
                       </TouchableOpacity>
                     ) : null}
                     <TouchableOpacity
-                      style={styles.quickOrderPrimaryBtn}
+                      style={[styles.quickOrderMainActionBtn, styles.quickOrderPrimaryBtn]}
                       activeOpacity={0.88}
                       onPress={(event) => {
                         event.stopPropagation();
@@ -5322,6 +5323,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     flexShrink: 1,
   },
+  quickOrderMainActionBtn: {
+    width: 138,
+    minHeight: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   quickOrderRefreshBtn: {
     minHeight: 36,
     borderRadius: 10,
@@ -5335,23 +5343,15 @@ const styles = StyleSheet.create({
   },
   quickOrderRefreshText: { color: '#5F5246', fontSize: 12, fontWeight: '700' },
   quickOrderSecondaryBtn: {
-    minHeight: 36,
-    borderRadius: 10,
     paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: '#CFE4D5',
     backgroundColor: '#F3FAF5',
-    alignItems: 'center',
-    justifyContent: 'center',
     flexShrink: 1,
   },
   quickOrderSecondaryText: { color: '#2F6F4A', fontSize: 12, fontWeight: '800' },
   quickOrderPrimaryBtn: {
-    minHeight: 36,
-    borderRadius: 10,
     backgroundColor: '#4A7C59',
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 14,
     flexShrink: 1,
   },
