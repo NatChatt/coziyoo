@@ -5337,7 +5337,7 @@ const styles = StyleSheet.create({
   },
   quickOrderMainActionBtn: {
     flex: 1,
-    minHeight: 36,
+    minHeight: 32,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
