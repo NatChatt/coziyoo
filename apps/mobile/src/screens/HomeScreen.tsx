@@ -3130,6 +3130,13 @@ export default function HomeScreen({
                       <Text style={styles.paymentRefreshBtnText}>{t('cta.home.paymentRefresh')}</Text>
                     )}
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.paymentNextBtn}
+                    onPress={() => setActiveTab('home')}
+                    activeOpacity={0.9}
+                  >
+                    <Text style={styles.paymentNextBtnText}>{t('cta.home.backHome')}</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             ) : (
