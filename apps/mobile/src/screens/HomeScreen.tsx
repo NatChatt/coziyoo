@@ -3061,26 +3061,42 @@ export default function HomeScreen({
                   </View>
                 </View>
                 <View style={styles.quickOrderActions}>
-                  {canRequestBuyerDelivery(order) ? (
+                  <View style={styles.quickOrderMainActionsRow}>
+                    {canRequestBuyerDelivery(order) ? (
+                      <TouchableOpacity
+                        style={[
+                          styles.quickOrderSecondaryBtn,
+                          deliveryRequestOrderIds[order.id] && styles.paymentRefreshBtnDisabled,
+                        ]}
+                        activeOpacity={0.88}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          void requestDeliveryForOrder(order);
+                        }}
+                        disabled={Boolean(deliveryRequestOrderIds[order.id])}
+                      >
+                        {deliveryRequestOrderIds[order.id] ? (
+                          <ActivityIndicator size="small" color="#2F6F4A" />
+                        ) : (
+                          <Text style={styles.quickOrderSecondaryText} numberOfLines={1} ellipsizeMode="tail">
+                            {t('cta.home.requestDelivery')}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    ) : null}
                     <TouchableOpacity
-                      style={[
-                        styles.quickOrderSecondaryBtn,
-                        deliveryRequestOrderIds[order.id] && styles.paymentRefreshBtnDisabled,
-                      ]}
+                      style={styles.quickOrderPrimaryBtn}
                       activeOpacity={0.88}
                       onPress={(event) => {
                         event.stopPropagation();
-                        void requestDeliveryForOrder(order);
+                        onOpenOrders();
                       }}
-                      disabled={Boolean(deliveryRequestOrderIds[order.id])}
                     >
-                      {deliveryRequestOrderIds[order.id] ? (
-                        <ActivityIndicator size="small" color="#2F6F4A" />
-                      ) : (
-                        <Text style={styles.quickOrderSecondaryText}>{t('cta.home.requestDelivery')}</Text>
-                      )}
+                      <Text style={styles.quickOrderPrimaryText} numberOfLines={1} ellipsizeMode="tail">
+                        {t('cta.orders.viewAll')}
+                      </Text>
                     </TouchableOpacity>
-                  ) : null}
+                  </View>
                   {showRefresh ? (
                     <TouchableOpacity
                       style={[styles.quickOrderRefreshBtn, paymentLoading && styles.paymentRefreshBtnDisabled]}
@@ -3094,20 +3110,12 @@ export default function HomeScreen({
                       {paymentLoading ? (
                         <ActivityIndicator size="small" color="#5F5246" />
                       ) : (
-                        <Text style={styles.quickOrderRefreshText}>{t('cta.home.paymentRefresh')}</Text>
+                        <Text style={styles.quickOrderRefreshText} numberOfLines={1} ellipsizeMode="tail">
+                          {t('cta.home.paymentRefresh')}
+                        </Text>
                       )}
                     </TouchableOpacity>
                   ) : null}
-                  <TouchableOpacity
-                    style={styles.quickOrderPrimaryBtn}
-                    activeOpacity={0.88}
-                    onPress={(event) => {
-                      event.stopPropagation();
-                      onOpenOrders();
-                    }}
-                  >
-                    <Text style={styles.quickOrderPrimaryText}>{t('cta.orders.viewAll')}</Text>
-                  </TouchableOpacity>
                 </View>
               </View>
             </TouchableOpacity>
@@ -5305,10 +5313,17 @@ const styles = StyleSheet.create({
   quickOrderPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800', flexShrink: 0 },
   quickOrderDelivery: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', marginLeft: 8, flexShrink: 1 },
   quickOrderActions: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  quickOrderMainActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     justifyContent: 'flex-end',
     flexShrink: 1,
   },
@@ -5321,6 +5336,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFDF9',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 1,
   },
   quickOrderRefreshText: { color: '#5F5246', fontSize: 12, fontWeight: '700' },
   quickOrderSecondaryBtn: {
@@ -5332,6 +5348,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3FAF5',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 1,
   },
   quickOrderSecondaryText: { color: '#2F6F4A', fontSize: 12, fontWeight: '800' },
   quickOrderPrimaryBtn: {
@@ -5341,6 +5358,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 14,
+    flexShrink: 1,
   },
   quickOrderPrimaryText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
   secondaryOrdersBtn: {
