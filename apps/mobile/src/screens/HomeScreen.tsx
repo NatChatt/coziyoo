@@ -2405,7 +2405,6 @@ export default function HomeScreen({
     if (orderIds.length === 0) return;
     setPaymentLoading(true);
     setPaymentError(null);
-    setPaymentInfo(null);
     try {
       const loadSnapshots = async () => Promise.all(
         orderIds.map(async (oid) => {
@@ -2445,9 +2444,15 @@ export default function HomeScreen({
       const completedCount = snapshots.filter((s) => s.paymentCompleted).length;
       setPaymentStatus(snapshots[0] ?? null);
       if (snapshots.length > 1) {
-        setPaymentInfo(formatCopy('helper.home.paymentProgress', { completed: completedCount, total: snapshots.length }));
+        if (completedCount > 0) {
+          setPaymentInfo(formatCopy('helper.home.paymentProgress', { completed: completedCount, total: snapshots.length }));
+        } else {
+          setPaymentInfo(t('helper.home.paymentCapturePendingMultiple'));
+        }
       } else if (completedCount === 1) {
         setPaymentInfo(t('helper.home.paymentCaptureDoneSingle'));
+      } else {
+        setPaymentInfo(t('helper.home.paymentCapturePendingSingle'));
       }
       if (completedCount === snapshots.length && snapshots.length > 0) {
         setCartItems([]);
