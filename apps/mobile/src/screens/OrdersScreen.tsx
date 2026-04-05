@@ -157,7 +157,6 @@ export default function OrdersScreen({
     (order) => isCompletedOrder(order.status) && matchesQuery(order, searchQuery),
   );
   const hasSearch = searchQuery.trim().length > 0;
-  const hasVisibleHistory = visibleOrders.some((order) => isCompletedOrder(order.status));
   const showSearchEmpty = hasSearch && !filteredActiveOrder && filteredCompletedOrders.length === 0;
 
   function renderHeroCard(order: BuyerOrderSummary) {
@@ -183,7 +182,7 @@ export default function OrdersScreen({
           <StatusBadge status={order.status} deliveryType={order.deliveryType} audience="buyer" />
         </View>
 
-          <Text style={styles.heroItems} numberOfLines={2}>
+        <Text style={styles.heroItems} numberOfLines={2}>
           {getItemsLine(order) || t('helper.orders.itemsFallback')}
         </Text>
 
