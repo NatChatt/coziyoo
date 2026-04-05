@@ -5322,7 +5322,7 @@ const styles = StyleSheet.create({
   quickOrderPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800', flexShrink: 0 },
   quickOrderActions: {
     flexDirection: 'column',
-    alignItems: 'flex-end',
+    alignItems: 'stretch',
     justifyContent: 'center',
     gap: 8,
     flexShrink: 1,
@@ -5332,11 +5332,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     flexWrap: 'nowrap',
-    justifyContent: 'flex-end',
-    flexShrink: 1,
+    justifyContent: 'space-between',
+    width: '100%',
   },
   quickOrderMainActionBtn: {
-    width: 138,
+    flex: 1,
     minHeight: 36,
     borderRadius: 10,
     alignItems: 'center',
