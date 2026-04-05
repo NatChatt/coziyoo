@@ -9,6 +9,7 @@ import { loadSettings } from "../utils/settings";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import { getSellerProfileCache, setSellerProfileCache, getSellerMeCache, setSellerMeCache } from "../utils/sellerProfileCache";
+import { formatCopy, t } from "../copy/brandCopy";
 
 const MODAL_PLACEHOLDER_COLOR = "#A9A7A1";
 
@@ -703,7 +704,7 @@ export default function SellerProfileDetailScreen({
   return (
     <View style={styles.container}>
       <ScreenHeader
-        title="Satıcı Profili"
+        title={t('headline.seller.profileDetail.title')}
         onBack={onBack}
       />
 
@@ -713,10 +714,10 @@ export default function SellerProfileDetailScreen({
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={() => void load()}>
-            <Text style={styles.retryBtnText}>Tekrar Dene</Text>
+            <Text style={styles.retryBtnText}>{t('cta.seller.profileDetail.retry')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.logoutErrBtn} onPress={onLogout}>
-            <Text style={styles.logoutErrBtnText}>Çıkış Yap</Text>
+            <Text style={styles.logoutErrBtnText}>{t('cta.seller.profileDetail.logout')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -750,18 +751,15 @@ export default function SellerProfileDetailScreen({
 
           {/* Belge Durumu */}
           <TouchableOpacity style={styles.complianceCard} activeOpacity={0.85} onPress={onOpenCompliance}>
-            <Text style={styles.complianceTitle}>Belge Durumu</Text>
-            <Text style={styles.complianceText}>
-              Tamamlanan: {complianceUploaded}/
-              <Text style={styles.complianceRemainingInlineText}>{complianceRemaining}</Text>
-            </Text>
-            <Text style={styles.complianceAction}>Belgeleri aç →</Text>
+            <Text style={styles.complianceTitle}>{t('headline.seller.profileDetail.compliance')}</Text>
+            <Text style={styles.complianceText}>{formatCopy('status.seller.profileDetail.completed', { done: complianceUploaded, total: complianceRequired })}</Text>
+            <Text style={styles.complianceAction}>{t('cta.seller.profileDetail.openDocuments')} →</Text>
           </TouchableOpacity>
 
           {/* Profili Düzenle */}
           <View style={styles.card}>
             <View style={styles.profileEditCardHeader}>
-              <Text style={styles.cardTitleNoCaps}>Profili Düzenle</Text>
+              <Text style={styles.cardTitleNoCaps}>{t('headline.seller.profileDetail.editProfile')}</Text>
               <TouchableOpacity
                 style={styles.profileEditIconBtn}
                 onPress={() => setIsEditModalOpen(true)}
@@ -774,21 +772,21 @@ export default function SellerProfileDetailScreen({
 
           <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={openDeliverySettingsModal}>
             <View style={styles.profileEditCardHeader}>
-              <Text style={styles.cardTitle}>Teslimat Ayarı</Text>
+              <Text style={styles.cardTitle}>{t('headline.seller.profileDetail.deliverySettings')}</Text>
               <View style={styles.profileEditIconBtn}>
                 <Ionicons name="pencil" size={16} color={theme.primary} />
               </View>
             </View>
-            <InfoRow label="Teslimat" value={deliveryEnabled ? "Açık" : "Kapalı"} />
-            <InfoRow label="Yarıçap" value={deliveryRadiusKmInput?.trim() ? `${deliveryRadiusKmInput} km` : "—"} />
-            <InfoRow label="Koşullar" value={deliveryTerms || "Henüz eklenmedi"} />
-            <Text style={styles.addressLink}>Düzenlemek için dokun</Text>
+            <InfoRow label={t('label.seller.profileDetail.delivery')} value={deliveryEnabled ? t('status.seller.profile.deliveryOpen') : t('status.seller.profile.deliveryClosed')} />
+            <InfoRow label={t('label.seller.profileDetail.radius')} value={deliveryRadiusKmInput?.trim() ? `${deliveryRadiusKmInput} km` : "—"} />
+            <InfoRow label={t('label.seller.profileDetail.terms')} value={deliveryTerms || t('helper.seller.profile.notAdded')} />
+            <Text style={styles.addressLink}>{t('cta.seller.profileDetail.tapToEdit')}</Text>
           </TouchableOpacity>
 
           {/* Mutfak Bilgileri */}
           <View style={styles.card}>
             <View style={styles.profileEditCardHeader}>
-              <Text style={styles.cardTitle}>Hakkımda</Text>
+              <Text style={styles.cardTitle}>{t('headline.seller.profileDetail.about')}</Text>
               <TouchableOpacity
                 style={styles.profileEditIconBtn}
                 onPress={() => setIsKitchenModalOpen(true)}
@@ -801,28 +799,28 @@ export default function SellerProfileDetailScreen({
 
           {/* Navigasyon Butonları */}
           <TouchableOpacity style={styles.navBtn} onPress={onOpenOrderHistory}>
-            <Text style={styles.navBtnText}>Sipariş Geçmişim</Text>
+            <Text style={styles.navBtnText}>{t('cta.seller.profileDetail.orderHistory')}</Text>
             <Text style={styles.navArrow}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.navBtn} onPress={onOpenReviews}>
-            <Text style={styles.navBtnText}>Yorumlar / Değerlendirmeler</Text>
+            <Text style={styles.navBtnText}>{t('cta.seller.profileDetail.reviews')}</Text>
             <Text style={styles.navArrow}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.navBtn} onPress={onOpenSettings}>
-            <Text style={styles.navBtnText}>Ayarlar</Text>
+            <Text style={styles.navBtnText}>{t('cta.seller.profileDetail.settings')}</Text>
             <Text style={styles.navArrow}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
-            <Text style={styles.logoutBtnText}>Çıkış Yap</Text>
+            <Text style={styles.logoutBtnText}>{t('cta.seller.profileDetail.logout')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.editFullBtn} onPress={onEdit}>
-            <Text style={styles.editFullText}>Profili Düzenle</Text>
+            <Text style={styles.editFullText}>{t('headline.seller.profileDetail.editProfile')}</Text>
           </TouchableOpacity>
 
           {/* Çalışma Saatleri */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Çalışma Saatleri</Text>
+            <Text style={styles.cardTitle}>{t('headline.seller.profileDetail.workingHours')}</Text>
             {(profile?.workingHours ?? []).length > 0 ? (
               profile!.workingHours!.map((h, i) => (
                 <View key={i} style={styles.hourRow}>

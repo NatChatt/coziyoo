@@ -7,6 +7,7 @@ import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
+import { t } from "../copy/brandCopy";
 
 type Props = {
   auth: AuthSession;
@@ -77,10 +78,10 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
       setApiUrl(baseUrl);
       const res = await authedFetch("/v1/seller/compliance/profile", undefined, baseUrl);
       const json = (await res.json()) as CompliancePayload;
-      if (!res.ok) throw new Error(json.error?.message ?? "Compliance yüklenemedi");
+      if (!res.ok) throw new Error(json.error?.message ?? t('headline.seller.profileDetail.compliance'));
       setPayload(json.data ?? null);
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Compliance yüklenemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('headline.seller.profileDetail.compliance'));
     } finally {
       setLoading(false);
     }
@@ -99,7 +100,7 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert("İzin Gerekli", "Belge yüklemek için galeri izni gerekli.");
+        Alert.alert(t('headline.common.permission'), "Belge yüklemek için galeri izni gerekli.");
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -112,7 +113,7 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
       const asset = result.assets[0];
       const dataBase64 = asset.base64;
       if (!dataBase64) {
-        Alert.alert("Hata", "Belge verisi okunamadı.");
+        Alert.alert(t('headline.common.error'), "Belge verisi okunamadı.");
         return;
       }
 
@@ -130,9 +131,9 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
         throw new Error(json.error?.message ?? "Belge yüklenemedi");
       }
       await loadData();
-      Alert.alert("Tamam", "Belge yüklendi.");
+      Alert.alert(t('headline.common.success'), "Belge yüklendi.");
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Belge yüklenemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : "Belge yüklenemedi");
     } finally {
       setUploadingDocCode(null);
     }
@@ -140,7 +141,7 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Compliance" onBack={onBack} />
+      <ScreenHeader title={t('headline.seller.profileDetail.compliance')} onBack={onBack} />
       <ScrollView contentContainerStyle={styles.content}>
         {loading || !payload ? (
           <ActivityIndicator size="large" color={theme.primary} style={styles.loader} />

@@ -7,6 +7,7 @@ import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { getSellerFoodsCache, setSellerFoodsCache } from "../utils/sellerFoodsCache";
 import { theme } from "../theme/colors";
+import { formatCopy, t } from "../copy/brandCopy";
 
 type Props = {
   auth: AuthSession;
@@ -88,7 +89,7 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
           userId: currentAuth.userId,
           actorRole: "seller",
         });
-        throw new Error(json?.error?.message ?? "Yemekler yüklenemedi");
+        throw new Error(json?.error?.message ?? t('error.seller.foodsManager.load'));
       }
       const list: SellerFood[] = Array.isArray(json?.data) ? json.data.map((item: any) => ({
         ...item,
@@ -108,7 +109,7 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
     } catch (e) {
       const cache = getSellerFoodsCache();
       if (!cache || cache.length === 0) {
-        Alert.alert("Hata", e instanceof Error ? e.message : "Yemekler yüklenemedi");
+        Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.foodsManager.load'));
       }
     } finally {
       setLoading(false);
@@ -127,9 +128,9 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
           <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
-          <Text style={styles.pageTitle}>Yemek Düzenle</Text>
+          <Text style={styles.pageTitle}>{t('headline.seller.foodsManager.title')}</Text>
           <TouchableOpacity style={styles.addBtn} activeOpacity={0.85} onPress={() => onOpenFoodsForm("add")}>
-            <Text style={styles.addBtnText}>Yemek Ekle</Text>
+            <Text style={styles.addBtnText}>{t('cta.seller.foodsManager.addFood')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -142,7 +143,7 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
           loading && foods.length > 0 ? (
             <View style={styles.inlineLoading}>
               <ActivityIndicator size="small" color="#3F855C" />
-              <Text style={styles.inlineLoadingText}>Yemekler hazırlanıyor...</Text>
+              <Text style={styles.inlineLoadingText}>{t('status.seller.foodsManager.loading')}</Text>
             </View>
           ) : null
         }
@@ -151,27 +152,27 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
             <View style={styles.rowTop}>
               <Text style={styles.name}>{item.name}</Text>
               <Text style={[styles.badge, item.isActive ? styles.badgeActive : styles.badgePassive]}>
-                {item.isActive ? "Aktif" : "Pasif"}
+                {item.isActive ? t('status.seller.foodsManager.active') : t('status.seller.foodsManager.passive')}
               </Text>
             </View>
-            <Text style={styles.summary}>{item.cardSummary || "Özet yok"}</Text>
+            <Text style={styles.summary}>{item.cardSummary || t('helper.seller.foodsManager.summaryMissing')}</Text>
             <View style={styles.rowBottom}>
               <Text style={styles.price}>{item.price.toFixed(2)} TL</Text>
-              <Text style={styles.stock}>Stok: {item.stock ?? 0}</Text>
+              <Text style={styles.stock}>{formatCopy('status.seller.foodsManager.stock', { stock: item.stock ?? 0 })}</Text>
             </View>
-            <Text style={styles.editHint}>Yemek Düzenle</Text>
+            <Text style={styles.editHint}>{t('cta.seller.foodsManager.editFood')}</Text>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
           loading ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Yemekler yükleniyor...</Text>
-              <Text style={styles.emptySub}>Ekran hazır, içerik birkaç saniye içinde gelecek.</Text>
+              <Text style={styles.emptyTitle}>{t('status.seller.foodsManager.loading')}</Text>
+              <Text style={styles.emptySub}>{t('helper.seller.foodsManager.loadingSubtitle')}</Text>
             </View>
           ) : (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Henüz yemek yok</Text>
-              <Text style={styles.emptySub}>Yemek eklediğinde burada göreceksin.</Text>
+              <Text style={styles.emptyTitle}>{t('headline.seller.foodsManager.emptyTitle')}</Text>
+              <Text style={styles.emptySub}>{t('helper.seller.foodsManager.emptySubtitle')}</Text>
             </View>
           )
         }

@@ -7,6 +7,7 @@ import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
+import { t } from "../copy/brandCopy";
 
 type Props = {
   auth: AuthSession;
@@ -114,7 +115,7 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
       setApiUrl(baseUrl);
       const res = await authedFetch("/v1/seller/profile", undefined, baseUrl);
       const payload = await readResponsePayload(res);
-      if (!res.ok || payload.json === null) throw new Error(responseErrorMessage(res, payload, "Satıcı profili yüklenemedi"));
+      if (!res.ok || payload.json === null) throw new Error(responseErrorMessage(res, payload, t('error.seller.profile.load')));
       const json = payload.json;
       setKitchenTitle(json.data?.kitchenTitle?.trim() ?? "");
       setKitchenDescription(json.data?.kitchenDescription?.trim() ?? "");
@@ -122,13 +123,13 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
       setDeliveryEnabled(Boolean(json.data?.deliveryEnabled));
       setDeliveryTerms(json.data?.deliveryTerms?.trim() ?? "");
       setStatus(json.data?.status ?? "incomplete");
-      setDefaultAddress(json.data?.defaultAddress ? `${json.data.defaultAddress.title} - ${json.data.defaultAddress.addressLine}` : "Varsayılan adres yok");
+      setDefaultAddress(json.data?.defaultAddress ? `${json.data.defaultAddress.title} - ${json.data.defaultAddress.addressLine}` : t('helper.seller.profile.noDefaultAddress'));
       const hours = (json.data?.workingHours ?? []).map((x) => `${x.day} ${x.open}-${x.close}`).join(", ");
       if (hours.trim()) setWorkingHoursText(hours);
       setEditingDeliveryRadius(false);
       setEditingWorkingHours(false);
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Profil yüklenemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.profile.load'));
     } finally {
       setLoading(false);
     }
@@ -168,13 +169,13 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
         }),
       }, baseUrl);
       const payload = await readResponsePayload(res);
-      if (!res.ok || payload.json === null) throw new Error(responseErrorMessage(res, payload, "Kaydedilemedi"));
+      if (!res.ok || payload.json === null) throw new Error(responseErrorMessage(res, payload, t('error.seller.profile.save')));
       const json = payload.json;
       const nextStatus = json.data?.status ?? "incomplete";
       setStatus(nextStatus);
-      Alert.alert("Tamam", submitForReview ? "Profil incelemeye gönderildi." : "Profil kaydedildi.");
+      Alert.alert(t('headline.common.success'), submitForReview ? t('status.seller.profile.sentToReview') : t('status.seller.profile.saved'));
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Kaydedilemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.profile.save'));
     } finally {
       setSaving(false);
     }
@@ -182,34 +183,34 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Profili Düzenle" onBack={onBack} />
+      <ScreenHeader title={t('headline.seller.profileEdit.title')} onBack={onBack} />
       <ScrollView contentContainerStyle={styles.content}>
       {loading ? (
         <ActivityIndicator size="large" color={theme.primary} />
       ) : (
         <>
-          <Text style={styles.label}>Varsayılan adres</Text>
+          <Text style={styles.label}>{t('helper.seller.profile.defaultAddress')}</Text>
           <TouchableOpacity style={styles.addressCard} onPress={onOpenAddresses}>
             <Text style={styles.addressText}>{defaultAddress}</Text>
-            <Text style={styles.addressAction}>Adresi düzenle</Text>
+            <Text style={styles.addressAction}>{t('cta.seller.profile.editAddress')}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.label}>Mutfak başlığı</Text>
-          <TextInput style={styles.input} value={kitchenTitle} onChangeText={setKitchenTitle} placeholder="Örn: İsmet'in Ev Mutfağı" />
+          <Text style={styles.label}>{t('helper.seller.profile.kitchenTitle')}</Text>
+          <TextInput style={styles.input} value={kitchenTitle} onChangeText={setKitchenTitle} placeholder={t('helper.seller.profile.kitchenTitlePlaceholder')} />
 
-          <Text style={styles.label}>Mutfak açıklaması</Text>
+          <Text style={styles.label}>{t('helper.seller.profile.kitchenDescription')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={kitchenDescription}
             onChangeText={setKitchenDescription}
-            placeholder="Yemek tarzını ve servis yapını anlat."
+            placeholder={t('helper.seller.profile.kitchenDescriptionPlaceholder')}
             multiline
           />
 
-          <Text style={styles.label}>Teslimat yarıçapı (km)</Text>
+          <Text style={styles.label}>{t('helper.seller.profile.deliveryRadius')}</Text>
           <View style={styles.readOnlyCard}>
             <View style={styles.readOnlyHeader}>
-              <Text style={styles.readOnlyValue}>{deliveryRadiusKm?.trim() ? `${deliveryRadiusKm} km` : "Henüz eklenmedi"}</Text>
+              <Text style={styles.readOnlyValue}>{deliveryRadiusKm?.trim() ? `${deliveryRadiusKm} km` : t('helper.seller.profile.notAdded')}</Text>
               <TouchableOpacity
                 style={styles.editIconBtn}
                 onPress={() => setEditingDeliveryRadius((prev) => !prev)}
@@ -224,21 +225,21 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
                 value={deliveryRadiusKm}
                 onChangeText={setDeliveryRadiusKm}
                 keyboardType="numeric"
-                placeholder="Örn: 5"
+                placeholder={t('helper.seller.profile.deliveryRadiusPlaceholder')}
               />
             ) : null}
           </View>
 
-          <Text style={styles.label}>Teslimat ayarı</Text>
+          <Text style={styles.label}>{t('helper.seller.profile.deliverySettings')}</Text>
           <TouchableOpacity
             style={[styles.toggleCard, deliveryEnabled && styles.toggleCardActive]}
             activeOpacity={0.85}
             onPress={() => setDeliveryEnabled((prev) => !prev)}
           >
             <View style={styles.toggleTextWrap}>
-              <Text style={styles.toggleTitle}>{deliveryEnabled ? 'Teslimat açık' : 'Teslimat kapalı'}</Text>
+              <Text style={styles.toggleTitle}>{deliveryEnabled ? t('status.seller.profile.deliveryOpen') : t('status.seller.profile.deliveryClosed')}</Text>
               <Text style={styles.toggleSub}>
-                {deliveryEnabled ? 'Sipariş bazında teslimat teklif edebilirsin.' : 'Siparişler varsayılan olarak Gel Al kalır.'}
+                {deliveryEnabled ? t('helper.seller.profile.deliveryOpenHint') : t('helper.seller.profile.deliveryClosedHint')}
               </Text>
             </View>
             <View style={[styles.togglePill, deliveryEnabled && styles.togglePillActive]}>
@@ -246,20 +247,20 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
             </View>
           </TouchableOpacity>
 
-          <Text style={styles.label}>Teslimat koşulları</Text>
+          <Text style={styles.label}>{t('helper.seller.profile.deliveryTerms')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={deliveryTerms}
             onChangeText={setDeliveryTerms}
-            placeholder="Örn: 3 km içi, apartman kapısına teslim, akşam 21:00'e kadar."
+            placeholder={t('helper.seller.profile.deliveryTermsPlaceholder')}
             multiline
           />
 
-          <Text style={styles.label}>Çalışma saatleri</Text>
+          <Text style={styles.label}>{t('helper.seller.profile.workingHours')}</Text>
           <View style={styles.readOnlyCard}>
             <View style={styles.readOnlyHeader}>
               <Text style={styles.readOnlyValue}>
-                {workingHoursText?.trim() ? workingHoursText : "Henüz eklenmedi"}
+                {workingHoursText?.trim() ? workingHoursText : t('helper.seller.profile.notAdded')}
               </Text>
               <TouchableOpacity
                 style={styles.editIconBtn}
@@ -280,10 +281,10 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
           </View>
 
           <TouchableOpacity style={styles.saveBtn} disabled={saving} onPress={() => void saveProfile(false)}>
-            <Text style={styles.saveText}>{saving ? "Kaydediliyor..." : "Kaydet"}</Text>
+            <Text style={styles.saveText}>{saving ? `${t('cta.seller.profile.save')}...` : t('cta.seller.profile.save')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.submitBtn} disabled={saving} onPress={() => void saveProfile(true)}>
-            <Text style={styles.submitText}>İncelemeye Gönder</Text>
+            <Text style={styles.submitText}>{t('cta.seller.profile.submitReview')}</Text>
           </TouchableOpacity>
         </>
       )}

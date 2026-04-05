@@ -6,6 +6,7 @@ import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
+import { formatCopy, t } from "../copy/brandCopy";
 
 type Props = {
   auth: AuthSession;
@@ -34,10 +35,9 @@ function formatOrderDate(iso: string | undefined): string {
   const normalized = iso.trim().replace(" ", "T").replace(/(\.\d+)?([+-]\d{2})$/, "$1$2:00");
   const d = new Date(normalized);
   if (isNaN(d.getTime())) return "-";
-  const months = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
   const h = d.getHours().toString().padStart(2, "0");
   const m = d.getMinutes().toString().padStart(2, "0");
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${h}:${m}`;
+  return `${d.getDate()} ${t(`status.seller.orders.month.${d.getMonth()}` as any)} ${d.getFullYear()} ${h}:${m}`;
 }
 
 function parseDateInput(value: string): Date | null {
@@ -128,9 +128,9 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
 
       setOrders(sellerOrders);
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Siparişler yüklenemedi";
+      const message = e instanceof Error ? e.message : t('error.seller.orders.load');
       setErrorText(message);
-      Alert.alert("Hata", message);
+      Alert.alert(t('headline.common.error'), message);
     } finally {
       setLoading(false);
     }
@@ -166,21 +166,21 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Sipariş Yönetimi" onBack={onBack} />
+      <ScreenHeader title={t('headline.seller.orders.title')} onBack={onBack} />
       <View style={styles.filtersCard}>
-        <Text style={styles.filtersTitle}>Filtreler</Text>
+        <Text style={styles.filtersTitle}>{t('headline.seller.orders.filters')}</Text>
         <View style={styles.filterRow}>
           <TextInput
             value={fromDate}
             onChangeText={setFromDate}
-            placeholder="Başlangıç (YYYY-MM-DD)"
+            placeholder={t('helper.seller.orders.fromDate')}
             placeholderTextColor="#9A8C82"
             style={styles.dateInput}
           />
           <TextInput
             value={toDate}
             onChangeText={setToDate}
-            placeholder="Bitiş (YYYY-MM-DD)"
+            placeholder={t('helper.seller.orders.toDate')}
             placeholderTextColor="#9A8C82"
             style={styles.dateInput}
           />
@@ -192,11 +192,11 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
         <>
           {filteredOrders.length === 0 ? (
             <View style={styles.emptyWrap}>
-              <Text style={styles.emptyTitle}>Filtreye uygun sipariş bulunamadı</Text>
+              <Text style={styles.emptyTitle}>{t('headline.seller.orders.emptyTitle')}</Text>
               <Text style={styles.emptySub}>
                 {errorText
-                  ? "Bağlantıyı kontrol edip tekrar yenile."
-                  : "Bugüne ait siparişler ana sayfadaki Bugünkü Siparişler bölümünde kalır."}
+                  ? t('helper.seller.orders.emptyErrorSubtitle')
+                  : t('helper.seller.orders.emptySubtitle')}
               </Text>
             </View>
           ) : (
@@ -218,7 +218,7 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
                       <Text style={styles.orderNo}>{item.orderNo || "#" + item.id.slice(0, 8).toUpperCase()}</Text>
                     </View>
                   )}
-                  <Text style={styles.meta}>Alıcı: {item.buyerName || "-"}</Text>
+                  <Text style={styles.meta}>{formatCopy('status.seller.orders.buyer', { name: item.buyerName || "-" })}</Text>
                   {(item.updatedAt || item.createdAt) ? (
                     <Text style={styles.meta}>{formatOrderDate(item.updatedAt ?? item.createdAt)}</Text>
                   ) : null}

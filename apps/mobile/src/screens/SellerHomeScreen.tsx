@@ -9,6 +9,7 @@ import { getSellerOrdersCache, setSellerOrdersCache, getSellerDisplayNameCache, 
 import { getSellerMeCache } from "../utils/sellerProfileCache";
 import { subscribeSellerOrdersRealtime } from "../utils/realtime";
 import { getStatusInfo } from "../components/StatusBadge";
+import { formatCopy, t } from "../copy/brandCopy";
 
 type Props = {
   auth: AuthSession;
@@ -116,23 +117,23 @@ function orderTimeForSort(order: SellerOrder): number {
 
 function formatElapsed(value: string | undefined, nowMs: number): string {
   const parsed = parseApiDate(value);
-  if (!parsed) return "Süre bilgisi yok";
+  if (!parsed) return t('status.seller.home.noElapsed');
   const diffMs = Math.max(0, nowMs - parsed.getTime());
   const totalMinutes = Math.floor(diffMs / 60_000);
-  if (totalMinutes < 1) return "Az önce geldi";
-  if (totalMinutes < 60) return `${totalMinutes} dakika geçti`;
+  if (totalMinutes < 1) return t('status.seller.home.justArrived');
+  if (totalMinutes < 60) return formatCopy('status.seller.home.minutesElapsed', { count: totalMinutes });
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  if (hours < 24) return `${hours} saat ${minutes} dakika geçti`;
+  if (hours < 24) return formatCopy('status.seller.home.hoursElapsed', { hours, minutes });
   const days = Math.floor(hours / 24);
   const remHours = hours % 24;
-  return `${days} gün ${remHours} saat geçti`;
+  return formatCopy('status.seller.home.daysElapsed', { days, hours: remHours });
 }
 
 function statusLabel(status: string, deliveryType?: string): string {
   const normalized = normalizeDisplayStatus(status, deliveryType);
-  if (normalized === "cancelled" || normalized === "rejected") return "İptal";
-  if (deliveryType === "pickup" && normalized === "ready") return "Hazırlandı";
+  if (normalized === "cancelled" || normalized === "rejected") return t('status.seller.home.cancelled');
+  if (deliveryType === "pickup" && normalized === "ready") return t('status.seller.home.pickupReady');
   if (deliveryType === "pickup" && ["in_delivery", "approaching", "at_door"].includes(normalized)) {
     return getStatusInfo(normalized, undefined).label;
   }
@@ -141,9 +142,9 @@ function statusLabel(status: string, deliveryType?: string): string {
 
 function buyerProgressLabel(status?: string | null): string | null {
   const normalized = String(status ?? "").trim().toLowerCase();
-  if (normalized === "in_delivery") return "Alıcı: Yoldayım";
-  if (normalized === "approaching") return "Alıcı: Geliyorum";
-  if (normalized === "at_door") return "Alıcı: Kapıdayım";
+  if (normalized === "in_delivery") return t('status.seller.home.buyerOnWay');
+  if (normalized === "approaching") return t('status.seller.home.buyerComing');
+  if (normalized === "at_door") return t('status.seller.home.buyerAtDoor');
   return null;
 }
 
@@ -186,32 +187,32 @@ function normalizeDisplayStatus(status: string, deliveryType?: string): string {
 function cardActionByStatus(status: string, deliveryType?: string): SellerAction | null {
   const pickup = deliveryType === "pickup";
   if (status === "paid") {
-    return { label: "Hazırlıyorum", toStatus: "preparing", tone: "preparing" };
+    return { label: t('cta.seller.home.startPreparing'), toStatus: "preparing", tone: "preparing" };
   }
   if (pickup && status === "preparing") {
-    return { label: "Hazırlandı", toStatus: "ready", tone: "ready" };
+    return { label: t('cta.seller.home.markReady'), toStatus: "ready", tone: "ready" };
   }
   if (pickup && status === "ready") {
-    return { label: "Yoldayım", toStatus: "in_delivery", tone: "in_delivery" };
+    return { label: t('cta.seller.home.onTheWay'), toStatus: "in_delivery", tone: "in_delivery" };
   }
   if (pickup && status === "in_delivery") {
-    return { label: "Yaklaştım", toStatus: "approaching", tone: "approaching" };
+    return { label: t('cta.seller.home.approaching'), toStatus: "approaching", tone: "approaching" };
   }
   if (pickup && status === "approaching") {
-    return { label: "Kapıdayım", toStatus: "at_door", tone: "at_door" };
+    return { label: t('cta.seller.home.atDoor'), toStatus: "at_door", tone: "at_door" };
   }
   if (pickup && status === "at_door") return null;
   if (pickup && ["delivered", "completed"].includes(status)) {
     return null;
   }
   if (!pickup && status === "preparing") {
-    return { label: "Yola Çıktı", toStatus: "in_delivery", tone: "in_delivery" };
+    return { label: t('cta.seller.home.leftForDelivery'), toStatus: "in_delivery", tone: "in_delivery" };
   }
   if (!pickup && status === "ready") {
-    return { label: "Yola Çıktı", toStatus: "in_delivery", tone: "in_delivery" };
+    return { label: t('cta.seller.home.leftForDelivery'), toStatus: "in_delivery", tone: "in_delivery" };
   }
-  if (status === "in_delivery") return { label: "Yaklaştı", toStatus: "approaching", tone: "approaching" };
-  if (status === "approaching") return { label: "Kapıda", toStatus: "at_door", tone: "at_door" };
+  if (status === "in_delivery") return { label: t('cta.seller.home.approaching'), toStatus: "approaching", tone: "approaching" };
+  if (status === "approaching") return { label: t('cta.seller.home.atDoor'), toStatus: "at_door", tone: "at_door" };
   if (!pickup && status === "at_door") return null;
   return null;
 }
@@ -607,7 +608,7 @@ export default function SellerHomeScreen({
       }
       await load();
     } catch (error) {
-      Alert.alert("Hata", error instanceof Error ? error.message : "İşlem başarısız");
+      Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.seller.home.actionFailed'));
     } finally {
       setUpdatingOrderId(null);
     }
@@ -625,12 +626,12 @@ export default function SellerHomeScreen({
         {/* Greeting + Avatar */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.title} numberOfLines={1}>Merhaba, {displayName} 👋</Text>
+            <Text style={styles.title} numberOfLines={1}>{formatCopy('headline.seller.home.greeting', { name: displayName })}</Text>
             {rating !== null && rating.count > 0 ? (
               <View style={styles.ratingRow}>
                 <Text style={styles.ratingStar}>★</Text>
                 <Text style={styles.ratingAvg}>{rating.avg.toFixed(1)}</Text>
-                <Text style={styles.ratingCount}>({rating.count} yorum)</Text>
+                <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: rating.count })}</Text>
               </View>
             ) : null}
           </View>
@@ -646,10 +647,10 @@ export default function SellerHomeScreen({
         {/* Üst Hızlı Butonlar */}
         <View style={styles.quickButtonsRow}>
           <TouchableOpacity style={styles.quickButton} activeOpacity={0.85} onPress={() => onOpenFoodsManager()}>
-            <Text style={styles.quickButtonText}>Yemek Yönetimi</Text>
+            <Text style={styles.quickButtonText}>{t('cta.seller.home.foodsManager')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickLpiPill} activeOpacity={0.85} onPress={onOpenFinance}>
-            <Text style={[styles.quickButtonText, styles.quickWalletButtonText]}>Cüzdanım</Text>
+            <Text style={[styles.quickButtonText, styles.quickWalletButtonText]}>{t('cta.seller.home.wallet')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -661,14 +662,14 @@ export default function SellerHomeScreen({
           setActivePage(0);
         }}>
           <Text style={[styles.statCount, activePage === 0 && styles.statCountActive]}>{loading ? "—" : todayOrders.length}</Text>
-          <Text style={[styles.statLabel, activePage === 0 && styles.statLabelActive]}>Bugünkü Siparişler</Text>
+          <Text style={[styles.statLabel, activePage === 0 && styles.statLabelActive]}>{t('headline.seller.home.todayOrders')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.statBlock} activeOpacity={0.75} onPress={() => {
           pagerRef.current?.scrollTo({ x: screenWidth, animated: true });
           setActivePage(1);
         }}>
           <Text style={[styles.statCount, activePage === 1 && styles.statCountActive]}>{loading ? "—" : activeFoods.length}</Text>
-          <Text style={[styles.statLabel, activePage === 1 && styles.statLabelActive]}>Satıştaki Yemekler</Text>
+          <Text style={[styles.statLabel, activePage === 1 && styles.statLabelActive]}>{t('headline.seller.home.activeFoods')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -702,14 +703,14 @@ export default function SellerHomeScreen({
               </>
             ) : todayOrders.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>Aktif sipariş yok</Text>
-                <Text style={styles.emptySub}>Yeni sipariş geldiğinde burada görünecek.</Text>
+                <Text style={styles.emptyTitle}>{t('headline.seller.home.emptyOrdersTitle')}</Text>
+                <Text style={styles.emptySub}>{t('helper.seller.home.emptyOrdersSubtitle')}</Text>
               </View>
             ) : (
               ([
-                { key: "preparing" as const, title: "Hazırlananlar", data: groupedOrders.preparing },
-                { key: "route" as const, title: "Yolda / Kapıda", data: groupedOrders.route },
-                { key: "done" as const, title: "Tamamlananlar", data: groupedOrders.done },
+                { key: "preparing" as const, title: t('headline.seller.home.groupPreparing'), data: groupedOrders.preparing },
+                { key: "route" as const, title: t('headline.seller.home.groupRoute'), data: groupedOrders.route },
+                { key: "done" as const, title: t('headline.seller.home.groupDone'), data: groupedOrders.done },
               ]).map((section) => (
                 <View key={section.key} style={styles.groupSection}>
                   <View style={styles.groupHeader}>
@@ -718,7 +719,7 @@ export default function SellerHomeScreen({
                   </View>
                   {section.data.length === 0 ? (
                     <View style={styles.groupEmptyCard}>
-                      <Text style={styles.groupEmptyText}>Bu grupta sipariş yok.</Text>
+                      <Text style={styles.groupEmptyText}>{t('helper.seller.home.groupEmpty')}</Text>
                     </View>
                   ) : (
                     section.data.map((item) => {
@@ -773,12 +774,12 @@ export default function SellerHomeScreen({
                                   </Text>
                                   {isNewOrder ? (
                                     <View style={styles.newBadge}>
-                                      <Text style={styles.newBadgeText}>Yeni</Text>
+                                      <Text style={styles.newBadgeText}>{t('status.seller.home.new')}</Text>
                                     </View>
                                   ) : null}
                                 </View>
                                 {buyerFlowText ? <Text style={styles.orderBuyerFlowMeta}>{buyerFlowText}</Text> : null}
-                                <Text style={styles.orderMeta}>Alıcı: {item.buyerName || "-"}</Text>
+                                <Text style={styles.orderMeta}>{formatCopy('status.seller.orders.buyer', { name: item.buyerName || "-" })}</Text>
                               </View>
                               <View style={styles.orderTopRight}>
                                 <Text style={styles.orderIdText}>{item.orderNo || `#${item.id.slice(0, 8).toUpperCase()}`}</Text>
@@ -837,7 +838,7 @@ export default function SellerHomeScreen({
                                 }}
                               >
                                 <Text style={styles.cardActionBtnText}>
-                                  {isUpdating ? "İşleniyor..." : isDoorStep && !action ? "PIN Doğrula" : (action?.label ?? statusText)}
+                                  {isUpdating ? t('status.seller.home.processing') : isDoorStep && !action ? t('cta.seller.home.verifyPin') : (action?.label ?? statusText)}
                                 </Text>
                               </TouchableOpacity>
                             </View>
@@ -853,7 +854,7 @@ export default function SellerHomeScreen({
           {onSwitchToBuyer ? (
             <View style={styles.actions}>
               <TouchableOpacity activeOpacity={0.86} style={styles.switchRoleButton} onPress={onSwitchToBuyer}>
-                <Text style={styles.switchRoleButtonText}>Alıcı Moduna Geç</Text>
+                <Text style={styles.switchRoleButtonText}>{t('cta.seller.home.switchToBuyer')}</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -869,8 +870,8 @@ export default function SellerHomeScreen({
               </>
             ) : activeFoods.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>Satıştaki yemek yok</Text>
-                <Text style={styles.emptySub}>Yemek Yönetimi'nden yemek aktifleştirebilirsin.</Text>
+                <Text style={styles.emptyTitle}>{t('headline.seller.home.emptyFoodsTitle')}</Text>
+                <Text style={styles.emptySub}>{t('helper.seller.home.emptyFoodsSubtitle')}</Text>
               </View>
             ) : (
               activeFoods.map((food) => (
@@ -883,12 +884,12 @@ export default function SellerHomeScreen({
                   <View style={styles.orderTopRow}>
                     <Text style={styles.orderNo} numberOfLines={1}>{food.name}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: "#EAF7EE", borderColor: "#B7DEC3" }]}>
-                      <Text style={[styles.statusBadgeText, { color: "#166534" }]}>Aktif</Text>
+                      <Text style={[styles.statusBadgeText, { color: "#166534" }]}>{t('status.seller.home.active')}</Text>
                     </View>
                   </View>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                     <Text style={styles.orderTotal}>{Number(food.price).toFixed(2)} TL</Text>
-                    <Text style={styles.orderMeta}>Stok: {food.stock} adet</Text>
+                    <Text style={styles.orderMeta}>{formatCopy('status.seller.home.stockLine', { stock: food.stock })}</Text>
                   </View>
                 </TouchableOpacity>
               ))

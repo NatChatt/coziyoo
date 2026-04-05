@@ -7,6 +7,7 @@ import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
+import { t } from "../copy/brandCopy";
 
 type Props = {
   auth: AuthSession;
@@ -104,7 +105,7 @@ export default function SellerReviewsScreen({ auth, onBack, onAuthRefresh }: Pro
       setApiUrl(base);
       const res = await authedFetch("/v1/seller/reviews?page=1&pageSize=100", base);
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error?.message ?? "Yorumlar yüklenemedi");
+      if (!res.ok) throw new Error(json?.error?.message ?? t('cta.seller.profileDetail.reviews'));
 
       const nextSummary = json?.data?.summary;
       const nextItems = Array.isArray(json?.data?.items) ? json.data.items : [];
@@ -123,7 +124,7 @@ export default function SellerReviewsScreen({ auth, onBack, onAuthRefresh }: Pro
         })),
       );
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Yorumlar yüklenemedi");
+      setErrorText(error instanceof Error ? error.message : t('cta.seller.profileDetail.reviews'));
       setSummary({ averageRating: 0, totalReviews: 0 });
       setReviews([]);
     } finally {
@@ -138,7 +139,7 @@ export default function SellerReviewsScreen({ auth, onBack, onAuthRefresh }: Pro
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Yorumlar / Değerlendirmeler" onBack={onBack} />
+      <ScreenHeader title={t('cta.seller.profileDetail.reviews')} onBack={onBack} />
       {loading ? (
         <View style={styles.centerWrap}>
           <ActivityIndicator size="large" color={theme.primary} />
@@ -240,4 +241,3 @@ const styles = StyleSheet.create({
   comment: { color: "#3A3129", fontWeight: "600", lineHeight: 19 },
   commentMuted: { color: "#8A7D70", fontStyle: "italic", fontWeight: "500" },
 });
-

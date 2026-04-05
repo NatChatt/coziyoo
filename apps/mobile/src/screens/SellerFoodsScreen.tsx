@@ -10,6 +10,7 @@ import { loadSettings } from "../utils/settings";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import { HOME_FOOD_CATEGORIES } from "../constants/foodCategories";
+import { formatCopy, t } from "../copy/brandCopy";
 
 const SELLER_FORM_PERSIST_KEY_PREFIX = "seller_food_form_fields_v1";
 
@@ -111,9 +112,9 @@ function normalizeSellerFood(item: Record<string, unknown>): SellerFood {
 }
 
 const ADDON_KIND_OPTIONS: Array<{ value: AddonKind; label: string }> = [
-  { value: "sauce", label: "Soslar" },
-  { value: "extra", label: "Ek Gıdalar" },
-  { value: "appetizer", label: "Aparatifler" },
+  { value: "sauce", label: "label.seller.foods.kindSauce" },
+  { value: "extra", label: "label.seller.foods.kindExtra" },
+  { value: "appetizer", label: "label.seller.foods.kindAppetizer" },
 ];
 
 function fallbackHomeCategoryOptions(): FoodCategoryOption[] {
@@ -192,7 +193,7 @@ function resolveApiMessage(payload: unknown, fallback: string): string {
     if (typeof obj.rawText === "string") {
       const raw = obj.rawText.trim();
       if (raw.startsWith("<")) {
-        return "Sunucu JSON yerine HTML döndürdü. Lütfen tekrar dene.";
+        return t('error.seller.foods.serverHtml');
       }
     }
   }
@@ -363,11 +364,11 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       if (!res.ok) {
         console.warn("[seller-foods-screen] foods fetch failed", {
           status: res.status,
-          message: resolveApiMessage(json, "Yemekler yüklenemedi"),
+          message: resolveApiMessage(json, t('error.seller.foods.load')),
           userId: currentAuth.userId,
           actorRole: "seller",
         });
-        throw new Error(resolveApiMessage(json, "Yemekler yüklenemedi"));
+        throw new Error(resolveApiMessage(json, t('error.seller.foods.load')));
       }
       const payload = (json && typeof json === "object") ? (json as Record<string, unknown>) : {};
       const rows: SellerFood[] = Array.isArray(payload.data)
@@ -380,7 +381,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       setFoods(rows);
       void loadCategories(baseUrl);
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Yemekler yüklenemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.foods.load'));
     } finally {
       setLoading(false);
     }
@@ -391,7 +392,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       setLoadingCategories(true);
       const res = await authedFetch("/v1/seller/categories", undefined, baseUrl);
       const json = await parseResponseBodySafe(res);
-      if (!res.ok) throw new Error(resolveApiMessage(json, "Kategoriler yüklenemedi"));
+      if (!res.ok) throw new Error(resolveApiMessage(json, t('error.seller.foods.categoriesLoad')));
       const payload = (json && typeof json === "object") ? (json as Record<string, unknown>) : {};
       const items: unknown[] = Array.isArray(payload.data) ? (payload.data as unknown[]) : [];
       const mapped =
@@ -427,7 +428,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     if (!target) {
       if (!loading) {
         setPendingInitialEditId(null);
-        Alert.alert("Hata", "Düzenlenecek yemek bulunamadı.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.editTargetMissing'));
       }
       return;
     }
@@ -533,7 +534,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       }
       if (!permission.granted) {
-        Alert.alert("İzin Gerekli", "Albümden fotoğraf seçmek için galeri izni vermelisin.");
+        Alert.alert(t('headline.common.permission'), t('error.seller.foods.galleryPermission'));
         return;
       }
 
@@ -547,14 +548,14 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
       if (!asset.base64) {
-        Alert.alert("Hata", "Fotoğraf verisi alınamadı.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.imageDataMissing'));
         return;
       }
       const mimeType = asset.mimeType ?? "image/jpeg";
       const dataUrl = `data:${mimeType};base64,${asset.base64}`;
       setImageAt(index, dataUrl);
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Fotoğraf seçilemedi.");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.foods.imagePick'));
     } finally {
       imagePickerOpeningRef.current = false;
     }
@@ -581,51 +582,51 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       const endIsoRequired = parseDisplayDateToIso(endDate);
 
       if (!name.trim()) {
-        Alert.alert("Hata", "Yemek adı zorunlu.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.nameRequired'));
         return;
       }
       if (!isUuid(categoryId)) {
-        Alert.alert("Hata", "Kategori seçimi zorunlu.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.categoryRequired'));
         return;
       }
       if (!cuisine.trim()) {
-        Alert.alert("Hata", "Hangi ülke/şehir mutfağı alanı zorunlu.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.cuisineRequired'));
         return;
       }
       if (!description.trim()) {
-        Alert.alert("Hata", "Malzemeler / baharatlar alanı zorunlu.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.ingredientsRequired'));
         return;
       }
       if (!recipe.trim()) {
-        Alert.alert("Hata", "Tarif alanı zorunlu.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.recipeRequired'));
         return;
       }
       if (parsedAllergens.length === 0) {
-        Alert.alert("Hata", "Alerjen alanı zorunlu. Yoksa 'yok' yaz.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.allergensRequired'));
         return;
       }
       if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
-        Alert.alert("Hata", "Fiyat zorunlu.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.priceRequired'));
         return;
       }
       if (!Number.isFinite(parsedDailyStock) || parsedDailyStock <= 0) {
-        Alert.alert("Hata", "Günlük stok zorunlu ve 0'dan büyük olmalı.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.stockRequired'));
         return;
       }
       if (!Number.isFinite(parsedPrepTime) || parsedPrepTime <= 0) {
-        Alert.alert("Hata", "Hazırlık süresi zorunlu ve 0'dan büyük olmalı.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.prepRequired'));
         return;
       }
       if (!startIsoRequired || !endIsoRequired) {
-        Alert.alert("Hata", "Başlangıç ve bitiş tarihi zorunlu.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.datesRequired'));
         return;
       }
       if (new Date(endIsoRequired).getTime() <= new Date(startIsoRequired).getTime()) {
-        Alert.alert("Hata", "Bitiş tarihi başlangıç tarihinden sonra olmalı.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.endDateInvalid'));
         return;
       }
       if (workingMenuItems.length < 1) {
-        Alert.alert("Hata", "Ekler bölümünde en az 1 kalem olmalı.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.addonsRequired'));
         return;
       }
 
@@ -653,7 +654,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         (item) => item.pricing === "paid" && (!("price" in item) || Number(item.price) <= 0),
       );
       if (invalidPaidAddon) {
-        Alert.alert("Hata", "Ücretli eklerde fiyat 0'dan büyük olmalı.");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.paidAddonPrice'));
         return;
       }
       const payload: Record<string, unknown> = {
@@ -726,8 +727,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         }
         if (hadInvalidDateWindow) {
           Alert.alert(
-            "Yanlış tarihtesin",
-            "Geçmiş veya hatalı tarih girdin. Sistem satış tarihini otomatik düzeltti.",
+            t('status.seller.foods.publishDateFixedTitle'),
+            t('status.seller.foods.publishDateFixedBody'),
           );
         }
 
@@ -793,13 +794,13 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         Alert.alert(
           "Başarılı",
           editingFood ? "Yemek güncellenip yayınlandı." : "Yemek yayınlandı.",
-          [{ text: "Tamam", onPress: onBack }],
+          [{ text: t('headline.common.success'), onPress: onBack }],
         );
       } else {
-        Alert.alert("Başarılı", editingFood ? "Yemek güncellendi." : "Yemek kaydedildi.");
+        Alert.alert(t('status.seller.foods.publishedTitle'), editingFood ? t('status.seller.foods.savedBodyEdit') : t('status.seller.foods.savedBodyNew'));
       }
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Yemek kaydedilemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.foods.save'));
     } finally {
       setSaving(false);
     }
@@ -808,7 +809,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   function addAddon() {
     const rawName = paidAddonNameInput.trim().replace(/\s+/g, " ");
     if (!rawName) {
-      Alert.alert("Hata", "Ek adı zorunlu.");
+      Alert.alert(t('headline.common.error'), t('error.seller.foods.addonNameRequired'));
       return;
     }
     const pricing: AddonPricing = "paid";
@@ -819,7 +820,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         (item) => `${item.name.trim().toLocaleLowerCase("tr-TR")}|${item.kind}|${item.pricing}` === normalizedKey,
       )
     ) {
-      Alert.alert("Hata", "Aynı ek tekrar eklenemez.");
+      Alert.alert(t('headline.common.error'), t('error.seller.foods.addonDuplicate'));
       return;
     }
     const next: SellerMenuAddon = {
@@ -829,7 +830,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     };
     const parsed = parseLocalizedDecimal(paidAddonPriceInput);
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      Alert.alert("Hata", "Ücretli ek için fiyat zorunlu.");
+      Alert.alert(t('headline.common.error'), t('error.seller.foods.addonPriceRequired'));
       return;
     }
     next.price = Number(parsed.toFixed(2));
@@ -856,7 +857,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
       (entry) => `${entry.name.toLocaleLowerCase("tr-TR")}|${entry.kind}|${entry.pricing}|${Number(entry.price ?? 0)}` === normalizedKey,
     );
     if (exists) {
-      Alert.alert("Bilgi", "Bu ek zaten seçili.");
+      Alert.alert(t('status.seller.foods.addonExistsTitle'), t('status.seller.foods.addonExistsBody'));
       return;
     }
     setMenuItems((prev) => [...prev, item]);
@@ -873,7 +874,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
       if (!res.ok) throw new Error(resolveApiMessage(json, "Durum değiştirilemedi"));
       await loadFoods();
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Durum değiştirilemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.foods.statusUpdate'));
     }
   }
 
@@ -1001,7 +1002,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
       .filter((item) => item.pricing === addonLibraryPricing && (addonLibraryPricing === "free" || item.kind === addonLibraryKind))
       .sort((a, b) => a.name.localeCompare(b.name, "tr"));
   }, [foods, addonLibraryKind, addonLibraryPricing]);
-  const screenTitle = editingFood || pendingInitialEditId ? "Yemek Düzenle" : "Yemek Ekle";
+  const screenTitle = editingFood || pendingInitialEditId ? t('headline.seller.foods.titleEdit') : t('headline.seller.foods.titleAdd');
 
   return (
     <View style={styles.container}>
@@ -1010,7 +1011,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
         {pendingInitialEditId && !editingFood ? (
           <View style={styles.hydrationWrap}>
             <ActivityIndicator size="large" color={theme.primary} />
-            <Text style={styles.hydrationText}>Yemek düzenleme ekranı hazırlanıyor...</Text>
+            <Text style={styles.hydrationText}>{t('status.seller.foods.preparingEdit')}</Text>
           </View>
         ) : (
           <ScrollView
@@ -1019,7 +1020,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           >
-          <Text style={styles.sectionTitle}>Yemek Fotoğrafları</Text>
+          <Text style={styles.sectionTitle}>{t('headline.seller.foods.photos')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoStrip}>
             {imageUrls.map((url, index) => (
               <View key={`photo-${index}`} style={styles.photoTileWrap}>
@@ -1056,39 +1057,39 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                   ) : (
                     <View style={styles.photoPreviewPlaceholder}>
                       <Text style={styles.photoPreviewIcon}>📸</Text>
-                      <Text style={styles.photoPreviewText}>Resim Ekle</Text>
-                      <Text style={styles.photoPreviewSub}>(Tak/Çek/Kamera)</Text>
+                      <Text style={styles.photoPreviewText}>{t('cta.seller.foods.addPhoto')}</Text>
+                      <Text style={styles.photoPreviewSub}>{t('helper.seller.foods.photoHint')}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
               </View>
             ))}
           </ScrollView>
-          <Text style={styles.sectionTitle}>Yemek Adı *</Text>
+          <Text style={styles.sectionTitle}>{t('headline.seller.foods.name')}</Text>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={setName}
-            placeholder="Örn: Ev Yapımı Mantı"
+            placeholder={t('helper.seller.foods.namePlaceholder')}
             placeholderTextColor={PLACEHOLDER_COLOR}
           />
 
           <View style={styles.row2}>
             <View style={styles.rowItem}>
               <View style={styles.rowLabelWrap}>
-                <Text style={styles.sectionTitle}>Hangi Ülke/Şehir Mutfağı</Text>
+                <Text style={styles.sectionTitle}>{t('headline.seller.foods.cuisine')}</Text>
               </View>
               <TextInput
                 style={styles.input}
                 value={cuisine}
                 onChangeText={setCuisine}
-                placeholder="Örn: Türkiye mutfağı"
+                placeholder={t('helper.seller.foods.cuisinePlaceholder')}
                 placeholderTextColor={PLACEHOLDER_COLOR}
               />
             </View>
             <View style={styles.rowItem}>
               <View style={styles.rowLabelWrap}>
-                <Text style={styles.sectionTitle}>Kategori Seç</Text>
+                <Text style={styles.sectionTitle}>{t('headline.seller.foods.category')}</Text>
               </View>
               <TouchableOpacity
                 style={[styles.input, styles.dropdownInput]}
@@ -1101,44 +1102,44 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                 activeOpacity={0.85}
               >
                 <Text style={selectedCategoryName ? styles.dropdownValue : styles.dropdownPlaceholder}>
-                  {selectedCategoryName || "Kategori seçin"}
+                  {selectedCategoryName || t('helper.seller.foods.categoryPlaceholder')}
                 </Text>
                 <Ionicons name="chevron-down-outline" size={18} color="#7A6B5D" />
               </TouchableOpacity>
             </View>
           </View>
 
-          <Text style={styles.sectionTitle}>Yemekle gelen yan ürünler</Text>
+          <Text style={styles.sectionTitle}>{t('headline.seller.foods.sideItems')}</Text>
           <TextInput
             style={styles.input}
             value={freeAddonNameInput}
             onChangeText={setFreeAddonNameInput}
-            placeholder="Örn: Ayran, salata, pilav"
+            placeholder={t('helper.seller.foods.sideItemsPlaceholder')}
             placeholderTextColor={PLACEHOLDER_COLOR}
             returnKeyType="done"
           />
 
-          <Text style={styles.sectionTitle}>Malzemeler / Baharatlar *</Text>
+          <Text style={styles.sectionTitle}>{t('headline.seller.foods.ingredients')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={description}
             onChangeText={(value) => setDescription((prev) => normalizeIngredientTyping(prev, value))}
-            placeholder="Kullanılan malzemeler ve baharatları açıklayın..."
+            placeholder={t('helper.seller.foods.ingredientsPlaceholder')}
             placeholderTextColor={PLACEHOLDER_COLOR}
             multiline
           />
 
-          <Text style={styles.sectionTitle}>Tarif</Text>
+          <Text style={styles.sectionTitle}>{t('headline.seller.foods.recipe')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={recipe}
             onChangeText={setRecipe}
-            placeholder="Yemeğin hazırlanış tarifini buraya yazın..."
+            placeholder={t('helper.seller.foods.recipePlaceholder')}
             placeholderTextColor={PLACEHOLDER_COLOR}
             multiline
           />
 
-          <Text style={styles.sectionTitle}>Ücretli Ekler</Text>
+          <Text style={styles.sectionTitle}>{t('headline.seller.foods.paidAddons')}</Text>
           <View style={styles.kindRow}>
             {ADDON_KIND_OPTIONS.map((option) => (
               <TouchableOpacity
@@ -1148,7 +1149,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                 activeOpacity={0.85}
               >
                 <Text style={[styles.kindChipText, paidAddonKindInput === option.value && styles.kindChipTextActive]}>
-                  {option.label}
+                  {t(option.label as any)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -1158,20 +1159,20 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               style={[styles.input, styles.rowItem]}
               value={paidAddonNameInput}
               onChangeText={setPaidAddonNameInput}
-              placeholder="Ürün adı"
+              placeholder={t('helper.seller.foods.productNamePlaceholder')}
               placeholderTextColor={PLACEHOLDER_COLOR}
             />
             <TextInput
               style={[styles.input, styles.rowItem]}
               value={paidAddonPriceInput}
               onChangeText={setPaidAddonPriceInput}
-              placeholder="Ücret (₺)"
+              placeholder={t('helper.seller.foods.pricePlaceholder')}
               placeholderTextColor={PLACEHOLDER_COLOR}
               keyboardType="decimal-pad"
             />
           </View>
           <TouchableOpacity style={styles.addMenuItemBtn} onPress={addAddon} activeOpacity={0.85}>
-            <Text style={styles.addMenuItemBtnText}>+ Ekle</Text>
+            <Text style={styles.addMenuItemBtnText}>{t('cta.seller.foods.add')}</Text>
           </TouchableOpacity>
           <View style={styles.menuItemsWrap}>
             {paidMenuItems.map((item, index) => {
@@ -1191,18 +1192,18 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             })}
           </View>
 
-          <Text style={styles.sectionTitle}>Alerjenler</Text>
+          <Text style={styles.sectionTitle}>{t('headline.seller.foods.allergens')}</Text>
           <TextInput
             style={styles.input}
             value={allergens}
             onChangeText={setAllergens}
-            placeholder="Örn: Gluten, süt (yoksa: yok)"
+            placeholder={t('helper.seller.foods.allergensPlaceholder')}
             placeholderTextColor={PLACEHOLDER_COLOR}
           />
 
           <View style={styles.row2}>
             <View style={styles.rowItem}>
-              <Text style={styles.sectionTitle}>Fiyat (₺) *</Text>
+              <Text style={styles.sectionTitle}>{t('headline.seller.foods.price')}</Text>
               <TextInput
                 style={styles.input}
                 value={price}
@@ -1213,12 +1214,12 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               />
             </View>
             <View style={styles.rowItem}>
-              <Text style={styles.sectionTitle}>Günlük Stok *</Text>
+              <Text style={styles.sectionTitle}>{t('headline.seller.foods.dailyStock')}</Text>
               <TextInput
                 style={styles.input}
                 value={dailyStock}
                 onChangeText={setDailyStock}
-                placeholder="Örn: 10"
+                placeholder={t('helper.seller.foods.dailyStockPlaceholder')}
                 placeholderTextColor={PLACEHOLDER_COLOR}
                 keyboardType="number-pad"
               />
@@ -1226,12 +1227,12 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
           </View>
 
           <View style={styles.rowItem}>
-            <Text style={styles.sectionTitle}>Hazırlık Süresi (dk)</Text>
+            <Text style={styles.sectionTitle}>{t('headline.seller.foods.prepTime')}</Text>
             <TextInput
               style={styles.input}
               value={prepTime}
               onChangeText={setPrepTime}
-              placeholder="Örn: 45"
+              placeholder={t('helper.seller.foods.prepTimePlaceholder')}
               placeholderTextColor={PLACEHOLDER_COLOR}
               keyboardType="number-pad"
             />
@@ -1239,7 +1240,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
 
           <View style={styles.row2}>
             <View style={styles.rowItem}>
-              <Text style={styles.sectionTitle}>Başlangıç Tarihi</Text>
+              <Text style={styles.sectionTitle}>{t('headline.seller.foods.startDate')}</Text>
               <View style={styles.dateInputWrap}>
                 <TextInput
                   style={[styles.input, styles.dateInput]}
@@ -1254,7 +1255,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               </View>
             </View>
             <View style={styles.rowItem}>
-              <Text style={styles.sectionTitle}>Bitiş Tarihi</Text>
+              <Text style={styles.sectionTitle}>{t('headline.seller.foods.endDate')}</Text>
               <View style={styles.dateInputWrap}>
                 <TextInput
                   style={[styles.input, styles.dateInput]}
@@ -1271,7 +1272,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
           </View>
 
           <TouchableOpacity style={styles.previewBtn} onPress={() => setPreviewVisible(true)}>
-            <Text style={styles.previewBtnText}>👁️ Önizleme (Müşteri Görünümü)</Text>
+            <Text style={styles.previewBtnText}>👁️ {t('cta.seller.foods.preview')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -1281,16 +1282,16 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
           >
             <Text style={styles.saveText}>
               {saving
-                ? "Yayınlanıyor..."
+                ? t('status.seller.foods.publishing')
                 : editingFood
-                  ? "Güncelle ve Yayınla"
-                  : "Yemeği Yayınla"}
+                  ? t('cta.seller.foods.publishEdit')
+                  : t('cta.seller.foods.publishNew')}
             </Text>
           </TouchableOpacity>
 
           {editingFood ? (
             <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
-              <Text style={styles.cancelText}>Düzenlemeyi Temizle</Text>
+              <Text style={styles.cancelText}>{t('cta.seller.foods.clearEdit')}</Text>
             </TouchableOpacity>
           ) : null}
 
@@ -1302,13 +1303,13 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
         <View style={styles.previewOverlay}>
           <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => setPreviewVisible(false)} />
           <View style={styles.previewCard}>
-            <Text style={styles.previewTitle}>Müşteri Görünümü</Text>
+            <Text style={styles.previewTitle}>{t('headline.seller.foods.customerPreview')}</Text>
             <View style={styles.previewFoodCard}>
               {previewImage ? (
                 <Image source={{ uri: previewImage }} style={styles.previewImage} />
               ) : (
                 <View style={styles.previewImagePlaceholder}>
-                  <Text style={styles.previewImagePlaceholderText}>Fotoğraf Önizleme</Text>
+                  <Text style={styles.previewImagePlaceholderText}>{t('headline.seller.foods.previewPhoto')}</Text>
                 </View>
               )}
               <TouchableOpacity style={styles.previewLikeBtn} activeOpacity={0.9}>
@@ -1337,12 +1338,12 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                 </View>
                 <View style={styles.previewFooter}>
                   <Text style={styles.previewFooterPlaceholder} />
-                  {previewAllergens ? <Text style={styles.previewAllergen}>{`Alerjen: ${previewAllergens}`}</Text> : null}
+                  {previewAllergens ? <Text style={styles.previewAllergen}>{formatCopy('label.seller.foods.allergenPrefix', { value: previewAllergens })}</Text> : null}
                 </View>
               </View>
             </View>
             <TouchableOpacity style={styles.previewCloseBtn} onPress={() => setPreviewVisible(false)}>
-              <Text style={styles.previewCloseBtnText}>Düzenlemeye Devam Et</Text>
+              <Text style={styles.previewCloseBtnText}>{t('cta.seller.foods.keepEditing')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1400,12 +1401,12 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
           <View style={styles.categoryModalCard}>
             <Text style={styles.categoryModalTitle}>
               {addonLibraryPricing === "free"
-                ? "Ücretsiz Ekler"
-                : `Ücretli ${ADDON_KIND_OPTIONS.find((item) => item.value === addonLibraryKind)?.label ?? "Ekler"}`}
+                ? t('headline.seller.foods.freeAddons')
+                : formatCopy('headline.seller.foods.paidAddonGroup', { group: t((ADDON_KIND_OPTIONS.find((item) => item.value === addonLibraryKind)?.label ?? "label.seller.foods.kindExtra") as any) })}
             </Text>
             {addonLibraryItems.length === 0 ? (
               <View style={styles.categoryEmptyWrap}>
-                <Text style={styles.categoryEmptyText}>Bu grupta kayıtlı ek yok.</Text>
+                <Text style={styles.categoryEmptyText}>{t('helper.seller.foods.emptyAddonGroup')}</Text>
                 <TouchableOpacity
                   style={styles.categoryRetryBtn}
                   onPress={() => {
@@ -1417,7 +1418,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                     }
                   }}
                 >
-                  <Text style={styles.categoryRetryBtnText}>Yeni ek ekle</Text>
+                  <Text style={styles.categoryRetryBtnText}>{t('cta.seller.foods.addNewAddon')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -1445,17 +1446,17 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
         <View style={styles.previewOverlay}>
           <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => setCategoryModalVisible(false)} />
           <View style={styles.categoryModalCard}>
-            <Text style={styles.categoryModalTitle}>Kategori Seç</Text>
+            <Text style={styles.categoryModalTitle}>{t('headline.seller.foods.selectCategory')}</Text>
             {loadingCategories ? (
               <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 12 }} />
             ) : categories.length === 0 ? (
               <View style={styles.categoryEmptyWrap}>
-                <Text style={styles.categoryEmptyText}>Kategori bulunamadı. Yeniden dene.</Text>
+                <Text style={styles.categoryEmptyText}>{t('helper.seller.foods.categoryMissing')}</Text>
                 <TouchableOpacity
                   style={styles.categoryRetryBtn}
                   onPress={() => void loadCategories()}
                 >
-                  <Text style={styles.categoryRetryBtnText}>Yenile</Text>
+                  <Text style={styles.categoryRetryBtnText}>{t('cta.seller.foods.refresh')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
