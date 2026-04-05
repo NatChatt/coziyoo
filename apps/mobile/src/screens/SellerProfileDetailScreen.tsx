@@ -88,7 +88,9 @@ export default function SellerProfileDetailScreen({
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [contactSaving, setContactSaving] = useState(false);
+  const [deliverySaving, setDeliverySaving] = useState(false);
   const [masterName, setMasterName] = useState(() => getSellerProfileCache()?.displayName?.trim() ?? "");
   const [fullName, setFullName] = useState(() => getSellerMeCache()?.fullName ?? "");
   const [contactEmail, setContactEmail] = useState(() => getSellerMeCache()?.email || getSellerProfileCache()?.email?.trim() || "");
@@ -101,6 +103,9 @@ export default function SellerProfileDetailScreen({
   const [deliveryEnabled, setDeliveryEnabled] = useState(() => Boolean(getSellerProfileCache()?.deliveryEnabled));
   const [deliveryTerms, setDeliveryTerms] = useState(() => getSellerProfileCache()?.deliveryTerms?.trim() ?? "");
   const [deliveryRadiusKmInput, setDeliveryRadiusKmInput] = useState(() => String(getSellerProfileCache()?.deliveryRadiusKm ?? 3));
+  const [deliveryEnabledDraft, setDeliveryEnabledDraft] = useState(() => Boolean(getSellerProfileCache()?.deliveryEnabled));
+  const [deliveryTermsDraft, setDeliveryTermsDraft] = useState(() => getSellerProfileCache()?.deliveryTerms?.trim() ?? "");
+  const [deliveryRadiusKmDraft, setDeliveryRadiusKmDraft] = useState(() => String(getSellerProfileCache()?.deliveryRadiusKm ?? 3));
   const [idCardFrontUri, setIdCardFrontUri] = useState<string | null>(null);
   const [idCardBackUri, setIdCardBackUri] = useState<string | null>(null);
   const [idCardFrontBase64, setIdCardFrontBase64] = useState<string | null>(null);
@@ -466,6 +471,58 @@ export default function SellerProfileDetailScreen({
     }
   }
 
+  function openDeliverySettingsModal() {
+    setDeliveryEnabledDraft(Boolean(deliveryEnabled));
+    setDeliveryTermsDraft(deliveryTerms);
+    setDeliveryRadiusKmDraft(deliveryRadiusKmInput?.trim() ? deliveryRadiusKmInput : "3");
+    setIsDeliveryModalOpen(true);
+  }
+
+  async function saveDeliverySettings() {
+    setDeliverySaving(true);
+    try {
+      const normalizedDeliveryRadius = Number(deliveryRadiusKmDraft || 0);
+      if (!Number.isFinite(normalizedDeliveryRadius) || normalizedDeliveryRadius <= 0) {
+        Alert.alert("Hata", "Teslimat yarıçapı 0'dan büyük bir sayı olmalı.");
+        setDeliverySaving(false);
+        return;
+      }
+
+      const nextDeliveryTerms = deliveryTermsDraft.trim();
+      const baseUrl = (await loadSettings()).apiUrl;
+      const res = await authedFetch("/v1/seller/profile", baseUrl, {
+        method: "PUT",
+        body: JSON.stringify({
+          deliveryEnabled: deliveryEnabledDraft,
+          deliveryTerms: nextDeliveryTerms,
+          deliveryRadiusKm: normalizedDeliveryRadius,
+        }),
+      });
+      const payload = await readResponsePayload(res);
+      if (!res.ok || payload.json === null) {
+        throw new Error(responseErrorMessage(res, payload, "Teslimat ayarları kaydedilemedi"));
+      }
+
+      setDeliveryEnabled(deliveryEnabledDraft);
+      setDeliveryTerms(nextDeliveryTerms);
+      setDeliveryRadiusKmInput(String(normalizedDeliveryRadius));
+      setProfile((prev) => (prev
+        ? {
+            ...prev,
+            deliveryEnabled: deliveryEnabledDraft,
+            deliveryTerms: nextDeliveryTerms,
+            deliveryRadiusKm: normalizedDeliveryRadius,
+          }
+        : prev));
+      setIsDeliveryModalOpen(false);
+      Alert.alert("Başarılı", "Teslimat ayarları kaydedildi.");
+    } catch (e) {
+      Alert.alert("Hata", e instanceof Error ? e.message : "Teslimat ayarları kaydedilemedi");
+    } finally {
+      setDeliverySaving(false);
+    }
+  }
+
   async function saveContactProfile() {
     setContactSaving(true);
     try {
@@ -500,21 +557,6 @@ export default function SellerProfileDetailScreen({
         title !== currentAddressTitle || line !== currentAddressLine
       );
       const hasProfileUpdate = Object.keys(payload).length > 0;
-      const normalizedDeliveryRadius = Number(deliveryRadiusKmInput || 0);
-      if (!Number.isFinite(normalizedDeliveryRadius) || normalizedDeliveryRadius <= 0) {
-        Alert.alert("Hata", "Teslimat yarıçapı 0'dan büyük bir sayı olmalı.");
-        setContactSaving(false);
-        return;
-      }
-      const sellerProfilePayload = {
-        deliveryEnabled,
-        deliveryTerms: deliveryTerms.trim(),
-        deliveryRadiusKm: normalizedDeliveryRadius,
-      };
-      const hasSellerProfileUpdate =
-        deliveryEnabled !== Boolean(profile?.deliveryEnabled) ||
-        deliveryTerms.trim() !== String(profile?.deliveryTerms ?? "").trim() ||
-        normalizedDeliveryRadius !== Number(profile?.deliveryRadiusKm ?? 3);
       const hasIdCardImages = Boolean(idCardFrontBase64 || idCardBackBase64);
       if (hasAddressInput) {
         if (!title || !line) {
@@ -534,7 +576,7 @@ export default function SellerProfileDetailScreen({
           return;
         }
       }
-      if (!hasProfileUpdate && !hasAddressUpdate && !hasSellerProfileUpdate && !hasIdCardImages) {
+      if (!hasProfileUpdate && !hasAddressUpdate && !hasIdCardImages) {
         setIsEditModalOpen(false);
         setContactSaving(false);
         return;
@@ -558,17 +600,6 @@ export default function SellerProfileDetailScreen({
           setCurrentAuth(nextSession);
           onAuthRefresh?.(nextSession);
           await saveAuthSession(nextSession);
-        }
-      }
-
-      if (hasSellerProfileUpdate) {
-        const sellerProfileRes = await authedFetch("/v1/seller/profile", baseUrl, {
-          method: "PUT",
-          body: JSON.stringify(sellerProfilePayload),
-        });
-        const sellerProfileResponse = await readResponsePayload(sellerProfileRes);
-        if (!sellerProfileRes.ok || sellerProfileResponse.json === null) {
-          throw new Error(responseErrorMessage(sellerProfileRes, sellerProfileResponse, "Teslimat ayarları kaydedilemedi"));
         }
       }
 
@@ -741,12 +772,18 @@ export default function SellerProfileDetailScreen({
             </View>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Teslimat Ayarı</Text>
+          <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={openDeliverySettingsModal}>
+            <View style={styles.profileEditCardHeader}>
+              <Text style={styles.cardTitle}>Teslimat Ayarı</Text>
+              <View style={styles.profileEditIconBtn}>
+                <Ionicons name="pencil" size={16} color={theme.primary} />
+              </View>
+            </View>
             <InfoRow label="Teslimat" value={deliveryEnabled ? "Açık" : "Kapalı"} />
             <InfoRow label="Yarıçap" value={deliveryRadiusKmInput?.trim() ? `${deliveryRadiusKmInput} km` : "—"} />
             <InfoRow label="Koşullar" value={deliveryTerms || "Henüz eklenmedi"} />
-          </View>
+            <Text style={styles.addressLink}>Düzenlemek için dokun</Text>
+          </TouchableOpacity>
 
           {/* Mutfak Bilgileri */}
           <View style={styles.card}>
@@ -801,6 +838,67 @@ export default function SellerProfileDetailScreen({
         </ScrollView>
       )}
 
+      <Modal visible={isDeliveryModalOpen} transparent animationType="fade" onRequestClose={() => setIsDeliveryModalOpen(false)}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 18 : 0}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setIsDeliveryModalOpen(false)}
+          />
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Teslimat Ayarları</Text>
+            <Text style={styles.modalLabel}>Teslimat ayarı</Text>
+            <TouchableOpacity
+              style={[styles.deliveryToggleCard, deliveryEnabledDraft && styles.deliveryToggleCardActive]}
+              activeOpacity={0.85}
+              onPress={() => setDeliveryEnabledDraft((prev) => !prev)}
+            >
+              <View style={styles.deliveryToggleCopy}>
+                <Text style={styles.deliveryToggleTitle}>{deliveryEnabledDraft ? "Teslimat açık" : "Teslimat kapalı"}</Text>
+                <Text style={styles.deliveryToggleSubtitle}>
+                  {deliveryEnabledDraft ? "Sipariş bazında teslimat teklif edebilirsin." : "Siparişler varsayılan olarak Gel Al kalır."}
+                </Text>
+              </View>
+              <View style={[styles.deliveryTogglePill, deliveryEnabledDraft && styles.deliveryTogglePillActive]}>
+                <View style={[styles.deliveryToggleKnob, deliveryEnabledDraft && styles.deliveryToggleKnobActive]} />
+              </View>
+            </TouchableOpacity>
+
+            <Text style={styles.modalLabel}>Teslimat yarıçapı (km)</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={deliveryRadiusKmDraft}
+              onChangeText={setDeliveryRadiusKmDraft}
+              keyboardType="numeric"
+              placeholder="Örn: 3"
+              placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
+            />
+
+            <Text style={styles.modalLabel}>Teslimat koşulları</Text>
+            <TextInput
+              style={[styles.modalInput, styles.modalAddressInput]}
+              value={deliveryTermsDraft}
+              onChangeText={setDeliveryTermsDraft}
+              placeholder="Örn: 3 km içi, apartman kapısına teslim, akşam 21:00'e kadar."
+              placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
+              multiline
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setIsDeliveryModalOpen(false)} disabled={deliverySaving}>
+                <Text style={styles.modalCancelText}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSaveBtn} onPress={() => void saveDeliverySettings()} disabled={deliverySaving}>
+                <Text style={styles.modalSaveText}>{deliverySaving ? "Kaydediliyor..." : "Kaydet"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
       <Modal visible={isEditModalOpen} transparent animationType="fade" onRequestClose={() => setIsEditModalOpen(false)}>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
@@ -889,43 +987,6 @@ export default function SellerProfileDetailScreen({
                 value={addressLine}
                 onChangeText={setAddressLine}
                 placeholder="Örn: Rıhtım Cd. No:12, Kadıköy"
-                placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
-                multiline
-              />
-
-              <Text style={styles.modalLabel}>Teslimat ayarı</Text>
-              <TouchableOpacity
-                style={[styles.deliveryToggleCard, deliveryEnabled && styles.deliveryToggleCardActive]}
-                activeOpacity={0.85}
-                onPress={() => setDeliveryEnabled((prev) => !prev)}
-              >
-                <View style={styles.deliveryToggleCopy}>
-                  <Text style={styles.deliveryToggleTitle}>{deliveryEnabled ? "Teslimat açık" : "Teslimat kapalı"}</Text>
-                  <Text style={styles.deliveryToggleSubtitle}>
-                    {deliveryEnabled ? "Sipariş bazında teslimat teklif edebilirsin." : "Siparişler varsayılan olarak Gel Al kalır."}
-                  </Text>
-                </View>
-                <View style={[styles.deliveryTogglePill, deliveryEnabled && styles.deliveryTogglePillActive]}>
-                  <View style={[styles.deliveryToggleKnob, deliveryEnabled && styles.deliveryToggleKnobActive]} />
-                </View>
-              </TouchableOpacity>
-
-              <Text style={styles.modalLabel}>Teslimat yarıçapı (km)</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={deliveryRadiusKmInput}
-                onChangeText={setDeliveryRadiusKmInput}
-                keyboardType="numeric"
-                placeholder="Örn: 3"
-                placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
-              />
-
-              <Text style={styles.modalLabel}>Teslimat koşulları</Text>
-              <TextInput
-                style={[styles.modalInput, styles.modalAddressInput]}
-                value={deliveryTerms}
-                onChangeText={setDeliveryTerms}
-                placeholder="Örn: 3 km içi, apartman kapısına teslim, akşam 21:00'e kadar."
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
                 multiline
               />
