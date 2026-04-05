@@ -173,12 +173,21 @@ export default function OrdersScreen({
     if (!isRefresh) setLoading(true);
     setError(null);
 
-    const result = await apiRequest<ApiOrder[]>(
-      '/v1/orders?page=1&pageSize=200&sortDir=desc',
+    let result = await apiRequest<ApiOrder[]>(
+      '/v1/orders?pageSize=100&sortDir=desc',
       auth,
       { actorRole: 'buyer' },
       onAuthRefresh,
     );
+
+    if (!result.ok) {
+      result = await apiRequest<ApiOrder[]>(
+        '/v1/orders?page=1&pageSize=100&sortDir=desc',
+        auth,
+        { actorRole: 'buyer' },
+        onAuthRefresh,
+      );
+    }
 
     if (result.ok) {
       const mapped = (result.data as unknown as ApiOrder[]).map((order: ApiOrder) => ({
