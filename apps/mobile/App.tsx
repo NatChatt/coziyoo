@@ -478,7 +478,7 @@ export default function App() {
     return (
       <OrdersScreen
         auth={auth}
-        onBack={() => goHome('profile')}
+        onBack={() => goHome('home')}
         onOpenOrderDetail={(id) => {
           setSelectedOrderId(id);
           setOrderDetailBackTarget('orders');
