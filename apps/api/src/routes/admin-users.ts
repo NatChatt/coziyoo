@@ -579,15 +579,6 @@ function imageUrlsFromJson(value: unknown, fallbackImageUrl?: string | null): st
   return fallback ? [fallback] : [];
 }
 
-function deliveryOptionsFromJson(value: unknown): { pickup: boolean; delivery: boolean } | null {
-  if (!value || typeof value !== "object") return null;
-  const row = value as Record<string, unknown>;
-  return {
-    pickup: Boolean(row.pickup),
-    delivery: Boolean(row.delivery),
-  };
-}
-
 function menuItemsFromJson(value: unknown): Array<{
   name: string;
   categoryId?: string;
@@ -2693,8 +2684,6 @@ adminUserManagementRouter.get("/users/:id/seller-foods", requireAuth("admin"), a
     ingredients_json: unknown;
     allergens_json: unknown;
     price: string;
-    delivery_fee: string | null;
-    delivery_options_json: unknown;
     image_url: string | null;
     image_urls_json: unknown;
     active_lot_count: string;
@@ -2719,8 +2708,6 @@ adminUserManagementRouter.get("/users/:id/seller-foods", requireAuth("admin"), a
          (to_jsonb(f)->'ingredients_json') AS ingredients_json,
          (to_jsonb(f)->'allergens_json') AS allergens_json,
          f.price::text,
-         (to_jsonb(f)->>'delivery_fee') AS delivery_fee,
-         (to_jsonb(f)->'delivery_options_json') AS delivery_options_json,
          (to_jsonb(f)->>'image_url') AS image_url,
          (to_jsonb(f)->'image_urls_json') AS image_urls_json,
          COALESCE(lot_stats.active_lot_count, 0)::text AS active_lot_count,
@@ -2768,8 +2755,6 @@ adminUserManagementRouter.get("/users/:id/seller-foods", requireAuth("admin"), a
          (to_jsonb(f)->'ingredients_json') AS ingredients_json,
          (to_jsonb(f)->'allergens_json') AS allergens_json,
          f.price::text,
-         (to_jsonb(f)->>'delivery_fee') AS delivery_fee,
-         (to_jsonb(f)->'delivery_options_json') AS delivery_options_json,
          (to_jsonb(f)->>'image_url') AS image_url,
          (to_jsonb(f)->'image_urls_json') AS image_urls_json,
          '0'::text AS active_lot_count,
@@ -2804,8 +2789,6 @@ adminUserManagementRouter.get("/users/:id/seller-foods", requireAuth("admin"), a
       ingredients: ingredientsTextFromJson(row.ingredients_json),
       allergens: textItemsFromJson(row.allergens_json),
       price: Number(row.price),
-      deliveryFee: Number(row.delivery_fee ?? 0),
-      deliveryOptions: deliveryOptionsFromJson(row.delivery_options_json),
       imageUrl: row.image_url,
       imageUrls: imageUrlsFromJson(row.image_urls_json, row.image_url),
       status: row.is_active ? "active" : "disabled",
@@ -2856,8 +2839,6 @@ adminUserManagementRouter.get("/users/:id/seller-foods/export", requireAuth("adm
     ingredients_json: unknown;
     allergens_json: unknown;
     price: string;
-    delivery_fee: string | null;
-    delivery_options_json: unknown;
     image_url: string | null;
     image_urls_json: unknown;
     is_active: boolean;
@@ -2873,8 +2854,6 @@ adminUserManagementRouter.get("/users/:id/seller-foods/export", requireAuth("adm
        f.ingredients_json,
        f.allergens_json,
        f.price::text,
-       f.delivery_fee::text AS delivery_fee,
-       f.delivery_options_json,
        f.image_url,
        f.image_urls_json,
        f.is_active,
@@ -2950,15 +2929,6 @@ adminUserManagementRouter.get("/users/:id/seller-foods/export", requireAuth("adm
       Cuisine: food.cuisine ?? "-",
       Status: food.is_active ? "Active" : "Disabled",
       Price: Number(food.price),
-      "Delivery Fee": Number(food.delivery_fee ?? 0),
-      "Delivery Options": (() => {
-        const options = deliveryOptionsFromJson(food.delivery_options_json);
-        if (!options) return "-";
-        if (options.pickup && options.delivery) return "Gel Al+Teslimat";
-        if (options.pickup) return "Gel Al";
-        if (options.delivery) return "Teslimat";
-        return "-";
-      })(),
       "Primary Image": food.image_url ?? "-",
       "Image URLs": imageUrlsFromJson(food.image_urls_json, food.image_url).join(", ") || "-",
       "Updated At": food.updated_at,

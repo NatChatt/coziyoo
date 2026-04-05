@@ -40,14 +40,11 @@ type SellerFood = {
   }>;
   secondaryCategories?: Array<{ id: string; name: string }>;
   price: number;
-  deliveryFee: number;
-  deliveryOptions: { pickup: boolean; delivery: boolean } | null;
   imageUrl: string | null;
   imageUrls: string[];
   ingredients: string[];
   allergens: string[];
   preparationTimeMinutes: number | null;
-  maxDeliveryDistanceKm: number | null;
   isActive: boolean;
   stock: number;
 };
@@ -77,14 +74,6 @@ function toBool(value: unknown): boolean {
 }
 
 function normalizeSellerFood(item: Record<string, unknown>): SellerFood {
-  const deliveryRaw = item.deliveryOptions ?? item.delivery_options_json;
-  const deliveryOptions = deliveryRaw && typeof deliveryRaw === "object"
-    ? {
-        pickup: toBool((deliveryRaw as Record<string, unknown>).pickup),
-        delivery: toBool((deliveryRaw as Record<string, unknown>).delivery),
-      }
-    : null;
-
   const imageUrlsRaw = Array.isArray(item.imageUrls)
     ? item.imageUrls
     : Array.isArray(item.image_urls_json)
@@ -109,8 +98,6 @@ function normalizeSellerFood(item: Record<string, unknown>): SellerFood {
     menuItems: menuItemsRaw as SellerFood["menuItems"],
     secondaryCategories: Array.isArray(item.secondaryCategories) ? (item.secondaryCategories as SellerFood["secondaryCategories"]) : [],
     price: Number(item.price ?? 0),
-    deliveryFee: Number(item.deliveryFee ?? item.delivery_fee ?? 0),
-    deliveryOptions,
     imageUrl: typeof item.imageUrl === "string" ? item.imageUrl : (typeof item.image_url === "string" ? item.image_url : null),
     imageUrls: imageUrlsRaw.map((url) => String(url ?? "")).filter(Boolean).slice(0, 5),
     ingredients: Array.isArray(item.ingredients) ? item.ingredients.map((v) => String(v ?? "")).filter(Boolean) : [],
@@ -118,9 +105,6 @@ function normalizeSellerFood(item: Record<string, unknown>): SellerFood {
     preparationTimeMinutes: Number.isFinite(Number(item.preparationTimeMinutes))
       ? Number(item.preparationTimeMinutes)
       : (Number.isFinite(Number(item.preparation_time_minutes)) ? Number(item.preparation_time_minutes) : null),
-    maxDeliveryDistanceKm: Number.isFinite(Number(item.maxDeliveryDistanceKm))
-      ? Number(item.maxDeliveryDistanceKm)
-      : (Number.isFinite(Number(item.max_delivery_distance_km)) ? Number(item.max_delivery_distance_km) : null),
     isActive: toBool(item.isActive ?? item.is_active),
     stock: Number(item.stock ?? 0),
   };
@@ -269,10 +253,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
-  const [pickupEnabled, setPickupEnabled] = useState(true);
-  const [deliveryEnabled, setDeliveryEnabled] = useState(true);
-  const [deliveryFee, setDeliveryFee] = useState("");
-  const [deliveryDistanceKm, setDeliveryDistanceKm] = useState("");
   const [menuItems, setMenuItems] = useState<SellerMenuAddon[]>([]);
   const [freeAddonNameInput, setFreeAddonNameInput] = useState("");
   const [freeAddonKindInput, setFreeAddonKindInput] = useState<AddonKind>("extra");
@@ -307,15 +287,11 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         const parsed = JSON.parse(raw) as {
           startDate?: unknown;
           endDate?: unknown;
-          deliveryDistanceKm?: unknown;
         };
         const hasInitialEditContext = Boolean(initialEditFood || initialEditFoodId);
         if (!hasInitialEditContext) {
           setStartDate(typeof parsed.startDate === "string" ? parsed.startDate : "");
           setEndDate(typeof parsed.endDate === "string" ? parsed.endDate : "");
-          setDeliveryDistanceKm(
-            typeof parsed.deliveryDistanceKm === "string" ? parsed.deliveryDistanceKm : "",
-          );
         }
       } catch (error) {
         console.warn("[seller-foods] failed to load persisted form fields", error);
@@ -333,12 +309,11 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     const payload = JSON.stringify({
       startDate: startDate.trim(),
       endDate: endDate.trim(),
-      deliveryDistanceKm: deliveryDistanceKm.trim(),
     });
     AsyncStorage.setItem(formPersistKey, payload).catch((error) => {
       console.warn("[seller-foods] failed to persist form fields", error);
     });
-  }, [persistentFieldsHydrated, formPersistKey, startDate, endDate, deliveryDistanceKm]);
+  }, [persistentFieldsHydrated, formPersistKey, startDate, endDate]);
 
   useLayoutEffect(() => {
     if (!initialEditFood) return;
@@ -475,9 +450,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setCuisine("");
     setCategoryId("");
     setDailyStock("");
-    setPickupEnabled(true);
-    setDeliveryEnabled(true);
-    setDeliveryFee("");
     setMenuItems([]);
     setFreeAddonNameInput("");
     setFreeAddonKindInput("extra");
@@ -503,14 +475,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setCuisine(food.cuisine ?? "");
     setCategoryId(food.categoryId ?? "");
     setDailyStock(food.stock > 0 ? String(food.stock) : "");
-    setDeliveryFee(food.deliveryFee ? String(food.deliveryFee) : "");
-    setPickupEnabled(food.deliveryOptions?.pickup ?? true);
-    setDeliveryEnabled(food.deliveryOptions?.delivery ?? true);
-    setDeliveryDistanceKm(
-      Number.isFinite(Number(food.maxDeliveryDistanceKm)) && Number(food.maxDeliveryDistanceKm) > 0
-        ? String(food.maxDeliveryDistanceKm)
-        : "",
-    );
     const normalizedMenuItems = Array.isArray(food.menuItems)
       ? food.menuItems
         .map((item) => ({
@@ -537,8 +501,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setPaidAddonKindInput("extra");
     setPaidAddonPriceInput("");
   }
-
-  const canShowDeliveryFee = deliveryEnabled;
 
   function setImageAt(index: number, value: string) {
     setImageUrls((prev) => {
@@ -609,7 +571,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       }));
       const workingMenuItems: SellerMenuAddon[] = [...paidOnlyItems, ...freeItems];
       const parsedPrice = parseLocalizedDecimal(price);
-      const parsedDeliveryDistance = deliveryDistanceKm.trim() ? parseLocalizedDecimal(deliveryDistanceKm) : Number.NaN;
       const parsedPrepTime = prepTime.trim() ? Number.parseInt(prepTime.trim(), 10) : Number.NaN;
       const parsedDailyStock = dailyStock.trim() ? Number.parseInt(dailyStock.trim(), 10) : Number.NaN;
       const parsedAllergens = allergens
@@ -618,11 +579,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         .filter(Boolean);
       const startIsoRequired = parseDisplayDateToIso(startDate);
       const endIsoRequired = parseDisplayDateToIso(endDate);
-
-      if (!pickupEnabled && !deliveryEnabled) {
-        Alert.alert("Hata", "En az bir teslimat seçeneği seçmelisin (Gel Al veya Teslimat).");
-        return;
-      }
 
       if (!name.trim()) {
         Alert.alert("Hata", "Yemek adı zorunlu.");
@@ -660,10 +616,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         Alert.alert("Hata", "Hazırlık süresi zorunlu ve 0'dan büyük olmalı.");
         return;
       }
-      if (!Number.isFinite(parsedDeliveryDistance) || parsedDeliveryDistance <= 0) {
-        Alert.alert("Hata", "Teslimat mesafesi zorunlu ve 0'dan büyük olmalı.");
-        return;
-      }
       if (!startIsoRequired || !endIsoRequired) {
         Alert.alert("Hata", "Başlangıç ve bitiş tarihi zorunlu.");
         return;
@@ -680,7 +632,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       setSaving(true);
 
       const primaryImageUrl = imageUrls.map((x) => x.trim()).find(Boolean) || undefined;
-      const parsedDeliveryFee = deliveryFee.trim() ? parseLocalizedDecimal(deliveryFee) : 0;
       const ingredientItemsFromDescription = description
         .split(/[,;\n]/g)
         .map((x) => x.trim())
@@ -714,12 +665,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         imageUrl: primaryImageUrl,
         imageUrls: imageUrls.map((x) => x.trim()).filter(Boolean).slice(0, 5),
         cuisine: cuisine.trim() || undefined,
-        deliveryFee: Number.isFinite(parsedDeliveryFee) ? parsedDeliveryFee : 0,
-        deliveryOptions: { pickup: pickupEnabled, delivery: deliveryEnabled },
         ingredients: normalizedIngredients,
         allergens: parsedAllergens,
         preparationTimeMinutes: parsedPrepTime,
-        deliveryDistanceKm: Number.isFinite(parsedDeliveryDistance) ? parsedDeliveryDistance : undefined,
         menuItems: normalizedAddons,
         secondaryCategoryIds: [],
       };
@@ -929,13 +877,6 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
     }
   }
 
-  const deliveryTypeHint = useMemo(() => {
-    if (pickupEnabled && deliveryEnabled) return "Gel Al ve Teslimat birlikte açık";
-    if (pickupEnabled) return "Sadece Gel Al açık";
-    if (deliveryEnabled) return "Sadece Teslimat açık";
-    return "";
-  }, [pickupEnabled, deliveryEnabled]);
-
   function toDisplayDate(date: Date): string {
     const dd = String(date.getDate()).padStart(2, "0");
     const mm = String(date.getMonth() + 1).padStart(2, "0");
@@ -1024,17 +965,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
     ? (/(mutfağı|mutfagi)$/i.test(cuisine.trim()) ? cuisine.trim() : `${cuisine.trim()} Mutfağı`)
     : "Ev Mutfağı";
   const previewMeta = prepTime.trim() ? `${prepTime.trim()} dk` : "40 dk";
-  const previewDistance = deliveryEnabled
-    ? `${deliveryDistanceKm.trim() || "14.76"} km`
-    : "";
-  const previewMetaText = [previewMeta, previewDistance].filter(Boolean).join(" · ");
-  const previewDeliveryTypeLabel = pickupEnabled && deliveryEnabled
-    ? "Gel Al / Getir"
-    : pickupEnabled
-      ? "Gel Al"
-      : deliveryEnabled
-        ? "Getir"
-        : "-";
+  const previewMetaText = previewMeta;
   const previewAllergens = allergens
     .split(",")
     .map((item) => item.trim())
@@ -1294,29 +1225,16 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             </View>
           </View>
 
-          <View style={styles.row2}>
-            <View style={styles.rowItem}>
-              <Text style={styles.sectionTitle}>Hazırlık Süresi (dk)</Text>
-              <TextInput
-                style={styles.input}
-                value={prepTime}
-                onChangeText={setPrepTime}
-                placeholder="Örn: 45"
-                placeholderTextColor={PLACEHOLDER_COLOR}
-                keyboardType="number-pad"
-              />
-            </View>
-            <View style={styles.rowItem}>
-              <Text style={styles.sectionTitle}>Teslimat Mesafesi (km)</Text>
-              <TextInput
-                style={styles.input}
-                value={deliveryDistanceKm}
-                onChangeText={setDeliveryDistanceKm}
-                placeholder="Örn: 8"
-                placeholderTextColor={PLACEHOLDER_COLOR}
-                keyboardType="decimal-pad"
-              />
-            </View>
+          <View style={styles.rowItem}>
+            <Text style={styles.sectionTitle}>Hazırlık Süresi (dk)</Text>
+            <TextInput
+              style={styles.input}
+              value={prepTime}
+              onChangeText={setPrepTime}
+              placeholder="Örn: 45"
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              keyboardType="number-pad"
+            />
           </View>
 
           <View style={styles.row2}>
@@ -1351,44 +1269,6 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               </View>
             </View>
           </View>
-
-          <Text style={styles.sectionTitle}>Teslimat Seçenekleri</Text>
-          <View style={styles.row2}>
-            <TouchableOpacity
-              style={[styles.deliveryToggle, pickupEnabled && styles.deliveryToggleActive]}
-              onPress={() => setPickupEnabled((prev) => !prev)}
-            >
-              <Text style={[styles.deliveryToggleText, pickupEnabled && styles.deliveryToggleTextActive]}>Gel Al</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.deliveryToggle, deliveryEnabled && styles.deliveryToggleActive]}
-              onPress={() => {
-                setDeliveryEnabled((prev) => {
-                  const next = !prev;
-                  if (!next) setDeliveryFee("");
-                  return next;
-                });
-              }}
-            >
-              <Text style={[styles.deliveryToggleText, deliveryEnabled && styles.deliveryToggleTextActive]}>Teslimat</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.optionHint}>{deliveryTypeHint}</Text>
-
-          {canShowDeliveryFee ? (
-            <>
-              <Text style={styles.sectionTitle}>Teslimat Ücreti (₺)</Text>
-              <TextInput
-                style={styles.input}
-                value={deliveryFee}
-                onChangeText={setDeliveryFee}
-                placeholder="Örn: 10 ₺"
-                placeholderTextColor={PLACEHOLDER_COLOR}
-                keyboardType="decimal-pad"
-              />
-              <Text style={styles.subHint}>Müşterilerden alacağınız teslimat ücreti</Text>
-            </>
-          ) : null}
 
           <TouchableOpacity style={styles.previewBtn} onPress={() => setPreviewVisible(true)}>
             <Text style={styles.previewBtnText}>👁️ Önizleme (Müşteri Görünümü)</Text>
@@ -1451,9 +1331,6 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                     <Text style={styles.previewCuisine}>{previewCuisine}</Text>
                   </View>
                 </View>
-                <Text style={styles.previewDeliveryTypeText}>
-                  Teslimat Tipi: {previewDeliveryTypeLabel}
-                </Text>
                 <View style={styles.previewMidRow}>
                   <Ionicons name="time-outline" size={13} color="#8A7A6A" />
                   <Text style={styles.previewMetaText}>{previewMetaText}</Text>

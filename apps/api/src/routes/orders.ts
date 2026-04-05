@@ -167,19 +167,6 @@ function selectedPaidAddonsTotal(selectedAddons: NormalizedSelectedAddons): numb
   return Number(total.toFixed(2));
 }
 
-function normalizeFoodDeliveryOptions(input: unknown): { pickup: boolean; delivery: boolean } {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
-    return { pickup: true, delivery: false };
-  }
-  const raw = input as Record<string, unknown>;
-  const pickup = Boolean(raw.pickup);
-  const delivery = Boolean(raw.delivery);
-  if (!pickup && !delivery) {
-    return { pickup: true, delivery: false };
-  }
-  return { pickup, delivery };
-}
-
 function resolveDeliveryDestination(deliveryAddressJson: unknown): { coord: LatLng | null; addressLine: string | null } {
   const coord = extractLatLng(deliveryAddressJson);
   const addressLine = extractAddressLine(deliveryAddressJson);
@@ -399,7 +386,6 @@ ordersRouter.post(
       sale_starts_at: string;
       sale_ends_at: string;
       price: string;
-      delivery_fee: string | null;
       food_is_active: boolean;
     }>(
       `SELECT l.id AS lot_id,
@@ -410,7 +396,6 @@ ordersRouter.post(
               l.sale_starts_at::text,
               l.sale_ends_at::text,
               f.price::text AS price,
-              f.delivery_fee::text AS delivery_fee,
               f.is_active AS food_is_active
        FROM production_lots l
        LEFT JOIN foods f ON f.id = l.food_id
@@ -471,14 +456,7 @@ ordersRouter.post(
       subtotal += (price * item.quantity) + selectedPaidAddonsTotal(selectedAddons);
     }
     subtotal = Number(subtotal.toFixed(2));
-    const deliveryFee = input.deliveryType === "delivery"
-      ? Number(
-          Math.max(
-            0,
-            ...input.items.map((item) => Number(lotsMap.get(item.lotId)?.delivery_fee ?? 0)),
-          ).toFixed(2),
-        )
-      : 0;
+    const deliveryFee = 0;
     const total = Number((subtotal + deliveryFee).toFixed(2));
 
     const orderInsert = await client.query<{ id: string }>(
@@ -1829,7 +1807,6 @@ voiceOrderRouter.post(
         sale_starts_at: string;
         sale_ends_at: string;
         price: string;
-        delivery_fee: string | null;
         food_is_active: boolean;
       }>(
         `SELECT l.id AS lot_id,
@@ -1840,7 +1817,6 @@ voiceOrderRouter.post(
                 l.sale_starts_at::text,
                 l.sale_ends_at::text,
                 f.price::text AS price,
-                f.delivery_fee::text AS delivery_fee,
                 f.is_active AS food_is_active
          FROM production_lots l
          LEFT JOIN foods f ON f.id = l.food_id
@@ -1905,14 +1881,7 @@ voiceOrderRouter.post(
         subtotal += (price * item.quantity) + selectedPaidAddonsTotal(selectedAddons);
       }
       subtotal = Number(subtotal.toFixed(2));
-      const deliveryFee = input.deliveryType === "delivery"
-        ? Number(
-            Math.max(
-              0,
-              ...input.items.map((item) => Number(lotsMap.get(item.lotId)?.delivery_fee ?? 0)),
-            ).toFixed(2),
-          )
-        : 0;
+      const deliveryFee = 0;
       const total = Number((subtotal + deliveryFee).toFixed(2));
 
       const orderInsert = await client.query<{ id: string }>(

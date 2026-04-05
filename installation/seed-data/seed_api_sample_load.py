@@ -442,7 +442,6 @@ def build_food_payload(category_name_tr: str, seller_slot: int, food_slot: int) 
     options = FOOD_TEMPLATES[category_name_tr]
     base = options[(seller_slot + food_slot) % len(options)]
     price = round(random.uniform(70, 280), 2)
-    delivery_fee = round(random.uniform(10, 35), 2)
     prep_minutes = random.randint(15, 60)
 
     return {
@@ -457,13 +456,6 @@ def build_food_payload(category_name_tr: str, seller_slot: int, food_slot: int) 
         "allergens_json": base["allergens"],
         "preparation_time_minutes": prep_minutes,
         "serving_size": "1 porsiyon",
-        "delivery_fee": delivery_fee,
-        "max_delivery_distance_km": round(random.uniform(3, 18), 2),
-        "delivery_options_json": {
-            "delivery": True,
-            "pickup": True,
-            "minimumOrderAmount": round(random.uniform(120, 280), 2),
-        },
         "is_active": True,
     }
 
@@ -602,9 +594,6 @@ def seed_foods(
                       allergens_json,
                       preparation_time_minutes,
                       serving_size,
-                      delivery_fee,
-                      max_delivery_distance_km,
-                      delivery_options_json,
                       is_active,
                       created_at,
                       updated_at
@@ -623,9 +612,6 @@ def seed_foods(
                       %s::jsonb,
                       %s,
                       %s,
-                      %s,
-                      %s,
-                      %s::jsonb,
                       %s,
                       now(),
                       now()
@@ -646,9 +632,6 @@ def seed_foods(
                         json.dumps(payload["allergens_json"], ensure_ascii=False),
                         payload["preparation_time_minutes"],
                         payload["serving_size"],
-                        payload["delivery_fee"],
-                        payload["max_delivery_distance_km"],
-                        json.dumps(payload["delivery_options_json"], ensure_ascii=False),
                         payload["is_active"],
                     ),
                 )

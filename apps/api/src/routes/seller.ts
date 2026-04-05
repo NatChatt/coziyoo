@@ -40,13 +40,7 @@ const SellerFoodCreateSchema = z.object({
   allergens: z.array(z.string().min(1).max(120)).max(40).optional(),
   cuisine: z.string().min(1).max(120).optional(),
   price: z.number().min(1).max(100000),
-  deliveryFee: z.number().min(0).max(100000).optional(),
-  deliveryOptions: z.object({
-    pickup: z.boolean(),
-    delivery: z.boolean(),
-  }).optional(),
   preparationTimeMinutes: z.number().int().min(1).max(1440).optional(),
-  deliveryDistanceKm: z.number().min(0.1).max(1000).optional(),
   imageUrl: foodImageUrlSchema.optional(),
   imageUrls: z.array(foodImageUrlSchema).max(5).optional(),
   isActive: z.boolean().optional(),
@@ -121,14 +115,6 @@ function normalizeImageUrls(input: unknown): string[] {
     .map((item) => String(item ?? "").trim())
     .filter((item) => /^https?:\/\//i.test(item) || /^data:/i.test(item));
   return values.slice(0, 5);
-}
-
-function normalizeDeliveryOptions(input: unknown): { pickup: boolean; delivery: boolean } | null {
-  if (!input || typeof input !== "object") return null;
-  const raw = input as Record<string, unknown>;
-  const pickup = Boolean(raw.pickup);
-  const delivery = Boolean(raw.delivery);
-  return { pickup, delivery };
 }
 
 type MenuItemKind = "sauce" | "extra" | "appetizer";
@@ -825,14 +811,11 @@ sellerRouter.get("/foods", async (req, res) => {
          f.cuisine,
          ${menuColumnsEnabled ? "f.menu_items_json, f.secondary_category_ids_json," : "'[]'::jsonb AS menu_items_json, '[]'::jsonb AS secondary_category_ids_json,"}
          f.price::text,
-         f.delivery_fee::text AS delivery_fee,
-         f.delivery_options_json,
          f.image_url,
          f.image_urls_json,
          f.ingredients_json,
          f.allergens_json,
          f.preparation_time_minutes,
-         f.max_delivery_distance_km::text AS max_delivery_distance_km,
          f.is_active,
          f.created_at::text,
          f.updated_at::text,
@@ -885,14 +868,11 @@ sellerRouter.get("/foods", async (req, res) => {
         menuItems: mapMenuItemsWithCategoryNames((row as { menu_items_json?: unknown }).menu_items_json, categoryMap),
         secondaryCategories: mapSecondaryCategories((row as { secondary_category_ids_json?: unknown }).secondary_category_ids_json, categoryMap),
         price: Number(row.price),
-        deliveryFee: row.delivery_fee != null ? Number(row.delivery_fee) : 0,
-        deliveryOptions: normalizeDeliveryOptions(row.delivery_options_json),
         imageUrl: row.image_url,
         imageUrls: normalizeImageUrls(row.image_urls_json),
         ingredients: Array.isArray(row.ingredients_json) ? row.ingredients_json : [],
         allergens: Array.isArray(row.allergens_json) ? row.allergens_json : [],
         preparationTimeMinutes: row.preparation_time_minutes,
-        maxDeliveryDistanceKm: row.max_delivery_distance_km != null ? Number(row.max_delivery_distance_km) : null,
         isActive: Boolean(row.is_active),
         stock: Number(row.stock ?? 0),
         createdAt: row.created_at,
@@ -973,8 +953,8 @@ sellerRouter.post("/foods", async (req, res) => {
       const created = menuColumnsEnabled
         ? await pool.query<{ id: string }>(
           `INSERT INTO foods
-             (seller_id, category_id, name, card_summary, description, recipe, cuisine, menu_items_json, secondary_category_ids_json, price, delivery_fee, delivery_options_json, image_url, image_urls_json, ingredients_json, allergens_json, preparation_time_minutes, is_active, created_at, updated_at, max_delivery_distance_km)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, $11, $12::jsonb, $13, $14::jsonb, $15::jsonb, $16::jsonb, $17, $18, now(), now(), $19)
+             (seller_id, category_id, name, card_summary, description, recipe, cuisine, menu_items_json, secondary_category_ids_json, price, image_url, image_urls_json, ingredients_json, allergens_json, preparation_time_minutes, is_active, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, $11, $12::jsonb, $13::jsonb, $14::jsonb, $15, $16, now(), now())
            RETURNING id::text`,
           [
             req.auth!.userId,
@@ -987,21 +967,18 @@ sellerRouter.post("/foods", async (req, res) => {
             JSON.stringify(normalizedMenuItems),
             JSON.stringify(resolvedSecondaryCategoryIds),
             input.price,
-            input.deliveryFee ?? 0,
-            JSON.stringify(input.deliveryOptions ?? { pickup: true, delivery: true }),
             input.imageUrls?.[0] ?? input.imageUrl ?? null,
             JSON.stringify((input.imageUrls ?? (input.imageUrl ? [input.imageUrl] : [])).slice(0, 5)),
             JSON.stringify(input.ingredients ?? []),
             JSON.stringify(input.allergens ?? []),
             input.preparationTimeMinutes ?? null,
             input.isActive ?? true,
-            input.deliveryDistanceKm ?? null,
           ],
         )
         : await pool.query<{ id: string }>(
           `INSERT INTO foods
-             (seller_id, category_id, name, card_summary, description, recipe, cuisine, price, delivery_fee, delivery_options_json, image_url, image_urls_json, ingredients_json, allergens_json, preparation_time_minutes, is_active, created_at, updated_at, max_delivery_distance_km)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12::jsonb, $13::jsonb, $14::jsonb, $15, $16, now(), now(), $17)
+             (seller_id, category_id, name, card_summary, description, recipe, cuisine, price, image_url, image_urls_json, ingredients_json, allergens_json, preparation_time_minutes, is_active, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12::jsonb, $13, $14, now(), now())
            RETURNING id::text`,
           [
             req.auth!.userId,
@@ -1012,15 +989,12 @@ sellerRouter.post("/foods", async (req, res) => {
             input.recipe?.trim() ?? null,
             input.cuisine?.trim() ?? null,
             input.price,
-            input.deliveryFee ?? 0,
-            JSON.stringify(input.deliveryOptions ?? { pickup: true, delivery: true }),
             input.imageUrls?.[0] ?? input.imageUrl ?? null,
             JSON.stringify((input.imageUrls ?? (input.imageUrl ? [input.imageUrl] : [])).slice(0, 5)),
             JSON.stringify(input.ingredients ?? []),
             JSON.stringify(input.allergens ?? []),
             input.preparationTimeMinutes ?? null,
             input.isActive ?? true,
-            input.deliveryDistanceKm ?? null,
           ],
         );
       return res.status(201).json({ data: { foodId: created.rows[0].id } });
@@ -1108,14 +1082,6 @@ sellerRouter.patch("/foods/:foodId", async (req, res) => {
       setClauses.push(`price = $${idx++}`);
       values.push(input.price);
     }
-    if (input.deliveryFee !== undefined) {
-      setClauses.push(`delivery_fee = $${idx++}`);
-      values.push(input.deliveryFee ?? 0);
-    }
-    if (input.deliveryOptions !== undefined) {
-      setClauses.push(`delivery_options_json = $${idx++}::jsonb`);
-      values.push(JSON.stringify(input.deliveryOptions ?? { pickup: true, delivery: true }));
-    }
     if (input.imageUrl !== undefined) {
       setClauses.push(`image_url = $${idx++}`);
       values.push(input.imageUrl ?? null);
@@ -1149,10 +1115,6 @@ sellerRouter.patch("/foods/:foodId", async (req, res) => {
     if (input.preparationTimeMinutes !== undefined) {
       setClauses.push(`preparation_time_minutes = $${idx++}`);
       values.push(input.preparationTimeMinutes ?? null);
-    }
-    if (input.deliveryDistanceKm !== undefined) {
-      setClauses.push(`max_delivery_distance_km = $${idx++}`);
-      values.push(input.deliveryDistanceKm ?? null);
     }
     if (input.isActive !== undefined) {
       setClauses.push(`is_active = $${idx++}`);

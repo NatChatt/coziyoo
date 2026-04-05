@@ -3206,21 +3206,6 @@ function SellerDetailScreen({ id, isSuperAdmin, dict, language }: { id: string; 
                     <div><span className="panel-meta">{language === "tr" ? "Mutfak" : "Cuisine"}</span><strong>{food.cuisine ?? "-"}</strong></div>
                     <div><span className="panel-meta">{dict.detail.foodStatus}</span><strong>{food.status === "active" ? dict.common.active : dict.common.disabled}</strong></div>
                     <div><span className="panel-meta">{dict.detail.foodPrice}</span><strong>{formatCurrency(food.price, language)}</strong></div>
-                    <div>
-                      <span className="panel-meta">{language === "tr" ? "Teslimat" : "Delivery"}</span>
-                      <strong>
-                        {food.deliveryOptions
-                          ? food.deliveryOptions.pickup && food.deliveryOptions.delivery
-                            ? "Gel Al + Getir"
-                            : food.deliveryOptions.pickup
-                              ? "Gel Al"
-                              : food.deliveryOptions.delivery
-                                ? "Getir"
-                                : "-"
-                          : "-"}
-                      </strong>
-                    </div>
-                    <div><span className="panel-meta">{language === "tr" ? "Teslimat Ücreti" : "Delivery Fee"}</span><strong>{formatCurrency(food.deliveryFee ?? 0, language)}</strong></div>
                     <div><span className="panel-meta">{dict.detail.updatedAtLabel}</span><strong>{formatUiDate(food.updatedAt, language)}</strong></div>
                   </div>
                   {Array.isArray(food.imageUrls) && food.imageUrls.length > 0 ? (

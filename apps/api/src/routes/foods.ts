@@ -42,17 +42,11 @@ function resolvePrimaryFoodImage(imageUrlsValue: unknown, imageUrlFallback: unkn
   return fallback.length > 0 ? fallback : null;
 }
 
-function normalizeDeliveryOptions(input: unknown): { pickup: boolean; delivery: boolean } {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
-    return { pickup: true, delivery: false };
-  }
-  const raw = input as Record<string, unknown>;
-  const pickup = Boolean(raw.pickup);
-  const delivery = Boolean(raw.delivery);
-  if (!pickup && !delivery) {
-    return { pickup: true, delivery: false };
-  }
-  return { pickup, delivery };
+function sellerDeliveryOptions(deliveryEnabledValue: unknown): { pickup: boolean; delivery: boolean } {
+  return {
+    pickup: true,
+    delivery: Boolean(deliveryEnabledValue),
+  };
 }
 
 type FoodMenuItem = {
@@ -234,18 +228,17 @@ foodsRouter.get("/", async (req, res) => {
         f.card_summary,
         f.description,
         f.price,
-        f.delivery_fee::text AS delivery_fee,
-        f.delivery_options_json,
         f.image_url,
         f.image_urls_json,
         f.rating,
         f.review_count,
         f.preparation_time_minutes,
-        f.max_delivery_distance_km,
         f.allergens_json,
         f.ingredients_json,
         f.cuisine,
         ${menuColumnsEnabled ? "f.menu_items_json, f.secondary_category_ids_json," : "'[]'::jsonb AS menu_items_json, '[]'::jsonb AS secondary_category_ids_json,"}
+        COALESCE(u.delivery_enabled, FALSE) AS seller_delivery_enabled,
+        u.delivery_radius_km AS seller_delivery_radius_km,
         f.category_id::text AS category_id,
         (
           SELECT pl.id
@@ -318,15 +311,15 @@ foodsRouter.get("/", async (req, res) => {
       cardSummary: r.card_summary,
       description: r.description,
       price: parseFloat(r.price),
-      deliveryFee: r.delivery_fee != null ? Number(r.delivery_fee) : 0,
-      deliveryOptions: normalizeDeliveryOptions(r.delivery_options_json),
+      deliveryFee: 0,
+      deliveryOptions: sellerDeliveryOptions(r.seller_delivery_enabled),
       imageUrl: resolvePrimaryFoodImage(r.image_urls_json, r.image_url),
       imageUrls: parseImageUrls(r.image_urls_json),
       rating: r.rating ? parseFloat(r.rating).toFixed(1) : null,
       reviewCount: r.review_count,
       prepTime: r.preparation_time_minutes,
-      maxDistance: r.max_delivery_distance_km
-        ? parseFloat(r.max_delivery_distance_km)
+      maxDistance: r.seller_delivery_radius_km
+        ? parseFloat(r.seller_delivery_radius_km)
         : null,
       allergens: parseAllergens(r.allergens_json),
       ingredients: parseAllergens(r.ingredients_json),
@@ -410,7 +403,7 @@ foodsRouter.get("/top-sold", async (req, res) => {
           f.price,
           f.description,
           f.preparation_time_minutes AS prep_time,
-          f.max_delivery_distance_km AS max_distance,
+          u.delivery_radius_km AS max_distance,
           c.name_tr AS category,
           f.allergens_json AS allergens,
           f.ingredients_json AS ingredients,
@@ -521,7 +514,7 @@ foodsRouter.get("/top-sold/:foodId/nearest", async (req, res) => {
             f.rating,
             f.review_count,
             f.preparation_time_minutes,
-            f.max_delivery_distance_km,
+            u.delivery_radius_km AS max_delivery_distance_km,
             f.allergens_json,
             f.ingredients_json,
             f.cuisine,
@@ -557,6 +550,7 @@ foodsRouter.get("/top-sold/:foodId/nearest", async (req, res) => {
           JOIN users u ON u.id = f.seller_id
           LEFT JOIN categories c ON c.id = f.category_id
           WHERE f.is_active = TRUE
+            AND COALESCE(u.delivery_enabled, FALSE) = TRUE
             AND EXISTS (
               SELECT 1
               FROM production_lots plx
@@ -689,17 +683,16 @@ foodsRouter.get("/recommendations", async (req, res) => {
             f.card_summary,
             f.description,
             f.price,
-            f.delivery_fee::text AS delivery_fee,
-            f.delivery_options_json,
             f.image_url,
             f.image_urls_json,
             f.rating,
             f.review_count,
             f.preparation_time_minutes,
-            f.max_delivery_distance_km,
+            u.delivery_radius_km AS seller_delivery_radius_km,
             f.allergens_json,
             f.ingredients_json,
             f.cuisine,
+            COALESCE(u.delivery_enabled, FALSE) AS seller_delivery_enabled,
             (
               SELECT pl.id
               FROM production_lots pl
@@ -806,15 +799,15 @@ foodsRouter.get("/recommendations", async (req, res) => {
           cardSummary: r.card_summary,
           description: r.description,
           price: parseFloat(r.price),
-          deliveryFee: r.delivery_fee != null ? Number(r.delivery_fee) : 0,
-          deliveryOptions: normalizeDeliveryOptions(r.delivery_options_json),
+          deliveryFee: 0,
+          deliveryOptions: sellerDeliveryOptions(r.seller_delivery_enabled),
           imageUrl: resolvePrimaryFoodImage(r.image_urls_json, r.image_url),
           imageUrls: parseImageUrls(r.image_urls_json),
           rating: r.rating ? parseFloat(r.rating).toFixed(1) : null,
           reviewCount: r.review_count,
           prepTime: r.preparation_time_minutes,
-          maxDistance: r.max_delivery_distance_km
-            ? parseFloat(r.max_delivery_distance_km)
+          maxDistance: r.seller_delivery_radius_km
+            ? parseFloat(r.seller_delivery_radius_km)
             : null,
           allergens: parseAllergens(r.allergens_json),
           ingredients: parseAllergens(r.ingredients_json),
@@ -939,17 +932,16 @@ foodsRouter.get("/sellers/:sellerId/foods", async (req, res) => {
           f.card_summary,
           f.description,
           f.price,
-          f.delivery_fee::text AS delivery_fee,
-          f.delivery_options_json,
           f.image_url,
           f.image_urls_json,
           f.rating,
           f.review_count,
           f.preparation_time_minutes,
-          f.max_delivery_distance_km,
+          u.delivery_radius_km AS seller_delivery_radius_km,
           f.allergens_json,
           f.ingredients_json,
           f.cuisine,
+          COALESCE(u.delivery_enabled, FALSE) AS seller_delivery_enabled,
           ${menuColumnsEnabled ? "f.menu_items_json, f.secondary_category_ids_json," : "'[]'::jsonb AS menu_items_json, '[]'::jsonb AS secondary_category_ids_json,"}
           f.category_id::text AS category_id,
           (
@@ -1015,15 +1007,15 @@ foodsRouter.get("/sellers/:sellerId/foods", async (req, res) => {
       cardSummary: r.card_summary,
       description: r.description,
       price: parseFloat(r.price),
-      deliveryFee: r.delivery_fee != null ? Number(r.delivery_fee) : 0,
-      deliveryOptions: normalizeDeliveryOptions(r.delivery_options_json),
+      deliveryFee: 0,
+      deliveryOptions: sellerDeliveryOptions(r.seller_delivery_enabled),
       imageUrl: resolvePrimaryFoodImage(r.image_urls_json, r.image_url),
       imageUrls: parseImageUrls(r.image_urls_json),
       rating: r.rating ? parseFloat(r.rating).toFixed(1) : null,
       reviewCount: r.review_count,
       prepTime: r.preparation_time_minutes,
-      maxDistance: r.max_delivery_distance_km
-        ? parseFloat(r.max_delivery_distance_km)
+      maxDistance: r.seller_delivery_radius_km
+        ? parseFloat(r.seller_delivery_radius_km)
         : null,
       allergens: parseAllergens(r.allergens_json),
       ingredients: parseAllergens(r.ingredients_json),

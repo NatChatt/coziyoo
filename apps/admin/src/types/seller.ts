@@ -34,8 +34,6 @@ export type SellerFoodRow = {
   ingredients: string | null;
   allergens: string[];
   price: number;
-  deliveryFee: number;
-  deliveryOptions: { pickup: boolean; delivery: boolean } | null;
   imageUrl: string | null;
   imageUrls: string[];
   status: "active" | "disabled";
