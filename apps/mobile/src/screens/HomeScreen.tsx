@@ -81,6 +81,7 @@ import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { loadCachedProfileImageUrl, saveCachedProfileImageUrl } from '../utils/profileImage';
 import { apiRequest } from '../utils/api';
 import { readJsonSafe } from '../utils/http';
+import { theme } from '../theme/colors';
 import VoiceSessionScreen from './VoiceSessionScreen';
 import ProfileEditScreen from './ProfileEditScreen';
 import AddressScreen from './AddressScreen';
@@ -3099,46 +3100,48 @@ export default function HomeScreen({
           </View>
           {cartItems.length === 0 ? (
             hasPendingListState ? (
-              <View style={styles.tabPanelCard}>
-                <Text style={styles.tabPanelText}>{t('helper.home.pendingListSubtitle')}</Text>
-                {paymentStatus ? (
-                  <View style={styles.paymentStatusCard}>
-                    <Text style={styles.paymentStatusTitle}>{t('status.home.paymentTitle')}</Text>
-                    <Text style={styles.paymentStatusText}>{t('status.home.orderLabel')} {paymentStatus.orderId.slice(0, 8)}...</Text>
-                    <Text style={styles.paymentStatusText}>{t('status.home.orderStatusLabel')} {formatOrderStatusLabel(paymentStatus.orderStatus)}</Text>
-                    <Text style={styles.paymentStatusText}>
-                      {paymentStatus.paymentCompleted ? t('status.home.paymentDone') : formatPaymentAttemptLabel(paymentStatus.latestAttemptStatus)}
-                    </Text>
+              <>
+                <View style={styles.tabPanelCard}>
+                  <Text style={styles.tabPanelText}>{t('helper.home.pendingListSubtitle')}</Text>
+                  {paymentStatus ? (
+                    <View style={styles.paymentStatusCard}>
+                      <Text style={styles.paymentStatusTitle}>{t('status.home.paymentTitle')}</Text>
+                      <Text style={styles.paymentStatusText}>{t('status.home.orderLabel')} {paymentStatus.orderId.slice(0, 8)}...</Text>
+                      <Text style={styles.paymentStatusText}>{t('status.home.orderStatusLabel')} {formatOrderStatusLabel(paymentStatus.orderStatus)}</Text>
+                      <Text style={styles.paymentStatusText}>
+                        {paymentStatus.paymentCompleted ? t('status.home.paymentDone') : formatPaymentAttemptLabel(paymentStatus.latestAttemptStatus)}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {paymentError ? (
+                    <Text style={styles.paymentErrorText}>{paymentError}</Text>
+                  ) : null}
+                  {paymentInfo ? (
+                    <Text style={styles.paymentInfoText}>{paymentInfo}</Text>
+                  ) : null}
+                  <View style={styles.paymentActionsRow}>
+                    <TouchableOpacity
+                      style={[styles.paymentRefreshBtn, paymentLoading && styles.paymentRefreshBtnDisabled]}
+                      onPress={() => void refreshPaymentStatus()}
+                      activeOpacity={0.9}
+                      disabled={paymentLoading}
+                    >
+                      {paymentLoading ? (
+                        <ActivityIndicator size="small" color="#5F5246" />
+                      ) : (
+                        <Text style={styles.paymentRefreshBtnText}>{t('cta.home.paymentRefresh')}</Text>
+                      )}
+                    </TouchableOpacity>
                   </View>
-                ) : null}
-                {paymentError ? (
-                  <Text style={styles.paymentErrorText}>{paymentError}</Text>
-                ) : null}
-                {paymentInfo ? (
-                  <Text style={styles.paymentInfoText}>{paymentInfo}</Text>
-                ) : null}
-                <View style={styles.paymentActionsRow}>
-                  <TouchableOpacity
-                    style={[styles.paymentRefreshBtn, paymentLoading && styles.paymentRefreshBtnDisabled]}
-                    onPress={() => void refreshPaymentStatus()}
-                    activeOpacity={0.9}
-                    disabled={paymentLoading}
-                  >
-                    {paymentLoading ? (
-                      <ActivityIndicator size="small" color="#5F5246" />
-                    ) : (
-                      <Text style={styles.paymentRefreshBtnText}>{t('cta.home.paymentRefresh')}</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.paymentNextBtn}
-                    onPress={() => setActiveTab('home')}
-                    activeOpacity={0.9}
-                  >
-                    <Text style={styles.paymentNextBtnText}>{t('cta.home.backHome')}</Text>
-                  </TouchableOpacity>
                 </View>
-              </View>
+                <TouchableOpacity
+                  style={styles.pendingBackHomeBtn}
+                  onPress={() => setActiveTab('home')}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.pendingBackHomeBtnText}>{t('cta.home.backHome')}</Text>
+                </TouchableOpacity>
+              </>
             ) : (
               <View style={styles.tabPanelCard}>
                 <Text style={styles.tabPanelText}>{t('helper.home.cartEmptyTitle')}</Text>
@@ -5244,15 +5247,21 @@ const styles = StyleSheet.create({
   },
   paymentRefreshBtnDisabled: { opacity: 0.55 },
   paymentRefreshBtnText: { color: '#5F5246', fontSize: 13, fontWeight: '700' },
-  paymentNextBtn: {
+  pendingBackHomeBtn: {
+    marginTop: 10,
     height: 42,
     borderRadius: 12,
-    paddingHorizontal: 12,
-    backgroundColor: '#3D3229',
+    borderWidth: 1,
+    borderColor: theme.border,
+    backgroundColor: theme.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  paymentNextBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  pendingBackHomeBtnText: {
+    color: theme.buttonPassiveText,
+    fontSize: 13,
+    fontWeight: '700',
+  },
   paymentWebSafe: { flex: 1, backgroundColor: '#FFFDF9' },
   paymentWebHeader: {
     height: 56,
