@@ -75,7 +75,7 @@ try {
 } catch {
   // WebView native module is optional at runtime; fallback is external link.
 }
-import { loadSettings } from '../utils/settings';
+import { loadSettings, saveSettings, subscribeSettings, type AppSettings } from '../utils/settings';
 import { subscribeBuyerFeedRealtime } from '../utils/realtime';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { loadCachedProfileImageUrl, saveCachedProfileImageUrl } from '../utils/profileImage';
@@ -1342,6 +1342,7 @@ export default function HomeScreen({
   }
   const [profileImageUploading, setProfileImageUploading] = useState(false);
   const [profileEditModalVisible, setProfileEditModalVisible] = useState(false);
+  const [generalSettingsModalVisible, setGeneralSettingsModalVisible] = useState(false);
   const [addressModalVisible, setAddressModalVisible] = useState(false);
   const [checkoutAddressModalVisible, setCheckoutAddressModalVisible] = useState(false);
   const [userAddresses, setUserAddresses] = useState<UserAddress[]>([]);
@@ -1351,6 +1352,7 @@ export default function HomeScreen({
   const [pickupSellerAddress, setPickupSellerAddress] = useState<{ title?: string; addressLine?: string } | null>(null);
   const [pickupSellerAddressLoading, setPickupSellerAddressLoading] = useState(false);
   const [pickupSellerAddressError, setPickupSellerAddressError] = useState<string | null>(null);
+  const [appLanguage, setAppLanguage] = useState<AppSettings['language']>('tr');
 
   useEffect(() => {
     if (deliveryType !== 'pickup' || cartItems.length === 0) {
@@ -1404,6 +1406,11 @@ export default function HomeScreen({
       });
     return () => { cancelled = true; };
   }, [deliveryType, cartItems, apiUrl, currentAuth.accessToken]);
+
+  useEffect(() => {
+    loadSettings().then((settings) => setAppLanguage(settings.language));
+    return subscribeSettings((settings) => setAppLanguage(settings.language));
+  }, []);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocationLabel, setSelectedLocationLabel] = useState('Kadıköy • 2.5 km çevre');
   const [headerImageSource, setHeaderImageSource] = useState<ImageSourcePropType>(() => (
@@ -2579,6 +2586,12 @@ export default function HomeScreen({
     });
   }
 
+  async function handleLanguageChange(language: AppSettings['language']) {
+    const settings = await loadSettings();
+    await saveSettings({ ...settings, language });
+    setAppLanguage(language);
+  }
+
   /* ---------- Filtered meals ---------- */
 
   const filteredMeals =
@@ -3413,23 +3426,21 @@ export default function HomeScreen({
             </View>
           </TouchableOpacity>
 
-          {onSwitchToSeller ? (
-            <TouchableOpacity
-              style={styles.profileGroupCard}
-              onPress={onSwitchToSeller}
-              activeOpacity={0.85}
-            >
-              <View style={styles.profileActionRow}>
-                <View style={styles.profileActionMain}>
-                  <View style={[styles.profileActionIconWrap, { backgroundColor: '#EAF4ED' }]}>
-                    <Ionicons name="restaurant-outline" size={18} color="#3E845B" />
-                  </View>
-                  <Text style={styles.profileActionTitle}>Satıcı Moduna Geç</Text>
+          <TouchableOpacity
+            style={styles.profileGroupCard}
+            onPress={() => setGeneralSettingsModalVisible(true)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.profileActionRow}>
+              <View style={styles.profileActionMain}>
+                <View style={[styles.profileActionIconWrap, { backgroundColor: '#EAF4ED' }]}>
+                  <Ionicons name="options-outline" size={18} color="#3E845B" />
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#A79B8E" />
+                <Text style={styles.profileActionTitle}>{t('headline.home.generalSettingsTitle')}</Text>
               </View>
-            </TouchableOpacity>
-          ) : null}
+              <Ionicons name="chevron-forward" size={18} color="#A79B8E" />
+            </View>
+          </TouchableOpacity>
 
           <View style={styles.profileSellerCard}>
             <View style={styles.profileSellerContent}>
@@ -3561,6 +3572,74 @@ export default function HomeScreen({
               onBack={() => setProfileEditModalVisible(false)}
               onAuthRefresh={handleAuthRefresh}
             />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={generalSettingsModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setGeneralSettingsModalVisible(false)}
+      >
+        <View style={styles.profileEditOverlay}>
+          <TouchableOpacity
+            style={styles.profileEditBackdrop}
+            activeOpacity={1}
+            onPress={() => setGeneralSettingsModalVisible(false)}
+          />
+          <View style={styles.generalSettingsSheet}>
+            <View style={styles.generalSettingsHeader}>
+              <Text style={styles.generalSettingsTitle}>{t('headline.home.generalSettingsTitle')}</Text>
+              <TouchableOpacity
+                style={styles.generalSettingsCloseBtn}
+                onPress={() => setGeneralSettingsModalVisible(false)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="close" size={18} color="#6B5D4F" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.generalSettingsBody}>{t('helper.home.generalSettingsBody')}</Text>
+            <View style={styles.generalSettingsCard}>
+              <Text style={styles.generalSettingsLabel}>{t('helper.home.generalSettingsLanguageLabel')}</Text>
+              <Text style={styles.generalSettingsHint}>{t('helper.home.generalSettingsLanguageHint')}</Text>
+              <View style={styles.generalSettingsLanguageRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.generalSettingsLanguageBtn,
+                    appLanguage === 'tr' && styles.generalSettingsLanguageBtnActive,
+                  ]}
+                  onPress={() => void handleLanguageChange('tr')}
+                  activeOpacity={0.9}
+                >
+                  <Text
+                    style={[
+                      styles.generalSettingsLanguageBtnText,
+                      appLanguage === 'tr' && styles.generalSettingsLanguageBtnTextActive,
+                    ]}
+                  >
+                    {t('cta.home.languageTurkish')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.generalSettingsLanguageBtn,
+                    appLanguage === 'en' && styles.generalSettingsLanguageBtnActive,
+                  ]}
+                  onPress={() => void handleLanguageChange('en')}
+                  activeOpacity={0.9}
+                >
+                  <Text
+                    style={[
+                      styles.generalSettingsLanguageBtnText,
+                      appLanguage === 'en' && styles.generalSettingsLanguageBtnTextActive,
+                    ]}
+                  >
+                    {t('cta.home.languageEnglish')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
       </Modal>
@@ -5956,6 +6035,85 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     overflow: 'hidden',
     backgroundColor: '#FFFDF9',
+  },
+  generalSettingsSheet: {
+    marginHorizontal: 18,
+    marginBottom: 36,
+    borderRadius: 22,
+    backgroundColor: '#FFFDF9',
+    borderWidth: 1,
+    borderColor: '#ECE4D9',
+    padding: 18,
+  },
+  generalSettingsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  generalSettingsTitle: {
+    color: '#3D3229',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  generalSettingsCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F4EFE8',
+  },
+  generalSettingsBody: {
+    color: '#6D665E',
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  generalSettingsCard: {
+    marginTop: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#ECE4D9',
+    backgroundColor: '#FFFFFF',
+    padding: 14,
+  },
+  generalSettingsLabel: {
+    color: '#3D3229',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  generalSettingsHint: {
+    color: '#8D8072',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  generalSettingsLanguageRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  generalSettingsLanguageBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DDD2C3',
+    backgroundColor: '#FFFDF9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  generalSettingsLanguageBtnActive: {
+    backgroundColor: theme.buttonActive,
+    borderColor: theme.buttonActive,
+  },
+  generalSettingsLanguageBtnText: {
+    color: '#5F5246',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  generalSettingsLanguageBtnTextActive: {
+    color: theme.onPrimary,
   },
   checkoutAddressSheet: {
     maxHeight: '70%',

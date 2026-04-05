@@ -1,3 +1,5 @@
+import { getCurrentLanguage } from '../utils/settings';
+
 export const brandCopy = {
   'headline.home.greetingTitle': 'Günaydın, Lale',
   'headline.home.greetingSubtitle': 'Bugün ne yesek?',
@@ -57,6 +59,12 @@ export const brandCopy = {
   'headline.home.profileSellerTitle': 'Evinde yemek yapıp satmak ister misin?',
   'helper.home.profileSellerBody': "Coziyoo'da mutfağını gelire dönüştür.",
   'cta.home.becomeSeller': 'Satıcı Ol',
+  'headline.home.generalSettingsTitle': 'Genel ayarlar',
+  'helper.home.generalSettingsBody': 'Uygulama dilini buradan değiştirebilirsin.',
+  'helper.home.generalSettingsLanguageLabel': 'Dil seçimi',
+  'helper.home.generalSettingsLanguageHint': 'Şimdilik Türkçe ve İngilizce destekleniyor.',
+  'cta.home.languageTurkish': 'Türkçe',
+  'cta.home.languageEnglish': 'English',
   'status.home.paymentWebTitle': 'Ödeme ekranı',
   'cta.home.close': 'Kapat',
   'error.home.paymentModuleMissing': 'Uygulama içi ödeme modülü bulunamadı.',
@@ -330,6 +338,15 @@ const brandCopyEn: Partial<Record<BrandCopyKey, string>> = {
   'helper.home.notificationsEmpty': 'You will see your new notifications here.',
   'status.home.messagesTitle': 'Messages',
   'helper.home.messagesSubtitle': 'Chat quickly with sellers',
+  'headline.home.profileSellerTitle': 'Would you like to cook and sell from home?',
+  'helper.home.profileSellerBody': 'Turn your kitchen into income on Coziyoo.',
+  'cta.home.becomeSeller': 'Become a seller',
+  'headline.home.generalSettingsTitle': 'General settings',
+  'helper.home.generalSettingsBody': 'You can change the app language here.',
+  'helper.home.generalSettingsLanguageLabel': 'Language',
+  'helper.home.generalSettingsLanguageHint': 'For now, Turkish and English are supported.',
+  'cta.home.languageTurkish': 'Türkçe',
+  'cta.home.languageEnglish': 'English',
   'cta.home.addToCart': 'Add to list',
   'helper.home.cartEmptyAlertTitle': 'Your food list is empty',
   'helper.home.cartEmptyAlertMessage': 'Let’s add a meal to your list first.',
@@ -401,17 +418,8 @@ const HOME_SUBTITLE_DAYPART_VARIANTS = {
   ],
 } as const;
 
-function getPreferredLocale(): SupportedLocale {
-  try {
-    const locale = Intl.DateTimeFormat().resolvedOptions().locale?.toLowerCase?.() ?? 'tr';
-    return locale.startsWith('en') ? 'en' : 'tr';
-  } catch {
-    return 'tr';
-  }
-}
-
 export function t(key: BrandCopyKey): string {
-  if (getPreferredLocale() === 'en') {
+  if (getCurrentLanguage() === 'en') {
     return brandCopyEn[key] ?? brandCopy[key];
   }
   return brandCopy[key];

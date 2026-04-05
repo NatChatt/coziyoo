@@ -3,13 +3,26 @@ import Constants from 'expo-constants';
 
 export type AppSettings = {
   apiUrl: string;
+  language: 'tr' | 'en';
 };
+
+type SettingsListener = (settings: AppSettings) => void;
 
 export const DEVICE_PROFILE = 'default';
 const STORAGE_KEY = '@coziyoo:settings';
 
+function resolveDefaultLanguage(): 'tr' | 'en' {
+  try {
+    const locale = Intl.DateTimeFormat().resolvedOptions().locale?.toLowerCase?.() ?? 'tr';
+    return locale.startsWith('en') ? 'en' : 'tr';
+  } catch {
+    return 'tr';
+  }
+}
+
 const defaults: AppSettings = {
   apiUrl: (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000').trim().replace(/\/$/, ''),
+  language: resolveDefaultLanguage(),
 };
 
 const RELEASE_FALLBACK_API_URL = "https://api.coziyoo.com";
@@ -79,6 +92,16 @@ function normalizeApiUrlForMode(rawUrl: string): string {
 
 let current: AppSettings = { ...defaults };
 let hydrated = false;
+const listeners = new Set<SettingsListener>();
+
+function normalizeLanguage(rawLanguage: unknown): 'tr' | 'en' {
+  return rawLanguage === 'en' ? 'en' : 'tr';
+}
+
+function emitSettings() {
+  const snapshot = { ...current };
+  listeners.forEach((listener) => listener(snapshot));
+}
 
 export async function loadSettings(): Promise<AppSettings> {
   if (!hydrated) {
@@ -89,17 +112,20 @@ export async function loadSettings(): Promise<AppSettings> {
         const normalized = normalizeApiUrlForMode(parsed.apiUrl || '');
         current = {
           apiUrl: normalized || normalizeApiUrlForMode(defaults.apiUrl),
+          language: normalizeLanguage(parsed.language),
         };
       } else {
         // Ensure first-run defaults are normalized too (critical on physical devices).
         current = {
           apiUrl: normalizeApiUrlForMode(defaults.apiUrl),
+          language: defaults.language,
         };
       }
     } catch {
       // ignore and keep normalized defaults
       current = {
         apiUrl: normalizeApiUrlForMode(defaults.apiUrl),
+        language: defaults.language,
       };
     } finally {
       hydrated = true;
@@ -112,7 +138,18 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
   const normalized = normalizeApiUrlForMode(settings.apiUrl);
   current = {
     apiUrl: normalized || normalizeApiUrlForMode(defaults.apiUrl),
+    language: normalizeLanguage(settings.language),
   };
   hydrated = true;
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+  emitSettings();
+}
+
+export function getCurrentLanguage(): 'tr' | 'en' {
+  return current.language;
+}
+
+export function subscribeSettings(listener: SettingsListener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
 }
