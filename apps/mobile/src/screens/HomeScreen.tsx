@@ -3218,10 +3218,6 @@ export default function HomeScreen({
                           ? [pickupSellerAddress.title, pickupSellerAddress.addressLine].filter(Boolean).join(' · ')
                           : t('helper.home.pickupAddressMissing')}
                   </Text>
-                  <Text style={styles.checkoutAddressLabel}>{t('helper.home.flowNoteLabel')}</Text>
-                  <Text style={styles.checkoutAddressValue}>
-                    {t('helper.home.flowDefaultPickupNote')}
-                  </Text>
                 </View>
               </View>
               {paymentStatus ? (
