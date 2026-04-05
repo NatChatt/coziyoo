@@ -3071,6 +3071,7 @@ export default function HomeScreen({
         return sum + (value * item.quantity) + addonsTotal;
       }, 0);
       const total = subtotal;
+      const hasPendingListState = cartItems.length === 0 && (paymentLoading || !!paymentStatus || !!paymentInfo || !!paymentError);
       return (
         <View style={styles.cartWrap}>
           <View style={styles.cartHeader}>
@@ -3087,9 +3088,46 @@ export default function HomeScreen({
             <Text style={styles.cartHeaderCount}>{cartCount} {t('status.home.foodListCountSuffix')}</Text>
           </View>
           {cartItems.length === 0 ? (
-            <View style={styles.tabPanelCard}>
-              <Text style={styles.tabPanelText}>{t('helper.home.cartEmptyTitle')}</Text>
-            </View>
+            hasPendingListState ? (
+              <View style={styles.tabPanelCard}>
+                <Text style={styles.tabPanelTitle}>{t('headline.home.pendingListTitle')}</Text>
+                <Text style={styles.tabPanelText}>{t('helper.home.pendingListSubtitle')}</Text>
+                {paymentStatus ? (
+                  <View style={styles.paymentStatusCard}>
+                    <Text style={styles.paymentStatusTitle}>{t('status.home.paymentTitle')}</Text>
+                    <Text style={styles.paymentStatusText}>{t('status.home.orderLabel')} {paymentStatus.orderId.slice(0, 8)}...</Text>
+                    <Text style={styles.paymentStatusText}>{t('status.home.orderStatusLabel')} {formatOrderStatusLabel(paymentStatus.orderStatus)}</Text>
+                    <Text style={styles.paymentStatusText}>
+                      {paymentStatus.paymentCompleted ? t('status.home.paymentDone') : formatPaymentAttemptLabel(paymentStatus.latestAttemptStatus)}
+                    </Text>
+                  </View>
+                ) : null}
+                {paymentError ? (
+                  <Text style={styles.paymentErrorText}>{paymentError}</Text>
+                ) : null}
+                {paymentInfo ? (
+                  <Text style={styles.paymentInfoText}>{paymentInfo}</Text>
+                ) : null}
+                <View style={styles.paymentActionsRow}>
+                  <TouchableOpacity
+                    style={[styles.paymentRefreshBtn, paymentLoading && styles.paymentRefreshBtnDisabled]}
+                    onPress={() => void refreshPaymentStatus()}
+                    activeOpacity={0.9}
+                    disabled={paymentLoading}
+                  >
+                    {paymentLoading ? (
+                      <ActivityIndicator size="small" color="#5F5246" />
+                    ) : (
+                      <Text style={styles.paymentRefreshBtnText}>{t('cta.home.paymentRefresh')}</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.tabPanelCard}>
+                <Text style={styles.tabPanelText}>{t('helper.home.cartEmptyTitle')}</Text>
+              </View>
+            )
           ) : (
             <>
               <ScrollView

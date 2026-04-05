@@ -9,6 +9,8 @@ export const brandCopy = {
   'helper.home.stockLinePrefix': 'kaldı',
   'status.home.stockLineSuffix': 'porsiyon',
   'helper.home.cartEmptyTitle': 'Yemek listen şu an boş.',
+  'headline.home.pendingListTitle': 'Listen şefe iletildi',
+  'helper.home.pendingListSubtitle': 'Şu an beklemede. Şef planı onaylayınca sana bildirim gelecektir.',
   'cta.home.cartCheckout': 'Şefe sor',
   'helper.home.cartCheckoutHint': 'Bu buton yemek listeni şefe gönderir. Şef planı netleştirince sana haber veririz.',
   'cta.home.paymentRefresh': 'Durumu yenile',
@@ -295,6 +297,8 @@ type SupportedLocale = 'tr' | 'en';
 const brandCopyEn: Partial<Record<BrandCopyKey, string>> = {
   'helper.home.stockLimitMessage': 'You can add only the remaining portions to your list.',
   'helper.home.cartEmptyTitle': 'Your food list is empty right now.',
+  'headline.home.pendingListTitle': 'Your list has been sent',
+  'helper.home.pendingListSubtitle': 'It is now pending. You will get a notification once the cook confirms the plan.',
   'cta.home.cartCheckout': 'Ask the cook',
   'helper.home.cartCheckoutHint': 'This sends your food list to the cook. We will let you know once the plan is confirmed.',
   'status.home.paymentTitle': 'Table status',
