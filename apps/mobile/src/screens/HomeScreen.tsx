@@ -1302,8 +1302,6 @@ export default function HomeScreen({
     free: [],
     paid: [],
   });
-  const [paidAddonsExpanded, setPaidAddonsExpanded] = useState(false);
-  const skipNextPaidCollapseRef = useRef(false);
   const [mealModalAnimType, setMealModalAnimType] = useState<'slide' | 'none'>('slide');
   const [selectedSeller, setSelectedSeller] = useState<{
     id: string;
@@ -1442,16 +1440,7 @@ export default function HomeScreen({
 
   useEffect(() => {
     setSelectedMealAddons({ free: [], paid: [] });
-    setPaidAddonsExpanded(false);
   }, [selectedMeal?.id]);
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (nextState) => {
-      if (nextState !== 'active') {
-        setPaidAddonsExpanded(false);
-      }
-    });
-    return () => sub.remove();
-  }, []);
   const selectedCheckoutAddress = useMemo(() => {
     if (selectedCheckoutAddressId) {
       return userAddresses.find((item) => item.id === selectedCheckoutAddressId) ?? defaultAddress;
@@ -3706,13 +3695,6 @@ export default function HomeScreen({
               style={styles.modalContent}
               contentContainerStyle={styles.modalScrollContent}
               showsVerticalScrollIndicator={false}
-              onTouchStart={() => {
-                if (skipNextPaidCollapseRef.current) {
-                  skipNextPaidCollapseRef.current = false;
-                  return;
-                }
-                if (paidAddonsExpanded) setPaidAddonsExpanded(false);
-              }}
             >
               <TouchableOpacity
                 style={styles.modalClose}
@@ -3811,66 +3793,46 @@ export default function HomeScreen({
               )}
 
               {selectedMeal.addons.some((addon) => addon.pricing === 'paid' && Number(addon.price ?? 0) > 0) ? (
-                <View
-                  style={styles.modalSection}
-                  onTouchStart={() => {
-                    skipNextPaidCollapseRef.current = true;
-                  }}
-                >
-                  <TouchableOpacity
-                    style={styles.modalDropdownHeader}
-                    activeOpacity={0.85}
-                    onPress={() => setPaidAddonsExpanded((prev) => !prev)}
-                  >
-                    <Text style={styles.modalSectionTitle}>Ücretli Ekler</Text>
-                    <Ionicons
-                      name={paidAddonsExpanded ? 'chevron-up' : 'chevron-down'}
-                      size={18}
-                      color="#5F5246"
-                    />
-                  </TouchableOpacity>
-                  {paidAddonsExpanded ? (
-                    <>
-                      <Text style={styles.modalSectionHint}>Ekstra istersen buradan seçebilirsin.</Text>
-                      <View style={styles.modalPaidAddonsList}>
-                        {selectedMeal.addons
-                          .filter((addon) => addon.pricing === 'paid' && Number(addon.price ?? 0) > 0)
-                          .map((addon, index) => {
-                            const addonPrice = Number(addon.price ?? 0);
-                            const selectedQuantity = selectedMealAddons.paid.find(
-                              (item) => item.name === addon.name && item.kind === addon.kind && item.price === addonPrice,
-                            )?.quantity ?? 0;
-                            return (
-                              <View key={`paid-addon-${addon.name}-${index}`} style={styles.modalPaidAddonRow}>
-                                <View style={styles.modalPaidAddonInfo}>
-                                  <Text style={styles.modalPaidAddonName}>{addon.name}</Text>
-                                  <Text style={styles.modalPaidAddonMeta}>
-                                    +₺{addonPrice.toFixed(2)}
-                                  </Text>
-                                </View>
-                                <View style={styles.modalAddonStepper}>
-                                  <TouchableOpacity
-                                    style={styles.modalAddonStepperButton}
-                                    onPress={() => adjustSelectedPaidAddonQuantity(addon, -1)}
-                                    activeOpacity={0.85}
-                                  >
-                                    <Ionicons name="remove" size={14} color="#5F5246" />
-                                  </TouchableOpacity>
-                                  <Text style={styles.modalAddonStepperQty}>{selectedQuantity}</Text>
-                                  <TouchableOpacity
-                                    style={styles.modalAddonStepperButton}
-                                    onPress={() => adjustSelectedPaidAddonQuantity(addon, 1)}
-                                    activeOpacity={0.85}
-                                  >
-                                    <Ionicons name="add" size={14} color="#5F5246" />
-                                  </TouchableOpacity>
-                                </View>
-                              </View>
-                            );
-                          })}
-                      </View>
-                    </>
-                  ) : null}
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Ücretli Ekler</Text>
+                  <Text style={styles.modalSectionHint}>Ekstra istersen buradan seçebilirsin.</Text>
+                  <View style={styles.modalPaidAddonsList}>
+                    {selectedMeal.addons
+                      .filter((addon) => addon.pricing === 'paid' && Number(addon.price ?? 0) > 0)
+                      .map((addon, index) => {
+                        const addonPrice = Number(addon.price ?? 0);
+                        const selectedQuantity = selectedMealAddons.paid.find(
+                          (item) => item.name === addon.name && item.kind === addon.kind && item.price === addonPrice,
+                        )?.quantity ?? 0;
+                        return (
+                          <View key={`paid-addon-${addon.name}-${index}`} style={styles.modalPaidAddonRow}>
+                            <View style={styles.modalPaidAddonInfo}>
+                              <Text style={styles.modalPaidAddonName}>{addon.name}</Text>
+                              <Text style={styles.modalPaidAddonMeta}>
+                                +₺{addonPrice.toFixed(2)}
+                              </Text>
+                            </View>
+                            <View style={styles.modalAddonStepper}>
+                              <TouchableOpacity
+                                style={styles.modalAddonStepperButton}
+                                onPress={() => adjustSelectedPaidAddonQuantity(addon, -1)}
+                                activeOpacity={0.85}
+                              >
+                                <Ionicons name="remove" size={14} color="#5F5246" />
+                              </TouchableOpacity>
+                              <Text style={styles.modalAddonStepperQty}>{selectedQuantity}</Text>
+                              <TouchableOpacity
+                                style={styles.modalAddonStepperButton}
+                                onPress={() => adjustSelectedPaidAddonQuantity(addon, 1)}
+                                activeOpacity={0.85}
+                              >
+                                <Ionicons name="add" size={14} color="#5F5246" />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        );
+                      })}
+                  </View>
                 </View>
               ) : null}
 
@@ -5819,7 +5781,6 @@ const styles = StyleSheet.create({
   modalDescription: { color: '#6B5D4F', fontSize: 14, lineHeight: 20, textAlign: 'center' as const, marginBottom: 12, marginTop: 4 },
   modalSection: { width: '100%' as unknown as number, marginBottom: 12 },
   modalSectionTitle: { color: '#3D3229', fontSize: 15, fontWeight: '700', marginBottom: 8 },
-  modalDropdownHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   modalSectionHint: { color: '#7A6D61', fontSize: 12.5, marginBottom: 8 },
   modalTagsWrap: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 8 },
   modalPaidAddonsList: { gap: 10 },
