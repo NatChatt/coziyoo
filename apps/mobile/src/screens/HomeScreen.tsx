@@ -3041,17 +3041,22 @@ export default function HomeScreen({
                   <Text style={styles.quickOrderNotePillText}>{t('helper.home.deliveryRequestPending')}</Text>
                 </View>
               ) : null}
-              <Text style={styles.quickOrderItems} numberOfLines={1}>
-                {summarizeHomeOrderItems(order.items)}
-              </Text>
+              <View style={styles.quickOrderItemsRow}>
+                <Text style={styles.quickOrderItems} numberOfLines={1}>
+                  {summarizeHomeOrderItems(order.items)}
+                </Text>
+                {order.totalPrice > 0 ? (
+                  <View style={styles.quickOrderItemsPriceWrap}>
+                    <Ionicons name="home-outline" size={14} color="#8B7D6F" />
+                    <Text style={styles.quickOrderItemsPrice} numberOfLines={1} ellipsizeMode="clip">
+                      {formatPrice(order.totalPrice)}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
 
               <View style={styles.quickOrderFooter}>
                 <View style={styles.quickOrderActions}>
-                  {order.totalPrice > 0 ? (
-                    <Text style={styles.quickOrderActionPrice} numberOfLines={1} ellipsizeMode="clip">
-                      {formatPrice(order.totalPrice)}
-                    </Text>
-                  ) : null}
                   <Text style={styles.quickOrderActionDelivery} numberOfLines={1} ellipsizeMode="tail">
                     {order.deliveryType === 'delivery'
                       ? t('status.orders.deliveryType.delivery')
@@ -5297,7 +5302,16 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   quickOrderNotePillText: { color: '#2F6F4A', fontSize: 12, fontWeight: '700' },
-  quickOrderItems: { color: '#7A6D5D', fontSize: 12, lineHeight: 18, marginTop: 6 },
+  quickOrderItemsRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  quickOrderItems: { color: '#7A6D5D', fontSize: 12, lineHeight: 18, flex: 1, marginTop: 0 },
+  quickOrderItemsPriceWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },
+  quickOrderItemsPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800' },
   quickOrderFooter: {
     marginTop: 12,
     flexDirection: 'row',
@@ -5313,7 +5327,6 @@ const styles = StyleSheet.create({
     gap: 8,
     flexShrink: 1,
   },
-  quickOrderActionPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800', textAlign: 'right' },
   quickOrderActionDelivery: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', maxWidth: 180, textAlign: 'right' },
   quickOrderMainActionsRow: {
     flexDirection: 'row',
