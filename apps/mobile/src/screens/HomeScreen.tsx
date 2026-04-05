@@ -3047,14 +3047,18 @@ export default function HomeScreen({
 
               <View style={styles.quickOrderFooter}>
                 <View style={styles.quickOrderPriceWrap}>
-                  {order.totalPrice > 0 ? (
-                    <Text style={styles.quickOrderPrice}>{formatPrice(order.totalPrice)}</Text>
-                  ) : null}
-                  <Text style={styles.quickOrderDelivery}>
-                    {order.deliveryType === 'delivery'
-                      ? t('status.orders.deliveryType.delivery')
-                      : t('status.orders.deliveryType.pickup')}
-                  </Text>
+                  <View style={styles.quickOrderPriceDeliveryRow}>
+                    {order.totalPrice > 0 ? (
+                      <Text style={styles.quickOrderPrice} numberOfLines={1} ellipsizeMode="clip">
+                        {formatPrice(order.totalPrice)}
+                      </Text>
+                    ) : null}
+                    <Text style={styles.quickOrderDelivery} numberOfLines={1} ellipsizeMode="tail">
+                      {order.deliveryType === 'delivery'
+                        ? t('status.orders.deliveryType.delivery')
+                        : t('status.orders.deliveryType.pickup')}
+                    </Text>
+                  </View>
                 </View>
                 <View style={styles.quickOrderActions}>
                   {canRequestBuyerDelivery(order) ? (
@@ -5293,13 +5297,21 @@ const styles = StyleSheet.create({
     marginTop: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: 10,
   },
-  quickOrderPriceWrap: { flex: 1 },
-  quickOrderPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800' },
-  quickOrderDelivery: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', marginTop: 2 },
-  quickOrderActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' },
+  quickOrderPriceWrap: { flexShrink: 0, minWidth: 92, paddingRight: 6 },
+  quickOrderPriceDeliveryRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap' },
+  quickOrderPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800', flexShrink: 0 },
+  quickOrderDelivery: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', marginLeft: 8, flexShrink: 1 },
+  quickOrderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    flexShrink: 1,
+  },
   quickOrderRefreshBtn: {
     minHeight: 36,
     borderRadius: 10,
