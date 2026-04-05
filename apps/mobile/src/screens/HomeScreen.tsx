@@ -3047,7 +3047,11 @@ export default function HomeScreen({
                 </Text>
                 {order.totalPrice > 0 ? (
                   <View style={styles.quickOrderItemsPriceWrap}>
-                    <Ionicons name="home-outline" size={14} color="#8B7D6F" />
+                    <Text style={styles.quickOrderItemsDelivery} numberOfLines={1} ellipsizeMode="tail">
+                      {order.deliveryType === 'delivery'
+                        ? t('status.orders.deliveryType.delivery')
+                        : t('status.orders.deliveryType.pickup')}
+                    </Text>
                     <Text style={styles.quickOrderItemsPrice} numberOfLines={1} ellipsizeMode="clip">
                       {formatPrice(order.totalPrice)}
                     </Text>
@@ -3057,11 +3061,6 @@ export default function HomeScreen({
 
               <View style={styles.quickOrderFooter}>
                 <View style={styles.quickOrderActions}>
-                  <Text style={styles.quickOrderActionDelivery} numberOfLines={1} ellipsizeMode="tail">
-                    {order.deliveryType === 'delivery'
-                      ? t('status.orders.deliveryType.delivery')
-                      : t('status.orders.deliveryType.pickup')}
-                  </Text>
                   <View style={styles.quickOrderMainActionsRow}>
                     {canRequestBuyerDelivery(order) ? (
                       <TouchableOpacity
@@ -5311,6 +5310,7 @@ const styles = StyleSheet.create({
   },
   quickOrderItems: { color: '#7A6D5D', fontSize: 12, lineHeight: 18, flex: 1, marginTop: 0 },
   quickOrderItemsPriceWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },
+  quickOrderItemsDelivery: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', maxWidth: 72 },
   quickOrderItemsPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800' },
   quickOrderFooter: {
     marginTop: 12,
@@ -5327,7 +5327,6 @@ const styles = StyleSheet.create({
     gap: 8,
     flexShrink: 1,
   },
-  quickOrderActionDelivery: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', maxWidth: 180, textAlign: 'right' },
   quickOrderMainActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
