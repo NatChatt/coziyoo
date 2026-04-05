@@ -3083,14 +3083,17 @@ export default function HomeScreen({
               >
                 <Ionicons name="chevron-back" size={22} color="#4E433A" />
               </TouchableOpacity>
-              <Text style={styles.tabPanelTitle}>{t('headline.home.foodListTitle')}</Text>
+              <Text style={styles.tabPanelTitle}>
+                {hasPendingListState ? t('headline.home.pendingListTitle') : t('headline.home.foodListTitle')}
+              </Text>
             </View>
-            <Text style={styles.cartHeaderCount}>{cartCount} {t('status.home.foodListCountSuffix')}</Text>
+            <Text style={styles.cartHeaderCount}>
+              {hasPendingListState ? '' : `${cartCount} ${t('status.home.foodListCountSuffix')}`}
+            </Text>
           </View>
           {cartItems.length === 0 ? (
             hasPendingListState ? (
               <View style={styles.tabPanelCard}>
-                <Text style={styles.tabPanelTitle}>{t('headline.home.pendingListTitle')}</Text>
                 <Text style={styles.tabPanelText}>{t('helper.home.pendingListSubtitle')}</Text>
                 {paymentStatus ? (
                   <View style={styles.paymentStatusCard}>
