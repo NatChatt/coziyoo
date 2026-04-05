@@ -5248,7 +5248,7 @@ const styles = StyleSheet.create({
   paymentRefreshBtnDisabled: { opacity: 0.55 },
   paymentRefreshBtnText: { color: '#5F5246', fontSize: 13, fontWeight: '700' },
   pendingBackHomeBtn: {
-    marginTop: 10,
+    marginTop: 18,
     height: 42,
     borderRadius: 12,
     backgroundColor: theme.buttonActive,
