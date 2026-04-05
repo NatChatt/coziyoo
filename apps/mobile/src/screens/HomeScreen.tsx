@@ -3254,6 +3254,7 @@ export default function HomeScreen({
                   )}
                 </TouchableOpacity>
               </View>
+              <Text style={styles.paymentActionHint}>{t('helper.home.cartCheckoutHint')}</Text>
             </>
           )}
         </View>
@@ -5192,6 +5193,7 @@ const styles = StyleSheet.create({
   },
   paymentActionBtnDisabled: { opacity: 0.65 },
   paymentActionBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  paymentActionHint: { color: '#6B5D4F', fontSize: 12, lineHeight: 18, marginTop: 8 },
   paymentRefreshBtn: {
     height: 42,
     borderRadius: 12,
