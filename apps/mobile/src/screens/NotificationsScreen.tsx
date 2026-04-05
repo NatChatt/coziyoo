@@ -8,6 +8,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import EmptyState from '../components/EmptyState';
+import { formatCopy, t } from '../copy/brandCopy';
 
 type NotificationItem = {
   id: string;
@@ -61,7 +62,7 @@ export default function NotificationsScreen({ auth, onBack, onOpenOrderDetail, o
       setNotifications(Array.isArray(result.data) ? result.data : []);
     } else {
       if (result.status !== 404) {
-        setError(result.message ?? 'Bildirimler yüklenemedi');
+        setError(result.message ?? t('error.notifications.load'));
       }
     }
     setLoading(false);
@@ -75,14 +76,13 @@ export default function NotificationsScreen({ auth, onBack, onOpenOrderDetail, o
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
     const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return 'Az önce';
-    if (diffMin < 60) return `${diffMin} dk önce`;
+    if (diffMin < 1) return t('status.notifications.justNow');
+    if (diffMin < 60) return formatCopy('status.notifications.minutesAgo', { count: diffMin });
     const diffHour = Math.floor(diffMin / 60);
-    if (diffHour < 24) return `${diffHour} saat önce`;
+    if (diffHour < 24) return formatCopy('status.notifications.hoursAgo', { count: diffHour });
     const diffDay = Math.floor(diffHour / 24);
-    if (diffDay < 7) return `${diffDay} gün önce`;
-    const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-    return `${d.getDate()} ${months[d.getMonth()]}`;
+    if (diffDay < 7) return formatCopy('status.notifications.daysAgo', { count: diffDay });
+    return `${d.getDate()} ${t(`status.notifications.month.${d.getMonth()}` as any)}`;
   }
 
   function extractOrderId(dataJson: unknown): string | null {
@@ -133,17 +133,17 @@ export default function NotificationsScreen({ auth, onBack, onOpenOrderDetail, o
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title="Bildirimler" onBack={onBack} />
+      <ScreenHeader title={t('headline.notifications.title')} onBack={onBack} />
 
       {loading ? (
-        <LoadingState message="Bildirimler yükleniyor..." />
+        <LoadingState message={t('status.notifications.loading')} />
       ) : error ? (
         <ErrorState message={error} onRetry={() => fetchNotifications()} />
       ) : notifications.length === 0 ? (
         <EmptyState
           icon="notifications-outline"
-          title="Bildirim yok"
-          subtitle="Yeni bildirimlerini burada göreceksin."
+          title={t('headline.notifications.emptyTitle')}
+          subtitle={t('helper.notifications.emptySubtitle')}
         />
       ) : (
         <FlatList

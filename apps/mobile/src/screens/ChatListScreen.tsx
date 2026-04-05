@@ -7,6 +7,7 @@ import { apiRequest } from '../utils/api';
 import ScreenHeader from '../components/ScreenHeader';
 import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
+import { t } from '../copy/brandCopy';
 
 type ChatSummary = {
   id: string;
@@ -75,7 +76,7 @@ export default function ChatListScreen({ auth, onBack, onOpenChat, onAuthRefresh
             <Text style={styles.chatTime}>{formatTime(item.lastMessageTime)}</Text>
           </View>
           <Text style={styles.chatPreview} numberOfLines={1}>
-            {item.lastMessage || 'Henüz mesaj yok'}
+            {item.lastMessage || t('helper.chatList.emptyPreview')}
           </Text>
         </View>
         {item.buyerUnreadCount > 0 && (
@@ -90,15 +91,15 @@ export default function ChatListScreen({ auth, onBack, onOpenChat, onAuthRefresh
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title="Mesajlar" onBack={onBack} />
+      <ScreenHeader title={t('headline.chatList.title')} onBack={onBack} />
 
       {loading ? (
-        <LoadingState message="Mesajlar yükleniyor..." />
+        <LoadingState message={t('status.chatList.loading')} />
       ) : chats.length === 0 ? (
         <EmptyState
           icon="chatbubbles-outline"
-          title="Henüz mesajın yok"
-          subtitle="Satıcılarla mesajlaşmaya başladığında burada görünecek."
+          title={t('headline.chatList.emptyTitle')}
+          subtitle={t('helper.chatList.emptySubtitle')}
         />
       ) : (
         <FlatList

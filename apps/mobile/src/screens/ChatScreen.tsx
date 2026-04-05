@@ -9,6 +9,7 @@ import { type AuthSession } from '../utils/auth';
 import { apiRequest } from '../utils/api';
 import ScreenHeader from '../components/ScreenHeader';
 import LoadingState from '../components/LoadingState';
+import { t } from '../copy/brandCopy';
 
 type Message = {
   id: string;
@@ -99,7 +100,7 @@ export default function ChatScreen({ auth, chatId, sellerName, onBack, onAuthRef
       <ScreenHeader title={sellerName} onBack={onBack} />
 
       {loading ? (
-        <LoadingState message="Mesajlar yükleniyor..." />
+        <LoadingState message={t('status.chatList.loading')} />
       ) : (
         <FlatList
           ref={flatListRef}
@@ -118,7 +119,7 @@ export default function ChatScreen({ auth, chatId, sellerName, onBack, onAuthRef
           style={styles.input}
           value={text}
           onChangeText={setText}
-          placeholder="Mesajını yaz..."
+          placeholder={t('helper.chat.inputPlaceholder')}
           placeholderTextColor={theme.textSecondary}
           multiline
           maxLength={1000}

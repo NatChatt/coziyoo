@@ -6,7 +6,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import ActionButton from '../components/ActionButton';
 import StarRating from '../components/StarRating';
 import SectionDivider from '../components/SectionDivider';
-import { t } from '../copy/brandCopy';
+import { formatCopy, t } from '../copy/brandCopy';
 
 export type FoodItem = {
   id: string;
@@ -52,7 +52,10 @@ export default function FoodDetailScreen({ food, onBack, onAddToCart, onOpenSell
 
   function handleAdd() {
     if (food.stock < quantity) {
-      Alert.alert('Stok yetersiz', `Bu üründen en fazla ${food.stock} adet ekleyebilirsin.`);
+      Alert.alert(
+        t('error.foodDetail.stockTitle'),
+        formatCopy('error.foodDetail.stockMessage', { stock: food.stock }),
+      );
       return;
     }
     onAddToCart(food, quantity);
@@ -66,7 +69,7 @@ export default function FoodDetailScreen({ food, onBack, onAddToCart, onOpenSell
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title="Yemek Detayı" onBack={onBack} />
+      <ScreenHeader title={t('headline.foodDetail.title')} onBack={onBack} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Image */}
@@ -112,14 +115,16 @@ export default function FoodDetailScreen({ food, onBack, onAddToCart, onOpenSell
           <View style={styles.stockRow}>
             <Ionicons name="cube-outline" size={14} color={food.stock > 0 ? '#3E845B' : theme.error} />
             <Text style={[styles.stockText, { color: food.stock > 0 ? '#3E845B' : theme.error }]}>
-              {food.stock > 0 ? `${food.stock} adet mevcut` : 'Stok tükendi'}
+              {food.stock > 0
+                ? formatCopy('status.foodDetail.stockAvailable', { stock: food.stock })
+                : t('status.foodDetail.stockEmpty')}
             </Text>
           </View>
         </View>
 
         {/* Seller */}
         <View style={styles.section}>
-          <SectionDivider icon="storefront-outline" label="Satıcı" />
+          <SectionDivider icon="storefront-outline" label={t('headline.foodDetail.seller')} />
           <View style={styles.sellerRow}>
             {food.seller.image ? (
               <Image source={{ uri: food.seller.image }} style={styles.sellerImg} />
@@ -131,7 +136,7 @@ export default function FoodDetailScreen({ food, onBack, onAddToCart, onOpenSell
             <Text style={styles.sellerName}>{sellerIdentity()}</Text>
             {onOpenSellerReviews && (
               <ActionButton
-                label="Yorumlar"
+                label={t('cta.foodDetail.reviews')}
                 onPress={() => onOpenSellerReviews(food.seller.id)}
                 variant="soft"
                 size="sm"

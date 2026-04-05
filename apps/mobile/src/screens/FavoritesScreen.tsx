@@ -7,6 +7,7 @@ import { apiRequest } from '../utils/api';
 import ScreenHeader from '../components/ScreenHeader';
 import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
+import { t } from '../copy/brandCopy';
 
 type FavoriteFood = {
   id: string;
@@ -99,15 +100,15 @@ export default function FavoritesScreen({ auth, onBack, onOpenFood, onAuthRefres
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title="Favorilerim" onBack={onBack} />
+      <ScreenHeader title={t('headline.favorites.title')} onBack={onBack} />
 
       {loading ? (
-        <LoadingState message="Favoriler yükleniyor..." />
+        <LoadingState message={t('status.favorites.loading')} />
       ) : favorites.length === 0 ? (
         <EmptyState
           icon="heart-outline"
-          title="Favori yemeğin yok"
-          subtitle="Beğendiğin yemekleri favorilere ekle, hızlıca ulaş."
+          title={t('headline.favorites.emptyTitle')}
+          subtitle={t('helper.favorites.emptySubtitle')}
         />
       ) : (
         <FlatList

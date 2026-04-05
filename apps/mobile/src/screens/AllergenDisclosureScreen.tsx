@@ -7,6 +7,7 @@ import { apiRequest } from '../utils/api';
 import ScreenHeader from '../components/ScreenHeader';
 import ActionButton from '../components/ActionButton';
 import LoadingState from '../components/LoadingState';
+import { t } from '../copy/brandCopy';
 
 type AllergenRecord = {
   id: string;
@@ -65,10 +66,10 @@ export default function AllergenDisclosureScreen({ auth, orderId, onBack, onAuth
     );
     setSubmitting(false);
     if (result.ok) {
-      Alert.alert('Onaylandı', 'Alerjen bildirimi kaydedildi.');
+      Alert.alert(t('headline.allergenDisclosure.acknowledgedTitle'), t('helper.allergenDisclosure.acknowledgedBody'));
       fetchRecords();
     } else {
-      Alert.alert('Hata', result.message ?? 'İşlem başarısız');
+      Alert.alert(t('headline.common.error'), result.message ?? t('error.allergenDisclosure.submit'));
     }
   }
 
@@ -90,20 +91,20 @@ export default function AllergenDisclosureScreen({ auth, orderId, onBack, onAuth
     );
     setSubmitting(false);
     if (result.ok) {
-      Alert.alert('Kaydedildi', 'Alerjen bildirimini reddettin.');
+      Alert.alert(t('headline.allergenDisclosure.refusedTitle'), t('helper.allergenDisclosure.refusedBody'));
       fetchRecords();
     } else {
-      Alert.alert('Hata', result.message ?? 'İşlem başarısız');
+      Alert.alert(t('headline.common.error'), result.message ?? t('error.allergenDisclosure.submit'));
     }
   }
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title="Alerjen Bildirimi" onBack={onBack} />
+      <ScreenHeader title={t('headline.allergenDisclosure.title')} onBack={onBack} />
 
       {loading ? (
-        <LoadingState message="Yükleniyor..." />
+        <LoadingState message={t('status.allergenDisclosure.loading')} />
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Warning Card */}
@@ -111,17 +112,14 @@ export default function AllergenDisclosureScreen({ auth, orderId, onBack, onAuth
             <View style={styles.warningIcon}>
               <Ionicons name="warning" size={28} color="#D4740B" />
             </View>
-            <Text style={styles.warningTitle}>Alerjen Uyarısı</Text>
-            <Text style={styles.warningText}>
-              Bu siparişi tamamlayabilmek için alerjen bildirimini onaylaman gerekiyor.
-              Eğer herhangi bir alerjenin varsa lütfen satıcıyla iletişime geç.
-            </Text>
+            <Text style={styles.warningTitle}>{t('headline.allergenDisclosure.warningTitle')}</Text>
+            <Text style={styles.warningText}>{t('helper.allergenDisclosure.warningBody')}</Text>
           </View>
 
           {/* Existing Records */}
           {records.length > 0 && (
             <View style={styles.recordsCard}>
-              <Text style={styles.recordsTitle}>Mevcut Kayıtlar</Text>
+              <Text style={styles.recordsTitle}>{t('headline.allergenDisclosure.records')}</Text>
               {records.map((r) => (
                 <View key={r.id} style={styles.recordRow}>
                   <View style={styles.recordDot}>
@@ -133,10 +131,10 @@ export default function AllergenDisclosureScreen({ auth, orderId, onBack, onAuth
                   </View>
                   <View style={styles.recordBody}>
                     <Text style={styles.recordPhase}>
-                      {r.phase === 'pre_order' ? 'Sipariş Öncesi' : 'Teslim Anı'}
+                      {r.phase === 'pre_order' ? t('status.allergenDisclosure.preOrder') : t('status.allergenDisclosure.handover')}
                     </Text>
                     <Text style={styles.recordStatus}>
-                      {r.buyerConfirmation === 'acknowledged' ? 'Onaylandı' : 'Reddedildi'}
+                      {r.buyerConfirmation === 'acknowledged' ? t('status.allergenDisclosure.acknowledged') : t('status.allergenDisclosure.refused')}
                     </Text>
                   </View>
                 </View>
@@ -148,14 +146,14 @@ export default function AllergenDisclosureScreen({ auth, orderId, onBack, onAuth
           {!hasPreOrder && (
             <View style={styles.actions}>
               <ActionButton
-                label="Okudum, Onaylıyorum"
+                label={t('cta.allergenDisclosure.acknowledge')}
                 onPress={handleAcknowledge}
                 loading={submitting}
                 variant="primary"
                 fullWidth
               />
               <ActionButton
-                label="Kabul Etmiyorum"
+                label={t('cta.allergenDisclosure.refuse')}
                 onPress={handleRefuse}
                 loading={submitting}
                 variant="danger"

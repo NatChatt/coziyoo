@@ -7,12 +7,13 @@ import { apiRequest } from '../utils/api';
 import ScreenHeader from '../components/ScreenHeader';
 import TextInputField from '../components/TextInputField';
 import ActionButton from '../components/ActionButton';
+import { t } from '../copy/brandCopy';
 
 const CATEGORIES = [
-  { id: 'urun_kalitesi', label: 'Yemek kalitesi', icon: 'fast-food-outline' as const },
-  { id: 'teslimat_gecikmesi', label: 'Teslimat sorunu', icon: 'car-outline' as const },
-  { id: 'yanlis_urun', label: 'Yanlış sipariş', icon: 'swap-horizontal-outline' as const },
-  { id: 'ucret_iadesi', label: 'Ücret iadesi', icon: 'cash-outline' as const },
+  { id: 'urun_kalitesi', labelKey: 'label.complaint.categoryQuality' as const, icon: 'fast-food-outline' as const },
+  { id: 'teslimat_gecikmesi', labelKey: 'label.complaint.categoryDelivery' as const, icon: 'car-outline' as const },
+  { id: 'yanlis_urun', labelKey: 'label.complaint.categoryWrongOrder' as const, icon: 'swap-horizontal-outline' as const },
+  { id: 'ucret_iadesi', labelKey: 'label.complaint.categoryRefund' as const, icon: 'cash-outline' as const },
 ];
 
 type Props = {
@@ -31,11 +32,11 @@ export default function ComplaintScreen({ auth, orderId, onBack, onCreated, onAu
 
   async function handleSubmit() {
     if (!selectedCategory) {
-      Alert.alert('Kategori seç', 'Lütfen bir şikayet kategorisi seç.');
+      Alert.alert(t('error.complaint.categoryRequiredTitle'), t('error.complaint.categoryRequiredMessage'));
       return;
     }
     if (description.trim().length < 10) {
-      Alert.alert('Açıklama yaz', 'Şikayetini en az 10 karakter ile açıkla.');
+      Alert.alert(t('error.complaint.descriptionRequiredTitle'), t('error.complaint.descriptionRequiredMessage'));
       return;
     }
     setSubmitting(true);
@@ -58,7 +59,7 @@ export default function ComplaintScreen({ auth, orderId, onBack, onCreated, onAu
       onCreated?.({ id: result.data.id, ticketNo: result.data.ticketNo ?? 0 });
       setSubmitted(true);
     } else {
-      Alert.alert('Hata', result.message ?? 'Şikayet gönderilemedi');
+      Alert.alert(t('headline.common.error'), result.message ?? t('error.complaint.submit'));
     }
   }
 
@@ -66,14 +67,14 @@ export default function ComplaintScreen({ auth, orderId, onBack, onCreated, onAu
     return (
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-        <ScreenHeader title="Şikayet" onBack={onBack} />
+        <ScreenHeader title={t('headline.complaint.title')} onBack={onBack} />
         <View style={styles.successCenter}>
           <View style={styles.successIcon}>
             <Ionicons name="checkmark-circle" size={56} color="#3E845B" />
           </View>
-          <Text style={styles.successTitle}>Ticketın Açıldı</Text>
-          <Text style={styles.successSub}>Destek ekibi en kısa sürede dönüş yapacak.</Text>
-          <ActionButton label="Geri Dön" onPress={onBack} variant="primary" />
+          <Text style={styles.successTitle}>{t('headline.complaint.submittedTitle')}</Text>
+          <Text style={styles.successSub}>{t('helper.complaint.submittedSubtitle')}</Text>
+          <ActionButton label={t('cta.common.goBack')} onPress={onBack} variant="primary" />
         </View>
       </View>
     );
@@ -86,7 +87,7 @@ export default function ComplaintScreen({ auth, orderId, onBack, onCreated, onAu
       keyboardVerticalOffset={0}
     >
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title="Şikayet Oluştur" onBack={onBack} />
+      <ScreenHeader title={t('headline.complaint.createTitle')} onBack={onBack} />
 
       <ScrollView
         style={styles.contentScroll}
@@ -95,7 +96,7 @@ export default function ComplaintScreen({ auth, orderId, onBack, onCreated, onAu
         keyboardShouldPersistTaps="handled"
       >
         {/* Category Selection */}
-        <Text style={styles.sectionTitle}>Şikayet Kategorisi</Text>
+        <Text style={styles.sectionTitle}>{t('headline.complaint.categoryTitle')}</Text>
         <View style={styles.categoryGrid}>
           {CATEGORIES.map((cat) => {
             const selected = selectedCategory === cat.id;
@@ -110,7 +111,7 @@ export default function ComplaintScreen({ auth, orderId, onBack, onCreated, onAu
                   <Ionicons name={cat.icon} size={22} color={selected ? '#FFFFFF' : '#71685F'} />
                 </View>
                 <Text style={[styles.categoryLabel, selected && styles.categoryLabelSelected]}>
-                  {cat.label}
+                  {t(cat.labelKey)}
                 </Text>
               </TouchableOpacity>
             );
@@ -120,10 +121,10 @@ export default function ComplaintScreen({ auth, orderId, onBack, onCreated, onAu
         {/* Description */}
         <View style={styles.descCard}>
           <TextInputField
-            label="Açıklama"
+            label={t('helper.complaint.descriptionLabel')}
             value={description}
             onChangeText={setDescription}
-            placeholder="Yaşadığın sorunu detaylıca anlat..."
+            placeholder={t('helper.complaint.descriptionPlaceholder')}
             multiline
             numberOfLines={5}
             maxLength={2000}
@@ -134,7 +135,7 @@ export default function ComplaintScreen({ auth, orderId, onBack, onCreated, onAu
 
       <View style={styles.footer}>
         <ActionButton
-          label="Şikayeti Gönder"
+          label={t('cta.complaint.submit')}
           onPress={handleSubmit}
           loading={submitting}
           disabled={!selectedCategory || description.trim().length < 10}

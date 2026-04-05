@@ -43,7 +43,8 @@ import SellerComplianceScreen from './src/screens/SellerComplianceScreen';
 import SellerFinanceScreen from './src/screens/SellerFinanceScreen';
 import SellerReviewsScreen from './src/screens/SellerReviewsScreen';
 import { loadAuthSession, clearAuthSession, refreshAuthSession, saveAuthSession, type AuthSession } from './src/utils/auth';
-import { loadSettings } from './src/utils/settings';
+import { loadSettings, subscribeSettings } from './src/utils/settings';
+import { t } from './src/copy/brandCopy';
 import { theme } from './src/theme/colors';
 
 type NotificationSubscription = { remove: () => void };
@@ -237,6 +238,7 @@ export default function App() {
   const [isNewRegistration, setIsNewRegistration] = useState(false);
   const responseListener = useRef<NotificationSubscription | null>(null);
   const pushTokenRef = useRef<string | null>(null);
+  const [, setLanguageVersion] = useState(0);
 
   useEffect(() => {
     loadAuthSession().then((stored) => {
@@ -247,6 +249,15 @@ export default function App() {
       } else {
         setScreen('onboarding');
       }
+    });
+  }, []);
+
+  useEffect(() => {
+    void loadSettings().then(() => {
+      setLanguageVersion((value) => value + 1);
+    });
+    return subscribeSettings(() => {
+      setLanguageVersion((value) => value + 1);
     });
   }, []);
 
@@ -315,7 +326,7 @@ export default function App() {
     try {
       const session = auth;
       if (!session) {
-        Alert.alert('Oturum', 'Önce giriş yapmalısın.');
+        Alert.alert(t('headline.common.session'), t('error.home.sessionExpired'));
         return;
       }
 
@@ -338,7 +349,7 @@ export default function App() {
       if (response.status === 401) {
         const refreshed = await refreshAuthSession(apiUrl, currentSession);
         if (!refreshed) {
-          Alert.alert('Oturum', 'Oturumun yenilenemedi. Lütfen tekrar giriş yap.');
+          Alert.alert(t('headline.common.session'), t('error.home.sessionExpired'));
           return;
         }
         currentSession = refreshed;
@@ -354,7 +365,7 @@ export default function App() {
 
       const payload = await response.json().catch(() => ({} as { error?: { message?: string }; data?: { user?: { userType?: string }; tokens?: { accessToken?: string } } }));
       if (!response.ok) {
-        Alert.alert('Hata', payload?.error?.message ?? 'Satıcı modu açılamadı.');
+        Alert.alert(t('headline.common.error'), payload?.error?.message ?? t('error.home.requestFailed'));
         return;
       }
 
@@ -370,7 +381,7 @@ export default function App() {
       setActorMode('seller');
       setScreen('home');
     } catch (error) {
-      Alert.alert('Hata', error instanceof Error ? error.message : 'Satıcı modu açılamadı.');
+      Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.home.requestFailed'));
     }
   }
 
@@ -482,9 +493,9 @@ export default function App() {
     return (
       <OrdersScreen
         auth={auth}
-        title="Şikayet Oluştur"
-        emptyTitle="Şikayet için sipariş bulunamadı"
-        emptySubtitle="Siparişlerin tamamlandığında buradan şikayet oluşturabilirsin."
+        title={t('headline.orders.complaintTitle')}
+        emptyTitle={t('headline.orders.complaintEmptyTitle')}
+        emptySubtitle={t('helper.orders.complaintEmptySubtitle')}
         onBack={() => setScreen('settings')}
         onOpenOrderDetail={(id) => {
           setSelectedOrderId(id);

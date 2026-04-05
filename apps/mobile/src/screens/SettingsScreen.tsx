@@ -113,7 +113,7 @@ export default function SettingsScreen({ auth, onBack, onOpenComplaintOrders, on
       }
       Alert.alert(t('status.security.passwordTitle'), t('status.profileEdit.resetCodeSent'));
     } catch (e) {
-      Alert.alert('Hata', e instanceof Error ? e.message : t('error.profileEdit.save'));
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.profileEdit.save'));
     } finally {
       setPasswordLoading(false);
     }

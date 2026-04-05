@@ -8,6 +8,7 @@ import StarRating from '../components/StarRating';
 import TextInputField from '../components/TextInputField';
 import ActionButton from '../components/ActionButton';
 import { Ionicons } from '@expo/vector-icons';
+import { t } from '../copy/brandCopy';
 
 type Props = {
   auth: AuthSession;
@@ -24,7 +25,7 @@ export default function ReviewScreen({ auth, orderId, onBack, onAuthRefresh }: P
 
   async function handleSubmit() {
     if (rating === 0) {
-      Alert.alert('Puan ver', 'Lütfen yıldız seçerek bir puan ver.');
+      Alert.alert(t('error.review.ratingRequiredTitle'), t('error.review.ratingRequiredMessage'));
       return;
     }
     setSubmitting(true);
@@ -42,7 +43,7 @@ export default function ReviewScreen({ auth, orderId, onBack, onAuthRefresh }: P
     if (result.ok) {
       setSubmitted(true);
     } else {
-      Alert.alert('Hata', result.message ?? 'Yorum gönderilemedi');
+      Alert.alert(t('headline.common.error'), result.message ?? t('error.review.submit'));
     }
   }
 
@@ -50,14 +51,14 @@ export default function ReviewScreen({ auth, orderId, onBack, onAuthRefresh }: P
     return (
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-        <ScreenHeader title="Yorum" onBack={onBack} />
+        <ScreenHeader title={t('headline.review.title')} onBack={onBack} />
         <View style={styles.successCenter}>
           <View style={styles.successIcon}>
             <Ionicons name="checkmark-circle" size={56} color="#3E845B" />
           </View>
-          <Text style={styles.successTitle}>Yorumun Gönderildi</Text>
-          <Text style={styles.successSub}>Değerlendirmen için teşekkürler!</Text>
-          <ActionButton label="Geri Dön" onPress={onBack} variant="primary" />
+          <Text style={styles.successTitle}>{t('headline.review.submittedTitle')}</Text>
+          <Text style={styles.successSub}>{t('helper.review.submittedSubtitle')}</Text>
+          <ActionButton label={t('cta.common.goBack')} onPress={onBack} variant="primary" />
         </View>
       </View>
     );
@@ -66,25 +67,33 @@ export default function ReviewScreen({ auth, orderId, onBack, onAuthRefresh }: P
   return (
     <KeyboardAvoidingView style={styles.container} behavior="padding" keyboardVerticalOffset={0}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title="Yorum Yap" onBack={onBack} />
+      <ScreenHeader title={t('headline.review.createTitle')} onBack={onBack} />
 
       <View style={styles.content}>
         {/* Rating */}
         <View style={styles.ratingCard}>
-          <Text style={styles.ratingLabel}>Bu siparişi nasıl buldun?</Text>
+          <Text style={styles.ratingLabel}>{t('helper.review.ratingLabel')}</Text>
           <StarRating rating={rating} onChange={setRating} size={40} />
           <Text style={styles.ratingHint}>
-            {rating === 0 ? 'Yıldıza dokun' : rating <= 2 ? 'Kötü' : rating <= 3 ? 'Orta' : rating <= 4 ? 'İyi' : 'Harika!'}
+            {rating === 0
+              ? t('helper.review.ratingHintEmpty')
+              : rating <= 2
+                ? t('helper.review.ratingHintBad')
+                : rating <= 3
+                  ? t('helper.review.ratingHintOkay')
+                  : rating <= 4
+                    ? t('helper.review.ratingHintGood')
+                    : t('helper.review.ratingHintGreat')}
           </Text>
         </View>
 
         {/* Comment */}
         <View style={styles.commentCard}>
           <TextInputField
-            label="Yorumun"
+            label={t('helper.review.commentLabel')}
             value={comment}
             onChangeText={setComment}
-            placeholder="Deneyimini paylaş..."
+            placeholder={t('helper.review.commentPlaceholder')}
             multiline
             numberOfLines={4}
             maxLength={1000}
@@ -94,7 +103,7 @@ export default function ReviewScreen({ auth, orderId, onBack, onAuthRefresh }: P
 
       <View style={styles.footer}>
         <ActionButton
-          label="Gönder"
+          label={t('cta.review.submit')}
           onPress={handleSubmit}
           loading={submitting}
           disabled={rating === 0}

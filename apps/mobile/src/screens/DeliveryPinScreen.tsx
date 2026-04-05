@@ -7,6 +7,7 @@ import { apiRequest } from '../utils/api';
 import ScreenHeader from '../components/ScreenHeader';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
+import { formatCopy, t } from '../copy/brandCopy';
 
 type ProofRecord = {
   orderId: string;
@@ -51,7 +52,7 @@ export default function DeliveryPinScreen({ auth, orderId, onBack, onVerified, o
       setRecord(null);
       if (!silent) setError(null);
     } else if (!silent) {
-      setError(result.message ?? 'Yüklenemedi');
+      setError(result.message ?? t('status.deliveryPin.loading'));
     }
     if (!silent) setLoading(false);
   }, [orderId, auth, onAuthRefresh]);
@@ -74,26 +75,26 @@ export default function DeliveryPinScreen({ auth, orderId, onBack, onVerified, o
   }, [record?.status, onVerified]);
 
   const statusConfig = {
-    pending: { icon: 'time-outline' as const, color: '#D4740B', bg: '#FFF4E5', label: 'PIN Bekleniyor', sub: 'Satıcı sana bir PIN gönderdi. Teslimat anında satıcıya bu PIN\'i göster.' },
-    verified: { icon: 'checkmark-circle' as const, color: '#3E845B', bg: '#E4F2E7', label: 'PIN Doğrulandı', sub: 'Teslimat başarıyla doğrulandı.' },
-    failed: { icon: 'close-circle' as const, color: '#C0392B', bg: '#FDECEC', label: 'PIN Doğrulanamadı', sub: 'Çok fazla yanlış deneme yapıldı.' },
-    expired: { icon: 'timer-outline' as const, color: '#C0392B', bg: '#FDECEC', label: 'PIN Süresi Doldu', sub: 'PIN süresi doldu. Satıcıdan yeni PIN istemelisin.' },
+    pending: { icon: 'time-outline' as const, color: '#D4740B', bg: '#FFF4E5', label: t('headline.deliveryPin.pending'), sub: t('helper.deliveryPin.pending') },
+    verified: { icon: 'checkmark-circle' as const, color: '#3E845B', bg: '#E4F2E7', label: t('headline.deliveryPin.verified'), sub: t('helper.deliveryPin.verified') },
+    failed: { icon: 'close-circle' as const, color: '#C0392B', bg: '#FDECEC', label: t('headline.deliveryPin.failed'), sub: t('helper.deliveryPin.failed') },
+    expired: { icon: 'timer-outline' as const, color: '#C0392B', bg: '#FDECEC', label: t('headline.deliveryPin.expired'), sub: t('helper.deliveryPin.expired') },
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title="Teslimat PIN" onBack={onBack} />
+      <ScreenHeader title={t('headline.deliveryPin.title')} onBack={onBack} />
 
       {loading ? (
-        <LoadingState message="Yükleniyor..." />
+        <LoadingState message={t('status.deliveryPin.loading')} />
       ) : error ? (
         <ErrorState message={error} onRetry={fetchProof} />
       ) : !record ? (
         <View style={styles.center}>
           <Ionicons name="lock-open-outline" size={48} color={theme.textSecondary} />
-          <Text style={styles.emptyTitle}>PIN henüz gönderilmedi</Text>
-          <Text style={styles.emptySub}>Satıcı teslimat PIN\'ini gönderdikten sonra burada görünecek.</Text>
+          <Text style={styles.emptyTitle}>{t('headline.deliveryPin.emptyTitle')}</Text>
+          <Text style={styles.emptySub}>{t('helper.deliveryPin.emptySubtitle')}</Text>
         </View>
       ) : (
         <View style={styles.center}>
@@ -109,11 +110,13 @@ export default function DeliveryPinScreen({ auth, orderId, onBack, onVerified, o
 
           {record.status === 'pending' && (
             <View style={styles.pinInfo}>
-              <Text style={styles.pinLabel}>Teslimat Kodun</Text>
+              <Text style={styles.pinLabel}>{t('helper.deliveryPin.codeLabel')}</Text>
               <Text style={styles.pinCode}>{record.pin ?? '-'}</Text>
-              <Text style={styles.pinHint}>Bu kodu satıcıyla paylaş.</Text>
+              <Text style={styles.pinHint}>{t('helper.deliveryPin.codeHint')}</Text>
               <Text style={styles.pinAttempts}>
-                Deneme hakkı: {5 - record.verificationAttempts} / 5
+                {formatCopy('helper.deliveryPin.attemptsRemaining', {
+                  remaining: Math.max(0, 5 - record.verificationAttempts),
+                })}
               </Text>
             </View>
           )}

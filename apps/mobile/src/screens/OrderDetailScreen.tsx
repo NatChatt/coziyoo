@@ -15,6 +15,7 @@ import BottomSheet from '../components/BottomSheet';
 import TextInputField from '../components/TextInputField';
 import { formatPrice, formatDate, orderNo } from '../components/OrderCard';
 import { subscribeOrderRealtime } from '../utils/realtime';
+import { t } from '../copy/brandCopy';
 
 type OrderDetail = {
   id: string;
@@ -370,7 +371,7 @@ export default function OrderDetailScreen({
       setCancelReason('');
       void fetchOrder({ silent: true });
     } else {
-      Alert.alert('Hata', result.message ?? 'İptal edilemedi');
+      Alert.alert(t('headline.common.error'), result.message ?? t('error.orderDetail.cancel'));
     }
   }
 
@@ -410,7 +411,7 @@ export default function OrderDetailScreen({
       });
       void fetchOrder({ silent: true });
     } else {
-      Alert.alert('Hata', result.message ?? 'Tamamlanamadı');
+      Alert.alert(t('headline.common.error'), result.message ?? t('error.orderDetail.complete'));
     }
   }
 
@@ -428,7 +429,7 @@ export default function OrderDetailScreen({
       void fetchOrder({ silent: true });
       return;
     }
-    Alert.alert('Hata', result.message ?? 'Durum güncellenemedi');
+    Alert.alert(t('headline.common.error'), result.message ?? t('error.orderDetail.statusUpdate'));
   }
 
   function formatEventDate(iso: string): string {
@@ -445,8 +446,8 @@ export default function OrderDetailScreen({
     return (
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-        <ScreenHeader title="Sipariş Detayı" onBack={onBack} />
-        <LoadingState message="Yükleniyor..." />
+        <ScreenHeader title={t('headline.orderDetail.title')} onBack={onBack} />
+        <LoadingState message={t('status.orderDetail.loading')} />
       </View>
     );
   }
@@ -455,8 +456,8 @@ export default function OrderDetailScreen({
     return (
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-        <ScreenHeader title="Sipariş Detayı" onBack={onBack} />
-        <ErrorState message={error ?? 'Sipariş bulunamadı'} onRetry={fetchOrder} />
+        <ScreenHeader title={t('headline.orderDetail.title')} onBack={onBack} />
+        <ErrorState message={error ?? t('error.orderDetail.notFound')} onRetry={fetchOrder} />
       </View>
     );
   }
@@ -505,7 +506,7 @@ export default function OrderDetailScreen({
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title="Sipariş Detayı" onBack={onBack} />
+      <ScreenHeader title={t('headline.orderDetail.title')} onBack={onBack} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Status + Order No */}
@@ -590,12 +591,12 @@ export default function OrderDetailScreen({
               onPress={() => {
                 if (!addressText) return;
                 openAddressInMapsWithCoordinates(addressText, deliveryMapCoordinates).catch((error) => {
-                  Alert.alert('Hata', error instanceof Error ? error.message : 'Harita açılamadı');
+                  Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.common.mapOpenFailed'));
                 });
               }}
             >
               <Text style={[styles.sectionValue, addressText && styles.sectionValueLink]}>
-                {addressText || 'Adres bilgisi yok'}
+                {addressText || t('helper.orderDetail.addressMissing')}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -605,12 +606,12 @@ export default function OrderDetailScreen({
               onPress={() => {
                 if (!pickupMapAddressText) return;
                 openAddressInMapsWithCoordinates(pickupMapAddressText, pickupMapCoordinates).catch((error) => {
-                  Alert.alert('Hata', error instanceof Error ? error.message : 'Harita açılamadı');
+                  Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.common.mapOpenFailed'));
                 });
               }}
             >
               <Text style={[styles.sectionValue, pickupMapAddressText && styles.sectionValueLink]}>
-                {pickupSellerAddressText || 'Satıcıdan teslim alınacak'}
+                {pickupSellerAddressText || t('helper.orderDetail.pickupFallback')}
               </Text>
             </TouchableOpacity>
           )}

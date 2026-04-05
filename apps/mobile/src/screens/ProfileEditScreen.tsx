@@ -179,13 +179,13 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
 
   async function handleSave() {
     if (!displayName.trim() || displayName.trim().length < 3) {
-      Alert.alert('Hata', t('error.profileEdit.displayNameMin'));
+      Alert.alert(t('headline.common.error'), t('error.profileEdit.displayNameMin'));
       return;
     }
     if (isNewRegistration) {
-      if (!fullName.trim()) { Alert.alert('Hata', 'Ad soyad zorunludur'); return; }
-      if (!phone.trim()) { Alert.alert('Hata', 'Telefon numarası zorunludur'); return; }
-      if (!dob.trim()) { Alert.alert('Hata', 'Doğum tarihi zorunludur'); return; }
+      if (!fullName.trim()) { Alert.alert(t('headline.common.error'), t('error.profileEdit.fullNameRequired')); return; }
+      if (!phone.trim()) { Alert.alert(t('headline.common.error'), t('error.profileEdit.phoneRequired')); return; }
+      if (!dob.trim()) { Alert.alert(t('headline.common.error'), t('error.profileEdit.dobRequired')); return; }
     }
 
     setSaving(true);
@@ -201,7 +201,7 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
       if (dob.trim()) {
         const apiDob = toApiDob(dob.trim());
         if (!apiDob) {
-          Alert.alert('Hata', 'Doğum tarihi formatı GG-AA-YYYY olmalı');
+          Alert.alert(t('headline.common.error'), t('error.profileEdit.dobFormat'));
           setSaving(false);
           return;
         }
@@ -285,7 +285,7 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
           </TouchableOpacity>
         )}
         <Text style={styles.headerTitle}>
-          {isNewRegistration ? 'Profilini Tamamla' : t('headline.profileEdit.title')}
+          {isNewRegistration ? t('headline.profileEdit.completeTitle') : t('headline.profileEdit.title')}
         </Text>
         <View style={{ width: 40 }} />
       </View>

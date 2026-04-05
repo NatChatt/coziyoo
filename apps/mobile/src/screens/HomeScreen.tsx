@@ -1726,7 +1726,7 @@ export default function HomeScreen({
         else delete next[foodId];
         return next;
       });
-      Alert.alert('İşlem başarısız', 'Favori güncellenemedi. Tekrar dene.');
+      Alert.alert(t('headline.common.error'), t('error.home.favoriteUpdateFailed'));
     }
 
     setFavoritePendingIds((prev) => {
@@ -1899,7 +1899,7 @@ export default function HomeScreen({
       await saveCachedProfileImageUrl(uri);
 
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) {
-        Alert.alert('Hata', t('error.profileEdit.imageType'));
+        Alert.alert(t('headline.common.error'), t('error.profileEdit.imageType'));
         return;
       }
 
@@ -1929,7 +1929,7 @@ export default function HomeScreen({
       setProfileImageUrl(uploadedImageUrl);
       await saveCachedProfileImageUrl(uploadedImageUrl);
     } catch (e) {
-      Alert.alert('Hata', e instanceof Error ? e.message : t('error.profileEdit.imageUpload'));
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.profileEdit.imageUpload'));
     } finally {
       setProfileImageUploading(false);
     }
