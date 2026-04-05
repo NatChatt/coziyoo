@@ -82,6 +82,8 @@ import { loadCachedProfileImageUrl, saveCachedProfileImageUrl } from '../utils/p
 import { apiRequest } from '../utils/api';
 import { readJsonSafe } from '../utils/http';
 import { theme } from '../theme/colors';
+import StatusBadge from '../components/StatusBadge';
+import { formatPrice } from '../components/OrderCard';
 import VoiceSessionScreen from './VoiceSessionScreen';
 import ProfileEditScreen from './ProfileEditScreen';
 import AddressScreen from './AddressScreen';
@@ -394,6 +396,39 @@ type PaymentStatusSnapshot = {
   latestAttemptStatus?: string;
 };
 
+type HomeOrdersApiItem = {
+  id: string;
+  status: string;
+  deliveryType: 'pickup' | 'delivery';
+  totalPrice: number;
+  createdAt: string;
+  updatedAt?: string;
+  sellerName?: string | null;
+  orderNo?: string | null;
+  items?: { name: string; quantity: number }[];
+};
+
+type HomeOrderSummary = {
+  id: string;
+  orderNo?: string | null;
+  status: string;
+  sellerName: string;
+  items: { name: string; quantity: number }[];
+  totalPrice: number;
+  createdAt: string;
+  updatedAt?: string;
+  deliveryType: 'pickup' | 'delivery';
+};
+
+const HOME_ACTIONABLE_ORDER_STATUSES = new Set([
+  'pending_seller_approval',
+  'seller_approved',
+  'awaiting_payment',
+  'paid',
+  'preparing',
+  'ready',
+]);
+
 function formatOrderStatusLabel(status: string): string {
   const normalized = status.trim().toLowerCase();
   if (!normalized) return '-';
@@ -424,6 +459,49 @@ function formatPaymentAttemptLabel(status?: string): string {
   if (normalized === 'canceled') return t('status.home.paymentAttempt.canceled');
   if (normalized === 'requires_action') return t('status.home.paymentAttempt.requires_action');
   return status ?? t('status.home.paymentWaiting');
+}
+
+function isHomeActionableOrderStatus(status?: string | null): boolean {
+  const normalized = String(status ?? '').trim().toLowerCase();
+  return HOME_ACTIONABLE_ORDER_STATUSES.has(normalized);
+}
+
+function formatHomeOrderNo(orderId: string, orderNo?: string | null): string {
+  const raw = String(orderNo ?? '').trim();
+  return raw ? raw : `#${orderId.slice(0, 8).toUpperCase()}`;
+}
+
+function formatHomeOrderDate(value?: string): string {
+  if (!value) return '-';
+  const normalized = value.trim().replace(' ', 'T').replace(/(\.\d+)?([+-]\d{2})$/, '$1$2:00');
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  const day = parsed.getDate().toString().padStart(2, '0');
+  const month = (parsed.getMonth() + 1).toString().padStart(2, '0');
+  return `${day}.${month}`;
+}
+
+function homeOrderTime(order: Pick<HomeOrderSummary, 'createdAt' | 'updatedAt'>): number {
+  const primary = order.updatedAt || order.createdAt;
+  const normalized = String(primary ?? '').trim().replace(' ', 'T').replace(/(\.\d+)?([+-]\d{2})$/, '$1$2:00');
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+}
+
+function summarizeHomeOrderItems(items: HomeOrderSummary['items']): string {
+  const summary = items
+    .slice(0, 2)
+    .map((item) => `${item.quantity}x ${item.name}`)
+    .join(' · ');
+  return summary || t('helper.orders.itemsFallback');
+}
+
+function latestHomeOrderHint(status: string): string {
+  const normalized = status.trim().toLowerCase();
+  if (normalized === 'pending_seller_approval' || normalized === 'seller_approved' || normalized === 'awaiting_payment' || normalized === 'paid') {
+    return t('helper.orders.quickPendingSubtitle');
+  }
+  return t('helper.orders.quickPreparingSubtitle');
 }
 
 function parseDistanceKm(distanceText: string): number | null {
@@ -1323,6 +1401,7 @@ export default function HomeScreen({
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatusSnapshot | null>(null);
+  const [recentBuyerOrders, setRecentBuyerOrders] = useState<HomeOrderSummary[]>([]);
   const cartPaymentAnimationVisible = false;
   const setCartPaymentAnimationDone = (_value: boolean) => {};
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -1482,6 +1561,40 @@ export default function HomeScreen({
     () => (recommendedMeals.length > 0 ? recommendedMeals : fallbackRecommendedMeals),
     [recommendedMeals, fallbackRecommendedMeals],
   );
+  const latestActionableOrder = useMemo<HomeOrderSummary | null>(() => {
+    const sortedOrders = [...recentBuyerOrders].sort((a, b) => homeOrderTime(b) - homeOrderTime(a));
+    const recentActionable = sortedOrders.find((order) => isHomeActionableOrderStatus(order.status)) ?? null;
+
+    if (recentActionable && paymentStatus?.orderId === recentActionable.id && isHomeActionableOrderStatus(paymentStatus.orderStatus)) {
+      return { ...recentActionable, status: paymentStatus.orderStatus };
+    }
+
+    if (recentActionable) return recentActionable;
+
+    const fallbackOrderId = paymentStatus?.orderId || activeOrderIds[0] || activeOrderId;
+    if (!fallbackOrderId) return null;
+
+    const fallbackStatus = paymentStatus?.orderStatus || 'pending_seller_approval';
+    if (!isHomeActionableOrderStatus(fallbackStatus)) return null;
+
+    return {
+      id: fallbackOrderId,
+      orderNo: null,
+      status: fallbackStatus,
+      sellerName: t('status.orders.sellerFallback'),
+      items: [],
+      totalPrice: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      deliveryType: 'pickup',
+    };
+  }, [activeOrderId, activeOrderIds, paymentStatus, recentBuyerOrders]);
+  const showHomeOrderPromo = Boolean(latestActionableOrder);
+  const showCartQuickOrderCard = cartItems.length === 0 && Boolean(latestActionableOrder);
+  const shouldShowQuickOrderRefresh = Boolean(
+    latestActionableOrder &&
+    (paymentLoading || paymentStatus?.orderId === latestActionableOrder.id || activeOrderId === latestActionableOrder.id || activeOrderIds.includes(latestActionableOrder.id)),
+  );
 
   // FAB animations
   const breatheScale = useRef(new Animated.Value(1)).current;
@@ -1499,9 +1612,48 @@ export default function HomeScreen({
     onAuthRefresh?.(session);
   }, [onAuthRefresh]);
 
+  const fetchRecentBuyerOrders = useCallback(async () => {
+    let result = await apiRequest<HomeOrdersApiItem[]>(
+      '/v1/orders?pageSize=100&sortDir=desc&role=buyer',
+      currentAuth,
+      { actorRole: 'buyer' },
+      handleAuthRefresh,
+    );
+
+    if (!result.ok) {
+      result = await apiRequest<HomeOrdersApiItem[]>(
+        '/v1/orders?page=1&pageSize=100&sortDir=desc&role=buyer',
+        currentAuth,
+        { actorRole: 'buyer' },
+        handleAuthRefresh,
+      );
+    }
+
+    if (!result.ok) return;
+
+    const mapped: HomeOrderSummary[] = (Array.isArray(result.data) ? result.data : []).map((order) => ({
+      id: order.id,
+      orderNo: order.orderNo,
+      status: order.status,
+      sellerName: (order.sellerName ?? t('status.orders.sellerFallback')).trim() || t('status.orders.sellerFallback'),
+      items: Array.isArray(order.items) ? order.items.map((item) => ({ name: item.name, quantity: item.quantity })) : [],
+      totalPrice: Number(order.totalPrice ?? 0),
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      deliveryType: order.deliveryType === 'delivery' ? 'delivery' : 'pickup',
+    }));
+
+    setRecentBuyerOrders(mapped);
+  }, [currentAuth, handleAuthRefresh]);
+
   useEffect(() => {
     loadSettings().then((s) => setApiUrl(s.apiUrl));
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'home' && activeTab !== 'cart') return;
+    void fetchRecentBuyerOrders();
+  }, [activeTab, fetchRecentBuyerOrders]);
 
   useEffect(() => {
     loadCachedProfileImageUrl().then((cached) => {
@@ -2460,6 +2612,7 @@ export default function HomeScreen({
       setPaymentError(err instanceof Error ? err.message : t('error.home.paymentStatusFailed'));
     } finally {
       setPaymentLoading(false);
+      void fetchRecentBuyerOrders();
     }
   }
 
@@ -2733,6 +2886,114 @@ export default function HomeScreen({
 
   /* ---------- Render helpers ---------- */
 
+  function renderPromoFallbackCard(context: 'home' | 'cart') {
+    const content = (
+      <>
+        <View style={styles.nearbyHeaderLeft}>
+          <View style={styles.nearbyHeaderIconBox}>
+            <Ionicons name="heart" size={22} color="#FFFFFF" />
+          </View>
+          <View style={styles.nearbyHeaderTextWrap}>
+            <Text style={styles.nearbyHeaderTitle}>{t('headline.home.slogan')}</Text>
+            <Text style={styles.nearbyHeaderSubtitle}>{t('helper.home.sloganSubline')}</Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={22} color="#8B6A52" />
+      </>
+    );
+
+    if (context === 'home') {
+      return (
+        <TouchableOpacity style={styles.nearbyHeader} activeOpacity={0.88} onPress={onOpenOrders}>
+          {content}
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <View style={styles.tabPanelCard}>
+        <TouchableOpacity style={styles.nearbyHeaderCompact} activeOpacity={0.88} onPress={onOpenOrders}>
+          {content}
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.secondaryOrdersBtn} activeOpacity={0.88} onPress={onOpenOrders}>
+          <Text style={styles.secondaryOrdersBtnText}>{t('cta.orders.viewAll')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  function renderQuickOrderCard(context: 'home' | 'cart') {
+    if (!latestActionableOrder) return null;
+    const wrapperStyle = context === 'home' ? styles.quickOrderPromoCard : styles.quickOrderCartCard;
+    const showRefresh = shouldShowQuickOrderRefresh;
+
+    return (
+      <TouchableOpacity style={wrapperStyle} activeOpacity={0.9} onPress={onOpenOrders}>
+        <View style={styles.quickOrderTopRow}>
+          <View style={styles.quickOrderTitleBlock}>
+            <Text style={styles.quickOrderEyebrow}>{t('headline.orders.quickActiveTitle')}</Text>
+            <Text style={styles.quickOrderSeller} numberOfLines={1}>{latestActionableOrder.sellerName}</Text>
+            <Text style={styles.quickOrderMeta}>
+              {formatHomeOrderNo(latestActionableOrder.id, latestActionableOrder.orderNo)} · {formatHomeOrderDate(latestActionableOrder.createdAt)}
+            </Text>
+          </View>
+          <StatusBadge
+            status={latestActionableOrder.status}
+            deliveryType={latestActionableOrder.deliveryType}
+            audience="buyer"
+          />
+        </View>
+
+        <Text style={styles.quickOrderHint}>{latestHomeOrderHint(latestActionableOrder.status)}</Text>
+        <Text style={styles.quickOrderItems} numberOfLines={1}>
+          {summarizeHomeOrderItems(latestActionableOrder.items)}
+        </Text>
+
+        <View style={styles.quickOrderFooter}>
+          <View style={styles.quickOrderPriceWrap}>
+            {latestActionableOrder.totalPrice > 0 ? (
+              <Text style={styles.quickOrderPrice}>{formatPrice(latestActionableOrder.totalPrice)}</Text>
+            ) : null}
+            <Text style={styles.quickOrderDelivery}>
+              {latestActionableOrder.deliveryType === 'delivery'
+                ? t('status.orders.deliveryType.delivery')
+                : t('status.orders.deliveryType.pickup')}
+            </Text>
+          </View>
+          <View style={styles.quickOrderActions}>
+            {showRefresh ? (
+              <TouchableOpacity
+                style={[styles.quickOrderRefreshBtn, paymentLoading && styles.paymentRefreshBtnDisabled]}
+                activeOpacity={0.88}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  void refreshPaymentStatus();
+                }}
+                disabled={paymentLoading}
+              >
+                {paymentLoading ? (
+                  <ActivityIndicator size="small" color="#5F5246" />
+                ) : (
+                  <Text style={styles.quickOrderRefreshText}>{t('cta.home.paymentRefresh')}</Text>
+                )}
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              style={styles.quickOrderPrimaryBtn}
+              activeOpacity={0.88}
+              onPress={(event) => {
+                event.stopPropagation();
+                onOpenOrders();
+              }}
+            >
+              <Text style={styles.quickOrderPrimaryText}>{t('cta.orders.viewAll')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
   function renderHomeFeed() {
     return (
       <ScrollView
@@ -2937,18 +3198,7 @@ export default function HomeScreen({
             ))}
           </ScrollView>
         </View>
-        <TouchableOpacity style={styles.nearbyHeader} activeOpacity={0.88}>
-          <View style={styles.nearbyHeaderLeft}>
-            <View style={styles.nearbyHeaderIconBox}>
-              <Ionicons name="heart" size={22} color="#FFFFFF" />
-            </View>
-            <View style={styles.nearbyHeaderTextWrap}>
-              <Text style={styles.nearbyHeaderTitle}>Anne Eli Değmiş Gibi</Text>
-              <Text style={styles.nearbyHeaderSubtitle}>Tüm yemekler ev yapımı ve günlük taze</Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={22} color="#8B6A52" />
-        </TouchableOpacity>
+        {showHomeOrderPromo ? renderQuickOrderCard('home') : renderPromoFallbackCard('home')}
         <View onLayout={(e) => setFoodSectionOffsetY(e.nativeEvent.layout.y)} />
         <View style={styles.recommendationsSection}>
           <Text style={styles.recommendationsSectionTitle}>Öneriler</Text>
@@ -3080,7 +3330,7 @@ export default function HomeScreen({
         return sum + (value * item.quantity) + addonsTotal;
       }, 0);
       const total = subtotal;
-      const hasPendingListState = cartItems.length === 0 && (paymentLoading || !!paymentStatus || !!paymentInfo || !!paymentError);
+      const showCartPromoFallback = cartItems.length === 0 && !showCartQuickOrderCard;
       return (
         <View style={styles.cartWrap}>
           <View style={styles.cartHeader}>
@@ -3093,54 +3343,25 @@ export default function HomeScreen({
                 <Ionicons name="chevron-back" size={22} color="#4E433A" />
               </TouchableOpacity>
               <Text style={styles.tabPanelTitle}>
-                {hasPendingListState ? t('headline.home.pendingListTitle') : t('headline.home.foodListTitle')}
+                {showCartQuickOrderCard
+                  ? t('headline.orders.quickActiveTitle')
+                  : t('headline.home.foodListTitle')}
               </Text>
             </View>
             <Text style={styles.cartHeaderCount}>
-              {hasPendingListState ? '' : `${cartCount} ${t('status.home.foodListCountSuffix')}`}
+              {cartItems.length === 0 ? '' : `${cartCount} ${t('status.home.foodListCountSuffix')}`}
             </Text>
           </View>
           {cartItems.length === 0 ? (
-            hasPendingListState ? (
-              <>
-                <View style={styles.tabPanelCard}>
-                  <Text style={styles.tabPanelText}>{t('helper.home.pendingListSubtitle')}</Text>
-                  {paymentStatus ? (
-                    <View style={styles.paymentStatusCard}>
-                      <Text style={styles.paymentStatusTitle}>{t('status.home.paymentTitle')}</Text>
-                      <Text style={styles.paymentStatusText}>{t('status.home.orderLabel')} {paymentStatus.orderId.slice(0, 8)}...</Text>
-                      <Text style={styles.paymentStatusText}>{t('status.home.orderStatusLabel')} {formatOrderStatusLabel(paymentStatus.orderStatus)}</Text>
-                      <Text style={styles.paymentStatusText}>
-                        {paymentStatus.paymentCompleted ? t('status.home.paymentDone') : formatPaymentAttemptLabel(paymentStatus.latestAttemptStatus)}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {paymentInfo ? (
-                    <Text style={styles.paymentInfoText}>{paymentInfo}</Text>
-                  ) : null}
-                  <View style={styles.paymentActionsRow}>
-                    <TouchableOpacity
-                      style={[styles.paymentRefreshBtn, paymentLoading && styles.paymentRefreshBtnDisabled]}
-                      onPress={() => void refreshPaymentStatus()}
-                      activeOpacity={0.9}
-                      disabled={paymentLoading}
-                    >
-                      {paymentLoading ? (
-                        <ActivityIndicator size="small" color="#5F5246" />
-                      ) : (
-                        <Text style={styles.paymentRefreshBtnText}>{t('cta.home.paymentRefresh')}</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
+            showCartQuickOrderCard ? (
+              <View>
+                <View style={styles.tabPanelCardCompact}>
+                  {renderQuickOrderCard('cart')}
                 </View>
-                <TouchableOpacity
-                  style={styles.pendingBackHomeBtn}
-                  onPress={() => setActiveTab('home')}
-                  activeOpacity={0.9}
-                >
-                  <Text style={styles.pendingBackHomeBtnText}>{t('cta.home.backHome')}</Text>
-                </TouchableOpacity>
-              </>
+                {paymentInfo ? <Text style={styles.paymentInfoTextCompact}>{paymentInfo}</Text> : null}
+              </View>
+            ) : showCartPromoFallback ? (
+              renderPromoFallbackCard('cart')
             ) : (
               <View style={styles.tabPanelCard}>
                 <Text style={styles.tabPanelText}>{t('helper.home.cartEmptyTitle')}</Text>
@@ -4851,6 +5072,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     elevation: 0,
   },
+  nearbyHeaderCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   nearbyHeaderTextWrap: {
     flexShrink: 1,
     gap: 2,
@@ -4880,6 +5106,79 @@ const styles = StyleSheet.create({
     fontSize: 19,
     fontWeight: '700',
   },
+  quickOrderPromoCard: {
+    marginTop: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E8DCCB',
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  quickOrderCartCard: {
+    borderWidth: 1,
+    borderColor: '#E8DCCB',
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  quickOrderTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  quickOrderTitleBlock: { flex: 1, paddingRight: 6 },
+  quickOrderEyebrow: { color: '#4A7C59', fontSize: 12, fontWeight: '800', marginBottom: 4 },
+  quickOrderSeller: { color: '#3A281F', fontSize: 18, fontWeight: '800' },
+  quickOrderMeta: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', marginTop: 4 },
+  quickOrderHint: { color: '#5E5247', fontSize: 13, lineHeight: 18, marginTop: 10 },
+  quickOrderItems: { color: '#7A6D5D', fontSize: 12, lineHeight: 18, marginTop: 6 },
+  quickOrderFooter: {
+    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  quickOrderPriceWrap: { flex: 1 },
+  quickOrderPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800' },
+  quickOrderDelivery: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', marginTop: 2 },
+  quickOrderActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' },
+  quickOrderRefreshBtn: {
+    minHeight: 36,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#DDD2C3',
+    backgroundColor: '#FFFDF9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickOrderRefreshText: { color: '#5F5246', fontSize: 12, fontWeight: '700' },
+  quickOrderPrimaryBtn: {
+    minHeight: 36,
+    borderRadius: 10,
+    backgroundColor: '#4A7C59',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  quickOrderPrimaryText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+  secondaryOrdersBtn: {
+    marginTop: 12,
+    minHeight: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DDD2C3',
+    backgroundColor: '#FFFDF9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  secondaryOrdersBtnText: { color: '#5F5246', fontSize: 13, fontWeight: '700' },
 
   debugBox: {
     backgroundColor: '#FFF3CD',
@@ -5104,6 +5403,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFDF9',
     padding: 18,
   },
+  tabPanelCardCompact: {
+    marginTop: 24,
+    marginHorizontal: 18,
+  },
   tabPanelTitle: { color: '#3D3229', fontSize: 20, fontWeight: '700' },
   tabPanelText: { color: '#8D8072', fontSize: 14, marginTop: 8, lineHeight: 20 },
   cartWrap: { flex: 1, marginTop: 16, paddingHorizontal: 18, paddingBottom: 86 },
@@ -5261,6 +5564,7 @@ const styles = StyleSheet.create({
   paymentStatusTitle: { color: '#3D3229', fontSize: 13, fontWeight: '700', marginBottom: 2 },
   paymentStatusText: { color: '#6B5D4F', fontSize: 12, lineHeight: 18 },
   paymentInfoText: { color: '#2F6F4A', fontSize: 12, fontWeight: '600', marginTop: 8 },
+  paymentInfoTextCompact: { color: '#2F6F4A', fontSize: 12, fontWeight: '600', marginTop: 10, marginHorizontal: 18 },
   paymentActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   paymentActionBtn: {
     flex: 1,
