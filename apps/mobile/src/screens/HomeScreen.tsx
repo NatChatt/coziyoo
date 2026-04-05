@@ -3046,16 +3046,12 @@ export default function HomeScreen({
               </Text>
 
               <View style={styles.quickOrderFooter}>
-                <View style={styles.quickOrderPriceWrap}>
-                  <View style={styles.quickOrderPriceDeliveryRow}>
-                    {order.totalPrice > 0 ? (
-                      <Text style={styles.quickOrderPrice} numberOfLines={1} ellipsizeMode="clip">
-                        {formatPrice(order.totalPrice)}
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
                 <View style={styles.quickOrderActions}>
+                  {order.totalPrice > 0 ? (
+                    <Text style={styles.quickOrderActionPrice} numberOfLines={1} ellipsizeMode="clip">
+                      {formatPrice(order.totalPrice)}
+                    </Text>
+                  ) : null}
                   <Text style={styles.quickOrderActionDelivery} numberOfLines={1} ellipsizeMode="tail">
                     {order.deliveryType === 'delivery'
                       ? t('status.orders.deliveryType.delivery')
@@ -5304,12 +5300,10 @@ const styles = StyleSheet.create({
   quickOrderFooter: {
     marginTop: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     gap: 10,
   },
-  quickOrderPriceWrap: { flexShrink: 0, minWidth: 92, paddingRight: 6 },
-  quickOrderPriceDeliveryRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap' },
   quickOrderPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800', flexShrink: 0 },
   quickOrderActions: {
     flexDirection: 'column',
@@ -5318,6 +5312,7 @@ const styles = StyleSheet.create({
     gap: 8,
     flexShrink: 1,
   },
+  quickOrderActionPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800', textAlign: 'right' },
   quickOrderActionDelivery: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', maxWidth: 180, textAlign: 'right' },
   quickOrderMainActionsRow: {
     flexDirection: 'row',
