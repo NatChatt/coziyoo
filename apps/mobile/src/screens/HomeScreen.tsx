@@ -3053,14 +3053,14 @@ export default function HomeScreen({
                         {formatPrice(order.totalPrice)}
                       </Text>
                     ) : null}
-                    <Text style={styles.quickOrderDelivery} numberOfLines={1} ellipsizeMode="tail">
-                      {order.deliveryType === 'delivery'
-                        ? t('status.orders.deliveryType.delivery')
-                        : t('status.orders.deliveryType.pickup')}
-                    </Text>
                   </View>
                 </View>
                 <View style={styles.quickOrderActions}>
+                  <Text style={styles.quickOrderActionDelivery} numberOfLines={1} ellipsizeMode="tail">
+                    {order.deliveryType === 'delivery'
+                      ? t('status.orders.deliveryType.delivery')
+                      : t('status.orders.deliveryType.pickup')}
+                  </Text>
                   <View style={styles.quickOrderMainActionsRow}>
                     {canRequestBuyerDelivery(order) ? (
                       <TouchableOpacity
@@ -5311,7 +5311,6 @@ const styles = StyleSheet.create({
   quickOrderPriceWrap: { flexShrink: 0, minWidth: 92, paddingRight: 6 },
   quickOrderPriceDeliveryRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap' },
   quickOrderPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800', flexShrink: 0 },
-  quickOrderDelivery: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', marginLeft: 8, flexShrink: 1 },
   quickOrderActions: {
     flexDirection: 'column',
     alignItems: 'flex-end',
@@ -5319,6 +5318,7 @@ const styles = StyleSheet.create({
     gap: 8,
     flexShrink: 1,
   },
+  quickOrderActionDelivery: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', maxWidth: 180, textAlign: 'right' },
   quickOrderMainActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
