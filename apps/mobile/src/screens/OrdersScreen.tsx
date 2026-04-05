@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  FlatList,
   RefreshControl,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -11,15 +11,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../components/ScreenHeader';
-import StatusBadge from '../components/StatusBadge';
+import StatusBadge, { getStatusInfo } from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import LoadingState from '../components/LoadingState';
 import { t } from '../copy/brandCopy';
 import { theme } from '../theme/colors';
+import { formatPrice, orderNo } from '../components/OrderCard';
 import { apiRequest } from '../utils/api';
 import { type AuthSession } from '../utils/auth';
-import { formatDate, formatPrice, orderNo } from '../components/OrderCard';
 
 type ApiOrder = {
   id: string;
@@ -30,6 +30,7 @@ type ApiOrder = {
   deliveryAddress: unknown;
   totalPrice: number;
   createdAt: string;
+  updatedAt?: string;
   sellerName: string;
   sellerImage: string | null;
   buyerName: string;
@@ -45,6 +46,7 @@ type BuyerOrderSummary = {
   items: { name: string; quantity: number }[];
   totalPrice: number;
   createdAt: string;
+  updatedAt?: string;
   deliveryType: 'pickup' | 'delivery';
 };
 
@@ -58,8 +60,32 @@ type Props = {
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
-const COMPLETED_STATUSES = new Set(['completed', 'delivered']);
-const HIDDEN_STATUSES = new Set(['cancelled', 'rejected']);
+type OrderGroupKey = 'preparing' | 'route' | 'done';
+
+const DONE_STATUSES = new Set(['delivered', 'completed', 'cancelled', 'rejected']);
+const ROUTE_STATUSES = new Set(['in_delivery', 'approaching', 'at_door']);
+
+function parseApiDate(value?: string | null): Date | null {
+  if (!value?.trim()) return null;
+  const normalized = value.trim().replace(' ', 'T').replace(/(\.\d+)?([+-]\d{2})$/, '$1$2:00');
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
+function formatOrderDateTime(value?: string): string {
+  const parsed = parseApiDate(value);
+  if (!parsed) return '-';
+  const day = parsed.getDate().toString().padStart(2, '0');
+  const month = (parsed.getMonth() + 1).toString().padStart(2, '0');
+  const hours = parsed.getHours().toString().padStart(2, '0');
+  const minutes = parsed.getMinutes().toString().padStart(2, '0');
+  return `${day}.${month} / ${hours}:${minutes}`;
+}
+
+function orderTimeForSort(order: BuyerOrderSummary): number {
+  return (parseApiDate(order.createdAt) ?? parseApiDate(order.updatedAt))?.getTime() ?? 0;
+}
 
 function normalizeText(value: string): string {
   return value
@@ -68,12 +94,18 @@ function normalizeText(value: string): string {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
-function isCompletedOrder(status: string): boolean {
-  return COMPLETED_STATUSES.has(String(status ?? '').trim().toLowerCase());
+function normalizeDisplayStatus(status: string, deliveryType?: string): string {
+  const normalized = String(status ?? '').trim().toLowerCase();
+  if (normalized === 'completed') return 'delivered';
+  if (normalized === 'ready' && deliveryType === 'delivery') return 'in_delivery';
+  return normalized;
 }
 
-function isHiddenOrder(status: string): boolean {
-  return HIDDEN_STATUSES.has(String(status ?? '').trim().toLowerCase());
+function orderGroupKey(status: string, deliveryType?: string): OrderGroupKey {
+  const normalized = normalizeDisplayStatus(status, deliveryType);
+  if (ROUTE_STATUSES.has(normalized)) return 'route';
+  if (DONE_STATUSES.has(normalized)) return 'done';
+  return 'preparing';
 }
 
 function getDisplayOrderNo(order: BuyerOrderSummary): string {
@@ -93,6 +125,33 @@ function matchesQuery(order: BuyerOrderSummary, query: string): boolean {
     order.items.map((item) => item.name).join(' '),
   ].join(' '));
   return haystack.includes(normalizeText(query));
+}
+
+function cardTone(status: string, deliveryType?: string) {
+  const normalized = normalizeDisplayStatus(status, deliveryType);
+  const info = getStatusInfo(normalized, deliveryType);
+  const borders: Record<string, string> = {
+    pending_seller_approval: '#F0C37E',
+    seller_approved: '#E7C88F',
+    awaiting_payment: '#ECD98C',
+    paid: '#9BD7D0',
+    preparing: '#E3C9A5',
+    ready: '#AFCFB2',
+    in_delivery: '#B7C9EA',
+    approaching: '#A6D8D6',
+    at_door: '#D6B18C',
+    delivered: '#B4D2BC',
+    cancelled: '#E8C1BC',
+    rejected: '#E8C1BC',
+  };
+
+  return {
+    badgeBg: info.bg,
+    badgeText: info.color,
+    border: borders[normalized] ?? '#E5DDCF',
+    actionBg: info.bg,
+    actionText: info.color,
+  };
 }
 
 export default function OrdersScreen({
@@ -115,7 +174,7 @@ export default function OrdersScreen({
     setError(null);
 
     const result = await apiRequest<ApiOrder[]>(
-      '/v1/orders?pageSize=100&sortDir=desc',
+      '/v1/orders?page=1&pageSize=200&sortDir=desc',
       auth,
       { actorRole: 'buyer' },
       onAuthRefresh,
@@ -130,6 +189,7 @@ export default function OrdersScreen({
         items: order.items.map((item) => ({ name: item.name, quantity: item.quantity })),
         totalPrice: Number(order.totalPrice ?? 0),
         createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
         deliveryType: order.deliveryType,
       }));
       setOrders(mapped);
@@ -150,103 +210,105 @@ export default function OrdersScreen({
     fetchOrders(true);
   };
 
-  const visibleOrders = orders.filter((order) => !isHiddenOrder(order.status));
-  const activeOrder = visibleOrders.find((order) => !isCompletedOrder(order.status)) ?? null;
-  const filteredActiveOrder = activeOrder && matchesQuery(activeOrder, searchQuery) ? activeOrder : null;
-  const filteredCompletedOrders = visibleOrders.filter(
-    (order) => isCompletedOrder(order.status) && matchesQuery(order, searchQuery),
+  const filteredOrders = useMemo(
+    () => orders.filter((order) => matchesQuery(order, searchQuery)),
+    [orders, searchQuery],
   );
-  const hasSearch = searchQuery.trim().length > 0;
-  const showSearchEmpty = hasSearch && !filteredActiveOrder && filteredCompletedOrders.length === 0;
 
-  function renderHeroCard(order: BuyerOrderSummary) {
+  const groupedOrders = useMemo(() => {
+    const preparing: BuyerOrderSummary[] = [];
+    const route: BuyerOrderSummary[] = [];
+    const done: BuyerOrderSummary[] = [];
+
+    for (const order of filteredOrders) {
+      const key = orderGroupKey(order.status, order.deliveryType);
+      if (key === 'preparing') preparing.push(order);
+      else if (key === 'route') route.push(order);
+      else done.push(order);
+    }
+
+    preparing.sort((a, b) => orderTimeForSort(b) - orderTimeForSort(a));
+    route.sort((a, b) => orderTimeForSort(b) - orderTimeForSort(a));
+    done.sort((a, b) => orderTimeForSort(b) - orderTimeForSort(a));
+
+    return { preparing, route, done };
+  }, [filteredOrders]);
+
+  const newestActiveOrderId = useMemo(() => {
+    const activeOrders = [...groupedOrders.preparing, ...groupedOrders.route];
+    activeOrders.sort((a, b) => orderTimeForSort(b) - orderTimeForSort(a));
+    return activeOrders[0]?.id ?? null;
+  }, [groupedOrders]);
+
+  const hasSearch = searchQuery.trim().length > 0;
+  const hasAnyOrders = orders.length > 0;
+  const hasSearchResults = filteredOrders.length > 0;
+
+  const sections = [
+    { key: 'preparing' as const, title: t('headline.orders.preparingTitle'), data: groupedOrders.preparing },
+    { key: 'route' as const, title: t('headline.orders.routeTitle'), data: groupedOrders.route },
+    { key: 'done' as const, title: t('headline.orders.historyTitle'), data: groupedOrders.done },
+  ];
+
+  function renderOrderCard(order: BuyerOrderSummary) {
+    const tone = cardTone(order.status, order.deliveryType);
+    const isNewest = order.id === newestActiveOrderId && orderGroupKey(order.status, order.deliveryType) !== 'done';
+
     return (
       <TouchableOpacity
-        activeOpacity={0.92}
+        key={order.id}
+        activeOpacity={0.88}
         onPress={() => onOpenOrderDetail(order.id)}
-        style={styles.heroCard}
+        style={styles.orderCard}
       >
-        <View style={styles.heroTopRow}>
-          <View style={styles.heroPill}>
-            <View style={styles.heroPillDot} />
-            <Text style={styles.heroPillText}>{t('status.orders.activePill')}</Text>
+        {isNewest ? <View style={styles.newHighlightLayer} /> : null}
+
+        <View style={styles.orderTopRow}>
+          <View style={styles.orderTitleWrap}>
+            <View style={styles.orderTitleRow}>
+              <Text style={styles.orderTitle} numberOfLines={1}>{order.sellerName}</Text>
+              {isNewest ? (
+                <View style={styles.newBadge}>
+                  <Text style={styles.newBadgeText}>{t('status.orders.newBadge')}</Text>
+                </View>
+              ) : null}
+            </View>
+            <Text style={styles.orderMeta} numberOfLines={2}>
+              {getItemsLine(order) || t('helper.orders.itemsFallback')}
+            </Text>
           </View>
-          <Text style={styles.metaText}>{formatDate(order.createdAt)}</Text>
+
+          <View style={styles.orderTopRight}>
+            <Text style={styles.orderIdText}>{getDisplayOrderNo(order)}</Text>
+            <Text style={styles.orderDateText}>{formatOrderDateTime(order.createdAt)}</Text>
+          </View>
         </View>
 
-        <View style={styles.heroTitleRow}>
-          <View style={styles.heroTitleBlock}>
-            <Text style={styles.heroSeller} numberOfLines={1}>{order.sellerName}</Text>
-            <Text style={styles.heroOrderNo}>{getDisplayOrderNo(order)}</Text>
-          </View>
-          <StatusBadge status={order.status} deliveryType={order.deliveryType} audience="buyer" />
-        </View>
-
-        <Text style={styles.heroItems} numberOfLines={2}>
-          {getItemsLine(order) || t('helper.orders.itemsFallback')}
-        </Text>
-
-        <View style={styles.heroBottomRow}>
-          <View>
-            <Text style={styles.metaLabel}>
+        <View style={styles.orderBottomRow}>
+          <View style={styles.orderBottomLeft}>
+            <StatusBadge status={order.status} deliveryType={order.deliveryType} audience="buyer" />
+            <Text style={styles.deliveryMeta}>
               {order.deliveryType === 'delivery'
                 ? t('status.orders.deliveryType.delivery')
                 : t('status.orders.deliveryType.pickup')}
             </Text>
-            <Text style={styles.heroPrice}>{formatPrice(order.totalPrice)}</Text>
           </View>
-          <View style={styles.heroAction}>
-            <Text style={styles.heroActionText}>{t('cta.orders.openDetail')}</Text>
-            <Ionicons name="arrow-forward" size={16} color={theme.onPrimary} />
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  }
-
-  function renderCompletedCard({ item }: { item: BuyerOrderSummary }) {
-    return (
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={() => onOpenOrderDetail(item.id)}
-        style={styles.orderCard}
-      >
-        <View style={styles.orderCardHeader}>
-          <View style={styles.orderCardTitleBlock}>
-            <Text style={styles.orderCardSeller} numberOfLines={1}>{item.sellerName}</Text>
-            <Text style={styles.orderCardOrderNo}>{getDisplayOrderNo(item)}</Text>
-          </View>
-          <StatusBadge status={item.status} deliveryType={item.deliveryType} audience="buyer" />
+          <Text style={styles.orderTotal}>{formatPrice(order.totalPrice)}</Text>
         </View>
 
-        <Text style={styles.orderCardItems} numberOfLines={2}>
-          {getItemsLine(item) || t('helper.orders.itemsFallback')}
-        </Text>
-
-        <View style={styles.orderMetaRow}>
-          <View style={styles.orderMetaChip}>
-            <Ionicons name="calendar-outline" size={14} color="#7F7569" />
-            <Text style={styles.orderMetaChipText}>{formatDate(item.createdAt)}</Text>
-          </View>
-          <View style={styles.orderMetaChip}>
-            <Ionicons
-              name={item.deliveryType === 'delivery' ? 'bicycle-outline' : 'bag-handle-outline'}
-              size={14}
-              color="#7F7569"
-            />
-            <Text style={styles.orderMetaChipText}>
-              {item.deliveryType === 'delivery'
-                ? t('status.orders.deliveryType.delivery')
-                : t('status.orders.deliveryType.pickup')}
+        <View style={styles.cardActionRow}>
+          <View
+            style={[
+              styles.cardActionBtn,
+              {
+                backgroundColor: tone.actionBg,
+                borderColor: tone.border,
+              },
+            ]}
+          >
+            <Text style={[styles.cardActionText, { color: tone.actionText }]}>
+              {t('cta.orders.openDetail')}
             </Text>
-          </View>
-        </View>
-
-        <View style={styles.orderCardFooter}>
-          <Text style={styles.orderCardPrice}>{formatPrice(item.totalPrice)}</Text>
-          <View style={styles.orderCardAction}>
-            <Text style={styles.orderCardActionText}>{t('cta.orders.openDetail')}</Text>
-            <Ionicons name="chevron-forward" size={16} color="#5D7394" />
           </View>
         </View>
       </TouchableOpacity>
@@ -262,93 +324,70 @@ export default function OrdersScreen({
         <LoadingState message={t('helper.orders.loading')} />
       ) : error ? (
         <ErrorState message={error} onRetry={() => fetchOrders()} />
-      ) : visibleOrders.length === 0 ? (
+      ) : !hasAnyOrders ? (
         <EmptyState icon="receipt-outline" title={emptyTitle} subtitle={emptySubtitle} />
       ) : (
-        <FlatList
-          data={filteredCompletedOrders}
-          keyExtractor={(item) => item.id}
-          renderItem={renderCompletedCard}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        <ScrollView
+          contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={theme.primary}
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.primary} />
+          }
+        >
+          <View style={styles.searchWrap}>
+            <Ionicons name="search-outline" size={20} color="#6B4D3A" style={styles.searchIcon} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder={t('helper.orders.searchPlaceholder')}
+              placeholderTextColor="#AA9C8E"
+              style={styles.searchInput}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
             />
-          }
-          ListHeaderComponent={
-            <View style={styles.headerContent}>
-              <View style={styles.searchWrap}>
-                <Ionicons name="search-outline" size={20} color="#6B4D3A" style={styles.searchIcon} />
-                <TextInput
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder={t('helper.orders.searchPlaceholder')}
-                  placeholderTextColor="#AA9C8E"
-                  style={styles.searchInput}
-                  returnKeyType="search"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {searchQuery ? (
-                  <TouchableOpacity
-                    activeOpacity={0.75}
-                    onPress={() => setSearchQuery('')}
-                    style={styles.clearSearchButton}
-                  >
-                    <Ionicons name="close-outline" size={20} color="#6B4D3A" />
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.searchActionIcon}>
-                    <Ionicons name="options-outline" size={18} color="#6B4D3A" />
-                  </View>
-                )}
+            {searchQuery ? (
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => setSearchQuery('')}
+                style={styles.clearSearchButton}
+              >
+                <Ionicons name="close-outline" size={20} color="#6B4D3A" />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.searchActionIcon}>
+                <Ionicons name="options-outline" size={18} color="#6B4D3A" />
               </View>
+            )}
+          </View>
 
-              {filteredActiveOrder ? (
-                <View style={styles.sectionBlock}>
-                  <View style={styles.sectionHeading}>
-                    <View>
-                      <Text style={styles.sectionTitle}>{t('headline.orders.activeTitle')}</Text>
-                      <Text style={styles.sectionSubtitle}>{t('helper.orders.activeSubtitle')}</Text>
+          {hasSearch && !hasSearchResults ? (
+            <EmptyState
+              icon="search-outline"
+              title={t('helper.orders.searchEmptyTitle')}
+              subtitle={t('helper.orders.searchEmptySubtitle')}
+            />
+          ) : (
+            sections
+              .filter((section) => !hasSearch || section.data.length > 0)
+              .map((section) => (
+                <View key={section.key} style={styles.groupSection}>
+                  <View style={styles.groupHeader}>
+                    <Text style={styles.groupTitle}>{section.title}</Text>
+                    <Text style={styles.groupCount}>{section.data.length}</Text>
+                  </View>
+
+                  {section.data.length === 0 ? (
+                    <View style={styles.groupEmptyCard}>
+                      <Text style={styles.groupEmptyText}>{t('helper.orders.groupEmpty')}</Text>
                     </View>
-                  </View>
-                  {renderHeroCard(filteredActiveOrder)}
+                  ) : (
+                    section.data.map(renderOrderCard)
+                  )}
                 </View>
-              ) : null}
-
-              <View style={[styles.sectionHeading, filteredActiveOrder ? styles.sectionHeadingSpaced : null]}>
-                <View>
-                  <Text style={styles.sectionTitle}>{t('headline.orders.completedTitle')}</Text>
-                  <Text style={styles.sectionSubtitle}>{t('helper.orders.completedSubtitle')}</Text>
-                </View>
-                <View style={styles.countPill}>
-                  <Text style={styles.countPillText}>
-                    {filteredCompletedOrders.length} {t('status.orders.countSuffix')}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          }
-          ListEmptyComponent={
-            showSearchEmpty ? (
-              <EmptyState
-                icon="search-outline"
-                title={t('helper.orders.searchEmptyTitle')}
-                subtitle={t('helper.orders.searchEmptySubtitle')}
-              />
-            ) : filteredActiveOrder ? null : (
-              <EmptyState
-                icon="receipt-outline"
-                title={t('helper.orders.completedEmptyTitle')}
-                subtitle={t('helper.orders.completedEmptySubtitle')}
-              />
-            )
-          }
-        />
+              ))
+          )}
+        </ScrollView>
       )}
     </View>
   );
@@ -356,8 +395,7 @@ export default function OrdersScreen({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
-  list: { paddingHorizontal: 16, paddingBottom: 40 },
-  headerContent: { paddingTop: 12, paddingBottom: 18 },
+  content: { padding: 16, paddingBottom: 40 },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -398,218 +436,75 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#F3E9DC',
   },
-  sectionBlock: { marginTop: 22 },
-  sectionHeading: {
-    marginTop: 24,
-    marginBottom: 12,
+  groupSection: { marginTop: 24 },
+  groupHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 2,
   },
-  sectionHeadingSpaced: { marginTop: 28 },
-  sectionTitle: {
-    color: theme.text,
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.4,
-  },
-  sectionSubtitle: {
-    marginTop: 4,
-    color: '#7B6F62',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  countPill: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#ECE4D9',
-  },
-  countPillText: {
-    color: '#6D6257',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  heroCard: {
-    borderRadius: 26,
+  groupTitle: { color: '#3F3126', fontSize: 16, fontWeight: '800' },
+  groupCount: { color: '#6A5A4B', fontSize: 14, fontWeight: '800' },
+  groupEmptyCard: {
+    backgroundColor: '#FCFAF7',
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E6DED3',
-    backgroundColor: '#FFFDF9',
-    padding: 18,
-    shadowColor: '#3D3229',
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 2,
+    borderColor: '#ECE3D7',
+    padding: 10,
+    marginBottom: 8,
   },
-  heroTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  heroPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: 'rgba(74,124,89,0.12)',
-  },
-  heroPillDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    marginRight: 8,
-    backgroundColor: theme.primary,
-  },
-  heroPillText: {
-    color: theme.primary,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  metaText: {
-    color: '#8C7F71',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  heroTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  heroTitleBlock: { flex: 1 },
-  heroSeller: {
-    color: '#2F241B',
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: -0.6,
-  },
-  heroOrderNo: {
-    marginTop: 4,
-    color: '#8B7D6F',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  heroItems: {
-    marginTop: 16,
-    color: '#65594E',
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  heroBottomRow: {
-    marginTop: 18,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#EFE7DB',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    gap: 16,
-  },
-  metaLabel: {
-    color: '#8A7E71',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  heroPrice: {
-    marginTop: 4,
-    color: theme.text,
-    fontSize: 24,
-    fontWeight: '900',
-    letterSpacing: -0.6,
-  },
-  heroAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: theme.buttonActive,
-  },
-  heroActionText: {
-    color: theme.onPrimary,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  separator: { height: 12 },
+  groupEmptyText: { color: '#8A7A6B', fontWeight: '600' },
   orderCard: {
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E7DED3',
-    backgroundColor: theme.card,
-    padding: 16,
+    borderColor: '#E5DDCF',
+    padding: 14,
+    marginBottom: 12,
+    overflow: 'hidden',
   },
-  orderCardHeader: {
+  newHighlightLayer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#8FD9A8',
+    opacity: 0.18,
+  },
+  orderTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 12,
-  },
-  orderCardTitleBlock: { flex: 1 },
-  orderCardSeller: {
-    color: theme.text,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  orderCardOrderNo: {
-    marginTop: 4,
-    color: '#8E8174',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  orderCardItems: {
-    marginTop: 12,
-    color: '#6B5F53',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  orderMetaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
-    marginTop: 14,
   },
-  orderMetaChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: '#F5EFE7',
+  orderTitleWrap: { flex: 1, paddingRight: 8 },
+  orderTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  orderTitle: { color: '#4A3B2F', fontWeight: '800', fontSize: 16, flex: 1 },
+  newBadge: {
+    borderRadius: 999,
+    backgroundColor: '#157347',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
-  orderMetaChipText: {
-    color: '#74685C',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  orderCardFooter: {
-    marginTop: 16,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#EFE7DB',
+  newBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
+  orderMeta: { color: '#6C6055', marginTop: 4, lineHeight: 19 },
+  orderTopRight: { alignItems: 'flex-end', minWidth: 108 },
+  orderIdText: { color: '#887766', fontSize: 12, fontWeight: '800' },
+  orderDateText: { color: '#9A8A7A', fontSize: 11, fontWeight: '700', marginTop: 2 },
+  orderBottomRow: {
+    marginTop: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
-  orderCardPrice: {
-    color: theme.text,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  orderCardAction: {
-    flexDirection: 'row',
+  orderBottomLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  deliveryMeta: { color: '#7A6C5E', fontSize: 12, fontWeight: '700' },
+  orderTotal: { color: '#4A3B2F', fontWeight: '900', fontSize: 16 },
+  cardActionRow: { marginTop: 14 },
+  cardActionBtn: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 13,
     alignItems: 'center',
   },
-  orderCardActionText: {
-    color: '#5D7394',
-    fontSize: 13,
-    fontWeight: '700',
-  },
+  cardActionText: { fontWeight: '800', fontSize: 13 },
 });
