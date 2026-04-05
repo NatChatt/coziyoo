@@ -393,13 +393,6 @@ type PaymentStatusSnapshot = {
   latestAttemptStatus?: string;
 };
 
-type CheckoutFlowResult = {
-  ok: boolean;
-  orderIds?: string[];
-  allBypassed?: boolean;
-  error?: string;
-};
-
 function formatOrderStatusLabel(status: string): string {
   const normalized = status.trim().toLowerCase();
   if (!normalized) return '-';
@@ -1331,9 +1324,6 @@ export default function HomeScreen({
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatusSnapshot | null>(null);
-  const [cartPaymentAnimationVisible, setCartPaymentAnimationVisible] = useState(false);
-  const [cartPaymentAnimationDone, setCartPaymentAnimationDone] = useState(false);
-  const [checkoutFlowResult, setCheckoutFlowResult] = useState<CheckoutFlowResult | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [cachedLocalImageUrl, setCachedLocalImageUrl] = useState<string | null>(null);
   const [profileImageLoadFailed, setProfileImageLoadFailed] = useState(false);
@@ -2344,9 +2334,6 @@ export default function HomeScreen({
     setPaymentLoading(true);
     setPaymentError(null);
     setPaymentInfo(null);
-    setCartPaymentAnimationVisible(true);
-    setCartPaymentAnimationDone(false);
-    setCheckoutFlowResult(null);
     try {
       const createdOrderIds: string[] = [];
       for (const [sellerId, sellerItems] of groupedBySeller.entries()) {
@@ -2379,50 +2366,31 @@ export default function HomeScreen({
         }
         createdOrderIds.push(orderId);
       }
-      setCheckoutFlowResult({ ok: true, orderIds: createdOrderIds });
+      setActiveOrderId(createdOrderIds[0] ?? null);
+      setActiveOrderIds(createdOrderIds);
+      setPaymentStatus(
+        createdOrderIds[0]
+          ? {
+              orderId: createdOrderIds[0],
+              orderStatus: 'pending_seller_approval',
+              paymentCompleted: false,
+            }
+          : null,
+      );
+      setPaymentInfo(
+        createdOrderIds.length > 1
+          ? t('helper.home.paymentCapturePendingMultiple')
+          : t('helper.home.paymentCapturePendingSingle'),
+      );
+      void refreshPaymentStatus(true, createdOrderIds);
+      setPaymentError(null);
+      setCartItems([]);
     } catch (err) {
-      setCheckoutFlowResult({ ok: false, error: err instanceof Error ? err.message : t('error.home.checkoutStartFailed') });
+      setPaymentError(err instanceof Error ? err.message : t('error.home.checkoutStartFailed'));
     } finally {
       setPaymentLoading(false);
     }
   }
-
-  useEffect(() => {
-    if (!cartPaymentAnimationVisible) return;
-    if (!cartPaymentAnimationDone) return;
-    if (!checkoutFlowResult) return;
-
-    setCartPaymentAnimationVisible(false);
-    setCartPaymentAnimationDone(false);
-
-    if (!checkoutFlowResult.ok) {
-      setPaymentError(checkoutFlowResult.error ?? t('error.home.checkoutStartFailed'));
-      setCheckoutFlowResult(null);
-      return;
-    }
-
-    const createdOrderIds = checkoutFlowResult.orderIds ?? [];
-    setActiveOrderId(createdOrderIds[0] ?? null);
-    setActiveOrderIds(createdOrderIds);
-    setPaymentStatus(
-      createdOrderIds[0]
-        ? {
-            orderId: createdOrderIds[0],
-            orderStatus: 'pending_seller_approval',
-            paymentCompleted: false,
-          }
-        : null,
-    );
-    setPaymentInfo(
-      createdOrderIds.length > 1
-        ? t('helper.home.paymentCapturePendingMultiple')
-        : t('helper.home.paymentCapturePendingSingle'),
-    );
-    void refreshPaymentStatus(true, createdOrderIds);
-    setPaymentError(null);
-    setCartItems([]);
-    setCheckoutFlowResult(null);
-  }, [cartPaymentAnimationVisible, cartPaymentAnimationDone, checkoutFlowResult]);
 
   async function refreshPaymentStatus(waitForSettlement = false, overrideOrderIds?: string[]) {
     const orderIds = (overrideOrderIds && overrideOrderIds.length > 0
@@ -3476,9 +3444,6 @@ export default function HomeScreen({
     <>
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#F3EFE6" />
-      <Modal visible={cartPaymentAnimationVisible} transparent animationType="fade">
-        <CartPaymentAnimation onDone={() => setCartPaymentAnimationDone(true)} />
-      </Modal>
 
       <Modal
         visible={locationModalVisible}
