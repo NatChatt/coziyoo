@@ -484,7 +484,9 @@ function formatHomeOrderDate(value?: string): string {
   if (Number.isNaN(parsed.getTime())) return '-';
   const day = parsed.getDate().toString().padStart(2, '0');
   const month = (parsed.getMonth() + 1).toString().padStart(2, '0');
-  return `${day}.${month}`;
+  const hours = parsed.getHours().toString().padStart(2, '0');
+  const minutes = parsed.getMinutes().toString().padStart(2, '0');
+  return `${day}.${month} ${hours}:${minutes}`;
 }
 
 function homeOrderTime(order: Pick<HomeOrderSummary, 'createdAt' | 'updatedAt'>): number {
