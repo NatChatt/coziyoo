@@ -5784,10 +5784,10 @@ const styles = StyleSheet.create({
   },
   navSpacer: { width: 72 },
   navIcon: { color: '#A89B8C', marginBottom: 3 },
-  navIconFilled: { color: '#7A8B6E' },
+  navIconFilled: { color: '#4A7C59' },
   navIconActive: { color: '#4A7C59' },
   navLabel: { color: '#A89B8C', fontSize: 12, lineHeight: 14, fontWeight: '600' },
-  navLabelFilled: { color: '#7A8B6E' },
+  navLabelFilled: { color: '#4A7C59' },
   navLabelActive: { color: '#4A7C59' },
 
   /* --- Meal detail modal --- */
