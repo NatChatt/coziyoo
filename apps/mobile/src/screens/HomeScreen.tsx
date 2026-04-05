@@ -5248,7 +5248,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   quickOrderCartCard: {
     borderWidth: 1,
@@ -5256,7 +5256,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   quickOrderScroller: {
     marginTop: 8,
@@ -5282,13 +5282,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: 8,
   },
   quickOrderTitleBlock: { flex: 1, paddingRight: 6 },
   quickOrderEyebrow: { color: '#4A7C59', fontSize: 12, fontWeight: '800', marginBottom: 4 },
   quickOrderSeller: { color: '#3A281F', fontSize: 18, fontWeight: '800' },
-  quickOrderMeta: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', marginTop: 4 },
-  quickOrderHint: { color: '#5E5247', fontSize: 13, lineHeight: 18, marginTop: 8 },
+  quickOrderMeta: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', marginTop: 2 },
+  quickOrderHint: { color: '#5E5247', fontSize: 13, lineHeight: 18, marginTop: 6 },
   quickOrderNotePill: {
     marginTop: 6,
     alignSelf: 'flex-start',
@@ -5304,7 +5304,7 @@ const styles = StyleSheet.create({
   },
   quickOrderNotePillText: { color: '#2F6F4A', fontSize: 12, fontWeight: '700' },
   quickOrderItemsRow: {
-    marginTop: 4,
+    marginTop: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -5315,7 +5315,7 @@ const styles = StyleSheet.create({
   quickOrderItemsDelivery: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', maxWidth: 72 },
   quickOrderItemsPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800' },
   quickOrderFooter: {
-    marginTop: 8,
+    marginTop: 6,
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
