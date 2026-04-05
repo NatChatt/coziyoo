@@ -3250,7 +3250,9 @@ export default function HomeScreen({
                   )}
                 </TouchableOpacity>
               </View>
-              <Text style={styles.paymentActionHint}>{t('helper.home.cartCheckoutHint')}</Text>
+              <View style={styles.paymentActionHintBox}>
+                <Text style={styles.paymentActionHint}>{t('helper.home.cartCheckoutHint')}</Text>
+              </View>
             </>
           )}
         </View>
@@ -5189,7 +5191,21 @@ const styles = StyleSheet.create({
   },
   paymentActionBtnDisabled: { opacity: 0.65 },
   paymentActionBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  paymentActionHint: { color: '#6B5D4F', fontSize: 12, lineHeight: 18, marginTop: 8 },
+  paymentActionHintBox: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E5D9CA',
+    backgroundColor: '#FFFBF6',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  paymentActionHint: {
+    color: '#6B5D4F',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
   paymentRefreshBtn: {
     height: 42,
     borderRadius: 12,
