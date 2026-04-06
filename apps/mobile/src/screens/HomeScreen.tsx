@@ -5940,7 +5940,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     position: 'relative',
   },
-  foodInfoLeft: { flex: 1, minHeight: 100 },
+  foodInfoLeft: { flex: 1, minHeight: 92 },
   foodNameRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -5977,7 +5977,7 @@ const styles = StyleSheet.create({
   foodSellerInline: { fontSize: 14, fontWeight: '700' },
   foodSellerThumbWrap: {
     width: 84,
-    height: 100,
+    height: 92,
     borderRadius: 16,
     marginTop: 0,
     shadowColor: '#000',
