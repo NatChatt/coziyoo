@@ -1365,6 +1365,21 @@ function FoodCard({
           ) : (
             <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
           )}
+          <View pointerEvents="none" style={styles.foodPhotoLeftTextBlock}>
+            <Text numberOfLines={1} style={styles.foodPhotoTitleText}>
+              {meal.title}
+            </Text>
+            {meal.cuisine ? (
+              <Text numberOfLines={1} style={styles.foodPhotoCuisineText}>
+                {formatCuisineLabel(meal.cuisine)}
+              </Text>
+            ) : null}
+            {stockSummary ? (
+              <Text numberOfLines={1} style={styles.foodPhotoStockText}>
+                {stockSummary}
+              </Text>
+            ) : null}
+          </View>
           <TouchableOpacity
             activeOpacity={0.82}
             onPress={(event) => {
@@ -1398,21 +1413,6 @@ function FoodCard({
         >
           <View style={styles.foodInfoRow}>
             <View style={styles.foodInfoLeft}>
-              <View style={styles.foodNameWrap}>
-                <Text numberOfLines={1} style={[styles.foodName, styles.foodNameInline, { color: colors.title }]}>
-                  {meal.title}
-                </Text>
-              </View>
-              {meal.cuisine ? (
-                <Text numberOfLines={1} style={[styles.foodSellerCuisineInline, { color: colors.subtitle }]}>
-                  {formatCuisineLabel(meal.cuisine)}
-                </Text>
-              ) : null}
-              {stockSummary ? (
-                <Text numberOfLines={1} style={[styles.foodStockBelowCuisine, { color: colors.subtitle }]}>
-                  {stockSummary}
-                </Text>
-              ) : null}
               {allergens.length > 0 ? (
                 <Text numberOfLines={2} style={styles.foodAllergenBelowCuisine}>
                   Alerjen: {allergens.slice(0, 3).join(', ')}
@@ -5670,12 +5670,44 @@ const styles = StyleSheet.create({
   },
   foodFavoriteTopLeft: {
     position: 'absolute',
-    top: 10,
+    bottom: 10,
     left: 10,
     width: 24,
     height: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  foodPhotoLeftTextBlock: {
+    position: 'absolute',
+    left: 10,
+    right: 120,
+    bottom: 42,
+  },
+  foodPhotoTitleText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  foodPhotoCuisineText: {
+    marginTop: 2,
+    color: '#F4ECE0',
+    fontSize: 13,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2.5,
+  },
+  foodPhotoStockText: {
+    marginTop: 2,
+    color: '#EBDDCE',
+    fontSize: 13,
+    fontWeight: '800',
+    textShadowColor: 'rgba(0,0,0,0.52)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2.5,
   },
   foodPriceBadge: {
     backgroundColor: 'rgba(61,50,41,0.9)',
@@ -5707,11 +5739,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   foodName: { fontSize: 16, fontWeight: '600' },
-  foodNameWrap: {
-    alignSelf: 'flex-start',
-  },
-  foodNameInline: { flexShrink: 1 },
-  foodStockBelowCuisine: { marginTop: 3, fontSize: 12, fontWeight: '700' },
   foodTitlePressArea: { alignSelf: 'flex-start' },
   foodNameMetaRight: {
     position: 'absolute',
@@ -5761,7 +5788,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   foodSellerThumbFallbackText: { color: '#6D5D50', fontSize: 13, fontWeight: '800' },
-  foodSellerCuisineInline: { fontSize: 12, fontWeight: '700', marginTop: 4 },
   foodAllergenBelowCuisine: { marginTop: 4, fontSize: 11, fontWeight: '700', color: '#C2362F' },
   foodCuisineInline: { fontSize: 12, fontWeight: '600' },
   foodStockText: { fontSize: 11, fontWeight: '600' },
