@@ -1365,6 +1365,19 @@ function FoodCard({
           ) : (
             <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
           )}
+          <View style={styles.foodSellerThumbOnPhoto}>
+            {meal.sellerImage && !sellerThumbFailed ? (
+              <Image
+                source={{ uri: meal.sellerImage }}
+                style={styles.foodSellerThumbImage}
+                onError={() => setSellerThumbFailed(true)}
+              />
+            ) : (
+              <View style={styles.foodSellerThumbFallback}>
+                <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
+              </View>
+            )}
+          </View>
           <TouchableOpacity
             activeOpacity={0.82}
             onPress={(event) => {
@@ -1424,19 +1437,6 @@ function FoodCard({
               <Text style={[styles.foodSellerInline, { color: colors.subtitle }]}>
                 {formatSellerIdentity(meal.seller, meal.sellerUsername)}
               </Text>
-            </View>
-            <View style={styles.foodSellerThumb}>
-              {meal.sellerImage && !sellerThumbFailed ? (
-                <Image
-                  source={{ uri: meal.sellerImage }}
-                  style={styles.foodSellerThumbImage}
-                  onError={() => setSellerThumbFailed(true)}
-                />
-              ) : (
-                <View style={styles.foodSellerThumbFallback}>
-                  <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
-                </View>
-              )}
             </View>
           </View>
         </View>
@@ -5668,8 +5668,8 @@ const styles = StyleSheet.create({
   },
   foodFavoriteTopLeft: {
     position: 'absolute',
-    top: 10,
-    left: 10,
+    top: 90,
+    left: 14,
     width: 24,
     height: 24,
     alignItems: 'center',
@@ -5727,15 +5727,17 @@ const styles = StyleSheet.create({
   },
   foodSellerInlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   foodSellerInline: { fontSize: 15, fontWeight: '700' },
-  foodSellerThumb: {
+  foodSellerThumbOnPhoto: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
     width: 108,
     height: 72,
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(141,128,114,0.35)',
+    borderColor: 'rgba(141,128,114,0.42)',
     backgroundColor: '#F4EEE6',
-    marginTop: 2,
   },
   foodSellerThumbImage: { width: '100%', height: '100%' },
   foodSellerThumbFallback: {
