@@ -1222,6 +1222,77 @@ const MESSAGE_WALLPAPERS = [
 ] as const;
 
 /* ------------------------------------------------------------------ */
+/*  RecommendationCard                                                 */
+/* ------------------------------------------------------------------ */
+
+function RecommendationCard({
+  meal,
+  onPress,
+}: {
+  meal: RecommendationMeal;
+  onPress: () => void;
+}) {
+  const [colors, setColors] = useState<CardColors>(
+    deriveCardColors(meal.backgroundColor),
+  );
+
+  useEffect(() => {
+    if (!meal.imageUrl || !getColors) {
+      setColors(deriveCardColors(meal.backgroundColor));
+      return;
+    }
+
+    getColors(meal.imageUrl, {
+      fallback: meal.backgroundColor,
+      cache: true,
+      key: meal.imageUrl,
+    })
+      .then((result) => {
+        let dominant = meal.backgroundColor;
+        if (Platform.OS === 'ios' && 'background' in result) {
+          dominant = result.background;
+        } else if (Platform.OS === 'android' && 'dominant' in result) {
+          dominant = result.dominant;
+        }
+        setColors(deriveCardColors(dominant));
+      })
+      .catch(() => {
+        setColors(deriveCardColors(meal.backgroundColor));
+      });
+  }, [meal.backgroundColor, meal.imageUrl]);
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.sellerChip,
+        {
+          backgroundColor: colors.bg,
+          borderColor: colors.border,
+        },
+      ]}
+      activeOpacity={0.86}
+      onPress={onPress}
+    >
+      <View style={[styles.sellerChipAvatar, { backgroundColor: colors.border }]}>
+        {meal.imageUrl ? (
+          <Image source={{ uri: meal.imageUrl }} style={styles.sellerChipAvatarImage} />
+        ) : (
+          <Text style={[styles.sellerChipAvatarEmoji, { color: colors.title }]}>🍽️</Text>
+        )}
+      </View>
+      <View style={styles.sellerChipTextWrap}>
+        <Text style={[styles.sellerChipName, { color: colors.title }]} numberOfLines={1}>
+          {meal.title}
+        </Text>
+        <Text style={[styles.sellerChipMeta, { color: colors.subtitle }]} numberOfLines={1}>
+          {formatSellerIdentity(meal.seller, meal.sellerUsername)}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  FoodCard                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -3632,26 +3703,11 @@ export default function HomeScreen({
               </View>
             ) : null}
             {visibleRecommendedMeals.map((meal) => (
-              <TouchableOpacity
+              <RecommendationCard
                 key={`rec-${meal.id}`}
-                style={styles.sellerChip}
-                activeOpacity={0.86}
+                meal={meal}
                 onPress={() => openMealDetail(meal)}
-              >
-                <View style={styles.sellerChipAvatar}>
-                  {meal.imageUrl ? (
-                    <Image source={{ uri: meal.imageUrl }} style={styles.sellerChipAvatarImage} />
-                  ) : (
-                    <Text style={styles.sellerChipAvatarEmoji}>🍽️</Text>
-                  )}
-                </View>
-                <View style={styles.sellerChipTextWrap}>
-                  <Text style={styles.sellerChipName} numberOfLines={1}>{meal.title}</Text>
-                  <Text style={styles.sellerChipMeta} numberOfLines={1}>
-                    {formatSellerIdentity(meal.seller, meal.sellerUsername)}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+              />
             ))}
           </ScrollView>
         </View>
