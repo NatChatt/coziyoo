@@ -10,8 +10,6 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@livekit/react-native": "2.9.6",
-    "@livekit/react-native-webrtc": "137.0.2",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@supabase/supabase-js": "^2.100.1",
     "expo": "~52.0.46",
@@ -21,8 +19,6 @@
     "expo-linear-gradient": "~14.0.2",
     "expo-location": "~18.0.10",
     "expo-notifications": "~0.29.14",
-    "fast-text-encoding": "^1.0.6",
-    "livekit-client": "^2.9.4",
     "react": "18.3.1",
     "react-native": "0.76.9",
     "react-native-image-colors": "^2.6.0",

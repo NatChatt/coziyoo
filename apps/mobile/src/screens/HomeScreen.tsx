@@ -94,7 +94,6 @@ import { readJsonSafe } from '../utils/http';
 import { theme } from '../theme/colors';
 import StatusBadge from '../components/StatusBadge';
 import { formatPrice } from '../components/OrderCard';
-import VoiceSessionScreen from './VoiceSessionScreen';
 import ProfileEditScreen from './ProfileEditScreen';
 import AddressScreen from './AddressScreen';
 import { formatCopy, randomHomeGreetingSubtitle, requestErrorLine, t } from '../copy/brandCopy';
@@ -173,13 +172,6 @@ function TouchableOpacity(props: React.ComponentProps<typeof RNTouchableOpacity>
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type SessionData = {
-  wsUrl: string;
-  token: string;
-  roomName: string;
-  userIdentity: string;
-};
-
 type Props = {
   auth: AuthSession;
   initialTab?: TabKey;
@@ -192,10 +184,6 @@ type Props = {
   onLogout: () => void;
   onAuthRefresh?: (session: AuthSession) => void;
   onSwitchToSeller?: () => void;
-};
-
-type ApiErrorPayload = {
-  error?: { code?: string; message?: string };
 };
 
 type MeProfile = {
@@ -215,9 +203,7 @@ type UserAddress = {
 };
 
 
-type VoiceState = 'idle' | 'starting' | 'active' | 'error';
 type TabKey = 'home' | 'messages' | 'cart' | 'notifications' | 'profile';
-type AgentMode = 'voice' | 'text';
 
 type ApiFoodItem = {
   id: string;
@@ -1722,14 +1708,6 @@ export default function HomeScreen({
   const [meals, setMeals] = useState<MealCard[]>([]);
   const [mealsLoading, setMealsLoading] = useState(true);
   const [mealsError, setMealsError] = useState<string | null>(null);
-  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
-  const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [voiceSession, setVoiceSession] = useState<SessionData | null>(null);
-  const [agentModalVisible, setAgentModalVisible] = useState(false);
-  const [agentMode, setAgentMode] = useState<AgentMode>('voice');
-  const [chatMessages, setChatMessages] =
-    useState<ChatMessage[]>(INITIAL_CHAT);
-  const [chatInput, setChatInput] = useState('');
   const [inboxMessages, setInboxMessages] =
     useState<ChatMessage[]>(INITIAL_INBOX_MESSAGES);
   const [inboxInput, setInboxInput] = useState('');
@@ -2549,135 +2527,8 @@ export default function HomeScreen({
     return undefined;
   }, [searchMode]);
 
-  /* ---------- Voice session helpers ---------- */
-
-  function resolveStartSessionError(
-    payload: ApiErrorPayload,
-    status: number,
-  ): string {
-    const code = payload?.error?.code;
-    if (code === 'AGENT_UNAVAILABLE')
-      return 'Ses asistanı şu an kullanılamıyor. Lütfen biraz sonra tekrar deneyin.';
-    if (code === 'N8N_UNAVAILABLE')
-      return 'AI sunucusuna ulaşılamıyor. Lütfen n8n sunucusunu kontrol edin.';
-    if (code === 'N8N_WORKFLOW_UNAVAILABLE')
-      return 'AI iş akışı kullanılamıyor veya aktif değil.';
-    if (code === 'STT_UNAVAILABLE')
-      return 'Konuşma tanıma kullanılamıyor. STT sunucusunu kontrol edin.';
-    if (code === 'TTS_UNAVAILABLE')
-      return 'Ses sentezi kullanılamıyor. TTS sunucusunu kontrol edin.';
-    if (status === 401) return t('error.home.sessionExpired');
-    return payload?.error?.message ?? `Sunucu hatası ${status}`;
-  }
-
-  async function startSessionWithToken(accessToken: string): Promise<void> {
-    const response = await fetch(`${apiUrl}/v1/livekit/session/start`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ autoDispatchAgent: true, channel: 'mobile' }),
-    });
-
-    const json = await readJsonSafe<ApiErrorPayload & {
-      data?: {
-        roomName: string;
-        wsUrl: string;
-        user: { participantIdentity: string; token: string };
-      };
-    }>(response);
-
-    if (response.status === 401) {
-      const refreshed = await refreshAuthSession(apiUrl, currentAuth);
-      if (refreshed) {
-        setCurrentAuth(refreshed);
-        onAuthRefresh?.(refreshed);
-        return startSessionWithToken(refreshed.accessToken);
-      }
-      onLogout();
-      return;
-    }
-
-    if (!response.ok || (json as ApiErrorPayload).error) {
-      throw new Error(
-        resolveStartSessionError(json as ApiErrorPayload, response.status),
-      );
-    }
-
-    const { data } = json as {
-      data: {
-        roomName: string;
-        wsUrl: string;
-        user: { participantIdentity: string; token: string };
-      };
-    };
-
-    setVoiceSession({
-      wsUrl: data.wsUrl,
-      token: data.user.token,
-      roomName: data.roomName,
-      userIdentity: data.user.participantIdentity,
-    });
-    setVoiceState('active');
-    setVoiceError(null);
-  }
-
-  async function handleStartVoice() {
-    if (voiceState === 'starting' || voiceState === 'active') return;
-    setVoiceError(null);
-    setVoiceState('starting');
-    try {
-      await startSessionWithToken(currentAuth.accessToken);
-    } catch (err) {
-      setVoiceSession(null);
-      setVoiceState('error');
-      setVoiceError(
-        err instanceof Error ? err.message : 'Oturum başlatılamadı',
-      );
-    }
-  }
-
-  function handleVoiceEnd() {
-    setVoiceSession(null);
-    setVoiceState('idle');
-    setVoiceError(null);
-  }
-
-  /* ---------- Agent modal handlers ---------- */
-
   function handleFabPress() {
-    setAgentMode('voice');
-    setAgentModalVisible(true);
-    if (voiceState !== 'active' && voiceState !== 'starting') {
-      void handleStartVoice();
-    }
-  }
-
-  function handleCloseAgent() {
-    setAgentModalVisible(false);
-    if (voiceSession) handleVoiceEnd();
-    setVoiceState('idle');
-    setVoiceError(null);
-  }
-
-  function handleSwitchToText() {
-    setAgentMode('text');
-    if (voiceSession) handleVoiceEnd();
-  }
-
-  function handleSwitchToVoice() {
-    setAgentMode('voice');
-    void handleStartVoice();
-  }
-
-  function handleChatSend() {
-    if (!chatInput.trim()) return;
-    setChatMessages((prev) => [
-      ...prev,
-      { id: Date.now().toString(), text: chatInput.trim(), isUser: true },
-    ]);
-    setChatInput('');
+    setActiveTab('messages');
   }
 
   function handleInboxSend() {
@@ -3726,9 +3577,6 @@ export default function HomeScreen({
           );
         })}
 
-        {voiceError && !agentModalVisible ? (
-          <Text style={styles.inlineError}>{voiceError}</Text>
-        ) : null}
       </ScrollView>
     );
   }
@@ -4761,128 +4609,6 @@ export default function HomeScreen({
             </Animated.View>
           </View>
         ) : null}
-      </Modal>
-
-      {/* Agent modal */}
-      <Modal
-        visible={agentModalVisible}
-        animationType="slide"
-        onRequestClose={handleCloseAgent}
-      >
-        <SafeAreaView style={styles.agentModalSafe}>
-          <StatusBar barStyle="dark-content" />
-
-          {/* Header */}
-          <View style={styles.agentHeader}>
-            <TouchableOpacity
-              style={styles.agentCloseBtn}
-              onPress={handleCloseAgent}
-            >
-              <Ionicons name="close" size={18} color="#6B5D4F" />
-            </TouchableOpacity>
-            <Text style={styles.agentHeaderTitle}>{t('status.home.agentTitle')}</Text>
-            <View style={styles.modePill}>
-              <TouchableOpacity
-                style={[
-                  styles.modeBtn,
-                  agentMode === 'voice' && styles.modeBtnActive,
-                ]}
-                onPress={handleSwitchToVoice}
-              >
-                <Text
-                  style={[
-                    styles.modeBtnText,
-                    agentMode === 'voice' && styles.modeBtnTextActive,
-                  ]}
-                >
-                  Sesli
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modeBtn,
-                  agentMode === 'text' && styles.modeBtnActive,
-                ]}
-                onPress={handleSwitchToText}
-              >
-                <Text
-                  style={[
-                    styles.modeBtnText,
-                    agentMode === 'text' && styles.modeBtnTextActive,
-                  ]}
-                >
-                  Yazili
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Content */}
-          <View style={styles.agentContent}>
-            {agentMode === 'voice' ? (
-              voiceSession && voiceState === 'active' ? (
-                <VoiceSessionScreen
-                  session={voiceSession}
-                  onEnd={handleCloseAgent}
-                  onSwitchToText={handleSwitchToText}
-                />
-              ) : voiceState === 'error' ? (
-                <View style={styles.agentCenter}>
-                  <Ionicons
-                    name="alert-circle-outline"
-                    size={48}
-                    color="#D45454"
-                  />
-                  <Text style={styles.agentErrorText}>{voiceError}</Text>
-                  <TouchableOpacity
-                    style={styles.agentRetryBtn}
-                    onPress={() => void handleStartVoice()}
-                  >
-                    <Text style={styles.agentRetryText}>{t('cta.home.retry')}</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.agentCenter}>
-                  <ActivityIndicator size="large" color="#4A7C59" />
-                  <Text style={styles.agentStatusText}>{t('status.home.connecting')}</Text>
-                </View>
-              )
-            ) : (
-              <>
-                <FlatList
-                  data={chatMessages}
-                  renderItem={renderChatMessage}
-                  keyExtractor={(item) => item.id}
-                  contentContainerStyle={styles.chatList}
-                  style={styles.chatListContainer}
-                />
-                <View style={styles.chatInputRow}>
-                  <TouchableOpacity
-                    style={styles.chatMicBtn}
-                    onPress={handleSwitchToVoice}
-                  >
-                    <Ionicons name="mic" size={20} color="#6B5D4F" />
-                  </TouchableOpacity>
-                  <TextInput
-                    value={chatInput}
-                    onChangeText={setChatInput}
-                    placeholder={t('helper.home.messageInputPlaceholder')}
-                    placeholderTextColor="#A89B8C"
-                    style={styles.chatTextInput}
-                    returnKeyType="send"
-                    onSubmitEditing={handleChatSend}
-                  />
-                  <TouchableOpacity
-                    style={styles.chatSendBtn}
-                    onPress={handleChatSend}
-                  >
-                    <Ionicons name="arrow-up" size={18} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
-        </SafeAreaView>
       </Modal>
 
       {/* Cart toast */}

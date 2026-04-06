@@ -146,7 +146,7 @@ Application configuration values include:
 
 - **API settings:** `API_PORT`, `*_SECRET` keys
 - **Database:** `DATABASE_URL`, `DATABASE_SSL_MODE`
-- **External services:** `PAYMENT_WEBHOOK_SECRET`, `LIVEKIT_*`, `AI_SERVER_*`, etc.
+- **External services:** `PAYMENT_WEBHOOK_SECRET`, `N8N_*`, `OLLAMA_*`, etc.
 
 Installation-specific settings are in `installation/config.env`.
 

@@ -2,7 +2,7 @@ import express from "express";
 import { healthRouter } from "./routes/health.js";
 import { authRouter } from "./routes/auth.js";
 import { adminAuthRouter } from "./routes/admin-auth.js";
-import { ordersRouter, voiceOrderRouter } from "./routes/orders.js";
+import { ordersRouter } from "./routes/orders.js";
 import { paymentsRouter } from "./routes/payments.js";
 import { sellerComplianceRouter, adminComplianceRouter } from "./routes/compliance.js";
 import { orderAllergenRouter } from "./routes/order-allergen.js";
@@ -23,8 +23,6 @@ import { adminUserManagementRouter } from "./routes/admin-users.js";
 import { adminAuditRouter } from "./routes/admin-audit.js";
 import { adminSystemRouter } from "./routes/admin-system.js";
 import { env } from "./config/env.js";
-import { liveKitRouter, voiceRouter } from "./routes/livekit.js";
-import { adminLiveKitRouter } from "./routes/admin-livekit.js";
 import { adminApiTokenRouter } from "./routes/admin-api-tokens.js";
 import { adminSalesCommissionSettingsRouter } from "./routes/admin-sales-commission-settings.js";
 import { adminSecurityRouter } from "./routes/admin-security.js";
@@ -35,9 +33,6 @@ import { notificationsRouter } from "./routes/notifications.js";
 import { chatsRouter } from "./routes/chats.js";
 import { favoritesRouter } from "./routes/favorites.js";
 import { sellerRouter } from "./routes/seller.js";
-import { requireAuth } from "./middleware/auth.js";
-import { agentProfilesRouter } from "./routes/admin-agent-profiles.js";
-import { adminAgentCallLogsRouter } from "./routes/admin-agent-call-logs.js";
 
 export const app = express();
 
@@ -356,7 +351,6 @@ app.use("/v1/health", healthRouter);
 app.use("/v1/auth", authRouter);
 app.use("/v1/admin/auth", adminAuthRouter);
 app.use("/v1/orders", ordersRouter);
-app.use("/v1/orders", voiceOrderRouter);
 app.use("/v1/payments", paymentsRouter);
 app.use("/v1/seller", sellerRouter);
 app.use("/v1/seller/compliance", sellerComplianceRouter);
@@ -380,9 +374,6 @@ app.use("/v1/admin", adminApiTokenRouter);
 app.use("/v1/admin", adminSalesCommissionSettingsRouter);
 app.use("/v1/admin", adminSecurityRouter);
 app.use("/v1/admin", adminNotificationsRouter);
-app.use("/v1/admin/livekit", adminLiveKitRouter);
-app.use("/v1/admin/agent-profiles", requireAuth("admin"), agentProfilesRouter);
-app.use("/v1/admin/agent-call-logs", requireAuth("admin"), adminAgentCallLogsRouter);
 app.use("/v1/foods", foodsRouter);
 app.use("/v1/complaints", complaintsRouter);
 app.use("/v1/tickets", complaintsRouter);
@@ -390,9 +381,6 @@ app.use("/v1/notifications", notificationsRouter);
 app.use("/v1/chats", chatsRouter);
 app.use("/v1/favorites", favoritesRouter);
 app.use("/v1/docs", docsRouter);
-app.use("/v1/livekit", liveKitRouter);
-app.use("/v1/voice", voiceRouter);
-app.use("/v1/session", voiceRouter);
 
 // API routes must always return JSON (never HTML fallback pages).
 app.use("/v1", (req, res) => {

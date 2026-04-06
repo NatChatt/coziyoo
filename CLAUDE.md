@@ -11,12 +11,30 @@ Coziyoo v2 is a food-ordering marketplace platform. It is an npm workspaces mono
 ### Local Development
 
 ```bash
-npm install                  # Install all workspaces
-cp .env.example .env         # First-time env setup
+# First-time env setup (copy all four files)
+cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/admin/.env.example apps/admin/.env
+cp apps/mobile/.env.example apps/mobile/.env
+
+npm install                  # Install API + Admin + packages workspaces
 
 npm run dev:api              # API on http://localhost:3000
 npm run dev:admin            # Admin panel on http://localhost:5174
-npm run dev:mobile           # Mobile via Expo (apps/mobile)
+npm run dev:mobile           # Mobile via Expo (delegates to apps/mobile)
+```
+
+`apps/mobile` is **not** in the npm workspaces array. Run it standalone:
+
+```bash
+cd apps/mobile && npm install && npm run ios   # or npm run android
+```
+
+### Docker Dev Stack
+
+```bash
+docker compose -f docker-compose.dev.yml up -d   # Start API + Admin in containers
+docker compose -f docker-compose.dev.yml down
 ```
 
 ### Building
@@ -75,12 +93,11 @@ Production ingress via Nginx Proxy Manager (Docker):
 ### API Structure (`apps/api/src/`)
 
 - `app.ts` — Express setup, middleware registration, route mounting
-- `routes/` — 20 route files grouped by domain (`auth`, `orders`, `payments`, `livekit`, `admin/*`)
+- `routes/` — Route files grouped by domain (`auth`, `orders`, `payments`, `admin/*`)
+- `config/env.ts` — Zod-validated env schema; loads root `.env` then `apps/api/.env`
 - `db/client.ts` — PostgreSQL pool (pg) using root `.env` vars
-- `config/env.ts` — Zod-validated env schema; loads root `.env` plus `apps/api/.env`
+- `db/migrations/` — Sequential SQL migrations (currently up to `0028`)
 - `services/` — Business logic layer (order state machine, payouts, outbox, Ollama, N8N, TTS, etc.)
-- `db/client.ts` — PostgreSQL pool (pg) using root `.env` vars
-- `db/migrations/` — Sequential SQL migrations (`0001_*.sql` → `0012_*.sql`)
 - `middleware/` — Auth, CORS, content-type normalization, rate limiting, idempotency, RBAC
 
 ### Request Middleware Chain
@@ -105,6 +122,15 @@ Content-type normalization strips malformed charset values before Express body p
 - `pages/` — one file per admin page (Dashboard, Users, ReviewQueue, Compliance, Security, etc.)
 - `components/ui.tsx` — shared UI primitives; `NotesPanel.tsx` — reusable notes sidebar
 
+### Mobile Copy System
+
+All mobile UI text lives in a single source file: `apps/mobile/src/copy/brandCopy.ts`. Never write user-facing strings directly into screen files — add them to `brandCopy.ts` first.
+
+Brand voice rules (immutable unless owner requests change):
+- Full Turkish, informal "sen" tone, short and direct sentences
+- No corporate/robotic phrasing, no mixed Turkish/English UI text
+- Fixed slogan: `Komşunun mutfağından, kapına.` (appears on Home hero card, below search bar)
+
 ### Shared Packages
 
 - `packages/shared-types` — TypeScript types shared across API, admin, mobile (`@coziyoo/shared-types`)
@@ -112,7 +138,7 @@ Content-type normalization strips malformed charset values before Express body p
 
 ### Database Migrations
 
-Migrations live in `apps/api/src/db/migrations/` as numbered SQL files. The `db-migrate.sh` script runs all pending migrations before service start in production. When adding a migration, use the next sequential number (currently up to `0012`).
+Migrations live in `apps/api/src/db/migrations/` as numbered SQL files. The `db-migrate.sh` script runs all pending migrations before service start in production. When adding a migration, use the next sequential number (currently up to `0028`).
 
 ### CI/CD
 
@@ -120,27 +146,49 @@ GitHub Actions (`.github/workflows/deploy-on-push.yml`) SSH-deploys to one or mo
 
 ## Environment Configuration
 
-Environment is split by app. Root `.env` is reserved for shared/ops values, while each app keeps its own runtime `.env`. Key groups:
+Environment is split by app. Root `.env` holds shared/ops values; each app has its own `.env`. Key groups:
 
 - **API:** `PORT`, `APP_JWT_SECRET`, `ADMIN_JWT_SECRET`
 - **Database:** `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `DATABASE_URL`
 - **Admin:** `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 - **Mobile:** `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- **LiveKit:** `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
-- **S3:** `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET_SELLER_DOCS`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (seller compliance document storage)
+- **S3:** `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET_SELLER_DOCS`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`
 - **External:** `OLLAMA_BASE_URL`, `N8N_HOST`, `TTS_API_KEY`, `SPEECH_TO_TEXT_API_KEY`, `PAYMENT_WEBHOOK_SECRET`
-- **CORS:** `CORS_ALLOWED_ORIGINS` (comma-separated list, supports `*` and `://*.domain` wildcards)
+- **CORS:** `CORS_ALLOWED_ORIGINS` (comma-separated, supports `*` and `://*.domain` wildcards)
 
 Installation-specific VPS settings (domains, OS passwords) go in `installation/config.env`.
 
-## Error Response Format
+## API Response Contract
 
-All API errors use the shape:
+All endpoints return `application/json` — including errors. No HTML responses. Error shape:
+
 ```json
 { "error": { "code": "ERROR_CODE", "message": "Human-readable message" } }
 ```
 
 HTTP 401 = unauthenticated, 403 = forbidden, 415 = unsupported content-type.
+
+## Git Workflow
+
+After completing requested code changes, always:
+
+```bash
+git pull --rebase --autostash
+# commit with a clear message
+git push
+```
+
+Apply this by default without waiting to be asked.
+
+## Protected Files (Do Not Modify Without Explicit Approval)
+
+- `.github/workflows/*` — GitHub Actions pipelines
+- `installation/scripts/update_all.sh`
+- `installation/scripts/apply_post_deploy_db_updates.sh`
+- `installation/scripts/db-migrate.sh`
+- Demo DB rebuild/reseed decision logic and related env/flag behavior
+
+If a requested change cannot be done without touching these files, provide an impact analysis and ask for approval first.
 
 ## Default Admin Credentials
 

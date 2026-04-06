@@ -162,7 +162,7 @@ export async function sendSessionEndEvent(input: {
 }) {
   const endpoint = resolveToolWebhookEndpoint("session-end", { baseUrl: input.baseUrl });
   const bodyPayload = JSON.stringify({
-    source: "livekit-agent",
+    source: "agent",
     timestamp: new Date().toISOString(),
     roomName: input.roomName,
     jobId: input.jobId ?? null,

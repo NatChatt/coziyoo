@@ -1905,56 +1905,6 @@ textarea:focus {
   border: 1px solid var(--color-border);
 }
 
-.livekit-video {
-  width: 100%;
-  max-width: 720px;
-  border-radius: 14px;
-  background: #0f172a;
-  min-height: 240px;
-  border: 1px solid var(--color-border);
-}
-
-.livekit-remote-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-}
-
-.livekit-remote-card {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 10px;
-  display: grid;
-  gap: 8px;
-}
-
-.livekit-chat-log {
-  display: grid;
-  gap: 8px;
-  max-height: 280px;
-  overflow: auto;
-  padding: 6px;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  background: var(--color-card-bg);
-}
-
-.livekit-chat-item {
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
-  background: var(--color-white);
-  display: grid;
-  gap: 6px;
-}
-
-.livekit-chat-form {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  align-items: center;
-}
 
 .token-output-row {
   display: grid;
@@ -1971,15 +1921,6 @@ textarea:focus {
   background: var(--color-input-bg);
 }
 
-.livekit-chat-form input {
-  width: 100%;
-  min-height: 42px;
-  border-radius: 12px;
-  border: 1px solid var(--color-input-border);
-  background: var(--color-input-bg);
-  color: var(--color-text);
-  padding: 10px 12px;
-}
 
 .login-wrap {
   min-height: 100vh;
@@ -10109,9 +10050,6 @@ table tbody tr:has(.order-status-pill.is-delivery) td:first-child {
     min-width: 720px;
   }
 
-  .livekit-video {
-    min-height: 200px;
-  }
 }
 
 @media (max-width: 700px) {
@@ -10218,18 +10156,6 @@ table tbody tr:has(.order-status-pill.is-delivery) td:first-child {
     width: 96vw;
     border-radius: 14px;
     padding: 14px;
-  }
-
-  .livekit-video {
-    min-height: 170px;
-  }
-
-  .livekit-remote-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .livekit-chat-form {
-    grid-template-columns: 1fr;
   }
 
   .users-kpi-grid {

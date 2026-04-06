@@ -61,9 +61,10 @@ export default function ApiTokensPage({ language, isSuperAdmin }: { language: La
         setError(body?.error?.message ?? `HTTP ${response.status}: ${dict.apiTokens.tokenCreateFailed}`);
         return;
       }
+      const created = body.data;
       setLabel("");
-      setFullTokenBySessionId((prev) => ({ ...prev, [body.data.sessionId]: body.data.token }));
-      setNewToken({ label: body.data.label, token: body.data.token });
+      setFullTokenBySessionId((prev) => ({ ...prev, [created.sessionId]: created.token }));
+      setNewToken({ label: created.label, token: created.token });
       setCopied(false);
       await loadTokens();
     } catch {
