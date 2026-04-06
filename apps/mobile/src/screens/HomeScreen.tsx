@@ -1516,16 +1516,6 @@ function FoodCard({
           { backgroundColor: colors.bg, borderColor: colors.border },
         ]}
       >
-        {hasSellerCutout ? (
-          <View pointerEvents="none" style={styles.foodSellerFigureStage}>
-            <Image
-              source={{ uri: meal.sellerHomeCardImage! }}
-              style={styles.foodSellerFigureImage}
-              resizeMode="contain"
-              onError={() => setSellerHomeCardImageFailed(true)}
-            />
-          </View>
-        ) : null}
         <View
           style={[styles.foodPhoto, { backgroundColor: meal.backgroundColor }]}
           onLayout={(event) => {
@@ -1535,83 +1525,95 @@ function FoodCard({
             setImageFrameHeight((prev) => (prev === nextHeight ? prev : nextHeight));
           }}
         >
-          {imageUrls.length > 0 ? (
-            <View style={styles.foodImageSliderWrap}>
-              <ScrollView
-                ref={cardImageScrollRef}
-                horizontal
-                pagingEnabled
-                directionalLockEnabled
-                nestedScrollEnabled
-                showsHorizontalScrollIndicator={false}
-                bounces={false}
-                decelerationRate="fast"
-                style={styles.foodImageSlider}
-                contentContainerStyle={styles.foodImageSliderContent}
-                onMomentumScrollEnd={(event) => {
-                  if (!imageFrameWidth) return;
-                  const offsetX = event.nativeEvent.contentOffset.x;
-                  const nextIndex = Math.round(offsetX / imageFrameWidth);
-                  const bounded = Math.max(0, Math.min(nextIndex, imageUrls.length - 1));
-                  setImageIndex(bounded);
-                }}
-              >
-                {imageUrls.map((uri, idx) => (
-                  <View
-                    key={`food-image-${meal.id}-${idx}`}
-                    style={[styles.foodImageTapArea, { width: imageFrameWidth }]}
-                  >
-                    <Image
-                      source={{ uri }}
-                      style={styles.foodImage}
-                      resizeMode="cover"
-                      onError={() => {
-                        setImageUrls((prev) => {
-                          const filtered = prev.filter((_, itemIndex) => itemIndex !== idx);
-                          const trimmed = filtered.slice(0, 5);
-                          setImageIndex((current) => {
-                            if (trimmed.length === 0) return 0;
-                            return Math.max(0, Math.min(current, trimmed.length - 1));
-                          });
-                          return trimmed;
-                        });
-                      }}
-                    />
-                  </View>
-                ))}
-              </ScrollView>
-              {imageUrls.length > 1 ? (
-                <View pointerEvents="none" style={styles.foodImageDotsRow}>
-                  {imageUrls.map((_, idx) => (
+          <View style={styles.foodPhotoImageLayer}>
+            {imageUrls.length > 0 ? (
+              <View style={styles.foodImageSliderWrap}>
+                <ScrollView
+                  ref={cardImageScrollRef}
+                  horizontal
+                  pagingEnabled
+                  directionalLockEnabled
+                  nestedScrollEnabled
+                  showsHorizontalScrollIndicator={false}
+                  bounces={false}
+                  decelerationRate="fast"
+                  style={styles.foodImageSlider}
+                  contentContainerStyle={styles.foodImageSliderContent}
+                  onMomentumScrollEnd={(event) => {
+                    if (!imageFrameWidth) return;
+                    const offsetX = event.nativeEvent.contentOffset.x;
+                    const nextIndex = Math.round(offsetX / imageFrameWidth);
+                    const bounded = Math.max(0, Math.min(nextIndex, imageUrls.length - 1));
+                    setImageIndex(bounded);
+                  }}
+                >
+                  {imageUrls.map((uri, idx) => (
                     <View
-                      key={`food-image-dot-${meal.id}-${idx}`}
-                      style={[
-                        styles.foodImageDot,
-                        idx === imageIndex && styles.foodImageDotActive,
-                      ]}
-                    />
+                      key={`food-image-${meal.id}-${idx}`}
+                      style={[styles.foodImageTapArea, { width: imageFrameWidth }]}
+                    >
+                      <Image
+                        source={{ uri }}
+                        style={styles.foodImage}
+                        resizeMode="cover"
+                        onError={() => {
+                          setImageUrls((prev) => {
+                            const filtered = prev.filter((_, itemIndex) => itemIndex !== idx);
+                            const trimmed = filtered.slice(0, 5);
+                            setImageIndex((current) => {
+                              if (trimmed.length === 0) return 0;
+                              return Math.max(0, Math.min(current, trimmed.length - 1));
+                            });
+                            return trimmed;
+                          });
+                        }}
+                      />
+                    </View>
                   ))}
-                </View>
-              ) : null}
-            </View>
-          ) : (
-            <View style={styles.foodImageTapFallback}>
-              <Text style={styles.foodEmoji}>🍽️</Text>
-            </View>
-          )}
-          {LinearGradient ? (
-            <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
-              <LinearGradient
-                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.28)']}
-                locations={[0, 1]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={styles.foodPhotoBottomGradientFill}
+                </ScrollView>
+                {imageUrls.length > 1 ? (
+                  <View pointerEvents="none" style={styles.foodImageDotsRow}>
+                    {imageUrls.map((_, idx) => (
+                      <View
+                        key={`food-image-dot-${meal.id}-${idx}`}
+                        style={[
+                          styles.foodImageDot,
+                          idx === imageIndex && styles.foodImageDotActive,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              <View style={styles.foodImageTapFallback}>
+                <Text style={styles.foodEmoji}>🍽️</Text>
+              </View>
+            )}
+            {LinearGradient ? (
+              <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
+                <LinearGradient
+                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.28)']}
+                  locations={[0, 1]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.foodPhotoBottomGradientFill}
+                />
+              </View>
+            ) : (
+              <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
+            )}
+          </View>
+          {hasSellerCutout ? (
+            <View pointerEvents="none" style={styles.foodSellerFigureStage}>
+              <Image
+                source={{ uri: meal.sellerHomeCardImage! }}
+                style={styles.foodSellerFigureImage}
+                resizeMode="contain"
+                onError={() => setSellerHomeCardImageFailed(true)}
               />
             </View>
-          ) : (
-            <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
-          )}
+          ) : null}
           <View
             pointerEvents="none"
             style={[
@@ -5651,8 +5653,12 @@ const styles = StyleSheet.create({
     height: 236,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    overflow: 'visible',
     backgroundColor: '#B96C44',
+  },
+  foodPhotoImageLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
   },
   foodImageSliderWrap: { width: '100%', height: '100%' },
   foodImageSlider: { width: '100%', height: '100%' },
@@ -5702,13 +5708,14 @@ const styles = StyleSheet.create({
   foodEmoji: { fontSize: 56 },
   foodSellerFigureStage: {
     position: 'absolute',
-    left: -12,
-    bottom: 0,
-    width: 170,
-    height: 328,
-    zIndex: 3,
+    left: -14,
+    top: 8,
+    width: 196,
+    height: 344,
+    zIndex: 5,
+    elevation: 8,
     alignItems: 'flex-start',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
   },
   foodSellerFigureImage: {
     width: '100%',
@@ -5720,16 +5727,16 @@ const styles = StyleSheet.create({
     right: 14,
     alignItems: 'flex-end',
     gap: 8,
-    zIndex: 4,
+    zIndex: 7,
   },
   foodPhotoLeftTextBlock: {
     position: 'absolute',
     left: 18,
     right: 106,
     bottom: 28,
-    zIndex: 4,
+    zIndex: 7,
   },
-  foodPhotoLeftTextBlockWithFigure: { left: 148 },
+  foodPhotoLeftTextBlockWithFigure: { left: 176 },
   foodPhotoTitleText: {
     color: '#FFFFFF',
     fontSize: 42,
@@ -5787,7 +5794,7 @@ const styles = StyleSheet.create({
     minHeight: 182,
   },
   foodInfoContentWithFigure: {
-    paddingLeft: 146,
+    paddingLeft: 172,
   },
   foodInfoLine: {
     flexDirection: 'row',
