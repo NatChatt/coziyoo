@@ -5690,8 +5690,14 @@ const styles = StyleSheet.create({
   ratingBadgeStar: { color: '#C4953A', fontSize: 12, fontWeight: '700' },
   ratingBadgeText: { color: '#3D3229', fontSize: 12, fontWeight: '700' },
   foodInfo: { paddingHorizontal: 12, paddingVertical: 14 },
-  foodInfoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-  foodInfoLeft: { flex: 1 },
+  foodInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+    position: 'relative',
+  },
+  foodInfoLeft: { flex: 1, paddingRight: 94 },
   foodNameRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -5705,7 +5711,13 @@ const styles = StyleSheet.create({
   foodNameInline: { flexShrink: 1 },
   foodStockBelowCuisine: { marginTop: 3, fontSize: 12, fontWeight: '700' },
   foodTitlePressArea: { alignSelf: 'flex-start' },
-  foodNameMetaRight: { alignItems: 'flex-end', gap: 2 },
+  foodNameMetaRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    alignItems: 'flex-end',
+    gap: 2,
+  },
   foodMetaRow: {
     marginTop: 4,
     flexDirection: 'row',
@@ -5723,7 +5735,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(141,128,114,0.35)',
     backgroundColor: '#F4EEE6',
-    marginTop: 0,
+    marginTop: 2,
   },
   foodSellerThumbImage: { width: '100%', height: '100%' },
   foodSellerThumbFallback: {
@@ -5740,7 +5752,7 @@ const styles = StyleSheet.create({
   foodSellerLink: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' },
   foodSellerChevron: { marginTop: 2, marginLeft: 2 },
   foodCuisine: { fontSize: 12, fontWeight: '500', marginTop: 2, fontStyle: 'italic' },
-  foodBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 2 },
+  foodBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 0 },
   foodMetaInlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   foodMetaClockBadge: {
     width: 20,
