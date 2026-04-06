@@ -1404,6 +1404,7 @@ function FoodCard({
   const allergenSummary = allergens.length > 0
     ? `Alerjen: ${allergens.slice(0, 2).join(', ')}`
     : '';
+  const darkestMealTextColor = darken(colors.title, 0.18);
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -1511,7 +1512,13 @@ function FoodCard({
           <View pointerEvents="none" style={styles.foodPhotoLeftTextBlock}>
             <Text
               numberOfLines={1}
-              style={[styles.foodPhotoTitleText, photoTextTone === 'dark' && styles.foodPhotoTitleTextDark]}
+              style={[
+                styles.foodPhotoTitleText,
+                {
+                  color: darkestMealTextColor,
+                  textShadowColor: 'rgba(255,255,255,0.34)',
+                },
+              ]}
             >
               {meal.title}
             </Text>
@@ -1520,7 +1527,10 @@ function FoodCard({
                 numberOfLines={1}
                 style={[
                   styles.foodPhotoCuisineText,
-                  photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
+                  {
+                    color: darkestMealTextColor,
+                    textShadowColor: 'rgba(255,255,255,0.32)',
+                  },
                 ]}
               >
                 {formatCuisineLabel(meal.cuisine)}
@@ -1531,7 +1541,10 @@ function FoodCard({
                 numberOfLines={1}
                 style={[
                   styles.foodPhotoStockText,
-                  photoTextTone === 'dark' && styles.foodPhotoStockTextDark,
+                  {
+                    color: darkestMealTextColor,
+                    textShadowColor: 'rgba(255,255,255,0.33)',
+                  },
                 ]}
               >
                 {stockSummary}
@@ -1553,7 +1566,10 @@ function FoodCard({
                 numberOfLines={1}
                 style={[
                   styles.foodPhotoMetaText,
-                  photoTextTone === 'dark' && styles.foodPhotoMetaTextDark,
+                  {
+                    color: darkestMealTextColor,
+                    textShadowColor: 'rgba(255,255,255,0.3)',
+                  },
                 ]}
               >
                 ⏱ {timeDistanceText}
