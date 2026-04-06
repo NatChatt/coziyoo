@@ -673,6 +673,14 @@ function resolveGreetingTitleMetrics(text: string): { fontSize: number; lineHeig
   return { fontSize: 33, lineHeight: 46 };
 }
 
+function resolveFoodPhotoTitleMetrics(text: string): { fontSize: number; lineHeight: number } {
+  const length = text.trim().length;
+  if (length >= 24) return { fontSize: 31, lineHeight: 35 };
+  if (length >= 18) return { fontSize: 36, lineHeight: 40 };
+  if (length >= 12) return { fontSize: 42, lineHeight: 45 };
+  return { fontSize: 50, lineHeight: 52 };
+}
+
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
@@ -1476,6 +1484,19 @@ function FoodCard({
   const allergenSummary = allergens.length > 0
     ? `Alerjen: ${allergens.slice(0, 2).join(', ')}`
     : '';
+  const titleMetrics = resolveFoodPhotoTitleMetrics(meal.title);
+  const sellerHandle = formatSellerIdentity(meal.seller, meal.sellerUsername);
+  const sellerMeta = (() => {
+    const locationBasis = String(meal.locationBasisLabel ?? '').trim();
+    if (locationBasis) return locationBasis;
+    const cuisineLabel = formatCuisineLabel(meal.cuisine);
+    if (cuisineLabel) return cuisineLabel;
+    return 'Ev yemekleri';
+  })();
+  const ratingValue = Number(String(meal.rating ?? '').replace(',', '.'));
+  const socialProofText = Number.isFinite(ratingValue) && ratingValue > 0
+    ? `${Number(ratingValue).toFixed(1)} puanla seviliyor.`
+    : 'Yoğun ilgi görüyor.';
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -1495,6 +1516,16 @@ function FoodCard({
           { backgroundColor: colors.bg, borderColor: colors.border },
         ]}
       >
+        {hasSellerCutout ? (
+          <View pointerEvents="none" style={styles.foodSellerFigureStage}>
+            <Image
+              source={{ uri: meal.sellerHomeCardImage! }}
+              style={styles.foodSellerFigureImage}
+              resizeMode="contain"
+              onError={() => setSellerHomeCardImageFailed(true)}
+            />
+          </View>
+        ) : null}
         <View
           style={[styles.foodPhoto, { backgroundColor: meal.backgroundColor }]}
           onLayout={(event) => {
@@ -1581,46 +1612,34 @@ function FoodCard({
           ) : (
             <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
           )}
-          <View pointerEvents="none" style={styles.foodPhotoLeftTextBlock}>
+          <View
+            pointerEvents="none"
+            style={[
+              styles.foodPhotoLeftTextBlock,
+              hasSellerCutout && styles.foodPhotoLeftTextBlockWithFigure,
+            ]}
+          >
             <Text
-              numberOfLines={1}
-              style={[styles.foodPhotoTitleText, { color: colors.photoTitle }]}
+              numberOfLines={2}
+              style={[
+                styles.foodPhotoTitleText,
+                titleMetrics,
+                { color: colors.photoTitle },
+                photoTextTone === 'dark' && styles.foodPhotoTitleTextDark,
+              ]}
             >
               {meal.title}
             </Text>
             {meal.cuisine ? (
               <Text
                 numberOfLines={1}
-                style={[styles.foodPhotoCuisineText, { color: colors.photoCuisine }]}
-              >
-                {formatCuisineLabel(meal.cuisine)}
-              </Text>
-            ) : null}
-            {stockSummary ? (
-              <Text
-                numberOfLines={1}
-                style={[styles.foodPhotoStockText, { color: colors.photoStock }]}
-              >
-                {stockSummary}
-              </Text>
-            ) : null}
-            {allergenSummary ? (
-              <Text
-                numberOfLines={1}
                 style={[
-                  styles.foodPhotoAllergenText,
-                  photoTextTone === 'dark' && styles.foodPhotoAllergenTextDark,
+                  styles.foodPhotoCuisineText,
+                  { color: colors.photoCuisine },
+                  photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
                 ]}
               >
-                {allergenSummary}
-              </Text>
-            ) : null}
-            {timeDistanceText ? (
-              <Text
-                numberOfLines={1}
-                style={[styles.foodPhotoMetaText, { color: colors.photoMeta }]}
-              >
-                ⏱ {timeDistanceText}
+                {formatCuisineLabel(meal.cuisine)}
               </Text>
             ) : null}
           </View>
@@ -1628,26 +1647,12 @@ function FoodCard({
             <View style={styles.foodPriceBadge}>
               <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
             </View>
-            <View style={styles.ratingBadge}>
-              <Text style={styles.ratingBadgeStar}>★</Text>
-              <Text style={styles.ratingBadgeText}>{meal.rating}</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.82}
-              onPress={(event) => {
-                event.stopPropagation();
-                onFavoritePress();
-              }}
-              style={styles.foodFavoriteInBadges}
-              disabled={favoritePending}
-            >
-              <Ionicons
-                name={isFavorite ? 'heart' : 'heart-outline'}
-                size={19}
-                color={isFavorite ? '#E53935' : '#FFFFFF'}
-                style={styles.foodFavoriteIcon}
-              />
-            </TouchableOpacity>
+            {Number.isFinite(ratingValue) && ratingValue > 0 ? (
+              <View style={styles.ratingBadge}>
+                <Text style={styles.ratingBadgeStar}>★</Text>
+                <Text style={styles.ratingBadgeText}>{meal.rating}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
         <TouchableOpacity
@@ -1655,44 +1660,109 @@ function FoodCard({
           onPress={onPress}
           style={styles.foodInfo}
         >
-          <View style={styles.foodInfoRow}>
-            <View style={styles.foodInfoLeft}>
-              {hasSellerCutout ? (
-                <View style={styles.foodSellerCutoutStage}>
-                  <Image
-                    source={{ uri: meal.sellerHomeCardImage! }}
-                    style={styles.foodSellerCutoutImage}
-                    resizeMode="contain"
-                    onError={() => setSellerHomeCardImageFailed(true)}
-                  />
-                </View>
-              ) : null}
+          <View style={[styles.foodInfoContent, hasSellerCutout && styles.foodInfoContentWithFigure]}>
+            <View style={styles.foodInfoLine}>
+              <View style={styles.foodInfoIconBubble}>
+                <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
+              </View>
+              <View style={styles.foodInfoTextWrap}>
+                <Text style={styles.foodInfoTitle} numberOfLines={1}>
+                  {stockSummary || 'Bugün hazırlanıyor'}
+                </Text>
+                <Text style={styles.foodInfoSubtitle} numberOfLines={1}>
+                  {socialProofText}
+                </Text>
+              </View>
             </View>
-            <View style={[styles.foodNameMetaRight, hasSellerCutout && styles.foodNameMetaRightWithCutout]}>
-              <View style={styles.foodSellerTopRow}>
-                {!hasSellerCutout ? (
-                  <View style={styles.foodSellerThumbWrap}>
-                    <View style={styles.foodSellerThumb}>
-                      {meal.sellerImage && !sellerThumbFailed ? (
-                        <Image
-                          source={{ uri: meal.sellerImage }}
-                          style={styles.foodSellerThumbImage}
-                          onError={() => setSellerThumbFailed(true)}
-                        />
-                      ) : (
-                        <View style={styles.foodSellerThumbFallback}>
-                          <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                ) : null}
-                <View style={styles.foodSellerInlineBtn}>
-                  <Text numberOfLines={1} style={[styles.foodSellerInline, { color: colors.subtitle }]}>
-                    {formatSellerIdentity(meal.seller, meal.sellerUsername)}
+            {allergenSummary ? (
+              <View style={styles.foodInfoLine}>
+                <View style={[styles.foodInfoIconBubble, styles.foodInfoIconBubbleAlert]}>
+                  <Ionicons name="warning-outline" size={16} color="#B13B2E" />
+                </View>
+                <View style={styles.foodInfoTextWrap}>
+                  <Text style={[styles.foodInfoTitle, styles.foodInfoAlertTitle]} numberOfLines={1}>
+                    {allergenSummary}
                   </Text>
                 </View>
               </View>
+            ) : null}
+            <View style={styles.foodStatsRow}>
+              <View style={styles.foodStatItem}>
+                <View style={styles.foodStatIconBubble}>
+                  <Ionicons name="time-outline" size={16} color="#3F3025" />
+                </View>
+                <View style={styles.foodStatTextWrap}>
+                  <Text style={styles.foodStatValue} numberOfLines={1}>
+                    {meal.time || 'Süre yakında'}
+                  </Text>
+                  <Text style={styles.foodStatLabel} numberOfLines={1}>
+                    Hazırlık süresi
+                  </Text>
+                </View>
+              </View>
+              {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
+                <>
+                  <View style={styles.foodStatDivider} />
+                  <View style={styles.foodStatItem}>
+                    <View style={styles.foodStatIconBubble}>
+                      <Ionicons name="location-outline" size={16} color="#3F3025" />
+                    </View>
+                    <View style={styles.foodStatTextWrap}>
+                      <Text style={styles.foodStatValue} numberOfLines={1}>
+                        {meal.distance}
+                      </Text>
+                      <Text style={styles.foodStatLabel} numberOfLines={1}>
+                        Uzaklık
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              ) : null}
+            </View>
+            <View style={styles.foodFooterRow}>
+              <View style={styles.foodFooterSeller}>
+                <View style={styles.foodSellerThumbWrap}>
+                  <View style={styles.foodSellerThumb}>
+                    {meal.sellerImage && !sellerThumbFailed ? (
+                      <Image
+                        source={{ uri: meal.sellerImage }}
+                        style={styles.foodSellerThumbImage}
+                        onError={() => setSellerThumbFailed(true)}
+                      />
+                    ) : (
+                      <View style={styles.foodSellerThumbFallback}>
+                        <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.foodFooterSellerText}>
+                  <Text numberOfLines={1} style={styles.foodFooterSellerHandle}>
+                    {sellerHandle}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.foodFooterSellerMeta}>
+                    {sellerMeta}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.82}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  onFavoritePress();
+                }}
+                style={[
+                  styles.foodFooterFavoriteBtn,
+                  isFavorite && styles.foodFooterFavoriteBtnActive,
+                ]}
+                disabled={favoritePending}
+              >
+                <Ionicons
+                  name={isFavorite ? 'heart' : 'heart-outline'}
+                  size={22}
+                  color={isFavorite ? '#B8302C' : '#B85C58'}
+                />
+              </TouchableOpacity>
             </View>
           </View>
         </TouchableOpacity>
@@ -5561,21 +5631,29 @@ const styles = StyleSheet.create({
 
   /* --- Food card --- */
   foodCardWrap: {
-    marginBottom: 12,
-    marginHorizontal: 8,
-    borderRadius: 18,
+    marginBottom: 16,
+    marginHorizontal: 10,
+    borderRadius: 28,
     shadowColor: '#000',
-    shadowOpacity: 0.09,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
   foodCard: {
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 28,
     overflow: 'hidden',
+    position: 'relative',
   },
-  foodPhoto: { width: '100%', height: 155, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  foodPhoto: {
+    width: '100%',
+    height: 236,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    backgroundColor: '#B96C44',
+  },
   foodImageSliderWrap: { width: '100%', height: '100%' },
   foodImageSlider: { width: '100%', height: '100%' },
   foodImageSliderContent: { alignItems: 'stretch' },
@@ -5607,7 +5685,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 64,
+    height: 118,
   },
   foodPhotoBottomGradientFill: {
     width: '100%',
@@ -5618,60 +5696,58 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 64,
-    backgroundColor: 'rgba(0,0,0,0.14)',
+    height: 118,
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
   foodEmoji: { fontSize: 56 },
-  foodFavoriteIcon: {
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+  foodSellerFigureStage: {
+    position: 'absolute',
+    left: -12,
+    bottom: 0,
+    width: 170,
+    height: 328,
+    zIndex: 3,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
+  },
+  foodSellerFigureImage: {
+    width: '100%',
+    height: '100%',
   },
   foodBadgesRight: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 14,
+    right: 14,
     alignItems: 'flex-end',
-    gap: 6,
-  },
-  foodFavoriteInBadges: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
+    zIndex: 4,
   },
   foodPhotoLeftTextBlock: {
     position: 'absolute',
-    left: 10,
-    right: 120,
-    bottom: 42,
+    left: 18,
+    right: 106,
+    bottom: 28,
+    zIndex: 4,
   },
-  foodPhotoLeftTextSurface: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-  },
+  foodPhotoLeftTextBlockWithFigure: { left: 148 },
   foodPhotoTitleText: {
     color: '#FFFFFF',
-    fontSize: 19,
-    fontWeight: '800',
-    textShadowColor: 'rgba(0,0,0,0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    fontSize: 42,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    letterSpacing: -1.6,
+    textShadowColor: 'rgba(0,0,0,0.42)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
   foodPhotoTitleTextDark: {
     color: '#30271F',
-    textShadowColor: 'rgba(255,255,255,0.35)',
+    textShadowColor: 'rgba(255,255,255,0.28)',
   },
   foodPhotoCuisineText: {
-    marginTop: 2,
+    marginTop: 4,
     color: '#F4ECE0',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
@@ -5681,125 +5757,136 @@ const styles = StyleSheet.create({
     color: '#46382F',
     textShadowColor: 'rgba(255,255,255,0.32)',
   },
-  foodPhotoStockText: {
-    marginTop: 2,
-    color: '#EBDDCE',
-    fontSize: 14,
-    fontWeight: '800',
-    textShadowColor: 'rgba(0,0,0,0.52)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2.5,
-  },
-  foodPhotoStockTextDark: {
-    color: '#4B3A2D',
-    textShadowColor: 'rgba(255,255,255,0.33)',
-  },
-  foodPhotoAllergenText: {
-    marginTop: 2,
-    color: '#FFD2CC',
-    fontSize: 12,
-    fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2.2,
-  },
-  foodPhotoAllergenTextDark: {
-    color: '#8A2E26',
-    textShadowColor: 'rgba(255,255,255,0.28)',
-  },
-  foodPhotoMetaText: {
-    marginTop: 2,
-    color: '#E8EEF9',
-    fontSize: 12,
-    fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2.2,
-  },
-  foodPhotoMetaTextDark: {
-    color: '#3F454E',
-    textShadowColor: 'rgba(255,255,255,0.28)',
-  },
   foodPriceBadge: {
-    backgroundColor: 'rgba(61,50,41,0.9)',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(51,36,27,0.9)',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  foodPriceBadgeText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  foodPriceBadgeText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
   ratingBadge: {
-    backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 8,
-    paddingHorizontal: 9, paddingVertical: 3,
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-  },
-  ratingBadgeStar: { color: '#C4953A', fontSize: 12, fontWeight: '700' },
-  ratingBadgeText: { color: '#3D3229', fontSize: 12, fontWeight: '700' },
-  foodInfo: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6 },
-  foodInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-    position: 'relative',
-  },
-  foodInfoLeft: { flex: 1, minHeight: 112 },
-  foodSellerCutoutStage: {
-    width: 132,
-    height: 148,
-    marginTop: -56,
-    marginLeft: -6,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  foodSellerCutoutImage: {
-    width: '100%',
-    height: '100%',
-  },
-  foodNameRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  foodName: { fontSize: 16, fontWeight: '600' },
-  foodTitlePressArea: { alignSelf: 'flex-start' },
-  foodNameMetaRight: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    alignItems: 'flex-start',
-    gap: 2,
-  },
-  foodNameMetaRightWithCutout: {
-    left: 106,
-    top: 20,
-  },
-  foodSellerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  foodMetaRow: {
-    marginTop: 4,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
+    gap: 4,
   },
-  foodSellerInlineBtn: {
-    marginTop: 0,
-    maxWidth: 128,
-    alignItems: 'flex-start',
+  ratingBadgeStar: { color: '#C4953A', fontSize: 13, fontWeight: '800' },
+  ratingBadgeText: { color: '#3D3229', fontSize: 13, fontWeight: '800' },
+  foodInfo: {
+    backgroundColor: '#FFF9F2',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(125,95,71,0.12)',
+  },
+  foodInfoContent: {
+    paddingTop: 16,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
+    minHeight: 182,
+  },
+  foodInfoContentWithFigure: {
+    paddingLeft: 146,
+  },
+  foodInfoLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  foodInfoIconBubble: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F3E6D8',
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  foodSellerInline: { fontSize: 14, fontWeight: '700' },
+  foodInfoIconBubbleAlert: {
+    backgroundColor: '#FBE8E4',
+  },
+  foodInfoTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  foodInfoTitle: {
+    color: '#433126',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  foodInfoSubtitle: {
+    marginTop: 2,
+    color: '#7B6758',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  foodInfoAlertTitle: {
+    color: '#B13B2E',
+  },
+  foodStatsRow: {
+    marginTop: 2,
+    paddingTop: 2,
+    paddingBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  foodStatItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  foodStatIconBubble: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F4EBE1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  foodStatTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  foodStatValue: {
+    color: '#3E3025',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  foodStatLabel: {
+    marginTop: 2,
+    color: '#8B7768',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  foodStatDivider: {
+    width: 1,
+    backgroundColor: 'rgba(112,88,68,0.16)',
+    marginHorizontal: 14,
+  },
+  foodFooterRow: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(112,88,68,0.16)',
+    paddingTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  foodFooterSeller: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   foodSellerThumbWrap: {
-    width: 84,
-    height: 92,
-    borderRadius: 16,
-    marginTop: 0,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
@@ -5807,7 +5894,7 @@ const styles = StyleSheet.create({
   foodSellerThumb: {
     width: '100%',
     height: '100%',
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 0.7,
     borderColor: 'rgba(141,128,114,0.24)',
@@ -5819,33 +5906,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  foodSellerThumbFallbackText: { color: '#6D5D50', fontSize: 13, fontWeight: '800' },
-  foodAllergenBelowCuisine: { marginTop: 4, fontSize: 11, fontWeight: '700', color: '#C2362F' },
-  foodCuisineInline: { fontSize: 12, fontWeight: '600' },
-  foodStockText: { fontSize: 11, fontWeight: '600' },
-  foodSeller: { fontSize: 13, fontWeight: '500', marginTop: 2 },
-  foodSellerLink: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' },
-  foodSellerChevron: { marginTop: 2, marginLeft: 2 },
-  foodCuisine: { fontSize: 12, fontWeight: '500', marginTop: 2, fontStyle: 'italic' },
-  foodBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 0 },
-  foodMetaInlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  foodMetaClockBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#AAB1BC',
+  foodSellerThumbFallbackText: { color: '#6D5D50', fontSize: 18, fontWeight: '800' },
+  foodFooterSellerText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  foodFooterSellerHandle: {
+    color: '#33241C',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  foodFooterSellerMeta: {
+    marginTop: 2,
+    color: '#7D695A',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  foodFooterFavoriteBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1.5,
+    borderColor: '#DFAEAB',
+    backgroundColor: '#FFF7F5',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 1.5,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
   },
-  foodMenuItemsText: { marginTop: 4, fontSize: 11, fontWeight: '600' },
-  foodMeta: { fontSize: 12, fontWeight: '700' },
+  foodFooterFavoriteBtnActive: {
+    backgroundColor: '#FFE8E6',
+    borderColor: '#D58B86',
+  },
 
   /* --- Tab panels --- */
   tabPanelCard: {
