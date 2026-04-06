@@ -65,6 +65,15 @@ try {
 } catch {
   // Native module not available — adaptive colors will use fallback
 }
+let manipulateAsync: typeof import('expo-image-manipulator').manipulateAsync | null = null;
+let ManipulatorSaveFormat: typeof import('expo-image-manipulator').SaveFormat | null = null;
+try {
+  const imageManipulator = require('expo-image-manipulator');
+  manipulateAsync = imageManipulator.manipulateAsync;
+  ManipulatorSaveFormat = imageManipulator.SaveFormat;
+} catch {
+  // Optional at runtime; local-region sampling falls back to defaults when unavailable.
+}
 let PaymentWebView: React.ComponentType<{
   source: { uri: string };
   onNavigationStateChange?: (state: { url?: string }) => void;
@@ -733,6 +742,26 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${safeAlpha})`;
 }
 
+function relativeLuminanceFromHex(hex: string): number {
+  const { r, g, b } = hexToRgb(hex);
+  const [rs, gs, bs] = [r, g, b].map((channel) => {
+    const normalized = channel / 255;
+    if (normalized <= 0.03928) return normalized / 12.92;
+    return ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+function getImageSizeAsync(uri: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    Image.getSize(
+      uri,
+      (width, height) => resolve({ width, height }),
+      (error) => reject(error),
+    );
+  });
+}
+
 function rgbToHex(r: number, g: number, b: number): string {
   return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`.toUpperCase();
 }
@@ -833,6 +862,7 @@ const DAILY_FLASH_MEALS = [
   'Sütlaç',
 ] as const;
 const SLOGAN_MARQUEE_GAP = 22;
+const PHOTO_TEXT_TONE_CACHE = new Map<string, 'light' | 'dark'>();
 
 const CATEGORY_BG_COLORS: Record<string, string> = {
   Çorbalar: '#F1DED0',
@@ -1215,9 +1245,13 @@ function FoodCard({
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imageIndex, setImageIndex] = useState(0);
   const [imageFrameWidth, setImageFrameWidth] = useState(defaultCardImageWidth);
+  const [imageFrameHeight, setImageFrameHeight] = useState(155);
+  const [photoTextTone, setPhotoTextTone] = useState<'light' | 'dark'>('light');
   const [sellerThumbFailed, setSellerThumbFailed] = useState(false);
   const cardImageScrollRef = useRef<ScrollView | null>(null);
+  const textToneRequestRef = useRef(0);
   const primaryImageUrl = imageUrls[0];
+  const activeImageUrl = imageUrls[imageIndex] ?? primaryImageUrl;
 
   useEffect(() => {
     const next = [...(meal.imageUrls ?? []), meal.imageUrl ?? '']
@@ -1256,6 +1290,104 @@ function FoodCard({
   }, [primaryImageUrl, meal.backgroundColor]);
 
   useEffect(() => {
+    if (!activeImageUrl || !manipulateAsync || !ManipulatorSaveFormat || !getColors) {
+      setPhotoTextTone('light');
+      return;
+    }
+    if (imageFrameWidth < 120 || imageFrameHeight < 80) return;
+
+    let cancelled = false;
+    const requestId = ++textToneRequestRef.current;
+
+    const detectTextToneFromVisibleRegion = async () => {
+      try {
+        const toneCacheKey = `${activeImageUrl}#${imageFrameWidth}x${imageFrameHeight}`;
+        const cachedTone = PHOTO_TEXT_TONE_CACHE.get(toneCacheKey);
+        if (cachedTone) {
+          if (!cancelled && requestId === textToneRequestRef.current) {
+            setPhotoTextTone((prev) => (prev === cachedTone ? prev : cachedTone));
+          }
+          return;
+        }
+
+        const { width: sourceWidth, height: sourceHeight } = await getImageSizeAsync(activeImageUrl);
+        if (cancelled || requestId !== textToneRequestRef.current) return;
+
+        const sampleFrameX = 10;
+        const sampleFrameY = Math.max(0, Math.round(imageFrameHeight * 0.34));
+        const sampleFrameWidth = Math.max(
+          72,
+          Math.min(Math.round(imageFrameWidth * 0.52), imageFrameWidth - 132),
+        );
+        const maxSampleHeight = Math.max(36, imageFrameHeight - sampleFrameY - 14);
+        const sampleFrameHeight = Math.max(
+          36,
+          Math.min(Math.round(imageFrameHeight * 0.46), maxSampleHeight),
+        );
+
+        const scale = Math.max(imageFrameWidth / sourceWidth, imageFrameHeight / sourceHeight);
+        const renderedWidth = sourceWidth * scale;
+        const renderedHeight = sourceHeight * scale;
+        const offsetX = Math.max(0, (renderedWidth - imageFrameWidth) / 2);
+        const offsetY = Math.max(0, (renderedHeight - imageFrameHeight) / 2);
+
+        const cropOriginX = Math.max(
+          0,
+          Math.min(sourceWidth - 2, Math.round((sampleFrameX + offsetX) / scale)),
+        );
+        const cropOriginY = Math.max(
+          0,
+          Math.min(sourceHeight - 2, Math.round((sampleFrameY + offsetY) / scale)),
+        );
+        const cropWidth = Math.max(
+          2,
+          Math.min(sourceWidth - cropOriginX, Math.round(sampleFrameWidth / scale)),
+        );
+        const cropHeight = Math.max(
+          2,
+          Math.min(sourceHeight - cropOriginY, Math.round(sampleFrameHeight / scale)),
+        );
+
+        const cropped = await manipulateAsync(
+          activeImageUrl,
+          [{ crop: { originX: cropOriginX, originY: cropOriginY, width: cropWidth, height: cropHeight } }],
+          { compress: 0.45, format: ManipulatorSaveFormat.JPEG, base64: false },
+        );
+        if (cancelled || requestId !== textToneRequestRef.current) return;
+
+        const sampledColors = await getColors(cropped.uri, {
+          fallback: meal.backgroundColor,
+          cache: true,
+          key: `${activeImageUrl}#text-tone:${cropOriginX}:${cropOriginY}:${cropWidth}:${cropHeight}`,
+        });
+
+        let sampledDominant = meal.backgroundColor;
+        if (Platform.OS === 'ios' && 'background' in sampledColors) {
+          sampledDominant = sampledColors.background;
+        } else if (Platform.OS === 'android' && 'dominant' in sampledColors) {
+          sampledDominant = sampledColors.dominant;
+        }
+
+        const luminance = relativeLuminanceFromHex(sampledDominant);
+        const nextTone: 'light' | 'dark' = luminance > 0.47 ? 'dark' : 'light';
+        PHOTO_TEXT_TONE_CACHE.set(toneCacheKey, nextTone);
+        if (!cancelled && requestId === textToneRequestRef.current) {
+          setPhotoTextTone((prev) => (prev === nextTone ? prev : nextTone));
+        }
+      } catch {
+        if (!cancelled && requestId === textToneRequestRef.current) {
+          setPhotoTextTone('light');
+        }
+      }
+    };
+
+    void detectTextToneFromVisibleRegion();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeImageUrl, imageFrameWidth, imageFrameHeight, meal.backgroundColor]);
+
+  useEffect(() => {
     setSellerThumbFailed(false);
   }, [meal.sellerImage]);
 
@@ -1269,11 +1401,15 @@ function FoodCard({
   const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
     ? `Son ${meal.stock} porsiyon`
     : '';
-  const overlayBase = darken(colors.title, 0.08);
-  const textSurfaceStyle = {
-    backgroundColor: hexToRgba(overlayBase, 0.64),
-    borderColor: hexToRgba(lighten(overlayBase, 0.34), 0.44),
-  } as const;
+  const textSurfaceStyle = photoTextTone === 'dark'
+    ? {
+      backgroundColor: hexToRgba(lighten(colors.bg, 0.06), 0.84),
+      borderColor: hexToRgba(darken(colors.bg, 0.46), 0.22),
+    }
+    : {
+      backgroundColor: hexToRgba(darken(colors.title, 0.08), 0.66),
+      borderColor: hexToRgba(lighten(colors.title, 0.34), 0.42),
+    };
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -1296,7 +1432,9 @@ function FoodCard({
           style={[styles.foodPhoto, { backgroundColor: meal.backgroundColor }]}
           onLayout={(event) => {
             const nextWidth = Math.max(220, Math.round(event.nativeEvent.layout.width));
+            const nextHeight = Math.max(120, Math.round(event.nativeEvent.layout.height));
             setImageFrameWidth((prev) => (prev === nextWidth ? prev : nextWidth));
+            setImageFrameHeight((prev) => (prev === nextHeight ? prev : nextHeight));
           }}
         >
           {imageUrls.length > 0 ? (
@@ -1378,16 +1516,31 @@ function FoodCard({
           )}
           <View pointerEvents="none" style={styles.foodPhotoLeftTextBlock}>
             <View style={[styles.foodPhotoLeftTextSurface, textSurfaceStyle]}>
-              <Text numberOfLines={1} style={styles.foodPhotoTitleText}>
+              <Text
+                numberOfLines={1}
+                style={[styles.foodPhotoTitleText, photoTextTone === 'dark' && styles.foodPhotoTitleTextDark]}
+              >
                 {meal.title}
               </Text>
               {meal.cuisine ? (
-                <Text numberOfLines={1} style={styles.foodPhotoCuisineText}>
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.foodPhotoCuisineText,
+                    photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
+                  ]}
+                >
                   {formatCuisineLabel(meal.cuisine)}
                 </Text>
               ) : null}
               {stockSummary ? (
-                <Text numberOfLines={1} style={styles.foodPhotoStockText}>
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.foodPhotoStockText,
+                    photoTextTone === 'dark' && styles.foodPhotoStockTextDark,
+                  ]}
+                >
                   {stockSummary}
                 </Text>
               ) : null}
@@ -5707,27 +5860,39 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '800',
-    textShadowColor: 'rgba(0,0,0,0.72)',
+    textShadowColor: 'rgba(0,0,0,0.55)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    textShadowRadius: 3,
+  },
+  foodPhotoTitleTextDark: {
+    color: '#30271F',
+    textShadowColor: 'rgba(255,255,255,0.35)',
   },
   foodPhotoCuisineText: {
     marginTop: 2,
-    color: '#F9F2E8',
+    color: '#F4ECE0',
     fontSize: 13,
     fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.68)',
+    textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3.2,
+    textShadowRadius: 2.5,
+  },
+  foodPhotoCuisineTextDark: {
+    color: '#46382F',
+    textShadowColor: 'rgba(255,255,255,0.32)',
   },
   foodPhotoStockText: {
     marginTop: 2,
-    color: '#F2E2D0',
+    color: '#EBDDCE',
     fontSize: 13,
     fontWeight: '800',
-    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowColor: 'rgba(0,0,0,0.52)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3.2,
+    textShadowRadius: 2.5,
+  },
+  foodPhotoStockTextDark: {
+    color: '#4B3A2D',
+    textShadowColor: 'rgba(255,255,255,0.33)',
   },
   foodPriceBadge: {
     backgroundColor: 'rgba(61,50,41,0.9)',
