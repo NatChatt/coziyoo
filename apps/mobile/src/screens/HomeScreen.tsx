@@ -5697,7 +5697,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     position: 'relative',
   },
-  foodInfoLeft: { flex: 1, paddingRight: 94 },
+  foodInfoLeft: { flex: 1, paddingRight: 118 },
   foodNameRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -5728,8 +5728,8 @@ const styles = StyleSheet.create({
   foodSellerInlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   foodSellerInline: { fontSize: 15, fontWeight: '700' },
   foodSellerThumb: {
-    width: 84,
-    height: 84,
+    width: 108,
+    height: 72,
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
