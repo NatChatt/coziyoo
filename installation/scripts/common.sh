@@ -209,11 +209,40 @@ service_action() {
 
 acquire_update_lock() {
   local lock_dir="${REPO_ROOT}/.deploy-lock"
-  if mkdir "${lock_dir}" 2>/dev/null; then
-    trap "rm -rf '${lock_dir}'" EXIT
-  else
-    fail "Another deployment appears to be running (lock: ${lock_dir})"
-  fi
+  local lock_pid_file="${lock_dir}/pid"
+  local lock_meta_file="${lock_dir}/meta"
+  local wait_seconds="${UPDATE_LOCK_WAIT_SECONDS:-0}" # 0 = wait forever
+  local retry_interval="${UPDATE_LOCK_RETRY_INTERVAL_SECONDS:-5}"
+  local waited=0
+
+  while true; do
+    if mkdir "${lock_dir}" 2>/dev/null; then
+      printf "%s\n" "$$" > "${lock_pid_file}"
+      printf "host=%s\nstarted_at=%s\n" "$(hostname)" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > "${lock_meta_file}"
+      trap "rm -rf '${lock_dir}'" EXIT
+      log "Deployment lock acquired (${lock_dir})"
+      return 0
+    fi
+
+    # If lock owner PID is gone, clear stale lock and retry immediately.
+    if [[ -f "${lock_pid_file}" ]]; then
+      local owner_pid
+      owner_pid="$(tr -dc '0-9' < "${lock_pid_file}" || true)"
+      if [[ -n "${owner_pid}" ]] && ! kill -0 "${owner_pid}" 2>/dev/null; then
+        log "Stale deployment lock detected (pid=${owner_pid}), removing ${lock_dir}"
+        rm -rf "${lock_dir}" || true
+        continue
+      fi
+    fi
+
+    if [[ "${wait_seconds}" -gt 0 && "${waited}" -ge "${wait_seconds}" ]]; then
+      fail "Timed out waiting for deployment lock after ${waited}s (lock: ${lock_dir})"
+    fi
+
+    log "Another deployment is running, waiting for lock: ${lock_dir} (waited ${waited}s)"
+    sleep "${retry_interval}"
+    waited=$((waited + retry_interval))
+  done
 }
 
 # Shared npm install from workspace root.
