@@ -1502,7 +1502,13 @@ function FoodCard({
     if (!raw) return 'U';
     return raw.charAt(0).toLocaleUpperCase('tr-TR');
   })();
-  const hasSellerCutout = Boolean(meal.sellerHomeCardImage && !sellerHomeCardImageFailed);
+  const sellerHeroUsesCutout = Boolean(meal.sellerHomeCardImage && !sellerHomeCardImageFailed);
+  const sellerHeroSource = sellerHeroUsesCutout
+    ? { uri: meal.sellerHomeCardImage! }
+    : meal.sellerImage && !sellerThumbFailed
+      ? { uri: meal.sellerImage }
+      : null;
+  const hasSellerFigure = Boolean(sellerHeroSource);
 
   return (
     <View
@@ -1525,74 +1531,63 @@ function FoodCard({
             setImageFrameHeight((prev) => (prev === nextHeight ? prev : nextHeight));
           }}
         >
-          <View style={styles.foodPhotoImageLayer}>
-            {activeImageUrl ? (
-              <Image
-                source={{ uri: activeImageUrl }}
-                style={styles.foodImage}
-                resizeMode="cover"
-                onError={() => {
-                  setImageUrls((prev) => prev.slice(1));
-                  setImageIndex(0);
-                }}
-              />
-            ) : (
-              <View style={styles.foodImageTapFallback}>
-                <Text style={styles.foodEmoji}>🍽️</Text>
-              </View>
-            )}
-            {LinearGradient ? (
-              <View pointerEvents="none" style={styles.foodPhotoRightShade}>
-                <LinearGradient
-                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.58)']}
-                  locations={[0, 0.48, 1]}
-                  start={{ x: 0, y: 0.5 }}
-                  end={{ x: 1, y: 0.5 }}
-                  style={styles.foodPhotoRightShadeFill}
-                />
-              </View>
-            ) : (
-              <View pointerEvents="none" style={styles.foodPhotoRightShadeFallback} />
-            )}
-            {LinearGradient ? (
-              <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
-                <LinearGradient
-                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.12)', 'rgba(0,0,0,0.36)']}
-                  locations={[0, 1]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.foodPhotoBottomGradientFill}
-                />
-              </View>
-            ) : (
-              <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
-            )}
-            {hasSellerCutout ? (
-              <View pointerEvents="none" style={styles.foodSellerFigureStage}>
-                <Image
-                  source={{ uri: meal.sellerHomeCardImage! }}
-                  style={styles.foodSellerFigureImage}
-                  resizeMode="contain"
-                  onError={() => setSellerHomeCardImageFailed(true)}
-                />
-              </View>
-            ) : null}
-            {hasSellerCutout ? <View pointerEvents="none" style={styles.foodPhotoSplitAccent} /> : null}
-          </View>
-          <View
-            pointerEvents="none"
-            style={[
-              styles.foodPhotoLeftTextBlock,
-              hasSellerCutout && styles.foodPhotoLeftTextBlockWithFigure,
-            ]}
-          >
-            <View style={styles.foodPhotoTextGlass}>
-              {BlurView ? (
-                <BlurView intensity={18} tint="dark" style={styles.foodPhotoTextGlassBlur} />
+          <View style={styles.foodPhotoTopRow}>
+            <View style={styles.foodPhotoChefPanel}>
+              <View style={styles.foodPhotoChefPanelBackdrop} />
+              {hasSellerFigure ? (
+                <View pointerEvents="none" style={styles.foodSellerFigureStage}>
+                  <Image
+                    source={sellerHeroSource!}
+                    style={[
+                      styles.foodSellerFigureImage,
+                      !sellerHeroUsesCutout && styles.foodSellerPortraitImage,
+                    ]}
+                    resizeMode={sellerHeroUsesCutout ? 'contain' : 'cover'}
+                    onError={() => {
+                      if (sellerHeroUsesCutout) {
+                        setSellerHomeCardImageFailed(true);
+                        return;
+                      }
+                      setSellerThumbFailed(true);
+                    }}
+                  />
+                </View>
               ) : (
-                <View style={styles.foodPhotoTextGlassFallback} />
+                <View style={styles.foodSellerFigureFallback}>
+                  <Text style={styles.foodSellerFigureFallbackEmoji}>👩‍🍳</Text>
+                </View>
               )}
-              <View style={styles.foodPhotoTextGlassContent}>
+            </View>
+            <View style={styles.foodPhotoDishPanel}>
+              {activeImageUrl ? (
+                <Image
+                  source={{ uri: activeImageUrl }}
+                  style={styles.foodImage}
+                  resizeMode="cover"
+                  onError={() => {
+                    setImageUrls((prev) => prev.slice(1));
+                    setImageIndex(0);
+                  }}
+                />
+              ) : (
+                <View style={styles.foodImageTapFallback}>
+                  <Text style={styles.foodEmoji}>🍽️</Text>
+                </View>
+              )}
+              {LinearGradient ? (
+                <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
+                  <LinearGradient
+                    colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.16)', 'rgba(0,0,0,0.42)']}
+                    locations={[0, 0.52, 1]}
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
+                    style={styles.foodPhotoBottomGradientFill}
+                  />
+                </View>
+              ) : (
+                <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
+              )}
+              <View pointerEvents="none" style={styles.foodPhotoTitleOverlay}>
                 <Text
                   numberOfLines={2}
                   style={[
@@ -1617,26 +1612,21 @@ function FoodCard({
                   </Text>
                 ) : null}
               </View>
-            </View>
-          </View>
-          <View style={styles.foodBadgesRight}>
-            <View style={styles.foodPriceBadge}>
-              <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
-            </View>
-            {Number.isFinite(ratingValue) && ratingValue > 0 ? (
-              <View style={styles.ratingBadge}>
-                <Text style={styles.ratingBadgeStar}>★</Text>
-                <Text style={styles.ratingBadgeText}>{meal.rating}</Text>
+              <View style={styles.foodBadgesRight}>
+                <View style={styles.foodPriceBadge}>
+                  <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
+                </View>
               </View>
-            ) : null}
+            </View>
           </View>
+          <View pointerEvents="none" style={styles.foodPhotoSplitAccent} />
         </View>
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={onPress}
           style={styles.foodInfo}
         >
-          <View style={[styles.foodInfoContent, hasSellerCutout && styles.foodInfoContentWithFigure]}>
+          <View style={[styles.foodInfoContent, hasSellerFigure && styles.foodInfoContentWithFigure]}>
             <View style={styles.foodInfoLine}>
               <View style={styles.foodInfoIconBubble}>
                 <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
@@ -5624,11 +5614,32 @@ const styles = StyleSheet.create({
   },
   foodPhoto: {
     width: '100%',
-    height: 252,
+    height: 248,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'visible',
     backgroundColor: '#B96C44',
+  },
+  foodPhotoTopRow: {
+    width: '100%',
+    height: '100%',
+    flexDirection: 'row',
+  },
+  foodPhotoChefPanel: {
+    width: '41.5%',
+    position: 'relative',
+    overflow: 'visible',
+    backgroundColor: '#F4EBDD',
+  },
+  foodPhotoChefPanelBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#F6EEE2',
+  },
+  foodPhotoDishPanel: {
+    flex: 1,
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#8E593C',
   },
   foodPhotoImageLayer: {
     ...StyleSheet.absoluteFillObject,
@@ -5701,34 +5712,59 @@ const styles = StyleSheet.create({
   foodEmoji: { fontSize: 56 },
   foodSellerFigureStage: {
     position: 'absolute',
-    left: -6,
-    bottom: -92,
-    width: 192,
-    height: 344,
-    zIndex: 3,
-    alignItems: 'flex-start',
+    left: -2,
+    bottom: -98,
+    width: 210,
+    height: 360,
+    zIndex: 5,
+    alignItems: 'center',
     justifyContent: 'flex-end',
   },
   foodSellerFigureImage: {
+    width: '112%',
+    height: '112%',
+  },
+  foodSellerPortraitImage: {
     width: '100%',
     height: '100%',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+  },
+  foodSellerFigureFallback: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  foodSellerFigureFallbackEmoji: {
+    fontSize: 84,
   },
   foodPhotoSplitAccent: {
     position: 'absolute',
-    top: 18,
-    bottom: 18,
-    left: 154,
-    width: 2,
+    top: 10,
+    bottom: 8,
+    left: '41.5%',
+    marginLeft: -1.5,
+    width: 3,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.76)',
-    zIndex: 6,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    zIndex: 7,
   },
   foodBadgesRight: {
     position: 'absolute',
-    top: 14,
-    right: 14,
+    top: 16,
+    right: 16,
     alignItems: 'flex-end',
     gap: 8,
+    zIndex: 7,
+  },
+  foodPhotoTitleOverlay: {
+    position: 'absolute',
+    left: 22,
+    right: 18,
+    bottom: 18,
     zIndex: 7,
   },
   foodPhotoLeftTextBlock: {
@@ -5760,38 +5796,38 @@ const styles = StyleSheet.create({
   },
   foodPhotoTitleText: {
     color: '#FFFFFF',
-    fontSize: 44,
+    fontSize: 46,
     fontWeight: '900',
     fontStyle: 'italic',
-    letterSpacing: -1.8,
+    letterSpacing: -2,
     textShadowColor: 'rgba(0,0,0,0.42)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
   },
   foodPhotoTitleTextDark: {
-    color: '#30271F',
-    textShadowColor: 'rgba(255,255,255,0.28)',
+    color: '#3A281D',
+    textShadowColor: 'rgba(255,255,255,0.22)',
   },
   foodPhotoCuisineText: {
     marginTop: 3,
     color: '#F4ECE0',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2.5,
   },
   foodPhotoCuisineTextDark: {
-    color: '#46382F',
-    textShadowColor: 'rgba(255,255,255,0.32)',
+    color: '#5A473B',
+    textShadowColor: 'rgba(255,255,255,0.2)',
   },
   foodPriceBadge: {
     backgroundColor: 'rgba(51,36,27,0.9)',
     borderRadius: 18,
     paddingHorizontal: 15,
-    paddingVertical: 9,
+    paddingVertical: 10,
   },
-  foodPriceBadgeText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  foodPriceBadgeText: { color: '#FFFFFF', fontSize: 18, fontWeight: '900' },
   ratingBadge: {
     backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 14,
@@ -5812,10 +5848,10 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 15,
     paddingHorizontal: 18,
-    minHeight: 188,
+    minHeight: 196,
   },
   foodInfoContentWithFigure: {
-    paddingLeft: 172,
+    paddingLeft: 176,
   },
   foodInfoLine: {
     flexDirection: 'row',
