@@ -1272,21 +1272,6 @@ function FoodCard({
             <Text style={styles.foodEmoji}>🍽️</Text>
           </View>
         )}
-        <TouchableOpacity
-          activeOpacity={0.82}
-          onPress={(event) => {
-            event.stopPropagation();
-            onFavoritePress();
-          }}
-          style={styles.foodFavoriteBtn}
-          disabled={favoritePending}
-        >
-          <Ionicons
-            name={isFavorite ? 'heart' : 'heart-outline'}
-            size={18}
-            color={isFavorite ? '#C0392B' : '#3D3229'}
-          />
-        </TouchableOpacity>
         <View style={styles.foodBadgesRight}>
           <View style={styles.foodPriceBadge}>
             <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
@@ -1295,6 +1280,21 @@ function FoodCard({
             <Text style={styles.ratingBadgeStar}>★</Text>
             <Text style={styles.ratingBadgeText}>{meal.rating}</Text>
           </View>
+          <TouchableOpacity
+            activeOpacity={0.82}
+            onPress={(event) => {
+              event.stopPropagation();
+              onFavoritePress();
+            }}
+            style={[styles.foodFavoriteBtn, styles.foodFavoriteBtnInBadges]}
+            disabled={favoritePending}
+          >
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={18}
+              color={isFavorite ? '#C0392B' : '#3D3229'}
+            />
+          </TouchableOpacity>
         </View>
       </View>
       <TouchableOpacity
@@ -5532,6 +5532,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(61,50,41,0.14)',
+  },
+  foodFavoriteBtnInBadges: {
+    position: 'relative',
+    top: 0,
+    left: 0,
   },
   foodBadgesRight: {
     position: 'absolute',
