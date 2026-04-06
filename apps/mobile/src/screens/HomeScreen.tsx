@@ -1290,9 +1290,9 @@ function FoodCard({
             disabled={favoritePending}
           >
             <Ionicons
-              name={isFavorite ? 'heart' : 'heart-outline'}
+              name="heart"
               size={19}
-              color="#FFFFFF"
+              color={isFavorite ? '#E53935' : '#FFFFFF'}
               style={styles.foodFavoriteIcon}
             />
           </TouchableOpacity>
