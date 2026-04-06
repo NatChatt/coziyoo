@@ -47,7 +47,25 @@ EOF
     npm_install_from_root
     cd "${ADMIN_DIR_ABS}"
   fi
-  npm run build
+  build_log="$(mktemp)"
+  if npm run build 2>&1 | tee "${build_log}"; then
+    rm -f "${build_log}"
+  else
+    if grep -Eq "Cannot find module '?@rollup/rollup-|npm has a bug related to optional dependencies" "${build_log}"; then
+      log "Admin build hit Rollup optional-dependency issue; reinstalling root deps and retrying build"
+      rm -rf "${ROOT_NODE_MODULES}"
+      (
+        cd "${REPO_ROOT}"
+        npm install --silent --no-audit --no-fund --loglevel=error --include=optional
+      )
+      cd "${ADMIN_DIR_ABS}"
+      npm run build
+      rm -f "${build_log}"
+    else
+      rm -f "${build_log}"
+      exit 1
+    fi
+  fi
 )
 
 run_root mkdir -p "${PUBLISH_DIR}"
