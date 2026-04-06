@@ -1542,9 +1542,22 @@ function FoodCard({
               </View>
             )}
             {LinearGradient ? (
+              <View pointerEvents="none" style={styles.foodPhotoRightShade}>
+                <LinearGradient
+                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.58)']}
+                  locations={[0, 0.48, 1]}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={styles.foodPhotoRightShadeFill}
+                />
+              </View>
+            ) : (
+              <View pointerEvents="none" style={styles.foodPhotoRightShadeFallback} />
+            )}
+            {LinearGradient ? (
               <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
                 <LinearGradient
-                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.28)']}
+                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.12)', 'rgba(0,0,0,0.36)']}
                   locations={[0, 1]}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
@@ -1564,6 +1577,7 @@ function FoodCard({
                 />
               </View>
             ) : null}
+            {hasSellerCutout ? <View pointerEvents="none" style={styles.foodPhotoSplitAccent} /> : null}
           </View>
           <View
             pointerEvents="none"
@@ -1572,29 +1586,38 @@ function FoodCard({
               hasSellerCutout && styles.foodPhotoLeftTextBlockWithFigure,
             ]}
           >
-            <Text
-              numberOfLines={2}
-              style={[
-                styles.foodPhotoTitleText,
-                titleMetrics,
-                { color: colors.photoTitle },
-                photoTextTone === 'dark' && styles.foodPhotoTitleTextDark,
-              ]}
-            >
-              {meal.title}
-            </Text>
-            {meal.cuisine ? (
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.foodPhotoCuisineText,
-                  { color: colors.photoCuisine },
-                  photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
-                ]}
-              >
-                {formatCuisineLabel(meal.cuisine)}
-              </Text>
-            ) : null}
+            <View style={styles.foodPhotoTextGlass}>
+              {BlurView ? (
+                <BlurView intensity={18} tint="dark" style={styles.foodPhotoTextGlassBlur} />
+              ) : (
+                <View style={styles.foodPhotoTextGlassFallback} />
+              )}
+              <View style={styles.foodPhotoTextGlassContent}>
+                <Text
+                  numberOfLines={2}
+                  style={[
+                    styles.foodPhotoTitleText,
+                    titleMetrics,
+                    { color: colors.photoTitle },
+                    photoTextTone === 'dark' && styles.foodPhotoTitleTextDark,
+                  ]}
+                >
+                  {meal.title}
+                </Text>
+                {meal.cuisine ? (
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.foodPhotoCuisineText,
+                      { color: colors.photoCuisine },
+                      photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
+                    ]}
+                  >
+                    {formatCuisineLabel(meal.cuisine)}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
           </View>
           <View style={styles.foodBadgesRight}>
             <View style={styles.foodPriceBadge}>
@@ -5586,22 +5609,22 @@ const styles = StyleSheet.create({
   foodCardWrap: {
     marginBottom: 16,
     marginHorizontal: 10,
-    borderRadius: 28,
+    borderRadius: 30,
     shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
   foodCard: {
     borderWidth: 1,
-    borderRadius: 28,
+    borderRadius: 30,
     overflow: 'hidden',
     position: 'relative',
   },
   foodPhoto: {
     width: '100%',
-    height: 236,
+    height: 252,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'visible',
@@ -5642,7 +5665,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 118,
+    height: 128,
   },
   foodPhotoBottomGradientFill: {
     width: '100%',
@@ -5656,13 +5679,32 @@ const styles = StyleSheet.create({
     height: 118,
     backgroundColor: 'rgba(0,0,0,0.2)',
   },
+  foodPhotoRightShade: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: '72%',
+  },
+  foodPhotoRightShadeFill: {
+    width: '100%',
+    height: '100%',
+  },
+  foodPhotoRightShadeFallback: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: '72%',
+    backgroundColor: 'rgba(0,0,0,0.26)',
+  },
   foodEmoji: { fontSize: 56 },
   foodSellerFigureStage: {
     position: 'absolute',
-    left: -8,
-    bottom: -84,
-    width: 176,
-    height: 326,
+    left: -6,
+    bottom: -92,
+    width: 192,
+    height: 344,
     zIndex: 3,
     alignItems: 'flex-start',
     justifyContent: 'flex-end',
@@ -5670,6 +5712,16 @@ const styles = StyleSheet.create({
   foodSellerFigureImage: {
     width: '100%',
     height: '100%',
+  },
+  foodPhotoSplitAccent: {
+    position: 'absolute',
+    top: 18,
+    bottom: 18,
+    left: 154,
+    width: 2,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.76)',
+    zIndex: 6,
   },
   foodBadgesRight: {
     position: 'absolute',
@@ -5682,17 +5734,36 @@ const styles = StyleSheet.create({
   foodPhotoLeftTextBlock: {
     position: 'absolute',
     left: 18,
-    right: 106,
-    bottom: 28,
+    right: 18,
+    bottom: 22,
     zIndex: 7,
   },
-  foodPhotoLeftTextBlockWithFigure: { left: 160 },
+  foodPhotoLeftTextBlockWithFigure: { left: 170, right: 16, bottom: 18 },
+  foodPhotoTextGlass: {
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(16,12,9,0.2)',
+  },
+  foodPhotoTextGlassBlur: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  foodPhotoTextGlassFallback: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  foodPhotoTextGlassContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
   foodPhotoTitleText: {
     color: '#FFFFFF',
-    fontSize: 42,
+    fontSize: 44,
     fontWeight: '900',
     fontStyle: 'italic',
-    letterSpacing: -1.6,
+    letterSpacing: -1.8,
     textShadowColor: 'rgba(0,0,0,0.42)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
@@ -5702,9 +5773,9 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(255,255,255,0.28)',
   },
   foodPhotoCuisineText: {
-    marginTop: 4,
+    marginTop: 3,
     color: '#F4ECE0',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
@@ -5716,9 +5787,9 @@ const styles = StyleSheet.create({
   },
   foodPriceBadge: {
     backgroundColor: 'rgba(51,36,27,0.9)',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderRadius: 18,
+    paddingHorizontal: 15,
+    paddingVertical: 9,
   },
   foodPriceBadgeText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
   ratingBadge: {
@@ -5733,18 +5804,18 @@ const styles = StyleSheet.create({
   ratingBadgeStar: { color: '#C4953A', fontSize: 13, fontWeight: '800' },
   ratingBadgeText: { color: '#3D3229', fontSize: 13, fontWeight: '800' },
   foodInfo: {
-    backgroundColor: '#FFF9F2',
+    backgroundColor: '#FFF8F0',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(125,95,71,0.12)',
+    borderTopColor: 'rgba(125,95,71,0.1)',
   },
   foodInfoContent: {
-    paddingTop: 16,
-    paddingBottom: 14,
-    paddingHorizontal: 16,
-    minHeight: 182,
+    paddingTop: 18,
+    paddingBottom: 15,
+    paddingHorizontal: 18,
+    minHeight: 188,
   },
   foodInfoContentWithFigure: {
-    paddingLeft: 158,
+    paddingLeft: 172,
   },
   foodInfoLine: {
     flexDirection: 'row',
