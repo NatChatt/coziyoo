@@ -5976,7 +5976,7 @@ const styles = StyleSheet.create({
   },
   foodSellerInline: { fontSize: 14, fontWeight: '700' },
   foodSellerThumbWrap: {
-    width: 74,
+    width: 84,
     height: 118,
     borderRadius: 16,
     marginTop: 0,
