@@ -23,7 +23,15 @@ echo "==> Branch: ${BRANCH}"
 
 git fetch origin "${BRANCH}"
 git checkout "${BRANCH}"
-git pull --ff-only origin "${BRANCH}"
+
+# Remote host may have local config edits (e.g. .env.local, installation/config.env).
+# Use autostash so deploy pulls don't fail on those tracked local changes.
+if ! git pull --rebase --autostash origin "${BRANCH}"; then
+  echo "WARN: autostash pull failed, trying targeted config-only stash fallback"
+  git stash push -m "deploy-config-autostash" -- .env.local installation/config.env || true
+  git pull --ff-only origin "${BRANCH}"
+  git stash pop || true
+fi
 
 bash installation/scripts/update_all.sh
 EOF
