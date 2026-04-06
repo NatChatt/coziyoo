@@ -1209,6 +1209,7 @@ function FoodCard({
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imageIndex, setImageIndex] = useState(0);
   const [imageFrameWidth, setImageFrameWidth] = useState(defaultCardImageWidth);
+  const [sellerThumbFailed, setSellerThumbFailed] = useState(false);
   const cardImageScrollRef = useRef<ScrollView | null>(null);
   const primaryImageUrl = imageUrls[0];
 
@@ -1248,6 +1249,10 @@ function FoodCard({
       });
   }, [primaryImageUrl, meal.backgroundColor]);
 
+  useEffect(() => {
+    setSellerThumbFailed(false);
+  }, [meal.sellerImage]);
+
   const allergens = Array.isArray(meal.allergens) ? meal.allergens : [];
   const mealDeliveryOptions = meal.deliveryOptions ?? { pickup: true, delivery: false };
   const timeDistanceParts = [
@@ -1258,6 +1263,11 @@ function FoodCard({
   const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
     ? `Son ${meal.stock} porsiyon`
     : '';
+  const sellerInitial = (() => {
+    const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
+    if (!raw) return 'U';
+    return raw.charAt(0).toLocaleUpperCase('tr-TR');
+  })();
 
   return (
     <View
@@ -1410,13 +1420,26 @@ function FoodCard({
               ) : null}
             </View>
             <View style={styles.foodNameMetaRight}>
-              <View style={styles.foodSellerInlineBtn}>
-                <Text style={[styles.foodSellerInline, { color: colors.subtitle }]}>
-                  {formatSellerIdentity(meal.seller, meal.sellerUsername)}
-                </Text>
-              </View>
+            <View style={styles.foodSellerInlineBtn}>
+              <Text style={[styles.foodSellerInline, { color: colors.subtitle }]}>
+                {formatSellerIdentity(meal.seller, meal.sellerUsername)}
+              </Text>
+            </View>
+            <View style={styles.foodSellerThumb}>
+              {meal.sellerImage && !sellerThumbFailed ? (
+                <Image
+                  source={{ uri: meal.sellerImage }}
+                  style={styles.foodSellerThumbImage}
+                  onError={() => setSellerThumbFailed(true)}
+                />
+              ) : (
+                <View style={styles.foodSellerThumbFallback}>
+                  <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
+                </View>
+              )}
             </View>
           </View>
+        </View>
           <View style={styles.foodBottomRow}>
             {timeDistanceText ? (
               <View style={styles.foodMetaInlineRow}>
@@ -5692,6 +5715,23 @@ const styles = StyleSheet.create({
   },
   foodSellerInlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   foodSellerInline: { fontSize: 15, fontWeight: '700' },
+  foodSellerThumb: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(141,128,114,0.35)',
+    backgroundColor: '#F4EEE6',
+    marginTop: 6,
+  },
+  foodSellerThumbImage: { width: '100%', height: '100%' },
+  foodSellerThumbFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  foodSellerThumbFallbackText: { color: '#6D5D50', fontSize: 13, fontWeight: '800' },
   foodSellerCuisineInline: { fontSize: 12, fontWeight: '700', marginTop: 4 },
   foodAllergenBelowCuisine: { marginTop: 4, fontSize: 11, fontWeight: '700', color: '#C2362F' },
   foodCuisineInline: { fontSize: 12, fontWeight: '600' },
