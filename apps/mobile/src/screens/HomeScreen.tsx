@@ -1425,18 +1425,20 @@ function FoodCard({
                 {formatSellerIdentity(meal.seller, meal.sellerUsername)}
               </Text>
             </View>
-            <View style={styles.foodSellerThumb}>
-              {meal.sellerImage && !sellerThumbFailed ? (
-                <Image
-                  source={{ uri: meal.sellerImage }}
-                  style={styles.foodSellerThumbImage}
-                  onError={() => setSellerThumbFailed(true)}
-                />
-              ) : (
-                <View style={styles.foodSellerThumbFallback}>
-                  <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
-                </View>
-              )}
+            <View style={styles.foodSellerThumbWrap}>
+              <View style={styles.foodSellerThumb}>
+                {meal.sellerImage && !sellerThumbFailed ? (
+                  <Image
+                    source={{ uri: meal.sellerImage }}
+                    style={styles.foodSellerThumbImage}
+                    onError={() => setSellerThumbFailed(true)}
+                  />
+                ) : (
+                  <View style={styles.foodSellerThumbFallback}>
+                    <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -5727,15 +5729,25 @@ const styles = StyleSheet.create({
   },
   foodSellerInlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   foodSellerInline: { fontSize: 15, fontWeight: '700' },
-  foodSellerThumb: {
+  foodSellerThumbWrap: {
     width: 108,
     height: 72,
     borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(141,128,114,0.35)',
-    backgroundColor: '#F4EEE6',
     marginTop: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  foodSellerThumb: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 0.7,
+    borderColor: 'rgba(141,128,114,0.24)',
+    backgroundColor: '#F4EEE6',
   },
   foodSellerThumbImage: { width: '100%', height: '100%' },
   foodSellerThumbFallback: {
