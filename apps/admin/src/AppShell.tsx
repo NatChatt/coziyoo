@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { request, parseJson } from "./lib/api";
+import { API_BASE, request, parseJson } from "./lib/api";
 import { setTokens, setAdmin, getTokens } from "./lib/auth";
 import { DICTIONARIES } from "./lib/i18n";
 import ApiHealthBadge from "./components/ApiHealthBadge";
@@ -561,6 +561,7 @@ function TopNavTabs({
     { to: "/app/security", active: pathname.startsWith("/app/security"), label: dict.menu.security },
     { to: "/app/entities", active: pathname.startsWith("/app/entities"), label: dict.menu.dataExplorer },
   ];
+  const docsUrl = `${API_BASE || ""}/v1/docs`;
   const isManagementActive = managementItems.some((item) => item.active);
   const [isManagementOpen, setIsManagementOpen] = useState(false);
   const [isCompactNavOpen, setIsCompactNavOpen] = useState(false);
@@ -744,6 +745,15 @@ function TopNavTabs({
               {item.label}
             </Link>
           ))}
+          <a
+            className="nav-link"
+            href={docsUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            onClick={() => setIsManagementOpen(false)}
+          >
+            {dict.menu.apiDocs}
+          </a>
           {isSuperAdmin ? (
             <button className="nav-link nav-link-button" type="button" onClick={() => seedDemoDataFromAdminMenu()}>
               {isSeedingDemoData ? (language === "tr" ? "Ekleniyor..." : "Seeding...") : (language === "tr" ? "Demo Veri Ekle" : "Seed Demo Data")}

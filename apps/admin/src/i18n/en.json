@@ -19,7 +19,8 @@
     "salesCommissionSettings": "Sales Commission Setting",
     "testScenarios": "Test Scenarios",
     "testNotifications": "Test Notifications",
-    "security": "Security"
+    "security": "Security",
+    "apiDocs": "API Docs"
   },
   "actions": {
     "logout": "Logout",

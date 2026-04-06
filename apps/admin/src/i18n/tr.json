@@ -19,7 +19,8 @@
     "salesCommissionSettings": "Satış Komisyon Ayarı",
     "testScenarios": "Test Senaryoları",
     "testNotifications": "Test Bildirimleri",
-    "security": "Güvenlik"
+    "security": "Güvenlik",
+    "apiDocs": "API Dokümanları"
   },
   "actions": {
     "logout": "Çıkış",
