@@ -11,6 +11,8 @@ export default function ApiTokensPage({ language, isSuperAdmin }: { language: La
   const [role, setRole] = useState<"admin" | "super_admin">("admin");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newToken, setNewToken] = useState<{ label: string; token: string } | null>(null);
+  const [copied, setCopied] = useState(false);
   const [records, setRecords] = useState<AdminApiTokenListItem[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
 
@@ -59,6 +61,8 @@ export default function ApiTokensPage({ language, isSuperAdmin }: { language: La
         return;
       }
       setLabel("");
+      setNewToken({ label: body.data.label, token: body.data.token });
+      setCopied(false);
       await loadTokens();
     } catch {
       setError(dict.apiTokens.tokenRequestFailed);
@@ -70,6 +74,12 @@ export default function ApiTokensPage({ language, isSuperAdmin }: { language: La
   async function copyPreviewToken(value: string) {
     if (!value) return;
     await navigator.clipboard.writeText(value);
+  }
+
+  async function copyNewToken() {
+    if (!newToken) return;
+    await navigator.clipboard.writeText(newToken.token);
+    setCopied(true);
   }
 
   return (
@@ -107,6 +117,30 @@ export default function ApiTokensPage({ language, isSuperAdmin }: { language: La
           </button>
         </div>
       </section>
+
+      {newToken && (
+        <section className="panel" style={{ borderLeft: "4px solid var(--color-success, #22c55e)" }}>
+          <div className="panel-header">
+            <h2>{language === "tr" ? `Token oluşturuldu: ${newToken.label}` : `Token created: ${newToken.label}`}</h2>
+            <button className="ghost" type="button" onClick={() => setNewToken(null)}>✕</button>
+          </div>
+          <p style={{ marginBottom: "8px", color: "var(--color-warning, #f59e0b)", fontSize: "0.875rem" }}>
+            {language === "tr"
+              ? "Bu token bir daha gösterilmeyecek. Şimdi kopyala."
+              : "This token will not be shown again. Copy it now."}
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <code style={{ flex: 1, overflowX: "auto", padding: "8px", background: "var(--color-surface-2, #1e1e2e)", borderRadius: "4px", fontSize: "0.8rem", wordBreak: "break-all" }}>
+              {newToken.token}
+            </code>
+            <button className="primary" type="button" onClick={copyNewToken}>
+              {copied
+                ? (language === "tr" ? "Kopyalandı ✓" : "Copied ✓")
+                : (language === "tr" ? "Kopyala" : "Copy")}
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="panel">
         <div className="panel-header">
