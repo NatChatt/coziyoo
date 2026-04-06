@@ -1256,7 +1256,7 @@ function FoodCard({
   ].filter((value) => String(value ?? "").trim().length > 0);
   const timeDistanceText = timeDistanceParts.join(" · ");
   const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
-    ? `Kalan: ${meal.stock}`
+    ? `Son ${meal.stock} porsiyon`
     : '';
 
   return (
