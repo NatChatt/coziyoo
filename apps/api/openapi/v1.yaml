@@ -4,6 +4,10 @@ info:
   version: 1.0.0
   description: Versioned API contract for Coziyoo marketplace backend.
 servers:
+  - url: /
+    description: Current host
+  - url: https://api.coziyoo.com
+    description: Production
   - url: http://localhost:3000
     description: Local
 security:
