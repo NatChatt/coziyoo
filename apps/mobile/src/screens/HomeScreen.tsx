@@ -1401,6 +1401,9 @@ function FoodCard({
   const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
     ? `Son ${meal.stock} porsiyon`
     : '';
+  const allergenSummary = allergens.length > 0
+    ? `Alerjen: ${allergens.slice(0, 2).join(', ')}`
+    : '';
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -1534,6 +1537,28 @@ function FoodCard({
                 {stockSummary}
               </Text>
             ) : null}
+            {allergenSummary ? (
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.foodPhotoAllergenText,
+                  photoTextTone === 'dark' && styles.foodPhotoAllergenTextDark,
+                ]}
+              >
+                {allergenSummary}
+              </Text>
+            ) : null}
+            {timeDistanceText ? (
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.foodPhotoMetaText,
+                  photoTextTone === 'dark' && styles.foodPhotoMetaTextDark,
+                ]}
+              >
+                ⏱ {timeDistanceText}
+              </Text>
+            ) : null}
           </View>
           <View style={styles.foodBadgesRight}>
             <View style={styles.foodPriceBadge}>
@@ -1567,13 +1592,7 @@ function FoodCard({
           style={styles.foodInfo}
         >
           <View style={styles.foodInfoRow}>
-            <View style={styles.foodInfoLeft}>
-              {allergens.length > 0 ? (
-                <Text numberOfLines={2} style={styles.foodAllergenBelowCuisine}>
-                  Alerjen: {allergens.slice(0, 3).join(', ')}
-                </Text>
-              ) : null}
-            </View>
+            <View style={styles.foodInfoLeft} />
             <View style={styles.foodNameMetaRight}>
             <View style={styles.foodSellerThumbWrap}>
               <View style={styles.foodSellerThumb}>
@@ -1597,18 +1616,6 @@ function FoodCard({
             </View>
           </View>
         </View>
-          <View style={styles.foodBottomRow}>
-            {timeDistanceText ? (
-              <View style={styles.foodMetaInlineRow}>
-                <View style={styles.foodMetaClockBadge}>
-                  <Ionicons name="time-outline" size={12} color="#3F454E" />
-                </View>
-                <Text style={[styles.foodMeta, { color: colors.meta }]}>
-                  {timeDistanceText}
-                </Text>
-              </View>
-            ) : null}
-          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -5883,6 +5890,32 @@ const styles = StyleSheet.create({
     color: '#4B3A2D',
     textShadowColor: 'rgba(255,255,255,0.33)',
   },
+  foodPhotoAllergenText: {
+    marginTop: 2,
+    color: '#FFD2CC',
+    fontSize: 12,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2.2,
+  },
+  foodPhotoAllergenTextDark: {
+    color: '#8A2E26',
+    textShadowColor: 'rgba(255,255,255,0.28)',
+  },
+  foodPhotoMetaText: {
+    marginTop: 2,
+    color: '#E8EEF9',
+    fontSize: 12,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2.2,
+  },
+  foodPhotoMetaTextDark: {
+    color: '#3F454E',
+    textShadowColor: 'rgba(255,255,255,0.28)',
+  },
   foodPriceBadge: {
     backgroundColor: 'rgba(61,50,41,0.9)',
     borderRadius: 8,
@@ -5905,7 +5938,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     position: 'relative',
   },
-  foodInfoLeft: { flex: 1, paddingRight: 118 },
+  foodInfoLeft: { flex: 1, paddingRight: 118, minHeight: 96 },
   foodNameRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
