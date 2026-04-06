@@ -1292,7 +1292,7 @@ function FoodCard({
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}
               size={19}
-              color={isFavorite ? '#D53F3F' : '#FFFFFF'}
+              color="#FFFFFF"
               style={styles.foodFavoriteIcon}
             />
           </TouchableOpacity>
