@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
@@ -14,10 +14,29 @@ dump_failure_diagnostics() {
   run_root journalctl -u "${API_SERVICE_NAME:-coziyoo-api}" -n 120 --no-pager || true
 }
 
+services_stopped="false"
+update_completed="false"
+
+recover_services_on_error() {
+  local exit_code="${1:-1}"
+  local line_no="${2:-unknown}"
+  log "Deployment failed at line ${line_no} (exit=${exit_code})."
+  dump_failure_diagnostics || true
+
+  if [[ "${services_stopped}" == "true" && "${update_completed}" != "true" ]]; then
+    log "Attempting service recovery after failed deploy"
+    "${SCRIPT_DIR}/run_all.sh" start api || true
+    "${SCRIPT_DIR}/run_all.sh" start admin || true
+  fi
+}
+
+trap 'recover_services_on_error "$?" "$LINENO"' ERR
+
 log "Starting full update"
 log "Stopping app services before update"
 "${SCRIPT_DIR}/run_all.sh" stop api || true
 "${SCRIPT_DIR}/run_all.sh" stop admin || true
+services_stopped="true"
 
 log "Skipping deploy-time DB rebuild/reseed/admin-sync steps (database managed externally)"
 
@@ -67,4 +86,5 @@ if [[ -x "${SCRIPT_DIR}/validate_npm_domains.sh" ]]; then
   "${SCRIPT_DIR}/validate_npm_domains.sh" || log "NPM domain validation failed; check DNS/TLS/proxy hosts"
 fi
 
+update_completed="true"
 log "Full update finished"
