@@ -1401,15 +1401,6 @@ function FoodCard({
   const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
     ? `Son ${meal.stock} porsiyon`
     : '';
-  const textSurfaceStyle = photoTextTone === 'dark'
-    ? {
-      backgroundColor: hexToRgba(lighten(colors.bg, 0.06), 0.84),
-      borderColor: hexToRgba(darken(colors.bg, 0.46), 0.22),
-    }
-    : {
-      backgroundColor: hexToRgba(darken(colors.title, 0.08), 0.66),
-      borderColor: hexToRgba(lighten(colors.title, 0.34), 0.42),
-    };
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -1515,36 +1506,34 @@ function FoodCard({
             <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
           )}
           <View pointerEvents="none" style={styles.foodPhotoLeftTextBlock}>
-            <View style={[styles.foodPhotoLeftTextSurface, textSurfaceStyle]}>
+            <Text
+              numberOfLines={1}
+              style={[styles.foodPhotoTitleText, photoTextTone === 'dark' && styles.foodPhotoTitleTextDark]}
+            >
+              {meal.title}
+            </Text>
+            {meal.cuisine ? (
               <Text
                 numberOfLines={1}
-                style={[styles.foodPhotoTitleText, photoTextTone === 'dark' && styles.foodPhotoTitleTextDark]}
+                style={[
+                  styles.foodPhotoCuisineText,
+                  photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
+                ]}
               >
-                {meal.title}
+                {formatCuisineLabel(meal.cuisine)}
               </Text>
-              {meal.cuisine ? (
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.foodPhotoCuisineText,
-                    photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
-                  ]}
-                >
-                  {formatCuisineLabel(meal.cuisine)}
-                </Text>
-              ) : null}
-              {stockSummary ? (
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.foodPhotoStockText,
-                    photoTextTone === 'dark' && styles.foodPhotoStockTextDark,
-                  ]}
-                >
-                  {stockSummary}
-                </Text>
-              ) : null}
-            </View>
+            ) : null}
+            {stockSummary ? (
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.foodPhotoStockText,
+                  photoTextTone === 'dark' && styles.foodPhotoStockTextDark,
+                ]}
+              >
+                {stockSummary}
+              </Text>
+            ) : null}
           </View>
           <View style={styles.foodBadgesRight}>
             <View style={styles.foodPriceBadge}>
@@ -5858,7 +5847,7 @@ const styles = StyleSheet.create({
   },
   foodPhotoTitleText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '800',
     textShadowColor: 'rgba(0,0,0,0.55)',
     textShadowOffset: { width: 0, height: 1 },
@@ -5871,7 +5860,7 @@ const styles = StyleSheet.create({
   foodPhotoCuisineText: {
     marginTop: 2,
     color: '#F4ECE0',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
@@ -5884,7 +5873,7 @@ const styles = StyleSheet.create({
   foodPhotoStockText: {
     marginTop: 2,
     color: '#EBDDCE',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     textShadowColor: 'rgba(0,0,0,0.52)',
     textShadowOffset: { width: 0, height: 1 },
