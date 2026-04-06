@@ -1404,7 +1404,6 @@ function FoodCard({
   const allergenSummary = allergens.length > 0
     ? `Alerjen: ${allergens.slice(0, 2).join(', ')}`
     : '';
-  const darkestMealTextColor = darken(colors.title, 0.18);
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -1512,13 +1511,7 @@ function FoodCard({
           <View pointerEvents="none" style={styles.foodPhotoLeftTextBlock}>
             <Text
               numberOfLines={1}
-              style={[
-                styles.foodPhotoTitleText,
-                {
-                  color: darkestMealTextColor,
-                  textShadowColor: 'rgba(255,255,255,0.34)',
-                },
-              ]}
+              style={[styles.foodPhotoTitleText, photoTextTone === 'dark' && styles.foodPhotoTitleTextDark]}
             >
               {meal.title}
             </Text>
@@ -1527,10 +1520,7 @@ function FoodCard({
                 numberOfLines={1}
                 style={[
                   styles.foodPhotoCuisineText,
-                  {
-                    color: darkestMealTextColor,
-                    textShadowColor: 'rgba(255,255,255,0.32)',
-                  },
+                  photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
                 ]}
               >
                 {formatCuisineLabel(meal.cuisine)}
@@ -1541,10 +1531,7 @@ function FoodCard({
                 numberOfLines={1}
                 style={[
                   styles.foodPhotoStockText,
-                  {
-                    color: darkestMealTextColor,
-                    textShadowColor: 'rgba(255,255,255,0.33)',
-                  },
+                  photoTextTone === 'dark' && styles.foodPhotoStockTextDark,
                 ]}
               >
                 {stockSummary}
@@ -1566,10 +1553,7 @@ function FoodCard({
                 numberOfLines={1}
                 style={[
                   styles.foodPhotoMetaText,
-                  {
-                    color: darkestMealTextColor,
-                    textShadowColor: 'rgba(255,255,255,0.3)',
-                  },
+                  photoTextTone === 'dark' && styles.foodPhotoMetaTextDark,
                 ]}
               >
                 ⏱ {timeDistanceText}
@@ -5949,12 +5933,12 @@ const styles = StyleSheet.create({
   foodInfo: { paddingHorizontal: 12, paddingVertical: 14 },
   foodInfoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'flex-start',
     marginBottom: 4,
     position: 'relative',
   },
-  foodInfoLeft: { flex: 1, paddingRight: 118, minHeight: 96 },
+  foodInfoLeft: { flex: 1, minHeight: 96 },
   foodNameRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -5965,9 +5949,9 @@ const styles = StyleSheet.create({
   foodTitlePressArea: { alignSelf: 'flex-start' },
   foodNameMetaRight: {
     position: 'absolute',
-    right: 0,
+    left: 0,
     top: 0,
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     gap: 2,
   },
   foodMetaRow: {
@@ -5980,7 +5964,7 @@ const styles = StyleSheet.create({
   foodSellerInlineBtn: {
     marginTop: 6,
     width: 108,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
   foodSellerInline: { fontSize: 14, fontWeight: '700' },
