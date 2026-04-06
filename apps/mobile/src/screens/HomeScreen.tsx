@@ -1291,8 +1291,9 @@ function FoodCard({
           >
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}
-              size={18}
-              color={isFavorite ? '#C0392B' : '#3D3229'}
+              size={19}
+              color={isFavorite ? '#D53F3F' : '#FFFFFF'}
+              style={styles.foodFavoriteIcon}
             />
           </TouchableOpacity>
         </View>
@@ -5524,14 +5525,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     left: 10,
-    width: 32,
-    height: 32,
+    width: 24,
+    height: 24,
     borderRadius: 0,
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0,
     borderColor: 'transparent',
+  },
+  foodFavoriteIcon: {
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   foodFavoriteBtnInBadges: {
     position: 'relative',
