@@ -3,6 +3,10 @@ import type { NextFunction, Request, Response } from "express";
 import { pool } from "../db/client.js";
 import { verifyAccessToken, type AccessTokenPayload, type AuthRealm } from "../services/token-service.js";
 
+type PgLikeError = {
+  code?: string;
+};
+
 export function requireAuth(realm: AuthRealm) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
@@ -41,7 +45,13 @@ export function requireAuth(realm: AuthRealm) {
         if ((row.rowCount ?? 0) === 0) {
           return res.status(401).json({ error: { code: "TOKEN_INVALID", message: "Invalid or revoked API token" } });
         }
-      } catch {
+      } catch (error) {
+        const pgError = error as PgLikeError;
+        // If schema/permission is not ready in an environment, avoid taking down
+        // admin routes and fail this bearer token as invalid.
+        if (pgError.code === "42P01" || pgError.code === "42501") {
+          return res.status(401).json({ error: { code: "TOKEN_INVALID", message: "Invalid or revoked API token" } });
+        }
         return res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Auth token validation failed" } });
       }
     }
