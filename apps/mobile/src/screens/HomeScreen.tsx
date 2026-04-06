@@ -486,7 +486,7 @@ function formatHomeOrderDate(value?: string): string {
   const month = (parsed.getMonth() + 1).toString().padStart(2, '0');
   const hours = parsed.getHours().toString().padStart(2, '0');
   const minutes = parsed.getMinutes().toString().padStart(2, '0');
-  return `${day}.${month} ${hours}:${minutes}`;
+  return `${day}.${month}\u00A0${hours}:${minutes}`;
 }
 
 function homeOrderTime(order: Pick<HomeOrderSummary, 'createdAt' | 'updatedAt'>): number {
