@@ -2,6 +2,7 @@ import type { ApiError } from "./core";
 
 export type AdminApiTokenResponse = {
   data?: {
+    sessionId: string;
     label: string;
     role: "admin" | "super_admin";
     token: string;

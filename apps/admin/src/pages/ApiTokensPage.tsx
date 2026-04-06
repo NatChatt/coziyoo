@@ -12,6 +12,7 @@ export default function ApiTokensPage({ language, isSuperAdmin }: { language: La
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newToken, setNewToken] = useState<{ label: string; token: string } | null>(null);
+  const [fullTokenBySessionId, setFullTokenBySessionId] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
   const [records, setRecords] = useState<AdminApiTokenListItem[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
@@ -61,6 +62,7 @@ export default function ApiTokensPage({ language, isSuperAdmin }: { language: La
         return;
       }
       setLabel("");
+      setFullTokenBySessionId((prev) => ({ ...prev, [body.data.sessionId]: body.data.token }));
       setNewToken({ label: body.data.label, token: body.data.token });
       setCopied(false);
       await loadTokens();
@@ -71,9 +73,17 @@ export default function ApiTokensPage({ language, isSuperAdmin }: { language: La
     }
   }
 
-  async function copyPreviewToken(value: string) {
-    if (!value) return;
-    await navigator.clipboard.writeText(value);
+  async function copyTokenFromListRow(row: AdminApiTokenListItem) {
+    const fullToken = fullTokenBySessionId[row.sessionId];
+    if (!fullToken) {
+      setError(
+        language === "tr"
+          ? "Bu kaydın tam token değeri saklanmıyor. Tam token sadece oluşturulduğu anda kopyalanabilir."
+          : "Full token is not stored for this record. It can only be copied at creation time."
+      );
+      return;
+    }
+    await navigator.clipboard.writeText(fullToken);
   }
 
   async function copyNewToken() {
@@ -172,7 +182,7 @@ export default function ApiTokensPage({ language, isSuperAdmin }: { language: La
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <code>{row.tokenPreview}</code>
-                        <button className="ghost" type="button" onClick={() => copyPreviewToken(row.tokenPreview)}>
+                        <button className="ghost" type="button" onClick={() => copyTokenFromListRow(row)}>
                           {dict.apiTokens.copyToken}
                         </button>
                       </div>

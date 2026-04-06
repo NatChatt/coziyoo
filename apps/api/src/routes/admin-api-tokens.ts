@@ -157,6 +157,7 @@ adminApiTokenRouter.post("/api-tokens/admin", async (req, res) => {
 
   return res.status(201).json({
     data: {
+      sessionId,
       label: input.label,
       role: input.role,
       token,
