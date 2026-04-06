@@ -5716,9 +5716,9 @@ const styles = StyleSheet.create({
   foodSellerInlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   foodSellerInline: { fontSize: 15, fontWeight: '700' },
   foodSellerThumb: {
-    width: 68,
-    height: 68,
-    borderRadius: 12,
+    width: 84,
+    height: 84,
+    borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(141,128,114,0.35)',
