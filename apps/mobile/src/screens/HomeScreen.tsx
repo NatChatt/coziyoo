@@ -727,6 +727,12 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   };
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const { r, g, b } = hexToRgb(hex);
+  const safeAlpha = Math.max(0, Math.min(1, alpha));
+  return `rgba(${r},${g},${b},${safeAlpha})`;
+}
+
 function rgbToHex(r: number, g: number, b: number): string {
   return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`.toUpperCase();
 }
@@ -1263,6 +1269,11 @@ function FoodCard({
   const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
     ? `Son ${meal.stock} porsiyon`
     : '';
+  const overlayBase = darken(colors.title, 0.08);
+  const textSurfaceStyle = {
+    backgroundColor: hexToRgba(overlayBase, 0.64),
+    borderColor: hexToRgba(lighten(overlayBase, 0.34), 0.44),
+  } as const;
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -1366,19 +1377,21 @@ function FoodCard({
             <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
           )}
           <View pointerEvents="none" style={styles.foodPhotoLeftTextBlock}>
-            <Text numberOfLines={1} style={styles.foodPhotoTitleText}>
-              {meal.title}
-            </Text>
-            {meal.cuisine ? (
-              <Text numberOfLines={1} style={styles.foodPhotoCuisineText}>
-                {formatCuisineLabel(meal.cuisine)}
+            <View style={[styles.foodPhotoLeftTextSurface, textSurfaceStyle]}>
+              <Text numberOfLines={1} style={styles.foodPhotoTitleText}>
+                {meal.title}
               </Text>
-            ) : null}
-            {stockSummary ? (
-              <Text numberOfLines={1} style={styles.foodPhotoStockText}>
-                {stockSummary}
-              </Text>
-            ) : null}
+              {meal.cuisine ? (
+                <Text numberOfLines={1} style={styles.foodPhotoCuisineText}>
+                  {formatCuisineLabel(meal.cuisine)}
+                </Text>
+              ) : null}
+              {stockSummary ? (
+                <Text numberOfLines={1} style={styles.foodPhotoStockText}>
+                  {stockSummary}
+                </Text>
+              ) : null}
+            </View>
           </View>
           <View style={styles.foodBadgesRight}>
             <View style={styles.foodPriceBadge}>
@@ -5680,31 +5693,41 @@ const styles = StyleSheet.create({
     right: 120,
     bottom: 42,
   },
+  foodPhotoLeftTextSurface: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+  },
   foodPhotoTitleText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '800',
-    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowColor: 'rgba(0,0,0,0.72)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 4,
   },
   foodPhotoCuisineText: {
     marginTop: 2,
-    color: '#F4ECE0',
+    color: '#F9F2E8',
     fontSize: 13,
     fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowColor: 'rgba(0,0,0,0.68)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2.5,
+    textShadowRadius: 3.2,
   },
   foodPhotoStockText: {
     marginTop: 2,
-    color: '#EBDDCE',
+    color: '#F2E2D0',
     fontSize: 13,
     fontWeight: '800',
-    textShadowColor: 'rgba(0,0,0,0.52)',
+    textShadowColor: 'rgba(0,0,0,0.7)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2.5,
+    textShadowRadius: 3.2,
   },
   foodPriceBadge: {
     backgroundColor: 'rgba(61,50,41,0.9)',
