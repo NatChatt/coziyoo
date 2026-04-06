@@ -1594,28 +1594,30 @@ function FoodCard({
           <View style={styles.foodInfoRow}>
             <View style={styles.foodInfoLeft} />
             <View style={styles.foodNameMetaRight}>
-            <View style={styles.foodSellerThumbWrap}>
-              <View style={styles.foodSellerThumb}>
-                {meal.sellerImage && !sellerThumbFailed ? (
-                  <Image
-                    source={{ uri: meal.sellerImage }}
-                    style={styles.foodSellerThumbImage}
-                    onError={() => setSellerThumbFailed(true)}
-                  />
-                ) : (
-                  <View style={styles.foodSellerThumbFallback}>
-                    <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
+              <View style={styles.foodSellerTopRow}>
+                <View style={styles.foodSellerThumbWrap}>
+                  <View style={styles.foodSellerThumb}>
+                    {meal.sellerImage && !sellerThumbFailed ? (
+                      <Image
+                        source={{ uri: meal.sellerImage }}
+                        style={styles.foodSellerThumbImage}
+                        onError={() => setSellerThumbFailed(true)}
+                      />
+                    ) : (
+                      <View style={styles.foodSellerThumbFallback}>
+                        <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
+                      </View>
+                    )}
                   </View>
-                )}
+                </View>
+                <View style={styles.foodSellerInlineBtn}>
+                  <Text numberOfLines={1} style={[styles.foodSellerInline, { color: colors.subtitle }]}>
+                    {formatSellerIdentity(meal.seller, meal.sellerUsername)}
+                  </Text>
+                </View>
               </View>
             </View>
-            <View style={styles.foodSellerInlineBtn}>
-              <Text numberOfLines={1} style={[styles.foodSellerInline, { color: colors.subtitle }]}>
-                {formatSellerIdentity(meal.seller, meal.sellerUsername)}
-              </Text>
-            </View>
           </View>
-        </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -5954,6 +5956,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 2,
   },
+  foodSellerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
   foodMetaRow: {
     marginTop: 4,
     flexDirection: 'row',
@@ -5962,8 +5969,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   foodSellerInlineBtn: {
-    marginTop: 6,
-    width: 108,
+    marginTop: 2,
+    maxWidth: 128,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
