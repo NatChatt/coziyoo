@@ -1502,12 +1502,9 @@ function FoodCard({
     if (!raw) return 'U';
     return raw.charAt(0).toLocaleUpperCase('tr-TR');
   })();
-  const sellerHeroUsesCutout = Boolean(meal.sellerHomeCardImage && !sellerHomeCardImageFailed);
-  const sellerHeroSource = sellerHeroUsesCutout
-    ? { uri: meal.sellerHomeCardImage! }
-    : meal.sellerImage && !sellerThumbFailed
-      ? { uri: meal.sellerImage }
-      : null;
+  const sellerHeroSource = meal.sellerImage && !sellerThumbFailed
+    ? { uri: meal.sellerImage }
+    : null;
   const hasSellerFigure = Boolean(sellerHeroSource);
 
   return (
@@ -1538,18 +1535,9 @@ function FoodCard({
                 <View pointerEvents="none" style={styles.foodSellerFigureStage}>
                   <Image
                     source={sellerHeroSource!}
-                    style={[
-                      styles.foodSellerFigureImage,
-                      !sellerHeroUsesCutout && styles.foodSellerPortraitImage,
-                    ]}
-                    resizeMode={sellerHeroUsesCutout ? 'contain' : 'cover'}
-                    onError={() => {
-                      if (sellerHeroUsesCutout) {
-                        setSellerHomeCardImageFailed(true);
-                        return;
-                      }
-                      setSellerThumbFailed(true);
-                    }}
+                    style={[styles.foodSellerFigureImage, styles.foodSellerPortraitImage]}
+                    resizeMode="cover"
+                    onError={() => setSellerThumbFailed(true)}
                   />
                 </View>
               ) : (
@@ -3618,20 +3606,35 @@ export default function HomeScreen({
             ))}
           </ScrollView>
         </View>
-        {visibleMeals.map((meal) => {
-          return (
-            <FoodCard
-              key={meal.id}
-              meal={meal}
-              isFavorite={Boolean(favoriteIds[meal.id])}
-              favoritePending={Boolean(favoritePendingIds[meal.id])}
-              onPress={() => openMealDetail(meal)}
-              onFavoritePress={() => {
-                void toggleFavorite(meal.id);
-              }}
-            />
-          );
-        })}
+        {mealsLoading ? (
+          <View style={styles.topSoldLoadingChip}>
+            <ActivityIndicator size="small" color="#4A7C59" />
+            <Text style={styles.topSoldLoadingText}>Yemekler yukleniyor...</Text>
+          </View>
+        ) : mealsError ? (
+          <View style={styles.topSoldLoadingChip}>
+            <Text style={styles.topSoldLoadingText}>{mealsError}</Text>
+          </View>
+        ) : visibleMeals.length === 0 ? (
+          <View style={styles.topSoldLoadingChip}>
+            <Text style={styles.topSoldLoadingText}>Su an gosterebilecegimiz aktif yemek yok.</Text>
+          </View>
+        ) : (
+          visibleMeals.map((meal) => {
+            return (
+              <FoodCard
+                key={meal.id}
+                meal={meal}
+                isFavorite={Boolean(favoriteIds[meal.id])}
+                favoritePending={Boolean(favoritePendingIds[meal.id])}
+                onPress={() => openMealDetail(meal)}
+                onFavoritePress={() => {
+                  void toggleFavorite(meal.id);
+                }}
+              />
+            );
+          })
+        )}
 
       </ScrollView>
     );
