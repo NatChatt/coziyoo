@@ -16,6 +16,23 @@ dump_failure_diagnostics() {
 
 services_stopped="false"
 update_completed="false"
+api_service_name="${API_SERVICE_NAME:-coziyoo-api}"
+admin_service_name="${ADMIN_SERVICE_NAME:-coziyoo-admin}"
+
+ensure_service_active() {
+  local service_name="$1"
+  if run_root systemctl is-active --quiet "${service_name}"; then
+    return 0
+  fi
+  log "Service ${service_name} is not active; starting it"
+  run_root systemctl start "${service_name}" || true
+}
+
+ensure_services_active_on_exit() {
+  # update_all contract: API/Admin should be up when script exits.
+  ensure_service_active "${api_service_name}"
+  ensure_service_active "${admin_service_name}"
+}
 
 recover_services_on_error() {
   local exit_code="${1:-1}"
@@ -31,6 +48,7 @@ recover_services_on_error() {
 }
 
 trap 'recover_services_on_error "$?" "$LINENO"' ERR
+trap 'ensure_services_active_on_exit' EXIT
 
 log "Starting full update"
 log "Stopping app services before update"
