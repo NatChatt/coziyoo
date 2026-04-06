@@ -171,4 +171,118 @@ UNFOLD = {
             "950": "59 7 100",
         },
     },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": "Platform",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Users",
+                        "icon": "people",
+                        "link": "/admin/authentication/users/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Orders",
+                        "icon": "shopping_bag",
+                        "link": "/admin/orders/orders/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Foods",
+                        "icon": "restaurant_menu",
+                        "link": "/admin/foods/foods/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Categories",
+                        "icon": "category",
+                        "link": "/admin/foods/categories/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Production Lots",
+                        "icon": "inventory_2",
+                        "link": "/admin/foods/productionlots/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Reviews",
+                        "icon": "star",
+                        "link": "/admin/orders/reviews/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                ],
+            },
+            {
+                "title": "Compliance & Support",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Compliance Docs",
+                        "icon": "verified",
+                        "link": "/admin/compliance/sellercompliancedocuments/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Doc Types",
+                        "icon": "description",
+                        "link": "/admin/compliance/compliancedocumentslist/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Complaints",
+                        "icon": "report",
+                        "link": "/admin/complaints/complaints/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Complaint Categories",
+                        "icon": "label",
+                        "link": "/admin/complaints/complaintcategories/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                ],
+            },
+            {
+                "title": "Settings & Security",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Admin Users",
+                        "icon": "admin_panel_settings",
+                        "link": "/admin/authentication/adminusers/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Commission Settings",
+                        "icon": "percent",
+                        "link": "/admin/authentication/adminsalescommissionsettings/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "API Tokens",
+                        "icon": "key",
+                        "link": "/admin/authentication/adminapitokens/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Audit Log",
+                        "icon": "history",
+                        "link": "/admin/authentication/adminauditlogs/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Login Events",
+                        "icon": "lock",
+                        "link": "/admin/authentication/securityloginevents/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                ],
+            },
+        ],
+    },
 }
