@@ -1,0 +1,69 @@
+# Auto-generated from inspectdb — managed=False, do not run migrations against these.
+from django.db import models
+
+class ComplianceDocumentsList(models.Model):
+    id = models.UUIDField(primary_key=True)
+    code = models.TextField(unique=True)
+    name = models.TextField()
+    description = models.TextField(blank=True, null=True)
+    source_info = models.TextField(blank=True, null=True)
+    details = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField()
+    is_required_default = models.BooleanField()
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    validity_years = models.IntegerField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'compliance_documents_list'
+
+
+
+class SellerComplianceDocuments(models.Model):
+    id = models.UUIDField(primary_key=True)
+    seller = models.ForeignKey('authentication.Users', models.DO_NOTHING)
+    document_list = models.ForeignKey('compliance.ComplianceDocumentsList', models.DO_NOTHING)
+    is_required = models.BooleanField()
+    status = models.TextField()
+    file_url = models.TextField(blank=True, null=True)
+    uploaded_at = models.DateTimeField(blank=True, null=True)
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+    reviewed_by_admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING, blank=True, null=True)
+    rejection_reason = models.TextField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    version = models.IntegerField()
+    is_current = models.BooleanField()
+    expires_at = models.DateTimeField(blank=True, null=True)
+    expired = models.BooleanField()
+
+    class Meta:
+        managed = False
+        db_table = 'seller_compliance_documents'
+        unique_together = (('seller', 'document_list'), ('seller', 'document_list'),)
+
+
+
+class SellerOptionalUploads(models.Model):
+    id = models.UUIDField(primary_key=True)
+    seller = models.ForeignKey('authentication.Users', models.DO_NOTHING)
+    document_list = models.ForeignKey('compliance.ComplianceDocumentsList', models.DO_NOTHING, blank=True, null=True)
+    custom_title = models.TextField(blank=True, null=True)
+    custom_description = models.TextField(blank=True, null=True)
+    file_url = models.TextField()
+    status = models.TextField()
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+    reviewed_by_admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING, blank=True, null=True)
+    rejection_reason = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    expires_at = models.DateTimeField(blank=True, null=True)
+    expired = models.BooleanField()
+
+    class Meta:
+        managed = False
+        db_table = 'seller_optional_uploads'
+
+

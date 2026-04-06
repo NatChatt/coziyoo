@@ -1,0 +1,26 @@
+from .base import *
+from decouple import config
+
+DEBUG = False
+
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="api.coziyoo.com,admin.coziyoo.com", cast=lambda v: [s.strip() for s in v.split(",")])
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = False  # Nginx handles SSL termination
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {"format": "{levelname} {asctime} {module} {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}

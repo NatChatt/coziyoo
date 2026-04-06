@@ -30,13 +30,13 @@ class SellerComplianceProfileView(APIView):
         with connection.cursor() as cur:
             cur.execute(
                 """
-                SELECT cdl.id, cdl.code, cdl.name, cdl.description, cdl.validity_years, cdl.is_required,
+                SELECT cdl.id, cdl.code, cdl.name, cdl.description, cdl.validity_years, cdl.is_required_default,
                        scd.id as doc_id, scd.status, scd.uploaded_at, scd.expires_at
                 FROM compliance_documents_list cdl
                 LEFT JOIN seller_compliance_documents scd
                     ON scd.document_list_id = cdl.id AND scd.seller_id = %s
                 WHERE cdl.is_active = TRUE
-                ORDER BY cdl.is_required DESC, cdl.name
+                ORDER BY cdl.is_required_default DESC, cdl.name
                 """,
                 [request.user.id],
             )
@@ -85,10 +85,10 @@ class SellerDocumentListView(APIView):
         with connection.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, code, name, description, validity_years, is_required
+                SELECT id, code, name, description, validity_years, is_required_default
                 FROM compliance_documents_list
                 WHERE is_active = TRUE
-                ORDER BY is_required DESC, name
+                ORDER BY is_required_default DESC, name
                 """,
             )
             cols = ["id", "code", "name", "description", "validityYears", "isRequired"]
@@ -143,14 +143,14 @@ class SellerOptionalUploadsView(APIView):
         with connection.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, name, file_url, status, notes, created_at
+                SELECT id, custom_title, file_url, status, created_at
                 FROM seller_optional_uploads
                 WHERE seller_id=%s AND status != 'archived'
                 ORDER BY created_at DESC
                 """,
                 [request.user.id],
             )
-            cols = ["id", "name", "fileUrl", "status", "notes", "createdAt"]
+            cols = ["id", "name", "fileUrl", "status", "createdAt"]
             rows = []
             for row in cur.fetchall():
                 d = dict(zip(cols, row))
@@ -178,10 +178,10 @@ class SellerOptionalUploadsView(APIView):
         with connection.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO seller_optional_uploads (seller_id, name, file_url, notes, status)
-                VALUES (%s, %s, %s, %s, 'uploaded') RETURNING id
+                INSERT INTO seller_optional_uploads (seller_id, custom_title, file_url, status)
+                VALUES (%s, %s, %s, 'uploaded') RETURNING id
                 """,
-                [request.user.id, name, file_url, notes],
+                [request.user.id, name, file_url],
             )
             row = cur.fetchone()
 
@@ -236,7 +236,7 @@ class AdminDocumentListView(APIView):
         with connection.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, code, name, description, validity_years, is_required, is_active, created_at
+                SELECT id, code, name, description, validity_years, is_required_default, is_active, created_at
                 FROM compliance_documents_list
                 ORDER BY name
                 """,
