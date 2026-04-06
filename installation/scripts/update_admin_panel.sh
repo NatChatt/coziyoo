@@ -59,8 +59,19 @@ EOF
         npm install --silent --no-audit --no-fund --loglevel=error --include=optional
       )
       cd "${ADMIN_DIR_ABS}"
-      npm run build
-      rm -f "${build_log}"
+      if npm run build; then
+        rm -f "${build_log}"
+      else
+        log "Retry build still failed; forcing Rollup Linux native package install and trying once more"
+        (
+          cd "${REPO_ROOT}"
+          npm install --silent --no-audit --no-fund --loglevel=error --no-save @rollup/rollup-linux-x64-gnu || true
+          npm install --silent --no-audit --no-fund --loglevel=error --no-save @rollup/rollup-linux-x64-musl || true
+        )
+        cd "${ADMIN_DIR_ABS}"
+        npm run build
+        rm -f "${build_log}"
+      fi
     else
       rm -f "${build_log}"
       exit 1
