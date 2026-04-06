@@ -17,9 +17,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
+  TouchableOpacity as RNTouchableOpacity,
   UIManager,
   View,
+  type GestureResponderEvent,
   type ImageSourcePropType,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -89,6 +90,75 @@ import ProfileEditScreen from './ProfileEditScreen';
 import AddressScreen from './AddressScreen';
 import { formatCopy, randomHomeGreetingSubtitle, requestErrorLine, t } from '../copy/brandCopy';
 import { HOME_FEED_CATEGORIES } from '../constants/foodCategories';
+
+const AnimatedTouchableOpacity: any = Animated.createAnimatedComponent(RNTouchableOpacity as any);
+
+function shouldDisableGlobalPressFx(style: unknown, activeOpacity?: number): boolean {
+  if (activeOpacity === 1) return true;
+  const flat = StyleSheet.flatten(style as any) as Record<string, unknown> | undefined;
+  if (!flat) return false;
+  return (
+    flat.position === 'absolute'
+    && flat.top === 0
+    && flat.right === 0
+    && flat.bottom === 0
+    && flat.left === 0
+  );
+}
+
+function TouchableOpacity(props: React.ComponentProps<typeof RNTouchableOpacity>) {
+  const {
+    style,
+    onPressIn,
+    onPressOut,
+    activeOpacity,
+    disabled,
+    ...rest
+  } = props;
+
+  const scale = useRef(new Animated.Value(1)).current;
+  const disablePressFx = shouldDisableGlobalPressFx(style, activeOpacity) || Boolean(disabled);
+  const flatStyle = StyleSheet.flatten(style as any) as Record<string, any> | undefined;
+  const existingTransform = Array.isArray(flatStyle?.transform) ? flatStyle.transform : [];
+
+  const animateScale = (toValue: number) => {
+    Animated.spring(scale, {
+      toValue,
+      useNativeDriver: true,
+      speed: 35,
+      bounciness: 0,
+    }).start();
+  };
+
+  return (
+    <AnimatedTouchableOpacity
+      {...rest}
+      disabled={disabled}
+      activeOpacity={activeOpacity ?? 0.88}
+      style={[
+        style,
+        !disablePressFx
+          ? {
+              transform: [...existingTransform, { scale }],
+              shadowColor: '#000',
+              shadowOpacity: Platform.OS === 'ios' ? 0.08 : 0.14,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 2,
+            }
+          : null,
+      ]}
+      onPressIn={(event: GestureResponderEvent) => {
+        if (!disablePressFx) animateScale(0.98);
+        onPressIn?.(event);
+      }}
+      onPressOut={(event: GestureResponderEvent) => {
+        if (!disablePressFx) animateScale(1);
+        onPressOut?.(event);
+      }}
+    />
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1188,166 +1258,179 @@ function FoodCard({
   const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
     ? `Kalan: ${meal.stock}`
     : '';
-  const deliveryTypeLabel = mealDeliveryOptions.pickup && mealDeliveryOptions.delivery
-    ? 'Gel Al / Getir'
-    : mealDeliveryOptions.delivery
-      ? 'Getir'
-      : 'Gel Al';
 
   return (
     <View
       style={[
-        styles.foodCard,
-        { backgroundColor: colors.bg, borderColor: colors.border },
+        styles.foodCardWrap,
       ]}
     >
       <View
-        style={[styles.foodPhoto, { backgroundColor: meal.backgroundColor }]}
-        onLayout={(event) => {
-          const nextWidth = Math.max(220, Math.round(event.nativeEvent.layout.width));
-          setImageFrameWidth((prev) => (prev === nextWidth ? prev : nextWidth));
-        }}
+        style={[
+          styles.foodCard,
+          { backgroundColor: colors.bg, borderColor: colors.border },
+        ]}
       >
-        {imageUrls.length > 0 ? (
-          <View style={styles.foodImageSliderWrap}>
-            <ScrollView
-              ref={cardImageScrollRef}
-              horizontal
-              pagingEnabled
-              directionalLockEnabled
-              nestedScrollEnabled
-              showsHorizontalScrollIndicator={false}
-              bounces={false}
-              decelerationRate="fast"
-              style={styles.foodImageSlider}
-              contentContainerStyle={styles.foodImageSliderContent}
-              onMomentumScrollEnd={(event) => {
-                if (!imageFrameWidth) return;
-                const offsetX = event.nativeEvent.contentOffset.x;
-                const nextIndex = Math.round(offsetX / imageFrameWidth);
-                const bounded = Math.max(0, Math.min(nextIndex, imageUrls.length - 1));
-                setImageIndex(bounded);
-              }}
-            >
-              {imageUrls.map((uri, idx) => (
-                <View
-                  key={`food-image-${meal.id}-${idx}`}
-                  style={[styles.foodImageTapArea, { width: imageFrameWidth }]}
-                >
-                  <Image
-                    source={{ uri }}
-                    style={styles.foodImage}
-                    resizeMode="cover"
-                    onError={() => {
-                      setImageUrls((prev) => {
-                        const filtered = prev.filter((_, itemIndex) => itemIndex !== idx);
-                        const trimmed = filtered.slice(0, 5);
-                        setImageIndex((current) => {
-                          if (trimmed.length === 0) return 0;
-                          return Math.max(0, Math.min(current, trimmed.length - 1));
-                        });
-                        return trimmed;
-                      });
-                    }}
-                  />
-                </View>
-              ))}
-            </ScrollView>
-            {imageUrls.length > 1 ? (
-              <View pointerEvents="none" style={styles.foodImageDotsRow}>
-                {imageUrls.map((_, idx) => (
+        <View
+          style={[styles.foodPhoto, { backgroundColor: meal.backgroundColor }]}
+          onLayout={(event) => {
+            const nextWidth = Math.max(220, Math.round(event.nativeEvent.layout.width));
+            setImageFrameWidth((prev) => (prev === nextWidth ? prev : nextWidth));
+          }}
+        >
+          {imageUrls.length > 0 ? (
+            <View style={styles.foodImageSliderWrap}>
+              <ScrollView
+                ref={cardImageScrollRef}
+                horizontal
+                pagingEnabled
+                directionalLockEnabled
+                nestedScrollEnabled
+                showsHorizontalScrollIndicator={false}
+                bounces={false}
+                decelerationRate="fast"
+                style={styles.foodImageSlider}
+                contentContainerStyle={styles.foodImageSliderContent}
+                onMomentumScrollEnd={(event) => {
+                  if (!imageFrameWidth) return;
+                  const offsetX = event.nativeEvent.contentOffset.x;
+                  const nextIndex = Math.round(offsetX / imageFrameWidth);
+                  const bounded = Math.max(0, Math.min(nextIndex, imageUrls.length - 1));
+                  setImageIndex(bounded);
+                }}
+              >
+                {imageUrls.map((uri, idx) => (
                   <View
-                    key={`food-image-dot-${meal.id}-${idx}`}
-                    style={[
-                      styles.foodImageDot,
-                      idx === imageIndex && styles.foodImageDotActive,
-                    ]}
-                  />
+                    key={`food-image-${meal.id}-${idx}`}
+                    style={[styles.foodImageTapArea, { width: imageFrameWidth }]}
+                  >
+                    <Image
+                      source={{ uri }}
+                      style={styles.foodImage}
+                      resizeMode="cover"
+                      onError={() => {
+                        setImageUrls((prev) => {
+                          const filtered = prev.filter((_, itemIndex) => itemIndex !== idx);
+                          const trimmed = filtered.slice(0, 5);
+                          setImageIndex((current) => {
+                            if (trimmed.length === 0) return 0;
+                            return Math.max(0, Math.min(current, trimmed.length - 1));
+                          });
+                          return trimmed;
+                        });
+                      }}
+                    />
+                  </View>
                 ))}
-              </View>
-            ) : null}
-          </View>
-        ) : (
-          <View style={styles.foodImageTapFallback}>
-            <Text style={styles.foodEmoji}>🍽️</Text>
-          </View>
-        )}
-        <View style={styles.foodBadgesRight}>
-          <View style={styles.foodPriceBadge}>
-            <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
-          </View>
-          <View style={styles.ratingBadge}>
-            <Text style={styles.ratingBadgeStar}>★</Text>
-            <Text style={styles.ratingBadgeText}>{meal.rating}</Text>
-          </View>
+              </ScrollView>
+              {imageUrls.length > 1 ? (
+                <View pointerEvents="none" style={styles.foodImageDotsRow}>
+                  {imageUrls.map((_, idx) => (
+                    <View
+                      key={`food-image-dot-${meal.id}-${idx}`}
+                      style={[
+                        styles.foodImageDot,
+                        idx === imageIndex && styles.foodImageDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : (
+            <View style={styles.foodImageTapFallback}>
+              <Text style={styles.foodEmoji}>🍽️</Text>
+            </View>
+          )}
+          {LinearGradient ? (
+            <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
+              <LinearGradient
+                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.28)']}
+                locations={[0, 1]}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.foodPhotoBottomGradientFill}
+              />
+            </View>
+          ) : (
+            <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
+          )}
           <TouchableOpacity
             activeOpacity={0.82}
             onPress={(event) => {
               event.stopPropagation();
               onFavoritePress();
             }}
-            style={[styles.foodFavoriteBtn, styles.foodFavoriteBtnInBadges]}
+            style={styles.foodFavoriteTopLeft}
             disabled={favoritePending}
           >
             <Ionicons
-              name="heart"
+              name={isFavorite ? 'heart' : 'heart-outline'}
               size={19}
               color={isFavorite ? '#E53935' : '#FFFFFF'}
               style={styles.foodFavoriteIcon}
             />
           </TouchableOpacity>
-        </View>
-      </View>
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={onPress}
-        style={styles.foodInfo}
-      >
-        <View style={styles.foodInfoRow}>
-          <View style={styles.foodInfoLeft}>
-            <Text style={[styles.foodName, { color: colors.title }]}>
-              {meal.title}
-            </Text>
-            {stockSummary ? (
-              <Text style={[styles.foodStockSummary, { color: colors.subtitle }]}>
-                {stockSummary}
-              </Text>
-            ) : null}
-          </View>
-          <View style={styles.foodNameMetaRight}>
-            <View style={styles.foodSellerInlineBtn}>
-              <Text style={[styles.foodSellerInline, { color: colors.subtitle }]}>
-                {formatSellerIdentity(meal.seller, meal.sellerUsername)}
-              </Text>
+          <View style={styles.foodBadgesRight}>
+            <View style={styles.foodPriceBadge}>
+              <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
             </View>
-            {meal.cuisine ? (
-              <Text style={[styles.foodSellerCuisineInline, { color: colors.subtitle }]}>
-                {formatCuisineLabel(meal.cuisine)}
-              </Text>
-            ) : null}
+            <View style={styles.ratingBadge}>
+              <Text style={styles.ratingBadgeStar}>★</Text>
+              <Text style={styles.ratingBadgeText}>{meal.rating}</Text>
+            </View>
           </View>
         </View>
-        <Text style={[styles.foodDeliveryTypeText, { color: colors.subtitle }]}>
-          Teslimat Tipi: {deliveryTypeLabel}
-        </Text>
-        <View style={styles.foodBottomRow}>
-          {timeDistanceText ? (
-            <View style={styles.foodMetaInlineRow}>
-              <View style={styles.foodMetaClockBadge}>
-                <Ionicons name="time-outline" size={12} color="#3F454E" />
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={onPress}
+          style={styles.foodInfo}
+        >
+          <View style={styles.foodInfoRow}>
+            <View style={styles.foodInfoLeft}>
+              <View style={styles.foodNameWrap}>
+                <Text numberOfLines={1} style={[styles.foodName, styles.foodNameInline, { color: colors.title }]}>
+                  {meal.title}
+                </Text>
+                {stockSummary ? (
+                  <Text numberOfLines={1} style={[styles.foodStockInline, { color: colors.subtitle }]}>
+                    {stockSummary}
+                  </Text>
+                ) : null}
               </View>
-              <Text style={[styles.foodMeta, { color: colors.meta }]}>
-                {timeDistanceText}
-              </Text>
+              {meal.cuisine ? (
+                <Text numberOfLines={1} style={[styles.foodSellerCuisineInline, { color: colors.subtitle }]}>
+                  {formatCuisineLabel(meal.cuisine)}
+                </Text>
+              ) : null}
+              {allergens.length > 0 ? (
+                <Text numberOfLines={2} style={styles.foodAllergenBelowCuisine}>
+                  Alerjen: {allergens.slice(0, 3).join(', ')}
+                </Text>
+              ) : null}
             </View>
-          ) : null}
-          {allergens.length > 0 ? (
-            <Text style={styles.foodBottomAllergenText}>
-              Alerjen: {allergens.slice(0, 3).join(', ')}
-            </Text>
-          ) : null}
-        </View>
-      </TouchableOpacity>
+            <View style={styles.foodNameMetaRight}>
+              <View style={styles.foodSellerInlineBtn}>
+                <Text style={[styles.foodSellerInline, { color: colors.subtitle }]}>
+                  {formatSellerIdentity(meal.seller, meal.sellerUsername)}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.foodBottomRow}>
+            {timeDistanceText ? (
+              <View style={styles.foodMetaInlineRow}>
+                <View style={styles.foodMetaClockBadge}>
+                  <Ionicons name="time-outline" size={12} color="#3F454E" />
+                </View>
+                <Text style={[styles.foodMeta, { color: colors.meta }]}>
+                  {timeDistanceText}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -5486,12 +5569,20 @@ const styles = StyleSheet.create({
   topSoldLoadingText: { color: '#7E7163', fontSize: 12, fontWeight: '600' },
 
   /* --- Food card --- */
+  foodCardWrap: {
+    marginBottom: 12,
+    marginHorizontal: 8,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.09,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
   foodCard: {
     borderWidth: 1,
     borderRadius: 18,
     overflow: 'hidden',
-    marginBottom: 12,
-    marginHorizontal: 8,
   },
   foodPhoto: { width: '100%', height: 155, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   foodImageSliderWrap: { width: '100%', height: '100%' },
@@ -5520,29 +5611,30 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.95)',
   },
   foodImage: { width: '100%', height: '100%' },
-  foodEmoji: { fontSize: 56 },
-  foodFavoriteBtn: {
+  foodPhotoBottomGradient: {
     position: 'absolute',
-    top: 10,
-    left: 10,
-    width: 24,
-    height: 24,
-    borderRadius: 0,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0,
-    borderColor: 'transparent',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 64,
   },
+  foodPhotoBottomGradientFill: {
+    width: '100%',
+    height: '100%',
+  },
+  foodPhotoBottomGradientFallback: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 64,
+    backgroundColor: 'rgba(0,0,0,0.14)',
+  },
+  foodEmoji: { fontSize: 56 },
   foodFavoriteIcon: {
     textShadowColor: 'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
-  },
-  foodFavoriteBtnInBadges: {
-    position: 'relative',
-    top: 0,
-    left: 0,
   },
   foodBadgesRight: {
     position: 'absolute',
@@ -5550,6 +5642,15 @@ const styles = StyleSheet.create({
     right: 10,
     alignItems: 'flex-end',
     gap: 6,
+  },
+  foodFavoriteTopLeft: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   foodPriceBadge: {
     backgroundColor: 'rgba(61,50,41,0.9)',
@@ -5575,6 +5676,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   foodName: { fontSize: 16, fontWeight: '600' },
+  foodNameWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8,
+  },
+  foodNameInline: { flexShrink: 1 },
+  foodStockInline: { fontSize: 12, fontWeight: '700', flexShrink: 0 },
   foodTitlePressArea: { alignSelf: 'flex-start' },
   foodNameMetaRight: { alignItems: 'flex-end', gap: 2 },
   foodMetaRow: {
@@ -5587,15 +5696,14 @@ const styles = StyleSheet.create({
   foodSellerInlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   foodSellerInline: { fontSize: 15, fontWeight: '700' },
   foodSellerCuisineInline: { fontSize: 12, fontWeight: '700', marginTop: 4 },
-  foodStockSummary: { fontSize: 12, fontWeight: '700', marginTop: 4 },
+  foodAllergenBelowCuisine: { marginTop: 4, fontSize: 11, fontWeight: '700', color: '#C2362F' },
   foodCuisineInline: { fontSize: 12, fontWeight: '600' },
   foodStockText: { fontSize: 11, fontWeight: '600' },
   foodSeller: { fontSize: 13, fontWeight: '500', marginTop: 2 },
   foodSellerLink: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' },
   foodSellerChevron: { marginTop: 2, marginLeft: 2 },
   foodCuisine: { fontSize: 12, fontWeight: '500', marginTop: 2, fontStyle: 'italic' },
-  foodDeliveryTypeText: { fontSize: 12, fontWeight: '700', marginBottom: 6 },
-  foodBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
+  foodBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 2 },
   foodMetaInlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   foodMetaClockBadge: {
     width: 20,
@@ -5612,7 +5720,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
   },
-  foodBottomAllergenText: { marginLeft: 8, fontSize: 11, fontWeight: '700', color: '#C2362F', textAlign: 'right', flexShrink: 1 },
   foodMenuItemsText: { marginTop: 4, fontSize: 11, fontWeight: '600' },
   foodMeta: { fontSize: 12, fontWeight: '700' },
 
