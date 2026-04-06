@@ -60,6 +60,15 @@ export default function FoodsLotsPage({ language }: { language: Language }) {
     allergensJson: unknown;
   } | null>(null);
   const [selectedLotId, setSelectedLotId] = useState<string | null>(null);
+  const [isEditingFood, setIsEditingFood] = useState(false);
+  const [savingFoodEdit, setSavingFoodEdit] = useState(false);
+  const [foodEditDraft, setFoodEditDraft] = useState<{
+    name: string;
+    description: string;
+    recipe: string;
+    price: string;
+    isActive: boolean;
+  } | null>(null);
   const [selectedFoodMap, setSelectedFoodMap] = useState<Record<string, {
     id: string;
     code: string;
@@ -407,6 +416,15 @@ export default function FoodsLotsPage({ language }: { language: Language }) {
   }, lotId?: string) {
     setSelectedFood(food);
     setSelectedLotId(lotId ?? null);
+    setIsEditingFood(false);
+    setSavingFoodEdit(false);
+    setFoodEditDraft({
+      name: food.name ?? "",
+      description: food.description ?? "",
+      recipe: food.recipe ?? "",
+      price: Number.isFinite(food.price) ? String(food.price) : "0",
+      isActive: Boolean(food.isActive),
+    });
     if (!lotsByFoodId[food.id] && !lotsLoadingByFoodId[food.id]) {
       void loadFoodLots(food.id);
     }
@@ -415,6 +433,9 @@ export default function FoodsLotsPage({ language }: { language: Language }) {
   function closeFoodDetailModal() {
     setSelectedFood(null);
     setSelectedLotId(null);
+    setIsEditingFood(false);
+    setSavingFoodEdit(false);
+    setFoodEditDraft(null);
     if (returnToPath) {
       if (returnToPath.startsWith("/app/sellers/")) {
         const url = new URL(returnToPath, window.location.origin);
@@ -566,6 +587,78 @@ export default function FoodsLotsPage({ language }: { language: Language }) {
   function printSelectedFoodDetail() {
     if (!selectedFood) return;
     printModalContent(foodModalPrintRef.current);
+  }
+
+  async function saveFoodEdit() {
+    if (!selectedFood || !foodEditDraft || selectedLot) return;
+
+    const trimmedName = foodEditDraft.name.trim();
+    if (!trimmedName) {
+      setError(language === "tr" ? "Yemek adı zorunludur." : "Food name is required.");
+      return;
+    }
+
+    const parsedPrice = Number(foodEditDraft.price);
+    if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+      setError(language === "tr" ? "Fiyat geçerli bir sayı olmalı." : "Price must be a valid number.");
+      return;
+    }
+
+    setSavingFoodEdit(true);
+    setError(null);
+    try {
+      const response = await request(`/v1/admin/users/${selectedFood.sellerId}/seller-foods/${selectedFood.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: trimmedName,
+          description: foodEditDraft.description.trim() ? foodEditDraft.description.trim() : null,
+          recipe: foodEditDraft.recipe.trim() ? foodEditDraft.recipe.trim() : null,
+          price: parsedPrice,
+          isActive: foodEditDraft.isActive,
+        }),
+      });
+
+      const body = await parseJson<{
+        data?: {
+          id: string;
+          sellerId: string;
+          name: string;
+          description: string | null;
+          recipe: string | null;
+          price: number;
+          isActive: boolean;
+          updatedAt: string;
+        };
+      } & ApiError>(response);
+
+      if (response.status !== 200 || !body.data) {
+        setError(body.error?.message ?? (language === "tr" ? "Yemek güncellenemedi." : "Food could not be updated."));
+        return;
+      }
+
+      const updatedFood = {
+        ...selectedFood,
+        name: body.data.name,
+        description: body.data.description,
+        recipe: body.data.recipe,
+        price: body.data.price,
+        isActive: body.data.isActive,
+        updatedAt: body.data.updatedAt,
+      };
+
+      setRows((prev) => prev.map((item) => (item.id === updatedFood.id ? { ...item, ...updatedFood } : item)));
+      setSelectedFood(updatedFood);
+      setSelectedFoodMap((prev) => {
+        const existing = prev[updatedFood.id];
+        if (!existing) return prev;
+        return { ...prev, [updatedFood.id]: { ...existing, ...updatedFood } };
+      });
+      setIsEditingFood(false);
+    } catch {
+      setError(language === "tr" ? "Yemek güncelleme isteği başarısız." : "Food update request failed.");
+    } finally {
+      setSavingFoodEdit(false);
+    }
   }
 
   useEffect(() => {
@@ -856,7 +949,23 @@ export default function FoodsLotsPage({ language }: { language: Language }) {
                   </div>
                   <div>
                     <span className="panel-meta">{dict.detail.foodName}</span>
-                    <strong>{selectedFood.name}</strong>
+                    {isEditingFood ? (
+                      <input
+                        value={foodEditDraft?.name ?? ""}
+                        onChange={(event) =>
+                          setFoodEditDraft((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  name: event.target.value,
+                                }
+                              : prev
+                          )
+                        }
+                      />
+                    ) : (
+                      <strong>{selectedFood.name}</strong>
+                    )}
                   </div>
                   <div>
                     <span className="panel-meta">{dict.detail.foodSeller}</span>
@@ -864,11 +973,50 @@ export default function FoodsLotsPage({ language }: { language: Language }) {
                   </div>
                   <div>
                     <span className="panel-meta">{dict.detail.foodStatus}</span>
-                    <strong>{selectedFood.isActive ? dict.common.active : dict.common.disabled}</strong>
+                    {isEditingFood ? (
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(foodEditDraft?.isActive)}
+                          onChange={(event) =>
+                            setFoodEditDraft((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    isActive: event.target.checked,
+                                  }
+                                : prev
+                            )
+                          }
+                        />
+                        <strong>{foodEditDraft?.isActive ? dict.common.active : dict.common.disabled}</strong>
+                      </label>
+                    ) : (
+                      <strong>{selectedFood.isActive ? dict.common.active : dict.common.disabled}</strong>
+                    )}
                   </div>
                   <div>
                     <span className="panel-meta">{dict.detail.foodPrice}</span>
-                    <strong>{formatCurrency(selectedFood.price, language)}</strong>
+                    {isEditingFood ? (
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={foodEditDraft?.price ?? ""}
+                        onChange={(event) =>
+                          setFoodEditDraft((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  price: event.target.value,
+                                }
+                              : prev
+                          )
+                        }
+                      />
+                    ) : (
+                      <strong>{formatCurrency(selectedFood.price, language)}</strong>
+                    )}
                   </div>
                   <div>
                     <span className="panel-meta">{dict.detail.updatedAtLabel}</span>
@@ -877,11 +1025,47 @@ export default function FoodsLotsPage({ language }: { language: Language }) {
                 </div>
                 <div className="foods-detail-text-block">
                   <h4>{language === "tr" ? "Malzemeler / Baharatlar" : "Ingredients / Spices"}</h4>
-                  <p className="foods-detail-paragraph">{selectedFood.description?.trim() || "-"}</p>
+                  {isEditingFood ? (
+                    <textarea
+                      className="users-note-input"
+                      rows={4}
+                      value={foodEditDraft?.description ?? ""}
+                      onChange={(event) =>
+                        setFoodEditDraft((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                description: event.target.value,
+                              }
+                            : prev
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="foods-detail-paragraph">{selectedFood.description?.trim() || "-"}</p>
+                  )}
                 </div>
                 <div className="foods-detail-text-block">
                   <h4>{language === "tr" ? "Tarif" : "Recipe"}</h4>
-                  <p className="foods-detail-paragraph">{selectedFood.recipe?.trim() || "-"}</p>
+                  {isEditingFood ? (
+                    <textarea
+                      className="users-note-input"
+                      rows={5}
+                      value={foodEditDraft?.recipe ?? ""}
+                      onChange={(event) =>
+                        setFoodEditDraft((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                recipe: event.target.value,
+                              }
+                            : prev
+                        )
+                      }
+                    />
+                  ) : (
+                    <p className="foods-detail-paragraph">{selectedFood.recipe?.trim() || "-"}</p>
+                  )}
                 </div>
                 <div className="foods-detail-text-block">
                   <h4>{language === "tr" ? "Yan Ürünler" : "Side Items"}</h4>
@@ -925,6 +1109,50 @@ export default function FoodsLotsPage({ language }: { language: Language }) {
               />
             ) : null}
             <div className="buyer-ops-modal-actions">
+              {!selectedLot ? (
+                isEditingFood ? (
+                  <>
+                    <button
+                      className="ghost"
+                      type="button"
+                      disabled={savingFoodEdit}
+                      onClick={() => {
+                        setIsEditingFood(false);
+                        if (!selectedFood) return;
+                        setFoodEditDraft({
+                          name: selectedFood.name ?? "",
+                          description: selectedFood.description ?? "",
+                          recipe: selectedFood.recipe ?? "",
+                          price: Number.isFinite(selectedFood.price) ? String(selectedFood.price) : "0",
+                          isActive: Boolean(selectedFood.isActive),
+                        });
+                      }}
+                    >
+                      {language === "tr" ? "Vazgeç" : "Cancel"}
+                    </button>
+                    <button className="primary" type="button" disabled={savingFoodEdit} onClick={() => saveFoodEdit()}>
+                      {savingFoodEdit ? (language === "tr" ? "Kaydediliyor..." : "Saving...") : (language === "tr" ? "Kaydet" : "Save")}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="ghost"
+                    type="button"
+                    onClick={() => {
+                      setIsEditingFood(true);
+                      setFoodEditDraft({
+                        name: selectedFood.name ?? "",
+                        description: selectedFood.description ?? "",
+                        recipe: selectedFood.recipe ?? "",
+                        price: Number.isFinite(selectedFood.price) ? String(selectedFood.price) : "0",
+                        isActive: Boolean(selectedFood.isActive),
+                      });
+                    }}
+                  >
+                    {language === "tr" ? "Düzenle" : "Edit"}
+                  </button>
+                )
+              ) : null}
               <ExcelExportButton type="button" onClick={downloadSelectedFoodDetailAsExcel} language={language} />
               <PrintButton className="ghost" type="button" onClick={printSelectedFoodDetail} language={language} />
               <button className="primary" type="button" onClick={closeFoodDetailModal}>

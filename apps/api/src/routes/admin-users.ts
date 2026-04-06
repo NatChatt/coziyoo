@@ -154,6 +154,17 @@ const SellerFoodsExportQuerySchema = z.object({
       message: "foodIds must contain valid UUID values",
     }),
 });
+const SellerFoodParamsSchema = z.object({
+  id: z.string().uuid(),
+  foodId: z.string().uuid(),
+});
+const UpdateSellerFoodSchema = z.object({
+  name: z.string().trim().min(1).max(160).optional(),
+  description: z.string().trim().max(4000).nullable().optional(),
+  recipe: z.string().trim().max(8000).nullable().optional(),
+  price: z.coerce.number().finite().min(0).optional(),
+  isActive: z.boolean().optional(),
+}).refine((value) => Object.keys(value).length > 0, { message: "At least one field required" });
 const InvestigationSearchQuerySchema = z.object({
   q: z.string().min(2).max(120),
   limit: z.coerce.number().int().positive().max(100).default(40),
@@ -2805,6 +2816,133 @@ adminUserManagementRouter.get("/users/:id/seller-foods", requireAuth("admin"), a
       totalPages: Math.max(1, Math.ceil(totalCount / query.data.pageSize)),
     },
   });
+});
+
+adminUserManagementRouter.patch("/users/:id/seller-foods/:foodId", requireAuth("admin"), async (req, res) => {
+  const params = SellerFoodParamsSchema.safeParse(req.params);
+  if (!params.success) {
+    return res.status(400).json({ error: { code: "VALIDATION_ERROR", details: params.error.flatten() } });
+  }
+
+  const parsed = UpdateSellerFoodSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: { code: "VALIDATION_ERROR", details: parsed.error.flatten() } });
+  }
+
+  const seller = await ensureSellerUser(params.data.id);
+  if (!seller.ok) {
+    return res.status(seller.status).json({ error: { code: seller.code, message: seller.message } });
+  }
+
+  const input = parsed.data;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const beforeResult = await client.query<{
+      id: string;
+      seller_id: string;
+      name: string;
+      description: string | null;
+      recipe: string | null;
+      price: string;
+      is_active: boolean;
+    }>(
+      `SELECT id::text, seller_id::text, name, description, recipe, price::text, is_active
+       FROM foods
+       WHERE id = $1 AND seller_id = $2
+       FOR UPDATE`,
+      [params.data.foodId, params.data.id]
+    );
+
+    if ((beforeResult.rowCount ?? 0) === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: { code: "FOOD_NOT_FOUND", message: "Food not found in seller scope" } });
+    }
+
+    const setClauses: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (input.name !== undefined) {
+      setClauses.push(`name = $${idx++}`);
+      values.push(input.name.trim());
+    }
+    if (input.description !== undefined) {
+      setClauses.push(`description = $${idx++}`);
+      values.push(input.description === null ? null : input.description.trim() || null);
+    }
+    if (input.recipe !== undefined) {
+      setClauses.push(`recipe = $${idx++}`);
+      values.push(input.recipe === null ? null : input.recipe.trim() || null);
+    }
+    if (input.price !== undefined) {
+      setClauses.push(`price = $${idx++}`);
+      values.push(input.price);
+    }
+    if (input.isActive !== undefined) {
+      setClauses.push(`is_active = $${idx++}`);
+      values.push(input.isActive);
+    }
+    setClauses.push("updated_at = now()");
+
+    values.push(params.data.foodId, params.data.id);
+    const updated = await client.query<{
+      id: string;
+      seller_id: string;
+      name: string;
+      description: string | null;
+      recipe: string | null;
+      price: string;
+      is_active: boolean;
+      updated_at: string;
+    }>(
+      `UPDATE foods
+       SET ${setClauses.join(", ")}
+       WHERE id = $${idx++} AND seller_id = $${idx}
+       RETURNING id::text, seller_id::text, name, description, recipe, price::text, is_active, updated_at::text`,
+      values
+    );
+
+    const row = updated.rows[0];
+
+    await writeAdminAudit(client, {
+      actorAdminId: req.auth!.userId,
+      action: "seller_food_updated",
+      entityType: "foods",
+      entityId: row.id,
+      before: beforeResult.rows[0],
+      after: {
+        id: row.id,
+        sellerId: row.seller_id,
+        name: row.name,
+        description: row.description,
+        recipe: row.recipe,
+        price: Number(row.price),
+        isActive: row.is_active,
+        updatedAt: row.updated_at,
+      },
+    });
+
+    await client.query("COMMIT");
+    return res.json({
+      data: {
+        id: row.id,
+        sellerId: row.seller_id,
+        name: row.name,
+        description: row.description,
+        recipe: row.recipe,
+        price: Number(row.price),
+        isActive: row.is_active,
+        updatedAt: row.updated_at,
+      },
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return handleMutationError(res, error);
+  } finally {
+    client.release();
+  }
 });
 
 adminUserManagementRouter.get("/users/:id/seller-foods/export", requireAuth("admin"), async (req, res) => {
