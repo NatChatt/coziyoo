@@ -1,12 +1,15 @@
 import { Router } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { createHash, randomInt, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import multer from "multer";
 import { pool } from "../db/client.js";
 import { env } from "../config/env.js";
 import { abuseProtection } from "../middleware/abuse-protection.js";
 import { requireAuth } from "../middleware/auth.js";
+import { removeImageBackground } from "../services/remove-bg.js";
 import { recordPresenceEvent } from "../services/user-presence.js";
 import { refreshTokenExpiresAt, signAccessToken } from "../services/token-service.js";
 import { normalizeDisplayName } from "../utils/normalize.js";
@@ -69,6 +72,33 @@ const PASSWORD_RESET_MIN_REQUEST_INTERVAL_SECONDS = 60;
 
 export const authRouter = Router();
 let nationalIdColumnAvailable: boolean | null = null;
+let homeCardImageColumnAvailable: boolean | null = null;
+
+const homeCardImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 12 * 1024 * 1024,
+    files: 1,
+  },
+});
+
+function runHomeCardImageUpload(req: Request, res: Response, next: NextFunction): void {
+  homeCardImageUpload.single("file")(req, res, (error?: unknown) => {
+    if (!error) return next();
+    if (error instanceof multer.MulterError) {
+      const isFileSize = error.code === "LIMIT_FILE_SIZE";
+      return void res.status(isFileSize ? 413 : 400).json({
+        error: {
+          code: isFileSize ? "IMAGE_TOO_LARGE" : "INVALID_MULTIPART_UPLOAD",
+          message: isFileSize ? "Image is too large" : error.message,
+        },
+      });
+    }
+    return void res.status(400).json({
+      error: { code: "INVALID_MULTIPART_UPLOAD", message: "Multipart upload could not be parsed" },
+    });
+  });
+}
 
 async function resolveNationalIdColumnAvailability(): Promise<boolean> {
   if (nationalIdColumnAvailable !== null) return nationalIdColumnAvailable;
@@ -96,6 +126,26 @@ async function resolveNationalIdColumnAvailability(): Promise<boolean> {
   }
 
   return nationalIdColumnAvailable;
+}
+
+async function resolveHomeCardImageColumnAvailability(): Promise<boolean> {
+  if (homeCardImageColumnAvailable !== null) return homeCardImageColumnAvailable;
+  try {
+    const result = await pool.query<{ exists: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'users'
+           AND column_name = 'home_card_image_url'
+       ) AS exists`
+    );
+    homeCardImageColumnAvailable = Boolean(result.rows[0]?.exists);
+  } catch (error) {
+    console.error("[auth] home_card_image_url column availability check failed", error);
+    homeCardImageColumnAvailable = false;
+  }
+  return homeCardImageColumnAvailable;
 }
 
 function isValidIsoDate(value: string): boolean {
@@ -798,6 +848,7 @@ authRouter.post("/forgot-password/confirm", abuseProtection({ flow: "forgot_pass
 authRouter.get("/me", requireAuth("app"), async (req, res) => {
   try {
     const hasNationalIdColumn = await resolveNationalIdColumnAvailability();
+    const hasHomeCardImageColumn = await resolveHomeCardImageColumnAvailability();
     const result = await pool.query<{
       id: string;
       email: string;
@@ -811,8 +862,9 @@ authRouter.get("/me", requireAuth("app"), async (req, res) => {
       phone: string | null;
       dob: string | null;
       profile_image_url: string | null;
+      home_card_image_url: string | null;
     }>(
-      `SELECT id, email, display_name, username, user_type, full_name, country_code, ${hasNationalIdColumn ? "national_id" : "NULL::text AS national_id"}, language, phone, dob, profile_image_url
+      `SELECT id, email, display_name, username, user_type, full_name, country_code, ${hasNationalIdColumn ? "national_id" : "NULL::text AS national_id"}, language, phone, dob, profile_image_url, ${hasHomeCardImageColumn ? "home_card_image_url" : "NULL::text AS home_card_image_url"}
        FROM users
        WHERE id = $1 AND is_active = TRUE`,
       [req.auth!.userId]
@@ -840,6 +892,7 @@ authRouter.get("/me", requireAuth("app"), async (req, res) => {
         phone: user.phone,
         dob: user.dob,
         profileImageUrl: user.profile_image_url,
+        homeCardImageUrl: user.home_card_image_url,
       },
     });
   } catch (error) {
@@ -928,6 +981,7 @@ authRouter.put("/me", requireAuth("app"), async (req, res) => {
 
   const fields = parsed.data;
   const hasNationalIdColumn = await resolveNationalIdColumnAvailability();
+  const hasHomeCardImageColumn = await resolveHomeCardImageColumnAvailability();
   if (Object.keys(fields).length === 0) {
     return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "No fields to update" } });
   }
@@ -1013,9 +1067,10 @@ authRouter.put("/me", requireAuth("app"), async (req, res) => {
       phone: string | null;
       dob: string | null;
       profile_image_url: string | null;
+      home_card_image_url: string | null;
     }>(
       `UPDATE users SET ${setClauses.join(", ")} WHERE id = $${idx} AND is_active = TRUE
-       RETURNING id, email, display_name, username, user_type, full_name, country_code, ${hasNationalIdColumn ? "national_id" : "NULL::text AS national_id"}, language, phone, dob, profile_image_url`,
+       RETURNING id, email, display_name, username, user_type, full_name, country_code, ${hasNationalIdColumn ? "national_id" : "NULL::text AS national_id"}, language, phone, dob, profile_image_url, ${hasHomeCardImageColumn ? "home_card_image_url" : "NULL::text AS home_card_image_url"}`,
       values
     );
   } catch (error: any) {
@@ -1058,6 +1113,7 @@ authRouter.put("/me", requireAuth("app"), async (req, res) => {
       phone: updated.phone,
       dob: updated.dob,
       profileImageUrl: updated.profile_image_url,
+      homeCardImageUrl: updated.home_card_image_url,
     },
   });
 });
@@ -1271,6 +1327,11 @@ const ProfileImageDirectUploadSchema = z.object({
   dataBase64: z.string().min(20),
 });
 
+function truthyMultipartField(value: unknown): boolean {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return ["1", "true", "yes", "on"].includes(normalized);
+}
+
 authRouter.post("/me/profile-image/upload-url", requireAuth("app"), async (req, res) => {
   const parsed = ProfileImageUploadSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -1382,6 +1443,106 @@ authRouter.post("/me/profile-image/upload", requireAuth("app"), async (req, res)
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     return res.status(500).json({ error: { code: "UPLOAD_FAILED", message: "Profile image upload failed", detail } });
+  }
+});
+
+authRouter.post("/me/home-card-image/upload", requireAuth("app"), runHomeCardImageUpload, async (req, res) => {
+  const hasHomeCardImageColumn = await resolveHomeCardImageColumnAvailability();
+  if (!hasHomeCardImageColumn) {
+    return res.status(503).json({
+      error: { code: "FEATURE_NOT_READY", message: "Home card image storage is not ready yet" },
+    });
+  }
+
+  const file = req.file;
+  if (!file) {
+    return res.status(400).json({
+      error: { code: "FILE_REQUIRED", message: "Upload requires a single image file" },
+    });
+  }
+
+  const mimeType = String(file.mimetype ?? "").trim().toLowerCase();
+  if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType)) {
+    return res.status(400).json({
+      error: { code: "UNSUPPORTED_IMAGE_TYPE", message: "Only JPEG, PNG or WebP are supported" },
+    });
+  }
+
+  const replace = truthyMultipartField(req.body?.replace);
+  const source = String(req.body?.source ?? "").trim().slice(0, 40) || "upload";
+  try {
+    const currentResult = await pool.query<{ home_card_image_url: string | null }>(
+      `SELECT home_card_image_url
+       FROM users
+       WHERE id = $1 AND is_active = TRUE`,
+      [req.auth!.userId],
+    );
+    if ((currentResult.rowCount ?? 0) === 0) {
+      return res.status(404).json({ error: { code: "USER_NOT_FOUND", message: "User not found" } });
+    }
+    if (currentResult.rows[0]?.home_card_image_url && !replace) {
+      return res.status(409).json({
+        error: { code: "HOME_CARD_IMAGE_EXISTS", message: "Home card image already exists. Send replace=true to overwrite it." },
+      });
+    }
+
+    const cutout = await removeImageBackground({
+      fileBuffer: file.buffer,
+      mimeType: mimeType as "image/jpeg" | "image/png" | "image/webp",
+      fileName: file.originalname || `home-card-${req.auth!.userId}.png`,
+    });
+
+    const bucket = env.S3_BUCKET_SELLER_DOCS;
+    const canUseS3 = Boolean(
+      env.S3_ENDPOINT &&
+      env.S3_BUCKET_SELLER_DOCS &&
+      env.S3_ACCESS_KEY_ID &&
+      env.S3_SECRET_ACCESS_KEY,
+    );
+
+    let homeCardImageUrl = `data:${cutout.contentType};base64,${cutout.buffer.toString("base64")}`;
+    let storage: "s3" | "inline" = "inline";
+
+    if (canUseS3 && env.S3_ENDPOINT && bucket) {
+      const key = `user/${req.auth!.userId}/home-card/${Date.now()}-${randomUUID().slice(0, 8)}.png`;
+      const client = getProfileS3Client();
+      await client.send(new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        ContentType: cutout.contentType,
+        Body: cutout.buffer,
+      }));
+      homeCardImageUrl = `${env.S3_ENDPOINT}/${bucket}/${key}`;
+      storage = "s3";
+    }
+
+    await pool.query(
+      `UPDATE users
+       SET home_card_image_url = $1, updated_at = NOW()
+       WHERE id = $2 AND is_active = TRUE`,
+      [homeCardImageUrl, req.auth!.userId],
+    );
+
+    return res.status(201).json({
+      data: {
+        homeCardImageUrl,
+        storage,
+        width: cutout.width,
+        height: cutout.height,
+        source,
+      },
+    });
+  } catch (error) {
+    const status = Number((error as { status?: unknown } | null)?.status ?? 500);
+    const detail = String((error as { detail?: unknown } | null)?.detail ?? "").trim();
+    const message = error instanceof Error ? error.message : "Home card image upload failed";
+    return res.status(status >= 400 && status < 600 ? status : 500).json({
+      error: {
+        code: status === 503 ? "BACKGROUND_REMOVAL_NOT_CONFIGURED" : status === 504 ? "BACKGROUND_REMOVAL_TIMEOUT" : "HOME_CARD_IMAGE_UPLOAD_FAILED",
+        message,
+        ...(detail ? { detail: detail.slice(0, 400) } : {}),
+      },
+    });
   }
 });
 

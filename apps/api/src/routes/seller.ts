@@ -269,6 +269,7 @@ async function getUsersSellerProfileColumns(): Promise<Set<string>> {
     "delivery_terms",
     "working_hours_json",
     "seller_profile_status",
+    "home_card_image_url",
   ];
   const result = await pool.query<{ column_name: string }>(
     `SELECT column_name
@@ -532,6 +533,7 @@ sellerRouter.get("/profile", async (req, res) => {
         username: string | null;
         email: string;
         profile_image_url: string | null;
+        home_card_image_url: string | null;
         phone: string | null;
         kitchen_title: string | null;
         kitchen_description: string | null;
@@ -548,6 +550,7 @@ sellerRouter.get("/profile", async (req, res) => {
            ${hasColumn("username") ? "username" : "NULL::text AS username"},
            email,
            profile_image_url,
+           ${hasColumn("home_card_image_url") ? "home_card_image_url" : "NULL::text AS home_card_image_url"},
            phone,
            ${hasColumn("kitchen_title") ? "kitchen_title" : "NULL::text AS kitchen_title"},
            ${hasColumn("kitchen_description") ? "kitchen_description" : "NULL::text AS kitchen_description"},
@@ -608,6 +611,7 @@ sellerRouter.get("/profile", async (req, res) => {
         username: row.username,
         email: row.email,
         profileImageUrl: row.profile_image_url,
+        homeCardImageUrl: row.home_card_image_url,
         phone: row.phone,
         kitchenTitle: row.kitchen_title,
         kitchenDescription: row.kitchen_description,

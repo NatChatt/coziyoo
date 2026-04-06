@@ -239,7 +239,7 @@ type ApiFoodItem = {
   cuisine?: string | null;
   lotId?: string | null;
   stock: number;
-  seller: { id: string; name: string; username?: string | null; image: string | null };
+  seller: { id: string; name: string; username?: string | null; image: string | null; homeCardImage?: string | null };
 };
 
 type MealCard = {
@@ -249,6 +249,7 @@ type MealCard = {
   seller: string;
   sellerUsername?: string | null;
   sellerImage?: string | null;
+  sellerHomeCardImage?: string | null;
   allergens: string[];
   ingredients: string[];
   menuItems: string[];
@@ -413,6 +414,10 @@ type CardColors = {
   subtitle: string;
   price: string;
   meta: string;
+  photoTitle: string;
+  photoCuisine: string;
+  photoStock: string;
+  photoMeta: string;
 };
 
 type SellerProfile = {
@@ -831,6 +836,10 @@ function deriveCardColors(dominant: string): CardColors {
     subtitle,
     price,
     meta: metaBase,
+    photoTitle: toneFromHue(h, sat * 0.16, 0.96),
+    photoCuisine: toneFromHue(h, sat * 0.20, 0.90),
+    photoStock: toneFromHue(h, sat * 0.22, 0.87),
+    photoMeta: toneFromHue(h, sat * 0.24, 0.84),
   };
 }
 
@@ -1026,6 +1035,7 @@ function apiToMealCard(item: ApiFoodItem): MealCard {
     seller: item.seller.name,
     sellerUsername: item.seller.username ?? null,
     sellerImage: item.seller.image,
+    sellerHomeCardImage: item.seller.homeCardImage ?? null,
     allergens: normalizedAllergens,
     ingredients: item.ingredients ?? [],
     menuItems,
@@ -1305,6 +1315,7 @@ function FoodCard({
   const [imageFrameHeight, setImageFrameHeight] = useState(155);
   const [photoTextTone, setPhotoTextTone] = useState<'light' | 'dark'>('light');
   const [sellerThumbFailed, setSellerThumbFailed] = useState(false);
+  const [sellerHomeCardImageFailed, setSellerHomeCardImageFailed] = useState(false);
   const cardImageScrollRef = useRef<ScrollView | null>(null);
   const textToneRequestRef = useRef(0);
   const primaryImageUrl = imageUrls[0];
@@ -1448,6 +1459,10 @@ function FoodCard({
     setSellerThumbFailed(false);
   }, [meal.sellerImage]);
 
+  useEffect(() => {
+    setSellerHomeCardImageFailed(false);
+  }, [meal.sellerHomeCardImage]);
+
   const allergens = Array.isArray(meal.allergens) ? meal.allergens : [];
   const mealDeliveryOptions = meal.deliveryOptions ?? { pickup: true, delivery: false };
   const timeDistanceParts = [
@@ -1466,6 +1481,7 @@ function FoodCard({
     if (!raw) return 'U';
     return raw.charAt(0).toLocaleUpperCase('tr-TR');
   })();
+  const hasSellerCutout = Boolean(meal.sellerHomeCardImage && !sellerHomeCardImageFailed);
 
   return (
     <View
@@ -1568,17 +1584,14 @@ function FoodCard({
           <View pointerEvents="none" style={styles.foodPhotoLeftTextBlock}>
             <Text
               numberOfLines={1}
-              style={[styles.foodPhotoTitleText, photoTextTone === 'dark' && styles.foodPhotoTitleTextDark]}
+              style={[styles.foodPhotoTitleText, { color: colors.photoTitle }]}
             >
               {meal.title}
             </Text>
             {meal.cuisine ? (
               <Text
                 numberOfLines={1}
-                style={[
-                  styles.foodPhotoCuisineText,
-                  photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
-                ]}
+                style={[styles.foodPhotoCuisineText, { color: colors.photoCuisine }]}
               >
                 {formatCuisineLabel(meal.cuisine)}
               </Text>
@@ -1586,10 +1599,7 @@ function FoodCard({
             {stockSummary ? (
               <Text
                 numberOfLines={1}
-                style={[
-                  styles.foodPhotoStockText,
-                  photoTextTone === 'dark' && styles.foodPhotoStockTextDark,
-                ]}
+                style={[styles.foodPhotoStockText, { color: colors.photoStock }]}
               >
                 {stockSummary}
               </Text>
@@ -1608,10 +1618,7 @@ function FoodCard({
             {timeDistanceText ? (
               <Text
                 numberOfLines={1}
-                style={[
-                  styles.foodPhotoMetaText,
-                  photoTextTone === 'dark' && styles.foodPhotoMetaTextDark,
-                ]}
+                style={[styles.foodPhotoMetaText, { color: colors.photoMeta }]}
               >
                 ⏱ {timeDistanceText}
               </Text>
@@ -1649,24 +1656,37 @@ function FoodCard({
           style={styles.foodInfo}
         >
           <View style={styles.foodInfoRow}>
-            <View style={styles.foodInfoLeft} />
-            <View style={styles.foodNameMetaRight}>
-              <View style={styles.foodSellerTopRow}>
-                <View style={styles.foodSellerThumbWrap}>
-                  <View style={styles.foodSellerThumb}>
-                    {meal.sellerImage && !sellerThumbFailed ? (
-                      <Image
-                        source={{ uri: meal.sellerImage }}
-                        style={styles.foodSellerThumbImage}
-                        onError={() => setSellerThumbFailed(true)}
-                      />
-                    ) : (
-                      <View style={styles.foodSellerThumbFallback}>
-                        <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
-                      </View>
-                    )}
-                  </View>
+            <View style={styles.foodInfoLeft}>
+              {hasSellerCutout ? (
+                <View style={styles.foodSellerCutoutStage}>
+                  <Image
+                    source={{ uri: meal.sellerHomeCardImage! }}
+                    style={styles.foodSellerCutoutImage}
+                    resizeMode="contain"
+                    onError={() => setSellerHomeCardImageFailed(true)}
+                  />
                 </View>
+              ) : null}
+            </View>
+            <View style={[styles.foodNameMetaRight, hasSellerCutout && styles.foodNameMetaRightWithCutout]}>
+              <View style={styles.foodSellerTopRow}>
+                {!hasSellerCutout ? (
+                  <View style={styles.foodSellerThumbWrap}>
+                    <View style={styles.foodSellerThumb}>
+                      {meal.sellerImage && !sellerThumbFailed ? (
+                        <Image
+                          source={{ uri: meal.sellerImage }}
+                          style={styles.foodSellerThumbImage}
+                          onError={() => setSellerThumbFailed(true)}
+                        />
+                      ) : (
+                        <View style={styles.foodSellerThumbFallback}>
+                          <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ) : null}
                 <View style={styles.foodSellerInlineBtn}>
                   <Text numberOfLines={1} style={[styles.foodSellerInline, { color: colors.subtitle }]}>
                     {formatSellerIdentity(meal.seller, meal.sellerUsername)}
@@ -5722,7 +5742,19 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     position: 'relative',
   },
-  foodInfoLeft: { flex: 1, minHeight: 92 },
+  foodInfoLeft: { flex: 1, minHeight: 112 },
+  foodSellerCutoutStage: {
+    width: 132,
+    height: 148,
+    marginTop: -56,
+    marginLeft: -6,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  foodSellerCutoutImage: {
+    width: '100%',
+    height: '100%',
+  },
   foodNameRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -5737,6 +5769,10 @@ const styles = StyleSheet.create({
     top: 0,
     alignItems: 'flex-start',
     gap: 2,
+  },
+  foodNameMetaRightWithCutout: {
+    left: 106,
+    top: 20,
   },
   foodSellerTopRow: {
     flexDirection: 'row',

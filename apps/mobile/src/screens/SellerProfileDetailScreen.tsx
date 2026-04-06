@@ -32,6 +32,7 @@ export type SellerProfile = {
   username?: string | null;
   email?: string | null;
   profileImageUrl?: string | null;
+  homeCardImageUrl?: string | null;
   phone?: string | null;
   kitchenTitle?: string | null;
   kitchenDescription?: string | null;
@@ -87,6 +88,7 @@ export default function SellerProfileDetailScreen({
   const [loading, setLoading] = useState(() => getSellerProfileCache() === null);
   const [profile, setProfile] = useState<SellerProfile | null>(() => getSellerProfileCache());
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [homeCardImageUploading, setHomeCardImageUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
@@ -179,6 +181,45 @@ export default function SellerProfileDetailScreen({
     onAuthRefresh?.(refreshed);
     return fetch(`${baseUrl}${path}`, {
       ...init,
+      headers: makeHeaders(refreshed),
+    });
+  }
+
+  async function authedMultipartFetch(path: string, body: FormData, baseUrl = apiUrl): Promise<Response> {
+    const makeHeaders = (session: AuthSession): Record<string, string> => ({
+      Authorization: `Bearer ${session.accessToken}`,
+      ...actorRoleHeader(session, "seller"),
+    });
+
+    let res = await fetch(`${baseUrl}${path}`, {
+      method: "POST",
+      body,
+      headers: makeHeaders(currentAuth),
+    });
+    if (res.status !== 401) return res;
+
+    const persisted = await loadAuthSession();
+    if (persisted && persisted.userId === currentAuth.userId && persisted.accessToken !== currentAuth.accessToken) {
+      setCurrentAuth(persisted);
+      onAuthRefresh?.(persisted);
+      res = await fetch(`${baseUrl}${path}`, {
+        method: "POST",
+        body,
+        headers: makeHeaders(persisted),
+      });
+      if (res.status !== 401) return res;
+    }
+
+    const refreshed = await refreshAuthSession(
+      baseUrl,
+      persisted && persisted.userId === currentAuth.userId ? persisted : currentAuth,
+    );
+    if (!refreshed) return res;
+    setCurrentAuth(refreshed);
+    onAuthRefresh?.(refreshed);
+    return fetch(`${baseUrl}${path}`, {
+      method: "POST",
+      body,
       headers: makeHeaders(refreshed),
     });
   }
@@ -293,6 +334,64 @@ export default function SellerProfileDetailScreen({
       Alert.alert("Hata", e instanceof Error ? e.message : "Profil resmi yüklenemedi");
     } finally {
       setAvatarUploading(false);
+    }
+  }
+
+  async function handleHomeCardImagePress() {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("İzin gerekli", "Galeriden resim seçebilmek için izin vermelisin.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: false,
+        quality: 0.9,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      const uri = String(asset.uri ?? "").trim();
+      const mimeType = String(asset.mimeType ?? "image/jpeg").trim().toLowerCase();
+      if (!uri) {
+        Alert.alert("Hata", "Resim verisi alınamadı.");
+        return;
+      }
+      if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType)) {
+        Alert.alert("Hata", "Sadece JPEG, PNG veya WebP seçebilirsin.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("source", "gallery");
+      formData.append("replace", "true");
+      formData.append("file", {
+        uri,
+        name: asset.fileName ?? `home-card.${mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg"}`,
+        type: mimeType,
+      } as unknown as Blob);
+
+      setHomeCardImageUploading(true);
+      const baseUrl = apiUrl || (await loadSettings()).apiUrl;
+      const uploadRes = await authedMultipartFetch("/v1/auth/me/home-card-image/upload", formData, baseUrl);
+      const uploadPayload = await readResponsePayload(uploadRes);
+      if (!uploadRes.ok || uploadPayload.json === null) {
+        throw new Error(responseErrorMessage(uploadRes, uploadPayload, "Ana sayfa görseli yüklenemedi"));
+      }
+      const uploadJson = uploadPayload.json as { data?: { homeCardImageUrl?: string } };
+      const nextUrl = String(uploadJson?.data?.homeCardImageUrl ?? "").trim();
+      if (nextUrl) {
+        const nextProfile = profile ? { ...profile, homeCardImageUrl: nextUrl } : { homeCardImageUrl: nextUrl };
+        setProfile(nextProfile);
+        setSellerProfileCache(nextProfile as SellerProfile);
+      }
+      Alert.alert("Hazır", "Ana sayfa usta görseli güncellendi.");
+    } catch (e) {
+      Alert.alert("Hata", e instanceof Error ? e.message : "Ana sayfa görseli yüklenemedi");
+    } finally {
+      setHomeCardImageUploading(false);
     }
   }
 
@@ -783,6 +882,53 @@ export default function SellerProfileDetailScreen({
             <Text style={styles.addressLink}>{t('cta.seller.profileDetail.tapToEdit')}</Text>
           </TouchableOpacity>
 
+          <View style={styles.card}>
+            <View style={styles.profileEditCardHeader}>
+              <Text style={styles.cardTitle}>Ana sayfa usta görseli</Text>
+              <TouchableOpacity
+                style={styles.profileEditIconBtn}
+                onPress={() => void handleHomeCardImagePress()}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                disabled={homeCardImageUploading}
+              >
+                {homeCardImageUploading ? (
+                  <ActivityIndicator size="small" color={theme.primary} />
+                ) : (
+                  <Ionicons name="image-outline" size={18} color={theme.primary} />
+                )}
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.homeCardImageHint}>
+              Yemek kartında büyük görünecek usta fotoğrafını buradan yükle.
+            </Text>
+            <TouchableOpacity
+              style={styles.homeCardImagePreview}
+              activeOpacity={0.86}
+              onPress={() => void handleHomeCardImagePress()}
+              disabled={homeCardImageUploading}
+            >
+              {profile?.homeCardImageUrl ? (
+                <Image source={{ uri: profile.homeCardImageUrl }} style={styles.homeCardImagePreviewImage} resizeMode="contain" />
+              ) : (
+                <View style={styles.homeCardImagePlaceholder}>
+                  <Ionicons name="person-outline" size={34} color="#8E7E70" />
+                  <Text style={styles.homeCardImagePlaceholderTitle}>Henüz yüklenmedi</Text>
+                  <Text style={styles.homeCardImagePlaceholderText}>Arka planı kaldırılmış büyük usta görseli burada görünecek.</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.homeCardImageButton}
+              activeOpacity={0.88}
+              onPress={() => void handleHomeCardImagePress()}
+              disabled={homeCardImageUploading}
+            >
+              <Text style={styles.homeCardImageButtonText}>
+                {homeCardImageUploading ? "Yükleniyor..." : profile?.homeCardImageUrl ? "Görseli değiştir" : "Görsel yükle"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Mutfak Bilgileri */}
           <View style={styles.card}>
             <View style={styles.profileEditCardHeader}>
@@ -1184,6 +1330,49 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statusText: { fontSize: 12, fontWeight: "700" },
+  homeCardImageHint: { marginTop: 2, color: "#6C6055", fontSize: 13, lineHeight: 18 },
+  homeCardImagePreview: {
+    marginTop: 12,
+    height: 190,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5DDCF",
+    backgroundColor: "#FBF8F4",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  homeCardImagePreviewImage: {
+    width: "100%",
+    height: "100%",
+  },
+  homeCardImagePlaceholder: {
+    paddingHorizontal: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  homeCardImagePlaceholderTitle: {
+    marginTop: 10,
+    color: "#5F5348",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  homeCardImagePlaceholderText: {
+    marginTop: 6,
+    color: "#8E7E70",
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
+  },
+  homeCardImageButton: {
+    marginTop: 12,
+    borderRadius: 12,
+    backgroundColor: "#2E6B44",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+  },
+  homeCardImageButtonText: { color: "#fff", fontSize: 14, fontWeight: "800" },
 
 
   complianceCard: {

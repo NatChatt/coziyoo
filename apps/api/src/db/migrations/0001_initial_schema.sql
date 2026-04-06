@@ -973,6 +973,7 @@ CREATE TABLE public.users (
     latitude numeric(9,6),
     longitude numeric(9,6),
     profile_image_url text,
+    home_card_image_url text,
     phone text,
     legal_hold_state boolean DEFAULT false NOT NULL,
     CONSTRAINT users_latitude_range_check CHECK (((latitude >= ('-90'::integer)::numeric) AND (latitude <= (90)::numeric))),

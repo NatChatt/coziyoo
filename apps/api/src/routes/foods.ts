@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 export const foodsRouter = Router();
 
 foodsRouter.use(requireAuth("app"));
+let homeCardImageColumnAvailable: boolean | null = null;
 
 function parseAllergens(value: unknown): string[] {
   if (!value) return [];
@@ -47,6 +48,26 @@ function sellerDeliveryOptions(deliveryEnabledValue: unknown): { pickup: boolean
     pickup: true,
     delivery: Boolean(deliveryEnabledValue),
   };
+}
+
+async function resolveHomeCardImageColumnAvailability(): Promise<boolean> {
+  if (homeCardImageColumnAvailable !== null) return homeCardImageColumnAvailable;
+  try {
+    const result = await pool.query<{ exists: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'users'
+           AND column_name = 'home_card_image_url'
+       ) AS exists`,
+    );
+    homeCardImageColumnAvailable = Boolean(result.rows[0]?.exists);
+  } catch (error) {
+    console.error("[foods] home_card_image_url column availability check failed", error);
+    homeCardImageColumnAvailable = false;
+  }
+  return homeCardImageColumnAvailable;
 }
 
 type FoodMenuItem = {
@@ -219,6 +240,10 @@ function buildRecommendationReason(input: {
 foodsRouter.get("/", async (req, res) => {
   try {
     const menuColumnsEnabled = await hasFoodsMenuColumns();
+    const hasHomeCardImageColumn = await resolveHomeCardImageColumnAvailability();
+    const sellerHomeCardImageSql = hasHomeCardImageColumn
+      ? "u.home_card_image_url AS seller_home_card_image"
+      : "NULL::text AS seller_home_card_image";
     const categoryFilter = req.query.category as string | undefined;
 
     let query = `
@@ -257,6 +282,7 @@ foodsRouter.get("/", async (req, res) => {
         u.display_name AS seller_name,
         u.username AS seller_username,
         u.profile_image_url AS seller_image,
+        ${sellerHomeCardImageSql},
         COALESCE(
           (SELECT SUM(pl.quantity_available)
            FROM production_lots pl
@@ -334,6 +360,7 @@ foodsRouter.get("/", async (req, res) => {
         name: r.seller_name,
         username: r.seller_username,
         image: r.seller_image,
+        homeCardImage: r.seller_home_card_image,
       },
     }));
 
@@ -472,6 +499,10 @@ foodsRouter.get("/top-sold", async (req, res) => {
  */
 foodsRouter.get("/top-sold/:foodId/nearest", async (req, res) => {
   try {
+    const hasHomeCardImageColumn = await resolveHomeCardImageColumnAvailability();
+    const sellerHomeCardImageSql = hasHomeCardImageColumn
+      ? "u.home_card_image_url AS seller_home_card_image"
+      : "NULL::text AS seller_home_card_image";
     const foodId = String(req.params.foodId ?? "").trim();
     const lat = Number.parseFloat(String(req.query.lat ?? ""));
     const lng = Number.parseFloat(String(req.query.lng ?? ""));
@@ -534,6 +565,7 @@ foodsRouter.get("/top-sold/:foodId/nearest", async (req, res) => {
             u.display_name AS seller_name,
             u.username AS seller_username,
             u.profile_image_url AS seller_image,
+            ${sellerHomeCardImageSql},
             u.latitude::float8 AS seller_latitude,
             u.longitude::float8 AS seller_longitude,
             COALESCE(
@@ -649,6 +681,7 @@ foodsRouter.get("/top-sold/:foodId/nearest", async (req, res) => {
             name: r.seller_name,
             username: r.seller_username,
             image: r.seller_image,
+            homeCardImage: r.seller_home_card_image,
           },
         },
       },
@@ -673,6 +706,10 @@ foodsRouter.get("/recommendations", async (req, res) => {
     const rawLimit = Number.parseInt(String(req.query.limit ?? "8"), 10);
     const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 30) : 8;
     const buyerId = req.auth?.userId;
+    const hasHomeCardImageColumn = await resolveHomeCardImageColumnAvailability();
+    const sellerHomeCardImageSql = hasHomeCardImageColumn
+      ? "u.home_card_image_url AS seller_home_card_image"
+      : "NULL::text AS seller_home_card_image";
 
     const { rows } = await pool.query(
       `
@@ -709,6 +746,7 @@ foodsRouter.get("/recommendations", async (req, res) => {
             u.display_name AS seller_name,
             u.username AS seller_username,
             u.profile_image_url AS seller_image,
+            ${sellerHomeCardImageSql},
             COALESCE(
               (SELECT SUM(pl.quantity_available)
                FROM production_lots pl
@@ -822,6 +860,7 @@ foodsRouter.get("/recommendations", async (req, res) => {
             name: r.seller_name,
             username: r.seller_username,
             image: r.seller_image,
+            homeCardImage: r.seller_home_card_image,
           },
         },
       };
@@ -846,6 +885,10 @@ foodsRouter.get("/sellers", async (req, res) => {
   try {
     const rawLimit = Number.parseInt(String(req.query.limit ?? "200"), 10);
     const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 200;
+    const hasHomeCardImageColumn = await resolveHomeCardImageColumnAvailability();
+    const sellerHomeCardImageSql = hasHomeCardImageColumn
+      ? "u.home_card_image_url AS seller_home_card_image"
+      : "NULL::text AS seller_home_card_image";
 
     const { rows } = await pool.query(
       `
@@ -854,6 +897,7 @@ foodsRouter.get("/sellers", async (req, res) => {
           COALESCE(NULLIF(u.display_name, ''), NULLIF(u.full_name, ''), u.email) AS seller_name,
           u.username AS seller_username,
           u.profile_image_url AS seller_image,
+          ${sellerHomeCardImageSql},
           u.user_type,
           COALESCE(stats.active_food_count, 0)::int AS active_food_count,
           COALESCE(stats.open_lot_count, 0)::int AS open_lot_count,
@@ -900,6 +944,7 @@ foodsRouter.get("/sellers", async (req, res) => {
       name: r.seller_name as string,
       username: (r.seller_username as string | null) ?? null,
       imageUrl: (r.seller_image as string | null) ?? null,
+      homeCardImageUrl: (r.seller_home_card_image as string | null) ?? null,
       userType: r.user_type as "seller" | "both",
       activeFoodCount: Number(r.active_food_count ?? 0),
       openLotCount: Number(r.open_lot_count ?? 0),
@@ -924,6 +969,10 @@ foodsRouter.get("/sellers/:sellerId/foods", async (req, res) => {
   try {
     const { sellerId } = req.params;
     const menuColumnsEnabled = await hasFoodsMenuColumns();
+    const hasHomeCardImageColumn = await resolveHomeCardImageColumnAvailability();
+    const sellerHomeCardImageSql = hasHomeCardImageColumn
+      ? "u.home_card_image_url AS seller_home_card_image"
+      : "NULL::text AS seller_home_card_image";
     const { rows } = await pool.query(
       `
         SELECT
@@ -960,6 +1009,7 @@ foodsRouter.get("/sellers/:sellerId/foods", async (req, res) => {
           u.display_name AS seller_name,
           u.username AS seller_username,
           u.profile_image_url AS seller_image,
+          ${sellerHomeCardImageSql},
           COALESCE(
             (SELECT SUM(pl.quantity_available)
              FROM production_lots pl
@@ -1030,6 +1080,7 @@ foodsRouter.get("/sellers/:sellerId/foods", async (req, res) => {
         name: r.seller_name,
         username: r.seller_username,
         image: r.seller_image,
+        homeCardImage: r.seller_home_card_image,
       },
     }));
 
