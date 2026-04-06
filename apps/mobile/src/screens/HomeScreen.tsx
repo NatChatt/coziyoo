@@ -1420,11 +1420,6 @@ function FoodCard({
               ) : null}
             </View>
             <View style={styles.foodNameMetaRight}>
-            <View style={styles.foodSellerInlineBtn}>
-              <Text style={[styles.foodSellerInline, { color: colors.subtitle }]}>
-                {formatSellerIdentity(meal.seller, meal.sellerUsername)}
-              </Text>
-            </View>
             <View style={styles.foodSellerThumbWrap}>
               <View style={styles.foodSellerThumb}>
                 {meal.sellerImage && !sellerThumbFailed ? (
@@ -1439,6 +1434,11 @@ function FoodCard({
                   </View>
                 )}
               </View>
+            </View>
+            <View style={styles.foodSellerInlineBtn}>
+              <Text numberOfLines={1} style={[styles.foodSellerInline, { color: colors.subtitle }]}>
+                {formatSellerIdentity(meal.seller, meal.sellerUsername)}
+              </Text>
             </View>
           </View>
         </View>
@@ -5727,8 +5727,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
-  foodSellerInlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  foodSellerInline: { fontSize: 15, fontWeight: '700' },
+  foodSellerInlineBtn: {
+    marginTop: 6,
+    width: 108,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  foodSellerInline: { fontSize: 14, fontWeight: '700' },
   foodSellerThumbWrap: {
     width: 108,
     height: 72,
