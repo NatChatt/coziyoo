@@ -47,9 +47,15 @@ export default function ApiTokensPage({ language, isSuperAdmin }: { language: La
           role,
         }),
       });
-      const body = await parseJson<AdminApiTokenResponse>(response);
-      if (response.status !== 201 || !body.data) {
-        setError(body.error?.message ?? dict.apiTokens.tokenCreateFailed);
+      let body: AdminApiTokenResponse | null = null;
+      try {
+        body = await parseJson<AdminApiTokenResponse>(response);
+      } catch {
+        body = null;
+      }
+
+      if (response.status !== 201 || !body?.data) {
+        setError(body?.error?.message ?? `HTTP ${response.status}: ${dict.apiTokens.tokenCreateFailed}`);
         return;
       }
       setLabel("");

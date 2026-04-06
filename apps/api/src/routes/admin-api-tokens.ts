@@ -12,6 +12,10 @@ const CreateAdminApiTokenSchema = z.object({
   role: z.enum(["admin", "super_admin"]).default("admin"),
 });
 
+type PgLikeError = {
+  code?: string;
+};
+
 function tokenPreview(token: string) {
   const payload = jwt.decode(token);
   if (!payload || typeof payload !== "object") return null;
@@ -29,30 +33,51 @@ export const adminApiTokenRouter = Router();
 
 adminApiTokenRouter.use(requireAuth("admin"));
 
+async function tableExists(tableName: string) {
+  const result = await pool.query<{ regclass: string | null }>("SELECT to_regclass($1) AS regclass", [tableName]);
+  return Boolean(result.rows[0]?.regclass);
+}
+
 async function ensureAdminApiTokensTable() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS admin_api_tokens (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      session_id TEXT NOT NULL UNIQUE,
-      label TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('admin', 'super_admin')),
-      token_hash TEXT NOT NULL,
-      token_preview TEXT NOT NULL,
-      claims_json JSONB,
-      created_by_admin_id UUID NOT NULL REFERENCES admin_users(id) ON DELETE RESTRICT,
-      revoked_at TIMESTAMPTZ,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `);
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_admin_api_tokens_created_by
-      ON admin_api_tokens(created_by_admin_id, created_at DESC)
-  `);
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_admin_api_tokens_active
-      ON admin_api_tokens(created_at DESC)
-      WHERE revoked_at IS NULL
-  `);
+  if (await tableExists("public.admin_api_tokens")) {
+    return;
+  }
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_api_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        session_id TEXT NOT NULL UNIQUE,
+        label TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('admin', 'super_admin')),
+        token_hash TEXT NOT NULL,
+        token_preview TEXT NOT NULL,
+        claims_json JSONB,
+        created_by_admin_id UUID NOT NULL REFERENCES admin_users(id) ON DELETE RESTRICT,
+        revoked_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_admin_api_tokens_created_by
+        ON admin_api_tokens(created_by_admin_id, created_at DESC)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_admin_api_tokens_active
+        ON admin_api_tokens(created_at DESC)
+        WHERE revoked_at IS NULL
+    `);
+  } catch (error) {
+    const maybePgError = error as PgLikeError;
+
+    // On restricted DB users, CREATE may fail even if the table already exists.
+    // If table is present, continue and let normal DML run.
+    if (maybePgError.code === "42501" && (await tableExists("public.admin_api_tokens"))) {
+      return;
+    }
+
+    throw error;
+  }
 }
 
 function hashToken(token: string) {
