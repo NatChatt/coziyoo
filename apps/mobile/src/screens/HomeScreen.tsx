@@ -1392,15 +1392,15 @@ function FoodCard({
                 <Text numberOfLines={1} style={[styles.foodName, styles.foodNameInline, { color: colors.title }]}>
                   {meal.title}
                 </Text>
-                {stockSummary ? (
-                  <Text numberOfLines={1} style={[styles.foodStockInline, { color: colors.subtitle }]}>
-                    {stockSummary}
-                  </Text>
-                ) : null}
               </View>
               {meal.cuisine ? (
                 <Text numberOfLines={1} style={[styles.foodSellerCuisineInline, { color: colors.subtitle }]}>
                   {formatCuisineLabel(meal.cuisine)}
+                </Text>
+              ) : null}
+              {stockSummary ? (
+                <Text numberOfLines={1} style={[styles.foodStockBelowCuisine, { color: colors.subtitle }]}>
+                  {stockSummary}
                 </Text>
               ) : null}
               {allergens.length > 0 ? (
@@ -5677,13 +5677,10 @@ const styles = StyleSheet.create({
   },
   foodName: { fontSize: 16, fontWeight: '600' },
   foodNameWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 8,
   },
   foodNameInline: { flexShrink: 1 },
-  foodStockInline: { fontSize: 12, fontWeight: '700', flexShrink: 0 },
+  foodStockBelowCuisine: { marginTop: 3, fontSize: 12, fontWeight: '700' },
   foodTitlePressArea: { alignSelf: 'flex-start' },
   foodNameMetaRight: { alignItems: 'flex-end', gap: 2 },
   foodMetaRow: {
