@@ -5723,7 +5723,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(141,128,114,0.35)',
     backgroundColor: '#F4EEE6',
-    marginTop: 6,
+    marginTop: 0,
   },
   foodSellerThumbImage: { width: '100%', height: '100%' },
   foodSellerThumbFallback: {
