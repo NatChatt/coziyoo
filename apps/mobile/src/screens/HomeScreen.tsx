@@ -3025,9 +3025,14 @@ export default function HomeScreen({
                     {index === 0 ? t('headline.orders.quickActiveTitle') : t('status.orders.newBadge')}
                   </Text>
                   <Text style={styles.quickOrderSeller} numberOfLines={1}>{order.sellerName}</Text>
-                  <Text style={styles.quickOrderMeta}>
-                    {formatHomeOrderNo(order.id, order.orderNo)} · {formatHomeOrderDate(order.createdAt)}
-                  </Text>
+                  <View style={styles.quickOrderMetaRow}>
+                    <Text style={[styles.quickOrderMeta, styles.quickOrderMetaNo]} numberOfLines={1} ellipsizeMode="tail">
+                      {formatHomeOrderNo(order.id, order.orderNo)} ·
+                    </Text>
+                    <Text style={[styles.quickOrderMeta, styles.quickOrderMetaDate]} numberOfLines={1} ellipsizeMode="clip">
+                      {formatHomeOrderDate(order.createdAt)}
+                    </Text>
+                  </View>
                 </View>
                 <StatusBadge
                   status={order.status}
@@ -5287,7 +5292,10 @@ const styles = StyleSheet.create({
   quickOrderTitleBlock: { flex: 1, paddingRight: 6 },
   quickOrderEyebrow: { color: '#4A7C59', fontSize: 12, fontWeight: '800', marginBottom: 4 },
   quickOrderSeller: { color: '#3A281F', fontSize: 18, fontWeight: '800' },
+  quickOrderMetaRow: { marginTop: 2, flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'nowrap' },
   quickOrderMeta: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', marginTop: 2 },
+  quickOrderMetaNo: { flexShrink: 1, marginTop: 0 },
+  quickOrderMetaDate: { flexShrink: 0, marginTop: 0 },
   quickOrderHint: { color: '#5E5247', fontSize: 13, lineHeight: 18, marginTop: 6 },
   quickOrderNotePill: {
     marginTop: 6,
