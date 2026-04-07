@@ -1,0 +1,122 @@
+name: Deploy Django
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/django/**'
+      - 'installation/scripts/update_django.sh'
+      - 'installation/scripts/common.sh'
+      - '.github/workflows/deploy-django.yml'
+
+concurrency:
+  group: deploy-django-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Django to servers
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DEPLOY_TARGETS: ${{ secrets.DEPLOY_TARGETS }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_BRANCH: ${{ vars.DEPLOY_BRANCH || 'main' }}
+      DEPLOY_ADMIN_EMAIL: ${{ vars.DEPLOY_ADMIN_EMAIL || 'admin@coziyoo.com' }}
+      DEPLOY_ADMIN_PASSWORD: ${{ secrets.DEPLOY_ADMIN_PASSWORD || 'Admin12345' }}
+
+    steps:
+      - name: Validate secrets
+        run: |
+          set -euo pipefail
+          [[ -n "${DEPLOY_TARGETS}" ]] || { echo "Missing: DEPLOY_TARGETS" >&2; exit 1; }
+          [[ -n "${DEPLOY_SSH_KEY}" ]] || { echo "Missing: DEPLOY_SSH_KEY" >&2; exit 1; }
+
+      - name: Configure SSH key
+        run: |
+          set -euo pipefail
+          mkdir -p "${HOME}/.ssh"
+          chmod 700 "${HOME}/.ssh"
+          printf "%s" "${DEPLOY_SSH_KEY}" | sed 's/[[:space:]]*$//' > "${HOME}/.ssh/id_ed25519"
+          echo "" >> "${HOME}/.ssh/id_ed25519"
+          chmod 600 "${HOME}/.ssh/id_ed25519"
+          ssh-keygen -y -f "${HOME}/.ssh/id_ed25519" > /dev/null \
+            || { echo "Invalid DEPLOY_SSH_KEY" >&2; exit 1; }
+
+      - name: Trust target hosts
+        run: |
+          set -euo pipefail
+          touch "${HOME}/.ssh/known_hosts"
+          chmod 600 "${HOME}/.ssh/known_hosts"
+
+          if [[ -n "${DEPLOY_KNOWN_HOSTS:-}" ]]; then
+            printf "%s\n" "${DEPLOY_KNOWN_HOSTS}" >> "${HOME}/.ssh/known_hosts"
+            sort -u "${HOME}/.ssh/known_hosts" -o "${HOME}/.ssh/known_hosts"
+            exit 0
+          fi
+
+          while IFS='|' read -r NAME HOST _USER PORT _REST; do
+            HOST="${HOST:-${NAME}}"
+            PORT="${PORT:-22}"
+            HOST="${HOST//[[:space:]]/}"
+            PORT="${PORT//[[:space:]]/}"
+            [[ -z "${HOST}" ]] && continue
+            [[ "${NAME}" =~ ^# ]] && continue
+            for attempt in 1 2 3; do
+              OUT="$(ssh-keyscan -p "${PORT}" -T 15 -H "${HOST}" 2>/dev/null || true)"
+              if [[ -n "${OUT}" ]]; then
+                printf "%s\n" "${OUT}" >> "${HOME}/.ssh/known_hosts"
+                break
+              fi
+              [[ "${attempt}" -lt 3 ]] && sleep 5
+            done
+          done <<< "${DEPLOY_TARGETS}"
+          sort -u "${HOME}/.ssh/known_hosts" -o "${HOME}/.ssh/known_hosts"
+
+      - name: Deploy
+        run: |
+          set -euo pipefail
+          while IFS='|' read -r NAME HOST USER PORT REPO_PATH; do
+            NAME="${NAME//[[:space:]]/}"
+            HOST="${HOST//[[:space:]]/}"
+            USER="${USER//[[:space:]]/}"
+            PORT="${PORT//[[:space:]]/}"
+            REPO_PATH="${REPO_PATH//[[:space:]]/}"
+            [[ -z "${NAME}${HOST}${USER}${PORT}${REPO_PATH}" ]] && continue
+            [[ "${NAME}" =~ ^# ]] && continue
+
+            HOST="${HOST:-${NAME}}"
+            USER="${USER:-root}"
+            PORT="${PORT:-22}"
+            REPO_PATH="${REPO_PATH:-/opt/coziyoo}"
+
+            echo "Deploying Django → ${NAME:-${HOST}} (${USER}@${HOST}:${PORT})"
+
+            for attempt in 1 2 3; do
+              if ssh -i "${HOME}/.ssh/id_ed25519" \
+                   -p "${PORT}" \
+                   -o StrictHostKeyChecking=accept-new \
+                   -o BatchMode=yes \
+                   -o ConnectTimeout=20 \
+                   "${USER}@${HOST}" \
+                   "set -euo pipefail
+                    cd '${REPO_PATH}'
+                    GIT_UPDATE=true \
+                    DEPLOY_BRANCH='${DEPLOY_BRANCH}' \
+                    DEPLOY_ADMIN_EMAIL='${DEPLOY_ADMIN_EMAIL}' \
+                    DEPLOY_ADMIN_PASSWORD='${DEPLOY_ADMIN_PASSWORD}' \
+                    bash installation/scripts/update_django.sh"; then
+                echo "Deploy succeeded for ${HOST}"
+                break
+              fi
+              if [[ "${attempt}" -lt 3 ]]; then
+                echo "Attempt ${attempt}/3 failed for ${HOST}; retrying in 10s..."
+                sleep 10
+              else
+                echo "ERROR: Deploy failed for ${HOST} after 3 attempts" >&2
+                exit 1
+              fi
+            done
+          done <<< "${DEPLOY_TARGETS}"

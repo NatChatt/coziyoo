@@ -1,0 +1,38 @@
+# Coziyoo Django systemd service
+# Install: cp installation/coziyoo-django.service /etc/systemd/system/coziyoo-django.service
+#          systemctl daemon-reload && systemctl enable coziyoo-django && systemctl start coziyoo-django
+#
+# Env vars are loaded from /opt/coziyoo/.env
+# Adjust User/Group/paths to match your VPS setup.
+
+[Unit]
+Description=Coziyoo Django (gunicorn)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=notify
+User=coziyoo
+Group=coziyoo
+WorkingDirectory=/opt/coziyoo/apps/django
+
+# Load shared environment (DB credentials, JWT secrets, S3, etc.)
+EnvironmentFile=/opt/coziyoo/.env
+Environment=DJANGO_SETTINGS_MODULE=coziyoo.settings.production
+
+ExecStart=/opt/coziyoo/apps/django/.venv/bin/gunicorn \
+    --config /opt/coziyoo/apps/django/gunicorn.conf.py \
+    coziyoo.wsgi:application
+
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5
+
+# Create log directory if missing
+ExecStartPre=/bin/mkdir -p /var/log/coziyoo
+ExecStartPre=/bin/chown coziyoo:coziyoo /var/log/coziyoo
+
+[Install]
+WantedBy=multi-user.target
