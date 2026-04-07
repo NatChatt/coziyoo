@@ -33,12 +33,12 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
-	<key>LSMinimumSystemVersion</key>
-	<string>12.0</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>comgooglemaps</string>
 	</array>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -50,26 +50,28 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>Coziyoo needs local network access to connect to the development server.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_http._tcp</string>
 	</array>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Coziyoo needs microphone access for voice conversations with the AI agent.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Coziyoo needs your location to show the nearest available cook for selected dishes.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Coziyoo needs local network access to connect to the development server.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Coziyoo needs your location to show the nearest available cook for selected dishes.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Coziyoo needs photo library access so you can select a profile picture.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Coziyoo needs your location to show the nearest available cook for selected dishes.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Coziyoo needs microphone access for voice conversations with the AI agent.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Coziyoo may save edited profile photos to your library when needed.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Coziyoo needs photo library access so you can select a profile picture.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
 		<string>voip</string>
+		<string>fetch</string>
+		<string>processing</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>SplashScreen</string>

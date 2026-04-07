@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/colors';
 import { type AuthSession } from '../utils/auth';
 import { apiRequest } from '../utils/api';
+import { formatCopy, t } from '../copy/brandCopy';
+import { getCurrentLanguage } from '../utils/settings';
 import ScreenHeader from '../components/ScreenHeader';
 import ActionButton from '../components/ActionButton';
 
@@ -28,10 +30,10 @@ type Props = {
 };
 
 function statusLabel(status: TicketSummary['status']) {
-  if (status === 'open') return 'Açık';
-  if (status === 'in_review') return 'İnceleniyor';
-  if (status === 'resolved') return 'Çözüldü';
-  return 'Kapandı';
+  if (status === 'open') return t('status.ticket.state.open');
+  if (status === 'in_review') return t('status.ticket.state.in_review');
+  if (status === 'resolved') return t('status.ticket.state.resolved');
+  return t('status.ticket.state.closed');
 }
 
 function statusColor(status: TicketSummary['status']) {
@@ -73,7 +75,7 @@ export default function TicketListScreen({ auth, onBack, onOpenTicket, onCreateT
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title="Destek Ticketları" onBack={onBack} />
+      <ScreenHeader title={t('headline.ticket.list')} onBack={onBack} />
 
       <ScrollView
         style={styles.scroll}
@@ -81,17 +83,17 @@ export default function TicketListScreen({ auth, onBack, onOpenTicket, onCreateT
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadData(true)} />}
       >
         <View style={styles.topCta}>
-          <ActionButton label="Yeni Ticket Aç" onPress={onCreateTicket} variant="primary" fullWidth />
+          <ActionButton label={t('cta.ticket.create')} onPress={onCreateTicket} variant="primary" fullWidth />
         </View>
 
-        {loading ? <Text style={styles.meta}>Yükleniyor...</Text> : null}
+        {loading ? <Text style={styles.meta}>{t('status.ticket.loading')}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {!loading && !error && tickets.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="chatbubble-ellipses-outline" size={22} color="#8A7D70" />
-            <Text style={styles.emptyTitle}>Henüz ticket yok</Text>
-            <Text style={styles.emptySub}>Bir sorun olursa siparişinden hızlıca ticket açabilirsin.</Text>
+            <Text style={styles.emptyTitle}>{t('headline.ticket.emptyTitle')}</Text>
+            <Text style={styles.emptySub}>{t('helper.ticket.emptySubtitle')}</Text>
           </View>
         ) : null}
 
@@ -103,9 +105,15 @@ export default function TicketListScreen({ auth, onBack, onOpenTicket, onCreateT
                 <Text style={[styles.badgeText, { color: statusColor(item.status) }]}>{statusLabel(item.status)}</Text>
               </View>
             </View>
-            <Text style={styles.ticketCategory}>{item.categoryName ?? 'Genel'}</Text>
-            <Text style={styles.ticketMeta}>Sipariş: #{item.orderId.slice(0, 8).toUpperCase()}</Text>
-            <Text style={styles.ticketMeta}>Son hareket: {new Date(item.lastActivityAt).toLocaleString('tr-TR')}</Text>
+            <Text style={styles.ticketCategory}>{item.categoryName ?? t('status.ticket.categoryFallback')}</Text>
+            <Text style={styles.ticketMeta}>
+              {formatCopy('status.ticket.orderLabel', { id: item.orderId.slice(0, 8).toUpperCase() })}
+            </Text>
+            <Text style={styles.ticketMeta}>
+              {formatCopy('status.ticket.lastActivity', {
+                date: new Date(item.lastActivityAt).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR'),
+              })}
+            </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>

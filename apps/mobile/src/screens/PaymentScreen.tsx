@@ -4,15 +4,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/colors';
 import { type AuthSession } from '../utils/auth';
 import { apiRequest } from '../utils/api';
+import { formatCopy, t } from '../copy/brandCopy';
 import ScreenHeader from '../components/ScreenHeader';
 import ActionButton from '../components/ActionButton';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 
-const STEPS = ['Bağlantı kuruluyor...', 'Güvenlik doğrulanıyor...', 'Ödeme işleniyor...', 'Tamamlanıyor...'];
 const STEP_DURATION = 700;
 
 function PaymentProcessingAnimation({ onDone }: { onDone: () => void }) {
+  const steps = [
+    t('status.payment.step.connecting'),
+    t('status.payment.step.security'),
+    t('status.payment.step.processing'),
+    t('status.payment.step.finalizing'),
+  ];
   const cardScale = useRef(new Animated.Value(0.85)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const rippleScale = useRef(new Animated.Value(1)).current;
@@ -20,8 +26,8 @@ function PaymentProcessingAnimation({ onDone }: { onDone: () => void }) {
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
-  const stepOpacities = useRef(STEPS.map(() => new Animated.Value(0))).current;
-  const checkOpacities = useRef(STEPS.map(() => new Animated.Value(0))).current;
+  const stepOpacities = useRef(steps.map(() => new Animated.Value(0))).current;
+  const checkOpacities = useRef(steps.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -56,7 +62,7 @@ function PaymentProcessingAnimation({ onDone }: { onDone: () => void }) {
     dotLoop.start();
 
     const stepSeq: Animated.CompositeAnimation[] = [];
-    STEPS.forEach((_, i) => {
+    steps.forEach((_, i) => {
       stepSeq.push(Animated.delay(i * STEP_DURATION));
       stepSeq.push(Animated.timing(stepOpacities[i], { toValue: 1, duration: 200, useNativeDriver: true }));
       stepSeq.push(Animated.delay(STEP_DURATION - 260));
@@ -84,14 +90,14 @@ function PaymentProcessingAnimation({ onDone }: { onDone: () => void }) {
             <Animated.View style={[anim.ripple, { opacity: rippleOpacity, transform: [{ scale: rippleScale }] }]} />
             <Ionicons name="card-outline" size={36} color="#3E845B" />
           </View>
-          <Text style={anim.title}>Ödeme İşleniyor</Text>
+          <Text style={anim.title}>{t('headline.payment.processing')}</Text>
           <View style={anim.dotsRow}>
             <Animated.View style={[anim.dot, { transform: [{ translateY: dot1 }] }]} />
             <Animated.View style={[anim.dot, { transform: [{ translateY: dot2 }] }]} />
             <Animated.View style={[anim.dot, { transform: [{ translateY: dot3 }] }]} />
           </View>
           <View style={anim.stepsList}>
-            {STEPS.map((step, i) => (
+            {steps.map((step, i) => (
               <Animated.View key={i} style={[anim.stepRow, { opacity: stepOpacities[i] }]}>
                 <Animated.View style={[anim.checkWrap, { opacity: checkOpacities[i] }]}>
                   <Ionicons name="checkmark-circle" size={18} color="#3E845B" />
@@ -138,7 +144,7 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
     }
     const latest = String(statusRes.data.latestAttempt?.status ?? '').toLowerCase();
     if (latest === 'failed' || latest === 'confirmation_failed') {
-      setError('Ödeme başarısız oldu. Lütfen tekrar dene.');
+      setError(t('error.payment.failed'));
       setResult('failed');
       setLoading(false);
       setAwaitingExternalPayment(false);
@@ -163,7 +169,7 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
     );
 
     if (!res.ok) {
-      setError(res.message ?? 'Ödeme başlatılamadı');
+      setError(res.message ?? t('error.payment.start'));
       setLoading(false);
       return;
     }
@@ -171,7 +177,7 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
     const sessionId = String(res.data.sessionId ?? '').trim();
     const activeProvider = String(res.data.provider ?? 'mockpay').trim().toLowerCase();
     if (!sessionId) {
-      setError('Ödeme oturumu oluşturulamadı');
+      setError(t('error.payment.sessionCreate'));
       setLoading(false);
       return;
     }
@@ -211,7 +217,7 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
 
     const sessionId = paymentSessionIdRef.current;
     if (!sessionId) {
-      setError('Ödeme oturumu bulunamadı.');
+      setError(t('error.payment.sessionMissing'));
       setResult('failed');
       setLoading(false);
       return;
@@ -224,7 +230,7 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
       onAuthRefresh,
     );
     if (!processRes.ok) {
-      setError(processRes.message ?? 'Ödeme doğrulanamadı');
+      setError(processRes.message ?? t('error.payment.verify'));
       setResult('failed');
       setLoading(false);
       return;
@@ -244,7 +250,7 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
     }
 
     if (!isPaid) {
-      setError('Ödeme tamamlanamadı. Lütfen tekrar dene.');
+      setError(t('error.payment.incomplete'));
       setResult('failed');
       setLoading(false);
       return;
@@ -258,14 +264,14 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
     return (
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-        <ScreenHeader title="Ödeme" onBack={onBack} />
+        <ScreenHeader title={t('headline.payment.title')} onBack={onBack} />
         <View style={styles.resultCenter}>
           <View style={[styles.resultIcon, { backgroundColor: '#E4F2E7' }]}>
             <Ionicons name="checkmark-circle" size={56} color="#3E845B" />
           </View>
-          <Text style={styles.resultTitle}>Ödeme Başarılı</Text>
-          <Text style={styles.resultSub}>Siparişin onaylandı. Satıcı hazırlamaya başlayacak.</Text>
-          <ActionButton label="Siparişe Dön" onPress={onPaymentComplete} variant="primary" />
+          <Text style={styles.resultTitle}>{t('headline.payment.success')}</Text>
+          <Text style={styles.resultSub}>{t('helper.payment.success')}</Text>
+          <ActionButton label={t('cta.payment.returnOrder')} onPress={onPaymentComplete} variant="primary" />
         </View>
       </View>
     );
@@ -275,16 +281,16 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
     return (
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-        <ScreenHeader title="Ödeme" onBack={onBack} />
+        <ScreenHeader title={t('headline.payment.title')} onBack={onBack} />
         <View style={styles.resultCenter}>
           <View style={[styles.resultIcon, { backgroundColor: '#FDECEC' }]}>
             <Ionicons name="close-circle" size={56} color="#C0392B" />
           </View>
-          <Text style={styles.resultTitle}>Ödeme Başarısız</Text>
-          <Text style={styles.resultSub}>{error ?? 'Ödeme işlemi tamamlanamadı. Tekrar deneyebilirsin.'}</Text>
+          <Text style={styles.resultTitle}>{t('headline.payment.failed')}</Text>
+          <Text style={styles.resultSub}>{error ?? t('helper.payment.failed')}</Text>
           <View style={styles.resultActions}>
-            <ActionButton label="Tekrar Dene" onPress={() => { void startPayment(); }} variant="primary" />
-            <ActionButton label="Geri Dön" onPress={onBack} variant="soft" />
+            <ActionButton label={t('cta.common.retry')} onPress={() => { void startPayment(); }} variant="primary" />
+            <ActionButton label={t('cta.common.goBack')} onPress={onBack} variant="soft" />
           </View>
         </View>
       </View>
@@ -294,7 +300,7 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title="Ödeme" onBack={onBack} />
+      <ScreenHeader title={t('headline.payment.title')} onBack={onBack} />
 
       {processing ? (
         <PaymentProcessingAnimation onDone={() => void finalizeMockPayment()} />
@@ -303,20 +309,20 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
           <View style={[styles.resultIcon, { backgroundColor: '#E8EDF3' }]}>
             <Ionicons name="time-outline" size={52} color="#5D7394" />
           </View>
-          <Text style={styles.resultTitle}>Ödeme Bekleniyor</Text>
+          <Text style={styles.resultTitle}>{t('headline.payment.awaiting')}</Text>
           <Text style={styles.resultSub}>
-            {provider.toUpperCase()} ile ödeme doğrulaması bekleniyor. Durum otomatik yenilenir.
+            {formatCopy('helper.payment.awaiting', { provider: provider.toUpperCase() })}
           </Text>
           <View style={styles.resultActions}>
-            <ActionButton label="Durumu Yenile" onPress={() => { void checkPaymentStatus(); }} variant="primary" />
+            <ActionButton label={t('cta.payment.refresh')} onPress={() => { void checkPaymentStatus(); }} variant="primary" />
             {checkoutUrl ? (
-              <ActionButton label="Ödeme Sayfasını Aç" onPress={() => { void Linking.openURL(checkoutUrl); }} variant="outline" />
+              <ActionButton label={t('cta.payment.openPage')} onPress={() => { void Linking.openURL(checkoutUrl); }} variant="outline" />
             ) : null}
-            <ActionButton label="Geri Dön" onPress={onBack} variant="soft" />
+            <ActionButton label={t('cta.common.goBack')} onPress={onBack} variant="soft" />
           </View>
         </View>
       ) : loading ? (
-        <LoadingState message="Ödeme hazırlanıyor..." />
+        <LoadingState message={t('status.payment.preparing')} />
       ) : error ? (
         <ErrorState message={error} onRetry={() => { void startPayment(); }} />
       ) : null}

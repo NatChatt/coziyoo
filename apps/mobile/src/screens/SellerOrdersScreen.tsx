@@ -4,6 +4,7 @@ import type { AuthSession } from "../utils/auth";
 import { refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
+import { getSellerMeCache } from "../utils/sellerProfileCache";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
@@ -29,6 +30,24 @@ type SellerOrder = {
 };
 
 type StatusFilter = "all" | "pending_seller_approval" | "awaiting_payment" | "paid" | "preparing" | "ready" | "in_delivery" | "at_door" | "delivered" | "completed" | "cancelled";
+const BUSINESS_DAY_RESET_HOUR = 5;
+const TURKEY_TIMEZONE = "Europe/Istanbul";
+
+function normalizeSellerOrder(raw: Record<string, unknown>): SellerOrder {
+  const id = String(raw.id ?? "");
+  return {
+    id,
+    sellerId: typeof raw.sellerId === "string" ? raw.sellerId : (typeof raw.seller_id === "string" ? raw.seller_id : null),
+    orderNo: typeof raw.orderNo === "string" ? raw.orderNo : `#${id.slice(0, 8).toUpperCase()}`,
+    buyerName: typeof raw.buyerName === "string" ? raw.buyerName : (typeof raw.buyer_name === "string" ? raw.buyer_name : null),
+    primaryFoodName: typeof raw.primaryFoodName === "string" ? raw.primaryFoodName : (typeof raw.primary_food_name === "string" ? raw.primary_food_name : null),
+    itemCount: Number(raw.itemCount ?? raw.item_count ?? 0),
+    status: String(raw.status ?? ""),
+    totalPrice: Number(raw.totalPrice ?? raw.total_price ?? 0),
+    createdAt: typeof raw.createdAt === "string" ? raw.createdAt : (typeof raw.created_at === "string" ? raw.created_at : undefined),
+    updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : (typeof raw.updated_at === "string" ? raw.updated_at : undefined),
+  };
+}
 
 function formatOrderDate(iso: string | undefined): string {
   if (!iso) return "-";
@@ -61,12 +80,35 @@ function parseApiDate(value?: string | null): Date | null {
   return parsed;
 }
 
-function isSameLocalDay(date: Date, reference: Date): boolean {
-  return (
-    date.getFullYear() === reference.getFullYear() &&
-    date.getMonth() === reference.getMonth() &&
-    date.getDate() === reference.getDate()
-  );
+function normalizeCountryCode(value: unknown): string {
+  const raw = String(value ?? "").trim().toUpperCase();
+  if (!raw) return "";
+  if (raw === "TR" || raw === "TURKIYE" || raw === "TÜRKİYE" || raw === "TURKEY") return "TR";
+  return raw;
+}
+
+function businessDayKey(date: Date, useTurkeyTime: boolean): string {
+  const shifted = new Date(date.getTime() - (BUSINESS_DAY_RESET_HOUR * 60 * 60 * 1000));
+  if (useTurkeyTime) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: TURKEY_TIMEZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(shifted);
+    const year = parts.find((part) => part.type === "year")?.value ?? "0000";
+    const month = parts.find((part) => part.type === "month")?.value ?? "00";
+    const day = parts.find((part) => part.type === "day")?.value ?? "00";
+    return `${year}-${month}-${day}`;
+  }
+  const y = shifted.getFullYear();
+  const m = String(shifted.getMonth() + 1).padStart(2, "0");
+  const d = String(shifted.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function isCurrentBusinessDay(date: Date, reference: Date, useTurkeyTime: boolean): boolean {
+  return businessDayKey(date, useTurkeyTime) === businessDayKey(reference, useTurkeyTime);
 }
 
 export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRefresh }: Props) {
@@ -79,6 +121,7 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [clockMs, setClockMs] = useState(() => Date.now());
+  const [sellerCountryCode, setSellerCountryCode] = useState<string>(() => normalizeCountryCode(getSellerMeCache()?.countryCode ?? ""));
 
   useEffect(() => setCurrentAuth(auth), [auth]);
 
@@ -113,7 +156,9 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
       const primaryRes = await authedFetch("/v1/seller/orders?page=1&pageSize=200", baseUrl);
       const primaryJson = await primaryRes.json();
       if (!primaryRes.ok) throw new Error(primaryJson?.error?.message ?? "Siparişler yüklenemedi");
-      let sellerOrders = Array.isArray(primaryJson?.data) ? primaryJson.data : [];
+      let sellerOrders: SellerOrder[] = Array.isArray(primaryJson?.data)
+        ? primaryJson.data.map((row: unknown) => normalizeSellerOrder((row ?? {}) as Record<string, unknown>))
+        : [];
 
       // Some environments may return empty for role=seller due to legacy actor filtering.
       // Fallback to unscoped list and extract seller-owned rows client-side.
@@ -121,9 +166,17 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
         const fallbackRes = await authedFetch("/v1/orders?page=1&pageSize=200&role=seller", baseUrl);
         const fallbackJson = await fallbackRes.json();
         if (fallbackRes.ok && Array.isArray(fallbackJson?.data)) {
-          const fromAll = fallbackJson.data.filter((row: SellerOrder & { sellerId?: string }) => row.sellerId === currentAuth.userId);
-          sellerOrders = fromAll.length > 0 ? fromAll : fallbackJson.data;
+          const normalizedFallback = (fallbackJson.data as unknown[]).map((row: unknown) => normalizeSellerOrder((row ?? {}) as Record<string, unknown>));
+          const fromAll = normalizedFallback.filter((row) => row.sellerId === currentAuth.userId);
+          sellerOrders = fromAll.length > 0 ? fromAll : normalizedFallback;
         }
+      }
+
+      const meRes = await authedFetch("/v1/auth/me", baseUrl);
+      if (meRes.ok) {
+        const meJson = await meRes.json().catch(() => ({}));
+        const cc = normalizeCountryCode(meJson?.data?.countryCode ?? "");
+        if (cc) setSellerCountryCode(cc);
       }
 
       setOrders(sellerOrders);
@@ -147,22 +200,23 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
 
   const filteredOrders = useMemo(() => {
     const now = new Date(clockMs);
+    const useTurkeyTime = sellerCountryCode === "TR";
     const from = parseDateInput(fromDate);
     const to = parseDateInput(toDate);
     const toEnd = to ? new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999) : null;
 
     return orders.filter((order) => {
       if (statusFilter !== "all" && order.status !== statusFilter) return false;
-      const activityAt = parseApiDate(order.updatedAt) ?? parseApiDate(order.createdAt);
-      if (!activityAt) return false;
-      // Bugün aktif olan siparişler ana sayfadaki "Bugünkü Siparişler" bölümünde kalır.
-      if (isSameLocalDay(activityAt, now)) return false;
+      const receivedAt = parseApiDate(order.createdAt) ?? parseApiDate(order.updatedAt);
+      if (!receivedAt) return false;
+      // Aynı iş günündeki siparişler ana sayfadaki "Bugünkü Siparişler" bölümünde kalır.
+      if (isCurrentBusinessDay(receivedAt, now, useTurkeyTime)) return false;
       if (!from && !toEnd) return true;
-      if (from && activityAt < from) return false;
-      if (toEnd && activityAt > toEnd) return false;
+      if (from && receivedAt < from) return false;
+      if (toEnd && receivedAt > toEnd) return false;
       return true;
     });
-  }, [orders, statusFilter, fromDate, toDate, clockMs]);
+  }, [orders, statusFilter, fromDate, toDate, clockMs, sellerCountryCode]);
 
   return (
     <View style={styles.container}>

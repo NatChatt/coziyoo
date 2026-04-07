@@ -3,6 +3,10 @@ Seller management views — all endpoints require realm == 'app'.
 The caller must also be a seller (user_type in ('seller', 'both')),
 but role enforcement is left to the JWT payload (role == 'seller').
 """
+import json
+import uuid
+from datetime import datetime
+
 from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -104,15 +108,59 @@ class SellerFoodListView(APIView):
     permission_classes = [IsAppRealm]
 
     def get(self, request):
+        food_id = str(request.query_params.get("foodId") or "").strip()
+        where_clauses = ["f.seller_id = %s"]
+        params = [request.user.id]
+        if food_id:
+            where_clauses.append("f.id = %s")
+            params.append(food_id)
+
+        where_sql = " AND ".join(where_clauses)
         sql = """
-            SELECT id, name, card_summary, description, price, is_active, image_url,
-                   image_urls_json, cuisine, allergens_json, category_id, created_at, updated_at
-            FROM foods
-            WHERE seller_id = %s
+            SELECT
+                f.id,
+                f.name,
+                f.card_summary,
+                f.description,
+                f.recipe,
+                f.price,
+                f.is_active,
+                f.image_url,
+                f.image_urls_json,
+                f.cuisine,
+                f.ingredients_json,
+                f.allergens_json,
+                f.menu_items_json,
+                f.secondary_category_ids_json,
+                f.preparation_time_minutes,
+                f.category_id,
+                c.name_tr AS category_name,
+                EXISTS (
+                    SELECT 1
+                    FROM production_lots pl_any
+                    WHERE pl_any.food_id = f.id
+                ) AS has_any_lot,
+                COALESCE(
+                    (
+                        SELECT SUM(pl.quantity_available)
+                        FROM production_lots pl
+                        WHERE pl.food_id = f.id
+                          AND pl.status IN ('open', 'active')
+                          AND pl.quantity_available > 0
+                          AND (pl.sale_starts_at IS NULL OR pl.sale_starts_at <= NOW())
+                          AND (pl.sale_ends_at IS NULL OR pl.sale_ends_at > NOW())
+                    ),
+                    0
+                )::int AS stock,
+                f.created_at,
+                f.updated_at
+            FROM foods f
+            LEFT JOIN categories c ON c.id = f.category_id
+            WHERE """ + where_sql + """
             ORDER BY created_at DESC
         """
         with connection.cursor() as cursor:
-            cursor.execute(sql, [request.user.id])
+            cursor.execute(sql, params)
             foods = _rows_as_dicts(cursor)
 
         uuid_fields = ["id", "category_id"]
@@ -134,24 +182,53 @@ class SellerFoodListView(APIView):
 
         description = data.get("description")
         card_summary = data.get("cardSummary")
+        recipe = data.get("recipe")
         cuisine = data.get("cuisine")
         is_active = data.get("isActive", True)
         category_id = data.get("categoryId") or None
+        image_urls = data.get("imageUrls") if isinstance(data.get("imageUrls"), list) else []
+        image_url = data.get("imageUrl") or (image_urls[0] if image_urls else None)
+        ingredients = data.get("ingredients") if isinstance(data.get("ingredients"), list) else []
+        allergens = data.get("allergens") if isinstance(data.get("allergens"), list) else []
+        preparation_time_minutes = data.get("preparationTimeMinutes")
+        menu_items = data.get("menuItems") if isinstance(data.get("menuItems"), list) else []
+        secondary_category_ids = data.get("secondaryCategoryIds") if isinstance(data.get("secondaryCategoryIds"), list) else []
 
         sql = """
             INSERT INTO foods
-                (seller_id, name, price, description, card_summary, cuisine, is_active, category_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                (
+                    seller_id, category_id, name, card_summary, description, recipe, price,
+                    image_url, ingredients_json, allergens_json, preparation_time_minutes,
+                    is_active, cuisine, image_urls_json, menu_items_json, secondary_category_ids_json
+                )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """
         with connection.cursor() as cursor:
             cursor.execute(
                 sql,
-                [request.user.id, name, price, description, card_summary, cuisine, is_active, category_id],
+                [
+                    request.user.id,
+                    category_id,
+                    name,
+                    card_summary,
+                    description,
+                    recipe,
+                    price,
+                    image_url,
+                    json.dumps(ingredients),
+                    json.dumps(allergens),
+                    preparation_time_minutes,
+                    is_active,
+                    cuisine,
+                    json.dumps(image_urls),
+                    json.dumps(menu_items),
+                    json.dumps(secondary_category_ids),
+                ],
             )
             row = cursor.fetchone()
 
-        return Response({"data": {"id": str(row[0])}}, status=status.HTTP_201_CREATED)
+        return Response({"data": {"id": str(row[0]), "foodId": str(row[0])}}, status=status.HTTP_201_CREATED)
 
 
 class SellerFoodDetailView(APIView):
@@ -169,6 +246,10 @@ class SellerFoodDetailView(APIView):
             "isActive": "is_active",
             "cardSummary": "card_summary",
             "cuisine": "cuisine",
+            "recipe": "recipe",
+            "categoryId": "category_id",
+            "imageUrl": "image_url",
+            "preparationTimeMinutes": "preparation_time_minutes",
         }
 
         set_clauses = []
@@ -178,6 +259,25 @@ class SellerFoodDetailView(APIView):
             if json_key in data:
                 set_clauses.append(f"{col_name} = %s")
                 params.append(data[json_key])
+
+        json_field_map = {
+            "imageUrls": "image_urls_json",
+            "ingredients": "ingredients_json",
+            "allergens": "allergens_json",
+            "menuItems": "menu_items_json",
+            "secondaryCategoryIds": "secondary_category_ids_json",
+        }
+
+        for json_key, col_name in json_field_map.items():
+            if json_key in data:
+                set_clauses.append(f"{col_name} = %s")
+                params.append(json.dumps(data[json_key]))
+
+        if "imageUrls" in data and "imageUrl" not in data:
+            image_urls = data.get("imageUrls") if isinstance(data.get("imageUrls"), list) else []
+            first_image_url = next((item for item in image_urls if isinstance(item, str) and item.strip()), None)
+            set_clauses.append("image_url = %s")
+            params.append(first_image_url)
 
         if not set_clauses:
             return Response(
@@ -205,7 +305,7 @@ class SellerFoodDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response({"data": {"id": str(row[0])}})
+        return Response({"data": {"id": str(row[0]), "foodId": str(row[0])}})
 
 
 class SellerFoodStatusView(APIView):
@@ -313,20 +413,29 @@ class SellerCategoriesView(APIView):
 
 
 class SellerLotListView(APIView):
-    """GET /v1/seller/lots — Seller's production lots."""
+    """GET /v1/seller/lots — Seller's production lots.
+    POST /v1/seller/lots — Create a production lot."""
 
     permission_classes = [IsAppRealm]
 
     def get(self, request):
+        food_id = str(request.query_params.get("foodId") or "").strip()
+        where_clauses = ["seller_id = %s"]
+        params = [request.user.id]
+        if food_id:
+            where_clauses.append("food_id = %s")
+            params.append(food_id)
+
+        where_sql = " AND ".join(where_clauses)
         sql = """
             SELECT id, food_id, quantity_produced, quantity_available,
                    status, produced_at, use_by, created_at
             FROM production_lots
-            WHERE seller_id = %s
+            WHERE """ + where_sql + """
             ORDER BY created_at DESC
         """
         with connection.cursor() as cursor:
-            cursor.execute(sql, [request.user.id])
+            cursor.execute(sql, params)
             lots = _rows_as_dicts(cursor)
 
         uuid_fields = ["id", "food_id"]
@@ -334,6 +443,160 @@ class SellerLotListView(APIView):
             _stringify_uuids(lot, uuid_fields)
 
         return Response({"data": lots})
+
+    def post(self, request):
+        data = request.data
+        food_id = data.get("foodId")
+        produced_at = data.get("producedAt")
+        sale_starts_at = data.get("saleStartsAt")
+        sale_ends_at = data.get("saleEndsAt")
+        quantity_produced = data.get("quantityProduced")
+        quantity_available = data.get("quantityAvailable", quantity_produced)
+        use_by = data.get("useBy")
+        best_before = data.get("bestBefore")
+        notes = data.get("notes")
+
+        missing = [
+            field_name
+            for field_name, value in (
+                ("foodId", food_id),
+                ("producedAt", produced_at),
+                ("saleStartsAt", sale_starts_at),
+                ("saleEndsAt", sale_ends_at),
+                ("quantityProduced", quantity_produced),
+            )
+            if value in (None, "")
+        ]
+        if missing:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": f"Missing required fields: {', '.join(missing)}"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            quantity_produced = int(quantity_produced)
+            quantity_available = int(quantity_available)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "quantityProduced and quantityAvailable must be integers"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if quantity_produced < 1 or quantity_available < 0 or quantity_available > quantity_produced:
+            return Response(
+                {"error": {"code": "LOT_INVALID_QUANTITY", "message": "Available cannot exceed produced"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        def _parse_iso(value):
+            return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+        try:
+            produced_dt = _parse_iso(produced_at)
+            sale_start_dt = _parse_iso(sale_starts_at)
+            sale_end_dt = _parse_iso(sale_ends_at)
+            use_by_dt = _parse_iso(use_by) if use_by else None
+            best_before_dt = _parse_iso(best_before) if best_before else None
+        except (TypeError, ValueError):
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "Invalid ISO datetime payload"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if produced_dt > sale_start_dt or sale_start_dt > sale_end_dt:
+            return Response(
+                {"error": {"code": "LOT_INVALID_TIMELINE", "message": "producedAt must be before saleStartsAt and saleStartsAt before saleEndsAt"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    SELECT id, recipe, ingredients_json, allergens_json
+                    FROM foods
+                    WHERE id = %s AND seller_id = %s
+                """,
+                [str(food_id), request.user.id],
+            )
+            food = _row_as_dict(cursor)
+
+        if food is None:
+            return Response(
+                {"error": {"code": "FOOD_NOT_FOUND", "message": "Food not found in seller scope"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        missing_fields = []
+        if not food.get("recipe"):
+            missing_fields.append("recipe")
+        if food.get("ingredients_json") is None:
+            missing_fields.append("ingredients_json")
+        if food.get("allergens_json") is None:
+            missing_fields.append("allergens_json")
+        if missing_fields:
+            return Response(
+                {
+                    "error": {
+                        "code": "LOT_SNAPSHOT_REQUIRED",
+                        "message": "Recipe, ingredients, and allergens must be defined on food before creating a lot",
+                        "details": {"missingFields": missing_fields},
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        lot_id = str(uuid.uuid4())
+        lot_number = f"CZ-{str(food_id)[:8].upper()}-{produced_dt.strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    INSERT INTO production_lots
+                        (
+                            id, seller_id, food_id, lot_number, produced_at, sale_starts_at, sale_ends_at,
+                            use_by, best_before, recipe_snapshot, ingredients_snapshot_json, allergens_snapshot_json,
+                            quantity_produced, quantity_available, status, notes, created_at, updated_at
+                        )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'open', %s, now(), now())
+                """,
+                [
+                    lot_id,
+                    request.user.id,
+                    str(food_id),
+                    lot_number,
+                    produced_at,
+                    sale_starts_at,
+                    sale_ends_at,
+                    use_by_dt.isoformat() if use_by_dt else None,
+                    best_before_dt.isoformat() if best_before_dt else None,
+                    food.get("recipe"),
+                    json.dumps(food.get("ingredients_json")),
+                    json.dumps(food.get("allergens_json")),
+                    quantity_produced,
+                    quantity_available,
+                    notes,
+                ],
+            )
+            cursor.execute(
+                """
+                    INSERT INTO lot_events (lot_id, event_type, event_payload_json, created_by, created_at)
+                    VALUES (%s, 'created', %s, %s, now())
+                """,
+                [
+                    lot_id,
+                    json.dumps(
+                        {
+                            "quantityProduced": quantity_produced,
+                            "quantityAvailable": quantity_available,
+                            "producedAt": produced_at,
+                            "saleStartsAt": sale_starts_at,
+                            "saleEndsAt": sale_ends_at,
+                        }
+                    ),
+                    request.user.id,
+                ],
+            )
+
+        return Response({"data": {"lotId": lot_id, "lotNumber": lot_number}}, status=status.HTTP_201_CREATED)
 
 
 class SellerLotAdjustView(APIView):

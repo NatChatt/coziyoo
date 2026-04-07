@@ -12,10 +12,10 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { loadSettings } from '../utils/settings';
+import { loadSettings, saveSettings, subscribeSettings, type AppSettings } from '../utils/settings';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { readJsonSafe } from '../utils/http';
-import { t } from '../copy/brandCopy';
+import { formatCopy, t } from '../copy/brandCopy';
 import ProfileEditScreen from './ProfileEditScreen';
 import AddressScreen from './AddressScreen';
 
@@ -40,6 +40,7 @@ export default function SettingsScreen({ auth, onBack, onOpenComplaintOrders, on
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [appLanguage, setAppLanguage] = useState<AppSettings['language']>('tr');
 
   useEffect(() => {
     setCurrentAuth(auth);
@@ -47,6 +48,11 @@ export default function SettingsScreen({ auth, onBack, onOpenComplaintOrders, on
 
   useEffect(() => {
     void fetchProfile();
+  }, []);
+
+  useEffect(() => {
+    loadSettings().then((settings) => setAppLanguage(settings.language)).catch(() => {});
+    return subscribeSettings((settings) => setAppLanguage(settings.language));
   }, []);
 
   async function authedFetch(url: string, options?: RequestInit) {
@@ -87,7 +93,7 @@ export default function SettingsScreen({ auth, onBack, onOpenComplaintOrders, on
       const res = await authedFetch(`${apiUrl}/v1/auth/me`);
       const json = await readJsonSafe<{ data?: UserProfile; error?: { message?: string } }>(res);
       if (!res.ok || json.error) {
-        throw new Error(json.error?.message ?? `Hata (${res.status})`);
+        throw new Error(json.error?.message ?? formatCopy('error.common.statusCode', { status: res.status }));
       }
       const data = json.data;
       setEmail(data?.email ?? '');
@@ -109,7 +115,7 @@ export default function SettingsScreen({ auth, onBack, onOpenComplaintOrders, on
       });
       const json = await readJsonSafe<{ error?: { message?: string } }>(res);
       if (!res.ok || json.error) {
-        throw new Error(json.error?.message ?? `Hata (${res.status})`);
+        throw new Error(json.error?.message ?? formatCopy('error.common.statusCode', { status: res.status }));
       }
       Alert.alert(t('status.security.passwordTitle'), t('status.profileEdit.resetCodeSent'));
     } catch (e) {
@@ -117,6 +123,12 @@ export default function SettingsScreen({ auth, onBack, onOpenComplaintOrders, on
     } finally {
       setPasswordLoading(false);
     }
+  }
+
+  async function handleLanguageChange(language: AppSettings['language']) {
+    const settings = await loadSettings();
+    await saveSettings({ ...settings, language });
+    setAppLanguage(language);
   }
 
   return (
@@ -141,6 +153,38 @@ export default function SettingsScreen({ auth, onBack, onOpenComplaintOrders, on
           </View>
         ) : (
           <>
+            <View style={styles.card}>
+              <View style={styles.cardHead}>
+                <View style={[styles.iconWrap, { backgroundColor: '#3E845B' }]}>
+                  <Ionicons name="language" size={18} color="#fff" />
+                </View>
+                <View style={styles.headTextWrap}>
+                  <Text style={styles.cardTitle}>{t('status.settings.language')}</Text>
+                  <Text style={styles.cardMetaInline}>{t('helper.home.generalSettingsLanguageHint')}</Text>
+                </View>
+              </View>
+              <View style={styles.languageRow}>
+                <TouchableOpacity
+                  style={[styles.languageBtn, appLanguage === 'tr' && styles.languageBtnActive]}
+                  onPress={() => void handleLanguageChange('tr')}
+                  activeOpacity={0.9}
+                >
+                  <Text style={[styles.languageBtnText, appLanguage === 'tr' && styles.languageBtnTextActive]}>
+                    {t('cta.home.languageTurkish')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.languageBtn, appLanguage === 'en' && styles.languageBtnActive]}
+                  onPress={() => void handleLanguageChange('en')}
+                  activeOpacity={0.9}
+                >
+                  <Text style={[styles.languageBtnText, appLanguage === 'en' && styles.languageBtnTextActive]}>
+                    {t('cta.home.languageEnglish')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <View style={styles.card}>
               <View style={styles.cardHead}>
                 <View style={[styles.iconWrap, { backgroundColor: '#F18E33' }]}>
@@ -238,8 +282,8 @@ export default function SettingsScreen({ auth, onBack, onOpenComplaintOrders, on
                   <Ionicons name="flag" size={18} color="#fff" />
                 </View>
               <View style={styles.headTextWrap}>
-                  <Text style={styles.cardTitle}>Destek Ticketları</Text>
-                  <Text style={styles.cardMetaInline}>Ticketlarını gör, detaydan mesaj at, gerekirse yenisini aç.</Text>
+                  <Text style={styles.cardTitle}>{t('headline.settings.supportTickets')}</Text>
+                  <Text style={styles.cardMetaInline}>{t('helper.settings.supportTicketsBody')}</Text>
               </View>
               </View>
               <TouchableOpacity
@@ -247,7 +291,7 @@ export default function SettingsScreen({ auth, onBack, onOpenComplaintOrders, on
                 onPress={onOpenComplaintOrders}
                 activeOpacity={0.85}
               >
-                <Text style={styles.buttonSoftText}>Ticketları Aç</Text>
+                <Text style={styles.buttonSoftText}>{t('cta.settings.openTickets')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -375,6 +419,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonSoftText: { color: '#3F3730', fontSize: 15, fontWeight: '700' },
+  languageRow: { flexDirection: 'row', gap: 10 },
+  languageBtn: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D8D0C4',
+    backgroundColor: '#F6F2ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  languageBtnActive: {
+    backgroundColor: '#E6F1E9',
+    borderColor: '#3E845B',
+  },
+  languageBtnText: { color: '#3F3730', fontSize: 15, fontWeight: '700' },
+  languageBtnTextActive: { color: '#2E6B44' },
   buttonDisabled: { opacity: 0.65 },
   verifiedBadge: {
     marginTop: 4,

@@ -8,6 +8,8 @@ import { loadSettings } from "../utils/settings";
 import { readJsonSafe } from "../utils/http";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
+import { formatCopy, t } from "../copy/brandCopy";
+import { getCurrentLanguage } from "../utils/settings";
 
 type Props = {
   auth: AuthSession;
@@ -56,10 +58,11 @@ function parseApiDate(value?: string | null): Date | null {
 function formatDate(value?: string | null): string {
   const parsed = parseApiDate(value);
   if (!parsed) return "-";
-  const dd = String(parsed.getDate()).padStart(2, "0");
-  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
-  const yyyy = String(parsed.getFullYear());
-  return `${dd}.${mm}.${yyyy}`;
+  return new Intl.DateTimeFormat(getCurrentLanguage() === "en" ? "en-GB" : "tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(parsed);
 }
 
 function isCompletedPayout(status: string): boolean {
@@ -158,9 +161,9 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
       const summaryJson = await summaryRes.json();
       const balanceJson = await balanceRes.json();
       const payoutsJson = await payoutsRes.json();
-      if (!summaryRes.ok) throw new Error(summaryJson?.error?.message ?? "Finans özeti alınamadı");
-      if (!balanceRes.ok) throw new Error(balanceJson?.error?.message ?? "Bakiye alınamadı");
-      if (!payoutsRes.ok) throw new Error(payoutsJson?.error?.message ?? "Payout listesi alınamadı");
+      if (!summaryRes.ok) throw new Error(summaryJson?.error?.message ?? t('error.seller.finance.summaryLoad'));
+      if (!balanceRes.ok) throw new Error(balanceJson?.error?.message ?? t('error.seller.finance.balanceLoad'));
+      if (!payoutsRes.ok) throw new Error(payoutsJson?.error?.message ?? t('error.seller.finance.payoutsLoad'));
       setSummary(summaryJson?.data ?? null);
       setBalance(balanceJson?.data ?? null);
       setPayouts(Array.isArray(payoutsJson?.data) ? payoutsJson.data : []);
@@ -184,14 +187,14 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
           break;
         }
         if (bankRes.status === 404) continue;
-        bankErrorMessage = String(bankJson?.error?.message ?? "Banka hesabı alınamadı");
+        bankErrorMessage = String(bankJson?.error?.message ?? t('error.seller.finance.bankLoad'));
       }
       if (bankErrorMessage) throw new Error(bankErrorMessage);
       setIban(typeof bankData?.iban === "string" ? bankData.iban : "");
       setHolder(typeof bankData?.accountHolderName === "string" ? bankData.accountHolderName : "");
       setCardNumber(typeof bankData?.cardNumber === "string" ? bankData.cardNumber : "");
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Finans yüklenemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.finance.load'));
     } finally {
       setLoading(false);
     }
@@ -204,12 +207,12 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
   async function saveBankAccount() {
     try {
       if (!iban.trim() || !cardNumber.trim()) {
-        Alert.alert("Hata", "Hesap/Kart numarası ve IBAN zorunlu.");
+        Alert.alert(t('headline.common.error'), t('error.seller.finance.bankRequired'));
         return;
       }
       const payload = {
         iban: iban.trim(),
-        accountHolderName: holder.trim() || "Kart Hesabı",
+        accountHolderName: holder.trim() || t('headline.seller.finance.bankInfo'),
         cardNumber: cardNumber.trim(),
       };
       const sellerId = currentAuth.userId;
@@ -220,7 +223,7 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
         { method: "POST", path: `/v1/sellers/${sellerId}/finance/bank-account` },
       ];
 
-      let lastError = "Banka hesabı kaydedilemedi";
+      let lastError = t('error.seller.finance.bankSave');
       let saved = false;
       for (const req of candidateRequests) {
         const res = await authedFetch(req.path, { method: req.method, body: JSON.stringify(payload) });
@@ -230,7 +233,7 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
           break;
         }
         if (isMissingBankDetailError(res.status, json)) {
-          lastError = "Banka hesabı henüz yok. Kaydetmek için tekrar dene.";
+          lastError = t('error.seller.finance.bankMissingRetry');
           continue;
         }
         if (res.status === 404 || res.status === 405) {
@@ -240,10 +243,10 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
         lastError = String(json?.error?.message ?? lastError);
       }
       if (!saved) throw new Error(lastError);
-      Alert.alert("Tamam", "Banka hesabı güncellendi.");
+      Alert.alert(t('headline.common.success'), t('status.seller.finance.bankSaved'));
       void loadData();
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Banka hesabı kaydedilemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.finance.bankSave'));
     }
   }
 
@@ -303,15 +306,22 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
 
   function handleWithdrawRequest() {
     if (!canRequestWithdraw) {
-      Alert.alert("Hata", `Para çekme talebi için minimum ${formatMoney(MIN_PAYOUT_AMOUNT, currency)} olmalı.`);
+      Alert.alert(t('headline.common.error'), formatCopy('error.seller.finance.withdrawMin', {
+        amount: formatMoney(MIN_PAYOUT_AMOUNT, currency),
+      }));
       return;
     }
-    Alert.alert("Talep Alındı", `Para çekme talebin oluşturuldu: ${formatMoney(withdrawAmountValue, currency)}.`);
+    Alert.alert(
+      t('status.seller.finance.withdrawRequestedTitle'),
+      formatCopy('status.seller.finance.withdrawRequestedBody', {
+        amount: formatMoney(withdrawAmountValue, currency),
+      }),
+    );
   }
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Cüzdanım" onBack={onBack} />
+      <ScreenHeader title={t('headline.seller.finance.title')} onBack={onBack} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.segmentedTabs}>
           <TouchableOpacity
@@ -319,21 +329,21 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
             onPress={() => setActiveTab("overview")}
           >
             <Ionicons name="grid-outline" size={12} color={activeTab === "overview" ? "#FFFFFF" : "#2E241C"} />
-            <Text style={[styles.tabText, activeTab === "overview" && styles.tabTextActive]}>Genel Bakış</Text>
+            <Text style={[styles.tabText, activeTab === "overview" && styles.tabTextActive]}>{t('tab.seller.finance.overview')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabBtn, activeTab === "transactions" && styles.tabBtnActive]}
             onPress={() => setActiveTab("transactions")}
           >
             <Ionicons name="list-outline" size={12} color={activeTab === "transactions" ? "#FFFFFF" : "#2E241C"} />
-            <Text style={[styles.tabText, activeTab === "transactions" && styles.tabTextActive]}>İşlemler</Text>
+            <Text style={[styles.tabText, activeTab === "transactions" && styles.tabTextActive]}>{t('tab.seller.finance.transactions')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabBtn, activeTab === "withdraw" && styles.tabBtnActive]}
             onPress={() => setActiveTab("withdraw")}
           >
             <Ionicons name="cash-outline" size={12} color={activeTab === "withdraw" ? "#FFFFFF" : "#2E241C"} />
-            <Text style={[styles.tabText, activeTab === "withdraw" && styles.tabTextActive]}>Para Çek</Text>
+            <Text style={[styles.tabText, activeTab === "withdraw" && styles.tabTextActive]}>{t('tab.seller.finance.withdraw')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -345,31 +355,31 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
               <View>
                 <View style={styles.balanceTitleRow}>
                   <Ionicons name="wallet-outline" size={14} color="#FFFFFF" />
-                  <Text style={styles.balanceTitle}>Mevcut Bakiye</Text>
+                  <Text style={styles.balanceTitle}>{t('status.seller.finance.balanceTitle')}</Text>
                 </View>
                 <Text style={styles.balanceAmount}>{formatMoney(balance?.availableBalance ?? 0, currency)}</Text>
                 <View style={styles.pendingRow}>
                   <Ionicons name="time-outline" size={12} color="#FFFFFF" />
-                  <Text style={styles.pendingText}>Bekleyen: {formatMoney(balance?.pendingPayoutAmount ?? 0, currency)}</Text>
+                  <Text style={styles.pendingText}>{formatCopy('status.seller.finance.pending', { amount: formatMoney(balance?.pendingPayoutAmount ?? 0, currency) })}</Text>
                 </View>
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>Kazanç İstatistikleri</Text>
+            <Text style={styles.sectionTitle}>{t('headline.seller.finance.stats')}</Text>
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
                 <Ionicons name="calendar-outline" size={14} color="#22C55E" />
-                <Text style={styles.statLabel}>Bu Hafta</Text>
+                <Text style={styles.statLabel}>{t('status.seller.finance.thisWeek')}</Text>
                 <Text style={[styles.statValue, styles.statValueGreen]}>{formatMoney(weekEarnings, currency)}</Text>
               </View>
               <View style={styles.statCard}>
                 <Ionicons name="calendar-clear-outline" size={14} color="#7C7C7C" />
-                <Text style={styles.statLabel}>Bu Ay</Text>
+                <Text style={styles.statLabel}>{t('status.seller.finance.thisMonth')}</Text>
                 <Text style={styles.statValue}>{formatMoney(monthEarnings, currency)}</Text>
               </View>
               <View style={styles.statCard}>
                 <Ionicons name="trophy-outline" size={14} color="#F59E0B" />
-                <Text style={styles.statLabel}>Toplam Kazanç</Text>
+                <Text style={styles.statLabel}>{t('status.seller.finance.totalEarnings')}</Text>
                 <Text style={[styles.statValue, styles.statValueOrange]}>{formatMoney(totalEarnings, currency)}</Text>
               </View>
             </View>
@@ -377,11 +387,11 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
             <View style={styles.infoCard}>
               <View style={styles.infoTitleRow}>
                 <Ionicons name="information-circle-outline" size={14} color="#6C6055" />
-                <Text style={styles.infoTitle}>Ödeme Bilgileri</Text>
+                <Text style={styles.infoTitle}>{t('headline.seller.finance.paymentInfo')}</Text>
               </View>
-              <View style={styles.infoRow}><Text style={styles.infoKey}>Son Ödeme:</Text><Text style={styles.infoVal}>{lastPayoutDate}</Text></View>
-              <View style={styles.infoRow}><Text style={styles.infoKey}>Sonraki Ödeme:</Text><Text style={styles.infoVal}>{nextPayoutDate}</Text></View>
-              <View style={styles.infoRow}><Text style={styles.infoKey}>Minimum Tutar:</Text><Text style={styles.infoVal}>{formatMoney(MIN_PAYOUT_AMOUNT, currency)}</Text></View>
+              <View style={styles.infoRow}><Text style={styles.infoKey}>{t('status.seller.finance.lastPayout')}</Text><Text style={styles.infoVal}>{lastPayoutDate}</Text></View>
+              <View style={styles.infoRow}><Text style={styles.infoKey}>{t('status.seller.finance.nextPayout')}</Text><Text style={styles.infoVal}>{nextPayoutDate}</Text></View>
+              <View style={styles.infoRow}><Text style={styles.infoKey}>{t('status.seller.finance.minimumAmount')}</Text><Text style={styles.infoVal}>{formatMoney(MIN_PAYOUT_AMOUNT, currency)}</Text></View>
             </View>
           </>
         ) : null}
@@ -389,7 +399,7 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
         {!loading && activeTab === "transactions" ? (
           <View style={styles.listWrap}>
             {payoutsSorted.length === 0 ? (
-              <View style={styles.emptyCard}><Text style={styles.emptyText}>Henüz işlem kaydı yok.</Text></View>
+              <View style={styles.emptyCard}><Text style={styles.emptyText}>{t('headline.seller.finance.noTransactions')}</Text></View>
             ) : (
               payoutsSorted.map((row) => (
                 <View key={row.batchId} style={styles.txnCard}>
@@ -410,17 +420,17 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
           <>
             <View style={styles.withdrawSummaryCard}>
               <View style={styles.withdrawSummaryRow}>
-                <Text style={styles.withdrawSummaryLabel}>Mevcut Bakiye:</Text>
+                <Text style={styles.withdrawSummaryLabel}>{t('status.seller.finance.availableBalance')}</Text>
                 <Text style={styles.withdrawSummaryValue}>{formatMoney(availableBalance, currency)}</Text>
               </View>
               <View style={styles.withdrawSummaryRow}>
-                <Text style={styles.withdrawSummaryLabel}>Bekleyen Bakiye:</Text>
+                <Text style={styles.withdrawSummaryLabel}>{t('status.seller.finance.pendingBalance')}</Text>
                 <Text style={styles.withdrawSummaryPending}>{formatMoney(pendingBalance, currency)}</Text>
               </View>
             </View>
 
             <View style={styles.withdrawCard}>
-              <Text style={styles.withdrawTitle}>Çekmek İstediğiniz Tutar</Text>
+              <Text style={styles.withdrawTitle}>{t('headline.seller.finance.withdrawAmount')}</Text>
               <View style={styles.amountBox}>
                 <TextInput
                   style={styles.amountInput}
@@ -445,19 +455,19 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity style={styles.amountChip} onPress={setMaxWithdrawAmount} activeOpacity={0.85}>
-                  <Text style={styles.amountChipText}>Tümü</Text>
+                  <Text style={styles.amountChipText}>{t('cta.seller.finance.all')}</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.withdrawInfoBox}>
                 <View style={styles.withdrawInfoTitleRow}>
                   <Ionicons name="information-circle" size={13} color="#706759" />
-                  <Text style={styles.withdrawInfoTitle}>Bilgilendirme</Text>
+                  <Text style={styles.withdrawInfoTitle}>{t('headline.seller.finance.info')}</Text>
                 </View>
-                <Text style={styles.withdrawInfoLine}>· Minimum çekim tutarı: {formatMoney(MIN_PAYOUT_AMOUNT, currency)}</Text>
-                <Text style={styles.withdrawInfoLine}>· İşlem süresi: 1-3 iş günü</Text>
-                <Text style={styles.withdrawInfoLine}>· Haftalık otomatik ödeme: Pazartesi günleri</Text>
-                <Text style={styles.withdrawInfoLine}>· İşlem ücreti: Ücretsiz</Text>
+                <Text style={styles.withdrawInfoLine}>{formatCopy('helper.seller.finance.minAmount', { amount: formatMoney(MIN_PAYOUT_AMOUNT, currency) })}</Text>
+                <Text style={styles.withdrawInfoLine}>{t('helper.seller.finance.processTime')}</Text>
+                <Text style={styles.withdrawInfoLine}>{t('helper.seller.finance.autoPayout')}</Text>
+                <Text style={styles.withdrawInfoLine}>{t('helper.seller.finance.freeFee')}</Text>
               </View>
 
               <TouchableOpacity
@@ -465,27 +475,27 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
                 onPress={handleWithdrawRequest}
                 activeOpacity={0.88}
               >
-                <Text style={styles.withdrawRequestBtnText}>Para Çekme Talebi Oluştur</Text>
+                <Text style={styles.withdrawRequestBtnText}>{t('cta.seller.finance.requestWithdraw')}</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.bankInfoCard}>
               <View style={styles.bankInfoTitleRow}>
                 <Ionicons name="business-outline" size={13} color="#3B3129" />
-                <Text style={styles.bankInfoTitle}>Kart Bilgilerim</Text>
+                <Text style={styles.bankInfoTitle}>{t('headline.seller.finance.bankInfo')}</Text>
               </View>
               <TextInput
                 style={styles.input}
                 value={iban}
                 onChangeText={setIban}
-                placeholder="IBAN (TR...)"
+                placeholder={t('helper.seller.finance.ibanPlaceholder')}
                 placeholderTextColor="#8A7A6A"
               />
               <TextInput
                 style={styles.input}
                 value={cardNumber}
                 onChangeText={setCardNumber}
-                placeholder="Kart Numarası"
+                placeholder={t('helper.seller.finance.cardPlaceholder')}
                 placeholderTextColor="#8A7A6A"
                 keyboardType="number-pad"
               />
@@ -493,11 +503,11 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
                 style={styles.input}
                 value={holder}
                 onChangeText={setHolder}
-                placeholder="Hesap sahibi"
+                placeholder={t('helper.seller.finance.holderPlaceholder')}
                 placeholderTextColor="#8A7A6A"
               />
               <TouchableOpacity style={styles.saveBtn} onPress={() => void saveBankAccount()}>
-                <Text style={styles.saveText}>Banka Hesabını Kaydet</Text>
+                <Text style={styles.saveText}>{t('cta.seller.finance.saveBank')}</Text>
               </TouchableOpacity>
             </View>
           </>

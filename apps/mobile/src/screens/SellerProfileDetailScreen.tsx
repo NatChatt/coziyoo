@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { memo, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -55,20 +55,24 @@ export type SellerProfile = {
   };
 };
 
-const STATUS_CONFIG = {
-  active: { label: "Aktif", bg: "#EFF6F1", color: "#2E6B44", border: "#CFE2D5" },
-  pending_review: { label: "İncelemede", bg: "#FFF5E9", color: "#7A4D1B", border: "#F0C995" },
-  incomplete: { label: "Eksik", bg: "#FFF0EE", color: "#B42318", border: "#F9CECA" },
-};
+function statusConfig(status: SellerProfile['status']) {
+  if (status === 'active') {
+    return { label: t('status.seller.profileDetail.active'), bg: "#EFF6F1", color: "#2E6B44", border: "#CFE2D5" };
+  }
+  if (status === 'pending_review') {
+    return { label: t('status.seller.profileDetail.pendingReview'), bg: "#FFF5E9", color: "#7A4D1B", border: "#F0C995" };
+  }
+  return { label: t('status.seller.profileDetail.incomplete'), bg: "#FFF0EE", color: "#B42318", border: "#F9CECA" };
+}
 
-function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
+const InfoRow = memo(function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>{value?.trim() || "—"}</Text>
     </View>
   );
-}
+});
 
 export default function SellerProfileDetailScreen({
   auth,
@@ -275,7 +279,7 @@ export default function SellerProfileDetailScreen({
         setTcKimlikNo("");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Profil yüklenemedi");
+      setError(e instanceof Error ? e.message : t('error.seller.profileDetail.load'));
     } finally {
       setLoading(false);
     }
@@ -287,7 +291,7 @@ export default function SellerProfileDetailScreen({
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert("İzin gerekli", "Galeriden resim seçebilmek için izin vermelisin.");
+        Alert.alert(t('headline.common.permission'), t('error.common.galleryPermission'));
         return;
       }
 
@@ -304,11 +308,11 @@ export default function SellerProfileDetailScreen({
       const mimeType = asset.mimeType ?? "image/jpeg";
       const base64Image = asset.base64 ?? null;
       if (!base64Image) {
-        Alert.alert("Hata", "Resim verisi alınamadı.");
+        Alert.alert(t('headline.common.error'), t('error.profileEdit.imageUpload'));
         return;
       }
       if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType)) {
-        Alert.alert("Hata", "Sadece JPEG, PNG veya WebP seçebilirsin.");
+        Alert.alert(t('headline.common.error'), t('error.profileEdit.imageType'));
         return;
       }
 
@@ -323,7 +327,7 @@ export default function SellerProfileDetailScreen({
       });
       const uploadPayload = await readResponsePayload(uploadRes);
       if (!uploadRes.ok || uploadPayload.json === null) {
-        throw new Error(responseErrorMessage(uploadRes, uploadPayload, "Profil resmi yüklenemedi"));
+        throw new Error(responseErrorMessage(uploadRes, uploadPayload, t('error.profileEdit.imageUpload')));
       }
       const uploadJson = uploadPayload.json as { data?: { profileImageUrl?: string } };
       const nextUrl = String(uploadJson?.data?.profileImageUrl ?? "").trim();
@@ -331,7 +335,7 @@ export default function SellerProfileDetailScreen({
         setProfile((prev) => (prev ? { ...prev, profileImageUrl: nextUrl } : prev));
       }
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Profil resmi yüklenemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.profileEdit.imageUpload'));
     } finally {
       setAvatarUploading(false);
     }
@@ -341,7 +345,7 @@ export default function SellerProfileDetailScreen({
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert("İzin gerekli", "Galeriden resim seçebilmek için izin vermelisin.");
+        Alert.alert(t('headline.common.permission'), t('error.common.galleryPermission'));
         return;
       }
 
@@ -356,11 +360,11 @@ export default function SellerProfileDetailScreen({
       const uri = String(asset.uri ?? "").trim();
       const mimeType = String(asset.mimeType ?? "image/jpeg").trim().toLowerCase();
       if (!uri) {
-        Alert.alert("Hata", "Resim verisi alınamadı.");
+        Alert.alert(t('headline.common.error'), t('error.profileEdit.imageUpload'));
         return;
       }
       if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType)) {
-        Alert.alert("Hata", "Sadece JPEG, PNG veya WebP seçebilirsin.");
+        Alert.alert(t('headline.common.error'), t('error.profileEdit.imageType'));
         return;
       }
 
@@ -378,7 +382,7 @@ export default function SellerProfileDetailScreen({
       const uploadRes = await authedMultipartFetch("/v1/auth/me/home-card-image/upload", formData, baseUrl);
       const uploadPayload = await readResponsePayload(uploadRes);
       if (!uploadRes.ok || uploadPayload.json === null) {
-        throw new Error(responseErrorMessage(uploadRes, uploadPayload, "Ana sayfa görseli yüklenemedi"));
+        throw new Error(responseErrorMessage(uploadRes, uploadPayload, t('error.seller.profileDetail.homeCardImageUpload')));
       }
       const uploadJson = uploadPayload.json as { data?: { homeCardImageUrl?: string } };
       const nextUrl = String(uploadJson?.data?.homeCardImageUrl ?? "").trim();
@@ -387,22 +391,22 @@ export default function SellerProfileDetailScreen({
         setProfile(nextProfile);
         setSellerProfileCache(nextProfile as SellerProfile);
       }
-      Alert.alert("Hazır", "Ana sayfa usta görseli güncellendi.");
+      Alert.alert(t('headline.common.success'), t('status.seller.profileDetail.homeCardImageUpdated'));
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Ana sayfa görseli yüklenemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.profileDetail.homeCardImageUpload'));
     } finally {
       setHomeCardImageUploading(false);
     }
   }
 
   async function pickIdCardImage(side: "front" | "back") {
-    const label = side === "front" ? "ön" : "arka";
+    const label = side === "front" ? t('helper.seller.profileDetail.idCardFront').toLowerCase() : t('helper.seller.profileDetail.idCardBack').toLowerCase();
 
     const source = await new Promise<"camera" | "gallery" | null>((resolve) => {
-      Alert.alert("Kimlik Fotoğrafı", `${label.charAt(0).toUpperCase() + label.slice(1)} yüz fotoğrafını nasıl eklemek istersin?`, [
-        { text: "Kamera", onPress: () => resolve("camera") },
-        { text: "Galeri", onPress: () => resolve("gallery") },
-        { text: "İptal", style: "cancel", onPress: () => resolve(null) },
+      Alert.alert(t('headline.seller.profileDetail.idCardPhoto'), formatCopy('helper.seller.profileDetail.idCardSourcePrompt', { side: label }), [
+        { text: t('cta.common.camera'), onPress: () => resolve("camera") },
+        { text: t('cta.common.gallery'), onPress: () => resolve("gallery") },
+        { text: t('cta.common.cancel'), style: "cancel", onPress: () => resolve(null) },
       ]);
     });
     if (!source) return;
@@ -412,7 +416,7 @@ export default function SellerProfileDetailScreen({
       if (source === "camera") {
         const camPerm = await ImagePicker.requestCameraPermissionsAsync();
         if (!camPerm.granted) {
-          Alert.alert("İzin gerekli", "Fotoğraf çekebilmek için kamera izni vermelisin.");
+          Alert.alert(t('headline.common.permission'), t('error.common.cameraPermission'));
           return;
         }
         result = await ImagePicker.launchCameraAsync({
@@ -425,7 +429,7 @@ export default function SellerProfileDetailScreen({
       } else {
         const libPerm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!libPerm.granted) {
-          Alert.alert("İzin gerekli", "Galeriden resim seçebilmek için izin vermelisin.");
+          Alert.alert(t('headline.common.permission'), t('error.common.galleryPermission'));
           return;
         }
         result = await ImagePicker.launchImageLibraryAsync({
@@ -442,11 +446,11 @@ export default function SellerProfileDetailScreen({
       const mime = asset.mimeType ?? "image/jpeg";
       const b64 = asset.base64 ?? null;
       if (!b64) {
-        Alert.alert("Hata", "Resim verisi alınamadı.");
+        Alert.alert(t('headline.common.error'), t('error.profileEdit.imageUpload'));
         return;
       }
       if (!["image/jpeg", "image/png", "image/webp"].includes(mime)) {
-        Alert.alert("Hata", "Sadece JPEG, PNG veya WebP seçebilirsin.");
+        Alert.alert(t('headline.common.error'), t('error.profileEdit.imageType'));
         return;
       }
 
@@ -460,7 +464,7 @@ export default function SellerProfileDetailScreen({
         setIdCardBackMime(mime);
       }
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Resim yüklenemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.profileEdit.imageUpload'));
     }
   }
 
@@ -474,7 +478,7 @@ export default function SellerProfileDetailScreen({
         return { day, open, close, enabled: true };
       })
       .filter((x): x is { day: string; open: string; close: string; enabled: boolean } => Boolean(x));
-    return parsed.length > 0 ? parsed : [{ day: "Her gün", open: "09:00", close: "20:00", enabled: true }];
+    return parsed.length > 0 ? parsed : [{ day: t('helper.seller.profile.workingHours'), open: "09:00", close: "20:00", enabled: true }];
   }
 
   function addSpecialty() {
@@ -561,7 +565,7 @@ export default function SellerProfileDetailScreen({
         }),
       });
       const payload = await readResponsePayload(res);
-      if (!res.ok || payload.json === null) throw new Error(responseErrorMessage(res, payload, "Kaydedilemedi"));
+      if (!res.ok || payload.json === null) throw new Error(responseErrorMessage(res, payload, t('error.seller.profile.save')));
       setIsKitchenModalOpen(false);
       void load();
     } catch (e) {
@@ -583,7 +587,7 @@ export default function SellerProfileDetailScreen({
     try {
       const normalizedDeliveryRadius = Number(deliveryRadiusKmDraft || 0);
       if (!Number.isFinite(normalizedDeliveryRadius) || normalizedDeliveryRadius <= 0) {
-        Alert.alert("Hata", "Teslimat yarıçapı 0'dan büyük bir sayı olmalı.");
+        Alert.alert(t('headline.common.error'), t('error.seller.profileDetail.deliveryRadiusInvalid'));
         setDeliverySaving(false);
         return;
       }
@@ -600,7 +604,7 @@ export default function SellerProfileDetailScreen({
       });
       const payload = await readResponsePayload(res);
       if (!res.ok || payload.json === null) {
-        throw new Error(responseErrorMessage(res, payload, "Teslimat ayarları kaydedilemedi"));
+        throw new Error(responseErrorMessage(res, payload, t('error.seller.profileDetail.deliverySettingsSave')));
       }
 
       setDeliveryEnabled(deliveryEnabledDraft);
@@ -615,9 +619,9 @@ export default function SellerProfileDetailScreen({
           }
         : prev));
       setIsDeliveryModalOpen(false);
-      Alert.alert("Başarılı", "Teslimat ayarları kaydedildi.");
+      Alert.alert(t('headline.common.success'), t('status.seller.profileDetail.deliverySettingsSaved'));
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Teslimat ayarları kaydedilemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.profileDetail.deliverySettingsSave'));
     } finally {
       setDeliverySaving(false);
     }
@@ -639,7 +643,7 @@ export default function SellerProfileDetailScreen({
       if (contactDob.trim()) {
         const normalizedDob = normalizeDobForApi(contactDob);
         if (!normalizedDob) {
-          Alert.alert("Hata", "Doğum tarihi formatı GG/AA/YYYY veya YYYY-AA-GG olmalı.");
+          Alert.alert(t('headline.common.error'), t('error.seller.profileDetail.dobFormat'));
           setContactSaving(false);
           return;
         }
@@ -660,18 +664,18 @@ export default function SellerProfileDetailScreen({
       const hasIdCardImages = Boolean(idCardFrontBase64 || idCardBackBase64);
       if (hasAddressInput) {
         if (!title || !line) {
-          Alert.alert("Hata", "Adres için şehir/ilçe ve açık adres bilgilerini birlikte gir.");
+          Alert.alert(t('headline.common.error'), t('error.seller.profileDetail.addressMissingParts'));
           setContactSaving(false);
           return;
         }
         if (line.length < 10) {
-          Alert.alert("Hata", "Adres en az 10 karakter olmalı.");
+          Alert.alert(t('headline.common.error'), t('error.address.addressTooShortDetailed'));
           setContactSaving(false);
           return;
         }
         const words = line.split(/\s+/).filter((w) => w.length > 0);
         if (words.length < 2) {
-          Alert.alert("Hata", "Geçerli bir adres girin (mahalle, sokak, bina no gibi).");
+          Alert.alert(t('headline.common.error'), t('error.address.addressFormat'));
           setContactSaving(false);
           return;
         }
@@ -689,7 +693,7 @@ export default function SellerProfileDetailScreen({
           body: JSON.stringify(payload),
         });
         const mePayload = await readResponsePayload(meRes);
-        if (!meRes.ok || mePayload.json === null) throw new Error(responseErrorMessage(meRes, mePayload, "Profil bilgileri kaydedilemedi"));
+        if (!meRes.ok || mePayload.json === null) throw new Error(responseErrorMessage(meRes, mePayload, t('error.seller.profileDetail.profileInfoSave')));
         const meJson = mePayload.json as { data?: { email?: string } };
         const updatedEmail = String(meJson.data?.email ?? "").trim();
         if (updatedEmail && updatedEmail !== currentAuth.email) {
@@ -709,7 +713,7 @@ export default function SellerProfileDetailScreen({
         try {
           const listRes = await authedFetch("/v1/auth/me/addresses", baseUrl, undefined);
           const listPayload = await readResponsePayload(listRes);
-          if (!listRes.ok || listPayload.json === null) throw new Error(responseErrorMessage(listRes, listPayload, "Adres listesi alınamadı"));
+          if (!listRes.ok || listPayload.json === null) throw new Error(responseErrorMessage(listRes, listPayload, t('error.seller.profileDetail.addressListLoad')));
           const listJson = listPayload.json as { data?: Array<{ id?: string; isDefault?: boolean }> };
           const defaultAddress = Array.isArray(listJson?.data)
             ? listJson.data.find((item: { isDefault?: boolean }) => item?.isDefault)
@@ -725,7 +729,7 @@ export default function SellerProfileDetailScreen({
               }),
             });
             const patchPayload = await readResponsePayload(patchRes);
-            if (!patchRes.ok || patchPayload.json === null) throw new Error(responseErrorMessage(patchRes, patchPayload, "Adres kaydedilemedi"));
+            if (!patchRes.ok || patchPayload.json === null) throw new Error(responseErrorMessage(patchRes, patchPayload, t('error.seller.profileDetail.addressSave')));
           } else {
             const addrRes = await authedFetch("/v1/auth/me/addresses", baseUrl, {
               method: "POST",
@@ -736,10 +740,10 @@ export default function SellerProfileDetailScreen({
               }),
             });
             const addrPayload = await readResponsePayload(addrRes);
-            if (!addrRes.ok || addrPayload.json === null) throw new Error(responseErrorMessage(addrRes, addrPayload, "Adres kaydedilemedi"));
+            if (!addrRes.ok || addrPayload.json === null) throw new Error(responseErrorMessage(addrRes, addrPayload, t('error.seller.profileDetail.addressSave')));
           }
         } catch (addressError) {
-          addressErrorMessage = addressError instanceof Error ? addressError.message : "Adres kaydedilemedi";
+          addressErrorMessage = addressError instanceof Error ? addressError.message : t('error.seller.profileDetail.addressSave');
         }
       }
 
@@ -756,7 +760,7 @@ export default function SellerProfileDetailScreen({
               }),
             });
             const frontPayload = await readResponsePayload(frontRes);
-            if (!frontRes.ok || frontPayload.json === null) throw new Error(responseErrorMessage(frontRes, frontPayload, "Kimlik ön yüz yüklenemedi"));
+            if (!frontRes.ok || frontPayload.json === null) throw new Error(responseErrorMessage(frontRes, frontPayload, t('error.seller.profileDetail.idFrontUpload')));
           }
           if (idCardBackBase64) {
             const backRes = await authedFetch("/v1/seller/compliance/documents", baseUrl, {
@@ -768,10 +772,10 @@ export default function SellerProfileDetailScreen({
               }),
             });
             const backPayload = await readResponsePayload(backRes);
-            if (!backRes.ok || backPayload.json === null) throw new Error(responseErrorMessage(backRes, backPayload, "Kimlik arka yüz yüklenemedi"));
+            if (!backRes.ok || backPayload.json === null) throw new Error(responseErrorMessage(backRes, backPayload, t('error.seller.profileDetail.idBackUpload')));
           }
         } catch (idCardError) {
-          Alert.alert("Uyarı", idCardError instanceof Error ? idCardError.message : "Kimlik fotoğrafları yüklenemedi");
+          Alert.alert(t('headline.common.warning'), idCardError instanceof Error ? idCardError.message : t('warning.seller.profileDetail.idCardUpload'));
         } finally {
           setIdCardUploading(false);
         }
@@ -779,18 +783,18 @@ export default function SellerProfileDetailScreen({
 
       await load();
       if (addressErrorMessage) {
-        Alert.alert("Uyarı", `Profil güncellendi, adres kaydedilemedi: ${addressErrorMessage}`);
+        Alert.alert(t('headline.common.warning'), formatCopy('warning.seller.profileDetail.updatedAddressFailed', { message: addressErrorMessage }));
       } else {
-        Alert.alert("Başarılı", "İletişim bilgileri kaydedildi.");
+        Alert.alert(t('headline.common.success'), t('status.seller.profileDetail.contactSaved'));
       }
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Bilgiler kaydedilemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.profileDetail.infoSave'));
     } finally {
       setContactSaving(false);
     }
   }
 
-  const statusCfg = STATUS_CONFIG[profile?.status ?? "incomplete"];
+  const statusCfg = statusConfig(profile?.status ?? "incomplete");
   const initials = (profile?.displayName ?? "?")
     .split(" ")
     .slice(0, 2)
@@ -799,6 +803,7 @@ export default function SellerProfileDetailScreen({
   const complianceRequired = profile?.requirements?.complianceRequiredCount ?? 0;
   const complianceUploaded = profile?.requirements?.complianceUploadedRequiredCount ?? 0;
   const complianceRemaining = Math.max(0, complianceRequired - complianceUploaded);
+  const workingHours = useMemo(() => profile?.workingHours ?? [], [profile?.workingHours]);
 
   return (
     <View style={styles.container}>
@@ -820,7 +825,11 @@ export default function SellerProfileDetailScreen({
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          removeClippedSubviews={Platform.OS === "android"}
+        >
 
           {/* Avatar + İsim + Durum */}
           <View style={styles.heroCard}>
@@ -884,7 +893,7 @@ export default function SellerProfileDetailScreen({
 
           <View style={styles.card}>
             <View style={styles.profileEditCardHeader}>
-              <Text style={styles.cardTitle}>Ana sayfa usta görseli</Text>
+              <Text style={styles.cardTitle}>{t('headline.seller.profileDetail.homeCardImage')}</Text>
               <TouchableOpacity
                 style={styles.profileEditIconBtn}
                 onPress={() => void handleHomeCardImagePress()}
@@ -898,9 +907,7 @@ export default function SellerProfileDetailScreen({
                 )}
               </TouchableOpacity>
             </View>
-            <Text style={styles.homeCardImageHint}>
-              Yemek kartında büyük görünecek usta fotoğrafını buradan yükle.
-            </Text>
+            <Text style={styles.homeCardImageHint}>{t('helper.seller.profileDetail.homeCardImageHint')}</Text>
             <TouchableOpacity
               style={styles.homeCardImagePreview}
               activeOpacity={0.86}
@@ -912,8 +919,8 @@ export default function SellerProfileDetailScreen({
               ) : (
                 <View style={styles.homeCardImagePlaceholder}>
                   <Ionicons name="person-outline" size={34} color="#8E7E70" />
-                  <Text style={styles.homeCardImagePlaceholderTitle}>Henüz yüklenmedi</Text>
-                  <Text style={styles.homeCardImagePlaceholderText}>Arka planı kaldırılmış büyük usta görseli burada görünecek.</Text>
+                  <Text style={styles.homeCardImagePlaceholderTitle}>{t('headline.seller.profileDetail.homeCardImageEmpty')}</Text>
+                  <Text style={styles.homeCardImagePlaceholderText}>{t('helper.seller.profileDetail.homeCardImageEmptyHint')}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -924,7 +931,7 @@ export default function SellerProfileDetailScreen({
               disabled={homeCardImageUploading}
             >
               <Text style={styles.homeCardImageButtonText}>
-                {homeCardImageUploading ? "Yükleniyor..." : profile?.homeCardImageUrl ? "Görseli değiştir" : "Görsel yükle"}
+                {homeCardImageUploading ? t('status.common.loading') : profile?.homeCardImageUrl ? t('cta.seller.profileDetail.changeImage') : t('cta.seller.profileDetail.uploadImage')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -967,8 +974,8 @@ export default function SellerProfileDetailScreen({
           {/* Çalışma Saatleri */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>{t('headline.seller.profileDetail.workingHours')}</Text>
-            {(profile?.workingHours ?? []).length > 0 ? (
-              profile!.workingHours!.map((h, i) => (
+            {workingHours.length > 0 ? (
+              workingHours.map((h, i) => (
                 <View key={i} style={styles.hourRow}>
                   <Text style={styles.hourDay}>{h.day}</Text>
                   <Text style={styles.hourRange}>{h.open} – {h.close}</Text>
@@ -982,6 +989,7 @@ export default function SellerProfileDetailScreen({
         </ScrollView>
       )}
 
+      {isDeliveryModalOpen ? (
       <Modal visible={isDeliveryModalOpen} transparent animationType="fade" onRequestClose={() => setIsDeliveryModalOpen(false)}>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
@@ -994,17 +1002,17 @@ export default function SellerProfileDetailScreen({
             onPress={() => setIsDeliveryModalOpen(false)}
           />
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Teslimat Ayarları</Text>
-            <Text style={styles.modalLabel}>Teslimat ayarı</Text>
+            <Text style={styles.modalTitle}>{t('headline.seller.profileDetail.deliveryModalTitle')}</Text>
+            <Text style={styles.modalLabel}>{t('helper.seller.profile.deliverySettings')}</Text>
             <TouchableOpacity
               style={[styles.deliveryToggleCard, deliveryEnabledDraft && styles.deliveryToggleCardActive]}
               activeOpacity={0.85}
               onPress={() => setDeliveryEnabledDraft((prev) => !prev)}
             >
               <View style={styles.deliveryToggleCopy}>
-                <Text style={styles.deliveryToggleTitle}>{deliveryEnabledDraft ? "Teslimat açık" : "Teslimat kapalı"}</Text>
+                <Text style={styles.deliveryToggleTitle}>{deliveryEnabledDraft ? t('status.seller.profile.deliveryOpen') : t('status.seller.profile.deliveryClosed')}</Text>
                 <Text style={styles.deliveryToggleSubtitle}>
-                  {deliveryEnabledDraft ? "Sipariş bazında teslimat teklif edebilirsin." : "Siparişler varsayılan olarak Gel Al kalır."}
+                  {deliveryEnabledDraft ? t('helper.seller.profile.deliveryOpenHint') : t('helper.seller.profile.deliveryClosedHint')}
                 </Text>
               </View>
               <View style={[styles.deliveryTogglePill, deliveryEnabledDraft && styles.deliveryTogglePillActive]}>
@@ -1012,37 +1020,39 @@ export default function SellerProfileDetailScreen({
               </View>
             </TouchableOpacity>
 
-            <Text style={styles.modalLabel}>Teslimat yarıçapı (km)</Text>
+            <Text style={styles.modalLabel}>{t('helper.seller.profile.deliveryRadius')}</Text>
             <TextInput
               style={styles.modalInput}
               value={deliveryRadiusKmDraft}
               onChangeText={setDeliveryRadiusKmDraft}
               keyboardType="numeric"
-              placeholder="Örn: 3"
+              placeholder={t('helper.seller.profile.deliveryRadiusPlaceholder')}
               placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
             />
 
-            <Text style={styles.modalLabel}>Teslimat koşulları</Text>
+            <Text style={styles.modalLabel}>{t('helper.seller.profile.deliveryTerms')}</Text>
             <TextInput
               style={[styles.modalInput, styles.modalAddressInput]}
               value={deliveryTermsDraft}
               onChangeText={setDeliveryTermsDraft}
-              placeholder="Örn: 3 km içi, apartman kapısına teslim, akşam 21:00'e kadar."
+              placeholder={t('helper.seller.profile.deliveryTermsPlaceholder')}
               placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
               multiline
             />
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setIsDeliveryModalOpen(false)} disabled={deliverySaving}>
-                <Text style={styles.modalCancelText}>İptal</Text>
+                <Text style={styles.modalCancelText}>{t('cta.common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalSaveBtn} onPress={() => void saveDeliverySettings()} disabled={deliverySaving}>
-                <Text style={styles.modalSaveText}>{deliverySaving ? "Kaydediliyor..." : "Kaydet"}</Text>
+                <Text style={styles.modalSaveText}>{deliverySaving ? t('status.common.saving') : t('cta.common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      ) : null}
+      {isEditModalOpen ? (
       <Modal visible={isEditModalOpen} transparent animationType="fade" onRequestClose={() => setIsEditModalOpen(false)}>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
@@ -1061,38 +1071,38 @@ export default function SellerProfileDetailScreen({
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator
             >
-              <Text style={styles.modalTitle}>İletişim Bilgileri</Text>
+              <Text style={styles.modalTitle}>{t('headline.seller.profileDetail.contactInfo')}</Text>
 
-              <Text style={styles.modalLabel}>Satıcı Adı</Text>
+              <Text style={styles.modalLabel}>{t('helper.profileEdit.displayNameLabel')}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={masterName}
                 onChangeText={setMasterName}
-                placeholder="Örn: Lezzet Durağı"
+                placeholder={t('helper.profileEdit.displayNamePlaceholder')}
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
               />
 
-              <Text style={styles.modalLabel}>Adı Soyadı</Text>
+              <Text style={styles.modalLabel}>{t('helper.profileEdit.fullNameLabel')}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={fullName}
                 onChangeText={setFullName}
-                placeholder="Örn: Ayşe Hanım"
+                placeholder={t('helper.profileEdit.fullNamePlaceholder')}
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
               />
 
-              <Text style={styles.modalLabel}>Doğum Tarihi</Text>
+              <Text style={styles.modalLabel}>{t('helper.profileEdit.dobLabel')}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={contactDob}
                 onChangeText={(value) => setContactDob(formatDobInput(value))}
                 keyboardType="number-pad"
-                placeholder="Örn: 15/01/1990"
+                placeholder="15/01/1990"
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
                 maxLength={10}
               />
 
-              <Text style={styles.modalLabel}>E-posta</Text>
+              <Text style={styles.modalLabel}>{t('helper.profileEdit.emailLabel')}</Text>
               <View style={styles.modalEmailRow}>
                 <TextInput
                   style={[styles.modalInput, styles.modalEmailInput]}
@@ -1100,64 +1110,64 @@ export default function SellerProfileDetailScreen({
                   onChangeText={setContactEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  placeholder="Örn: ayse@example.com"
+                  placeholder={t('helper.profileEdit.emailHint')}
                   placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
                 />
                 <Ionicons name="shield-checkmark" size={18} color="#2563EB" />
               </View>
 
-              <Text style={styles.modalLabel}>Telefon</Text>
+              <Text style={styles.modalLabel}>{t('helper.profileEdit.phoneLabel')}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={contactPhone}
                 onChangeText={setContactPhone}
                 keyboardType="phone-pad"
-                placeholder="Örn: 0555 111 22 33"
+                placeholder={t('helper.profileEdit.phonePlaceholder')}
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
               />
 
-              <Text style={styles.modalLabel}>Şehir/İlçe</Text>
+              <Text style={styles.modalLabel}>{t('helper.seller.profileDetail.cityDistrictLabel')}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={cityDistrict}
                 onChangeText={setCityDistrict}
-                placeholder="Örn: Kadıköy, İstanbul"
+                placeholder={t('helper.seller.profileDetail.cityDistrictPlaceholder')}
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
               />
 
-              <Text style={styles.modalLabel}>Adres</Text>
+              <Text style={styles.modalLabel}>{t('helper.address.addressLabel')}</Text>
               <TextInput
                 style={[styles.modalInput, styles.modalAddressInput]}
                 value={addressLine}
                 onChangeText={setAddressLine}
-                placeholder="Örn: Rıhtım Cd. No:12, Kadıköy"
+                placeholder={t('helper.seller.profileDetail.addressPlaceholder')}
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
                 multiline
               />
 
-              <Text style={styles.modalLabel}>Ülke Kodu</Text>
+              <Text style={styles.modalLabel}>{t('helper.seller.profileDetail.countryCodeLabel')}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={contactCountryCode}
                 onChangeText={(value) => setContactCountryCode(value.toUpperCase())}
                 autoCapitalize="characters"
                 maxLength={3}
-                placeholder="Örn: TR (Türkiye), GB (İngiltere)"
+                placeholder={t('helper.seller.profileDetail.countryCodePlaceholder')}
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
               />
 
-              <Text style={styles.modalLabel}>T.C. Kimlik</Text>
+              <Text style={styles.modalLabel}>{t('helper.seller.profileDetail.nationalIdLabel')}</Text>
               <TextInput
                 style={styles.modalInput}
                 value={tcKimlikNo}
                 onChangeText={setTcKimlikNo}
                 keyboardType="numeric"
                 maxLength={11}
-                placeholder="11 haneli T.C. kimlik numarası"
+                placeholder={t('helper.seller.profileDetail.nationalIdPlaceholder')}
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
               />
 
-              <Text style={[styles.modalLabel, { marginTop: 16 }]}>Kimlik Fotoğrafı</Text>
+              <Text style={[styles.modalLabel, { marginTop: 16 }]}>{t('helper.seller.profileDetail.idCardLabel')}</Text>
               <View style={styles.idCardRow}>
                 <TouchableOpacity
                   style={styles.idCardSlot}
@@ -1169,7 +1179,7 @@ export default function SellerProfileDetailScreen({
                   ) : (
                     <View style={styles.idCardPlaceholder}>
                       <Ionicons name="camera-outline" size={24} color="#9A8C82" />
-                      <Text style={styles.idCardPlaceholderText}>Ön Yüz</Text>
+                      <Text style={styles.idCardPlaceholderText}>{t('helper.seller.profileDetail.idCardFront')}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -1184,7 +1194,7 @@ export default function SellerProfileDetailScreen({
                   ) : (
                     <View style={styles.idCardPlaceholder}>
                       <Ionicons name="camera-outline" size={24} color="#9A8C82" />
-                      <Text style={styles.idCardPlaceholderText}>Arka Yüz</Text>
+                      <Text style={styles.idCardPlaceholderText}>{t('helper.seller.profileDetail.idCardBack')}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -1192,15 +1202,17 @@ export default function SellerProfileDetailScreen({
             </ScrollView>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setIsEditModalOpen(false)} disabled={contactSaving}>
-                <Text style={styles.modalCancelText}>İptal</Text>
+                <Text style={styles.modalCancelText}>{t('cta.common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalSaveBtn} onPress={() => void saveContactProfile()} disabled={contactSaving}>
-                <Text style={styles.modalSaveText}>{contactSaving ? "Kaydediliyor..." : "Kaydet"}</Text>
+                <Text style={styles.modalSaveText}>{contactSaving ? t('status.common.saving') : t('cta.common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      ) : null}
+      {isKitchenModalOpen ? (
       <Modal visible={isKitchenModalOpen} transparent animationType="fade" onRequestClose={() => setIsKitchenModalOpen(false)}>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
@@ -1214,19 +1226,19 @@ export default function SellerProfileDetailScreen({
           />
           <View style={[styles.modalCard, styles.kitchenModalCard]}>
             <View style={styles.kitchenModalBody}>
-              <Text style={styles.modalTitle}>Hakkımda</Text>
+              <Text style={styles.modalTitle}>{t('headline.seller.profileDetail.aboutModalTitle')}</Text>
 
-              <Text style={styles.modalLabel}>Açıklama</Text>
+              <Text style={styles.modalLabel}>{t('helper.seller.profileDetail.aboutLabel')}</Text>
               <TextInput
                 style={[styles.modalInput, styles.modalDescInput]}
                 value={kitchenDescInput}
                 onChangeText={setKitchenDescInput}
-                placeholder="Kendinizi ve mutfak deneyiminizi tanıtın"
+                placeholder={t('helper.seller.profileDetail.aboutPlaceholder')}
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
                 multiline
               />
 
-              <Text style={[styles.modalLabel, { marginTop: 16 }]}>Uzmanlık Alanları</Text>
+              <Text style={[styles.modalLabel, { marginTop: 16 }]}>{t('helper.seller.profileDetail.specialties')}</Text>
               {specialties.length > 0 && (
                 <View style={styles.tagsRow}>
                   {specialties.map((item) => (
@@ -1240,13 +1252,13 @@ export default function SellerProfileDetailScreen({
                 </View>
               )}
 
-              <Text style={styles.modalLabel}>Yeni Kategori Ekle</Text>
+              <Text style={styles.modalLabel}>{t('helper.seller.profileDetail.newCategory')}</Text>
               <View style={styles.addSpecialtyRow}>
                 <TextInput
                   style={[styles.modalInput, styles.addSpecialtyInput]}
                   value={newSpecialty}
                   onChangeText={setNewSpecialty}
-                  placeholder="Örn: Tatlı, Kek, Fırın Yemekleri"
+                  placeholder={t('helper.seller.profileDetail.newCategoryPlaceholder')}
                   placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
                   onSubmitEditing={addSpecialty}
                   returnKeyType="done"
@@ -1259,15 +1271,16 @@ export default function SellerProfileDetailScreen({
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setIsKitchenModalOpen(false)} disabled={kitchenSaving}>
-                <Text style={styles.modalCancelText}>İptal</Text>
+                <Text style={styles.modalCancelText}>{t('cta.common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalSaveBtn} onPress={() => void saveKitchen()} disabled={kitchenSaving}>
-                <Text style={styles.modalSaveText}>{kitchenSaving ? "Kaydediliyor..." : "Kaydet"}</Text>
+                <Text style={styles.modalSaveText}>{kitchenSaving ? t('status.common.saving') : t('cta.common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      ) : null}
     </View>
   );
 }

@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import StatusBadge from './StatusBadge';
 import { theme } from '../theme/colors';
+import { t } from '../copy/brandCopy';
+import { getCurrentLanguage } from '../utils/settings';
 
 export type OrderSummary = {
   id: string;
@@ -32,8 +34,11 @@ function formatDate(iso: string): string {
     .replace(/(\.\d+)?([+-]\d{2})$/, '$1$2:00');  // +00 → +00:00
   const d = new Date(normalized);
   if (isNaN(d.getTime())) return '-';
-  const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  return new Intl.DateTimeFormat(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(d);
 }
 
 export default function OrderCard({ order, onPress }: Props) {
@@ -49,12 +54,12 @@ export default function OrderCard({ order, onPress }: Props) {
         <View style={styles.shopRow}>
           <Text style={styles.shop} numberOfLines={1}>{order.sellerName}</Text>
         </View>
-        <Text style={styles.items} numberOfLines={1}>{itemNames || 'Sipariş kalemleri'}</Text>
+        <Text style={styles.items} numberOfLines={1}>{itemNames || t('helper.orders.itemsFallback')}</Text>
       </View>
       <View style={styles.footer}>
         <Text style={styles.total}>{formatPrice(order.totalPrice)}</Text>
         <View style={styles.detailBtn}>
-          <Text style={styles.detailText}>Detay</Text>
+          <Text style={styles.detailText}>{t('cta.orders.openDetail')}</Text>
           <Ionicons name="chevron-forward" size={14} color="#5D7394" />
         </View>
       </View>

@@ -22,7 +22,8 @@ import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import StatusBadge from "../components/StatusBadge";
 import { subscribeOrderRealtime } from "../utils/realtime";
-import { t } from "../copy/brandCopy";
+import { formatCopy, t } from "../copy/brandCopy";
+import { getCurrentLanguage } from "../utils/settings";
 
 type Props = {
   auth: AuthSession;
@@ -36,10 +37,13 @@ function formatOrderDate(iso: string | undefined): string {
   const normalized = iso.trim().replace(" ", "T").replace(/(\.\d+)?([+-]\d{2})$/, "$1$2:00");
   const d = new Date(normalized);
   if (isNaN(d.getTime())) return "-";
-  const months = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${h}:${m}`;
+  return new Intl.DateTimeFormat(getCurrentLanguage() === "en" ? "en-GB" : "tr-TR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
 }
 
 type OrderDetail = {
@@ -92,6 +96,16 @@ type OrderDetail = {
 
 type MapCoordinates = { lat: number; lng: number };
 
+function normalizeOrderDetail(value: unknown, fallbackOrderId: string): OrderDetail | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  return {
+    ...(row as unknown as OrderDetail),
+    id: String(row.id ?? fallbackOrderId ?? "").trim(),
+    orderNo: typeof row.orderNo === "string" ? row.orderNo : undefined,
+  };
+}
+
 async function openAddressInMaps(address: string): Promise<void> {
   const query = address.trim();
   if (!query) return;
@@ -108,7 +122,7 @@ async function openAddressInMaps(address: string): Promise<void> {
     await Linking.openURL(url);
     return;
   }
-  throw new Error("Harita uygulaması açılamadı");
+  throw new Error(t("error.common.mapOpenFailed"));
 }
 
 function toFiniteNumber(value: unknown): number | null {
@@ -150,26 +164,26 @@ function getNextAction(status: string, deliveryType?: string): { label: string; 
   const normalized = normalizeFlowStatus(status);
   const pickup = deliveryType === "pickup";
   if (normalized === "paid") {
-    return { label: "Hazırlıyorum", toStatus: "preparing" };
+    return { label: t("cta.seller.home.startPreparing"), toStatus: "preparing" };
   }
   if (normalized === "preparing") {
-    return { label: "Hazırlandı", toStatus: "ready" };
+    return { label: t("cta.seller.home.markReady"), toStatus: "ready" };
   }
   // Pickup: seller owns seller flow and can update in parallel with buyer flow.
   if (pickup) {
-    if (normalized === "ready") return { label: "Yoldayım", toStatus: "in_delivery" };
-    if (normalized === "in_delivery") return { label: "Yaklaştım", toStatus: "approaching" };
-    if (normalized === "approaching") return { label: "Kapıdayım", toStatus: "at_door" };
-    if (normalized === "at_door") return { label: "Teslim Edildi", toStatus: "completed" };
+    if (normalized === "ready") return { label: t("cta.seller.home.onTheWay"), toStatus: "in_delivery" };
+    if (normalized === "in_delivery") return { label: t("cta.seller.home.approaching"), toStatus: "approaching" };
+    if (normalized === "approaching") return { label: t("cta.seller.home.atDoor"), toStatus: "at_door" };
+    if (normalized === "at_door") return { label: t("status.common.badge.delivered"), toStatus: "completed" };
     return null;
   }
   // Delivery flow
   if (normalized === "ready") {
-    return { label: "Yola Çıktı", toStatus: "in_delivery" };
+    return { label: t("cta.seller.home.leftForDelivery"), toStatus: "in_delivery" };
   }
-  if (normalized === "in_delivery") return { label: "Yaklaştı", toStatus: "approaching" };
-  if (normalized === "approaching") return { label: "Kapıda", toStatus: "at_door" };
-  if (normalized === "at_door") return { label: "Teslim Edildi", toStatus: "delivered" };
+  if (normalized === "in_delivery") return { label: t("status.common.badge.approaching"), toStatus: "approaching" };
+  if (normalized === "approaching") return { label: t("status.common.badge.atDoor"), toStatus: "at_door" };
+  if (normalized === "at_door") return { label: t("status.common.badge.delivered"), toStatus: "delivered" };
   return null;
 }
 
@@ -232,10 +246,10 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       setApiUrl(baseUrl);
       const res = await authedFetch(`/v1/orders/${orderId}`, undefined, baseUrl);
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error?.message ?? "Sipariş detay yüklenemedi");
-      setOrder(json?.data ?? null);
+      if (!res.ok) throw new Error(json?.error?.message ?? t("error.seller.orderDetail.load"));
+      setOrder(normalizeOrderDetail(json?.data, orderId));
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Sipariş detay yüklenemedi");
+      Alert.alert(t("headline.common.error"), e instanceof Error ? e.message : t("error.seller.orderDetail.load"));
     } finally {
       setLoading(false);
     }
@@ -249,7 +263,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     try {
       const res = await authedFetch(`/v1/orders/${orderId}`);
       const json = await res.json();
-      if (res.ok) setOrder(json?.data ?? null);
+      if (res.ok) setOrder(normalizeOrderDetail(json?.data, orderId));
     } catch {
       // silent refresh — don't alert
     }
@@ -263,7 +277,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     if (!order) return;
     const terminal = ["completed", "cancelled", "rejected"].includes(order.status);
     if (terminal) return;
-    statusPollRef.current = setInterval(() => { void refreshOrderStatus(); }, 8_000);
+    statusPollRef.current = setInterval(() => { void refreshOrderStatus(); }, 20_000);
     return () => {
       if (statusPollRef.current) {
         clearInterval(statusPollRef.current);
@@ -363,6 +377,11 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     }
     return normalized;
   }, [order]);
+  const orderLabel = useMemo(() => {
+    if (!order) return "";
+    const fallbackId = String(order.id || orderId).trim();
+    return order.orderNo?.trim() || (fallbackId ? `#${fallbackId.slice(0, 8).toUpperCase()}` : "-");
+  }, [order, orderId]);
   const buyerRequestedDelivery = useMemo(
     () => Boolean(
       order &&
@@ -398,18 +417,18 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
         body: JSON.stringify(body),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error?.message ?? "Karar kaydedilemedi");
+      if (!res.ok) throw new Error(json?.error?.message ?? t("error.seller.orderDetail.decisionSave"));
       await loadOrder();
       Alert.alert(
-        "Tamam",
+        t("headline.common.success"),
         decision === "approve"
-          ? "Sipariş onaylandı, ödeme otomatik alındı."
+          ? t("status.seller.orderDetail.decisionApproved")
           : decision === "revise"
-            ? "Sipariş planı güncellendi."
-            : "Sipariş iptal edildi.",
+            ? t("status.seller.orderDetail.decisionRevised")
+            : t("status.seller.orderDetail.decisionRejected"),
       );
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Karar kaydedilemedi");
+      Alert.alert(t("headline.common.error"), e instanceof Error ? e.message : t("error.seller.orderDetail.decisionSave"));
     } finally {
       setUpdating(false);
     }
@@ -425,7 +444,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           body: JSON.stringify({ toStatus }),
         });
         const json = await res.json();
-        if (!res.ok) throw new Error(json?.error?.message ?? "Durum güncellenemedi");
+        if (!res.ok) throw new Error(json?.error?.message ?? t("error.seller.orderDetail.statusUpdate"));
       };
       const verifyPin = async (pin: string) => {
         const res = await authedFetch(`/v1/orders/${order.id}/delivery-proof/pin/verify`, {
@@ -433,13 +452,13 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           body: JSON.stringify({ pin }),
         });
         const json = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(json?.error?.message ?? "PIN doğrulanamadı");
+        if (!res.ok) throw new Error(json?.error?.message ?? t("error.seller.orderDetail.pinVerify"));
       };
 
       try {
         if (shouldCheckPinBeforeComplete) {
           const pin = pinCode.trim();
-          if (!/^\d{4,8}$/.test(pin)) throw new Error("4-8 haneli kod gir.");
+          if (!/^\d{4,8}$/.test(pin)) throw new Error(t("error.seller.orderDetail.pinInvalid"));
           await verifyPin(pin);
           if (order.deliveryType === "delivery") {
             await changeStatus("delivered");
@@ -452,17 +471,17 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
         const message = error instanceof Error ? error.message : "";
         if (message.includes("Cannot transition")) {
           await loadOrder();
-          throw new Error("Durum güncellendi, sıradaki adımı tekrar onayla.");
+          throw new Error(t("error.seller.orderDetail.nextStepChanged"));
         }
         if (message.includes("PIN")) {
-          throw new Error("Kod doğrulanamadı. Kodu kontrol et.");
+          throw new Error(t("error.seller.orderDetail.pinCheck"));
         }
         throw error;
       }
       await loadOrder();
       return true;
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Durum güncellenemedi");
+      Alert.alert(t("headline.common.error"), e instanceof Error ? e.message : t("error.seller.orderDetail.statusUpdate"));
       return false;
     } finally {
       setUpdating(false);
@@ -479,7 +498,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Sipariş Detayı" onBack={onBack} />
+      <ScreenHeader title={t("headline.seller.orderDetail.title")} onBack={onBack} />
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={[
@@ -495,39 +514,41 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       {loading || !order ? (
         <ActivityIndicator size="large" color={theme.primary} />
       ) : (
-        <>
-          <View style={styles.card}>
+          <>
+            <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.orderNo}>{order.orderNo || "#" + order.id.slice(0, 8).toUpperCase()}</Text>
+              <Text style={styles.orderNo}>{orderLabel}</Text>
               <StatusBadge
                 status={sellerStatusBadgeKey}
                 size="sm"
                 deliveryType={order.deliveryType === "pickup" ? undefined : order.deliveryType}
               />
             </View>
-            <Text style={styles.meta}>Alıcı: {order.buyerName || "-"}</Text>
-            <Text style={styles.meta}>Sipariş Türü: {order.deliveryType === "delivery" ? "Teslimat" : "Gel Al"}</Text>
+            <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.buyer", { name: order.buyerName || "-" })}</Text>
+            <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.type", {
+              type: order.deliveryType === "delivery" ? t("cta.seller.orderDetail.delivery") : t("cta.seller.orderDetail.pickup"),
+            })}</Text>
             {buyerRequestedDelivery ? (
               <View style={styles.deliveryRequestBanner}>
                 <Text style={styles.deliveryRequestTitle}>{t('helper.seller.orderDetail.deliveryRequestTitle')}</Text>
                 <Text style={styles.deliveryRequestText}>{t('helper.seller.orderDetail.deliveryRequestBody')}</Text>
               </View>
             ) : null}
-            {order.createdAt ? <Text style={styles.meta}>Tarih: {formatOrderDate(order.createdAt)}</Text> : null}
+            {order.createdAt ? <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.date", { date: formatOrderDate(order.createdAt) })}</Text> : null}
             {order.deliveryType === "delivery" ? (
-              <Text style={styles.meta}>Teslimat Ücreti: {deliveryFee.toFixed(2)} TL</Text>
+              <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.deliveryFee", { amount: deliveryFee.toFixed(2) })}</Text>
             ) : null}
           </View>
           {order.deliveryType === "delivery" ? (
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Teslimat Adresi</Text>
+              <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.address")}</Text>
               <TouchableOpacity
                 activeOpacity={mapAddressText ? 0.78 : 1}
                 disabled={!mapAddressText}
                 onPress={() => {
                   if (!mapAddressText) return;
                   openAddressInMapsWithCoordinates(mapAddressText, mapCoordinates).catch((error) => {
-                    Alert.alert("Hata", error instanceof Error ? error.message : "Harita açılamadı");
+                    Alert.alert(t("headline.common.error"), error instanceof Error ? error.message : t("error.common.mapOpenFailed"));
                   });
                 }}
               >
@@ -538,14 +559,14 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           ) : null}
           {isDecisionStage ? (
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Sipariş Kararı</Text>
+              <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.decision")}</Text>
               <Text style={styles.meta}>
                 {buyerRequestedDelivery
                   ? t('helper.seller.orderDetail.deliveryRequestBody')
-                  : "Bu sipariş varsayılan olarak Gel Al başladı. İstersen teslimata çevirip şartlarını belirleyebilirsin."}
+                  : t("helper.seller.orderDetail.defaultDecisionBody")}
               </Text>
 
-              <Text style={styles.inlineFieldLabel}>Teslimat tipi</Text>
+              <Text style={styles.inlineFieldLabel}>{t("label.seller.orderDetail.deliveryType")}</Text>
               <View style={styles.choiceRow}>
                 <TouchableOpacity
                   style={[styles.choiceChip, decisionDeliveryType === "pickup" && styles.choiceChipActive]}
@@ -553,7 +574,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                   onPress={() => setDecisionDeliveryType("pickup")}
                 >
                   <Text style={[styles.choiceChipText, decisionDeliveryType === "pickup" && styles.choiceChipTextActive]}>
-                    {buyerRequestedDelivery ? t('cta.seller.orderDetail.keepPickup') : "Gel Al"}
+                    {buyerRequestedDelivery ? t('cta.seller.orderDetail.keepPickup') : t("cta.seller.orderDetail.pickup")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -562,42 +583,44 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                   onPress={() => setDecisionDeliveryType("delivery")}
                 >
                   <Text style={[styles.choiceChipText, decisionDeliveryType === "delivery" && styles.choiceChipTextActive]}>
-                    {buyerRequestedDelivery ? t('cta.seller.orderDetail.canDeliver') : "Teslimat"}
+                    {buyerRequestedDelivery ? t('cta.seller.orderDetail.canDeliver') : t("cta.seller.orderDetail.delivery")}
                   </Text>
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.inlineFieldLabel}>
-                {decisionDeliveryType === "delivery" ? "Tahmini varış (dk)" : "Hazır olma süresi (dk)"}
+                {decisionDeliveryType === "delivery" ? t("label.seller.orderDetail.etaDelivery") : t("label.seller.orderDetail.etaPickup")}
               </Text>
               <TextInput
                 style={styles.pinInput}
                 value={decisionEtaMinutes}
                 onChangeText={(value) => setDecisionEtaMinutes(value.replace(/[^0-9]/g, "").slice(0, 4))}
                 keyboardType="number-pad"
-                placeholder="Örn: 30"
+                placeholder={t("helper.seller.orderDetail.etaPlaceholder")}
                 placeholderTextColor="#9C8E81"
               />
 
               <Text style={styles.inlineFieldLabel}>
-                {decisionDeliveryType === "delivery" ? "Sipariş notu" : "Gel al notu"}
+                {decisionDeliveryType === "delivery" ? t("label.seller.orderDetail.noteDelivery") : t("label.seller.orderDetail.notePickup")}
               </Text>
               <TextInput
                 style={[styles.pinInput, styles.noteInput]}
                 value={decisionNote}
                 onChangeText={setDecisionNote}
                 multiline
-                placeholder={decisionDeliveryType === "delivery" ? "Örn: Apartman kapısında teslim ederim." : "Örn: 30 dakikaya hazır olur."}
+                placeholder={decisionDeliveryType === "delivery"
+                  ? t("helper.seller.orderDetail.noteDeliveryPlaceholder")
+                  : t("helper.seller.orderDetail.notePickupPlaceholder")}
                 placeholderTextColor="#9C8E81"
               />
 
-              <Text style={styles.inlineFieldLabel}>İptal sebebi</Text>
+              <Text style={styles.inlineFieldLabel}>{t("label.seller.orderDetail.cancelReason")}</Text>
               <TextInput
                 style={[styles.pinInput, styles.noteInput]}
                 value={decisionReason}
                 onChangeText={setDecisionReason}
                 multiline
-                placeholder="İptal edeceksen sebebi yaz."
+                placeholder={t("helper.seller.orderDetail.cancelReasonPlaceholder")}
                 placeholderTextColor="#9C8E81"
               />
 
@@ -607,20 +630,20 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                   disabled={updating}
                   onPress={() => { void submitSellerDecision("revise"); }}
                 >
-                  <Text style={styles.secondaryActionText}>Revize Et</Text>
+                  <Text style={styles.secondaryActionText}>{t("cta.seller.orderDetail.revise")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.rejectActionBtn, updating && styles.actionDisabled]}
                   disabled={updating}
                   onPress={() => { void submitSellerDecision("reject"); }}
                 >
-                  <Text style={styles.rejectActionText}>İptal Et</Text>
+                  <Text style={styles.rejectActionText}>{t("cta.seller.orderDetail.reject")}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : null}
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Ürünler</Text>
+            <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.products")}</Text>
             {(order.items ?? []).map((item, index) => (
               <View key={`${item.id || item.name}-${index}`} style={styles.itemRowWrap}>
                 {(() => {
@@ -633,7 +656,9 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 })()}
                 {(item.selectedAddons?.free?.length ?? 0) > 0 ? (
                   <Text style={styles.addonMeta}>
-                    Ücretsiz: {(item.selectedAddons?.free ?? []).map((addon) => addon.name).join(", ")}
+                    {formatCopy("status.seller.orderDetail.freeAddons", {
+                      addons: (item.selectedAddons?.free ?? []).map((addon) => addon.name).join(", "),
+                    })}
                   </Text>
                 ) : null}
                 {(item.selectedAddons?.paid?.length ?? 0) > 0
@@ -650,25 +675,27 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               </View>
             ))}
             <View style={styles.productsTotalRow}>
-              <Text style={styles.productsTotalLabel}>Toplam</Text>
+              <Text style={styles.productsTotalLabel}>{t("status.seller.orderDetail.total")}</Text>
               <Text style={styles.productsTotalValue}>{Number(order.totalPrice ?? 0).toFixed(2)} TL</Text>
             </View>
           </View>
           {(order.sellerPromisedAt || order.sellerDeliveryNote || order.sellerDeliveryTermsSnapshot) ? (
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Aktif Plan</Text>
-              <Text style={styles.meta}>Tip: {order.activeDeliveryType === "delivery" ? "Teslimat" : "Gel Al"}</Text>
-              {order.sellerPromisedAt ? <Text style={styles.meta}>Hedef zaman: {formatOrderDate(order.sellerPromisedAt)}</Text> : null}
-              {order.sellerDeliveryNote ? <Text style={styles.meta}>Sipariş notu: {order.sellerDeliveryNote}</Text> : null}
-              {order.sellerDeliveryTermsSnapshot ? <Text style={styles.meta}>Genel koşul: {order.sellerDeliveryTermsSnapshot}</Text> : null}
+              <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.activePlan")}</Text>
+              <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.planType", {
+                type: order.activeDeliveryType === "delivery" ? t("cta.seller.orderDetail.delivery") : t("cta.seller.orderDetail.pickup"),
+              })}</Text>
+              {order.sellerPromisedAt ? <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.targetTime", { date: formatOrderDate(order.sellerPromisedAt) })}</Text> : null}
+              {order.sellerDeliveryNote ? <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.orderNote", { note: order.sellerDeliveryNote })}</Text> : null}
+              {order.sellerDeliveryTermsSnapshot ? <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.generalTerms", { terms: order.sellerDeliveryTermsSnapshot })}</Text> : null}
             </View>
           ) : null}
 
           {action ? (
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Aksiyonlar</Text>
+              <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.actions")}</Text>
               {shouldCheckPinBeforeComplete ? (
-                <Text style={styles.meta}>Alıcıdan kodu alıp doğrula.</Text>
+                <Text style={styles.meta}>{t("helper.seller.orderDetail.verifyBuyerPin")}</Text>
               ) : null}
             </View>
           ) : null}
@@ -685,12 +712,12 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           >
             <Text style={styles.actionText}>
               {updating
-                ? "İşleniyor..."
+                ? t("status.seller.orderDetail.processing")
                 : buyerRequestedDelivery
                   ? (decisionDeliveryType === "delivery"
                     ? t('cta.seller.orderDetail.approveDelivery')
                     : t('cta.seller.orderDetail.approvePickup'))
-                  : "Onayla ve Ödemeyi Al"}
+                  : t("cta.seller.orderDetail.approveAndCapture")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -712,7 +739,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
             }}
           >
             <Text style={styles.actionText}>
-              {shouldCheckPinBeforeComplete ? "Kodu Doğrula" : action.label}
+              {shouldCheckPinBeforeComplete ? t("cta.seller.orderDetail.verifyCode") : action.label}
             </Text>
           </TouchableOpacity>
         </View>
@@ -725,15 +752,15 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
         >
           <TouchableOpacity style={styles.pinModalBackdrop} activeOpacity={1} onPress={() => setPinModalVisible(false)} />
           <View style={styles.pinModalCard}>
-            <Text style={styles.pinModalTitle}>Kodu Doğrula</Text>
-            <Text style={styles.pinModalSub}>Alıcıdan aldığın kodu gir.</Text>
+            <Text style={styles.pinModalTitle}>{t("headline.seller.orderDetail.pinModalTitle")}</Text>
+            <Text style={styles.pinModalSub}>{t("helper.seller.orderDetail.pinModalSubtitle")}</Text>
             <TextInput
               style={styles.pinInput}
               value={pinCode}
               onChangeText={(value) => setPinCode(value.replace(/[^0-9]/g, "").slice(0, 8))}
               keyboardType="number-pad"
               maxLength={8}
-              placeholder="Kodu gir (4-8 hane)"
+              placeholder={t("helper.seller.orderDetail.pinPlaceholder")}
               placeholderTextColor="#9C8E81"
               editable={!updating}
               autoFocus
@@ -744,7 +771,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 onPress={() => setPinModalVisible(false)}
                 disabled={updating}
               >
-                <Text style={styles.pinModalCancelText}>Vazgeç</Text>
+                <Text style={styles.pinModalCancelText}>{t("cta.common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -757,7 +784,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 }}
                 disabled={updating || !isPinReady}
               >
-                <Text style={styles.pinModalConfirmText}>{updating ? "Doğrulanıyor..." : "Doğrula"}</Text>
+                <Text style={styles.pinModalConfirmText}>{updating ? t("status.seller.orderDetail.verifying") : t("cta.seller.orderDetail.confirmVerify")}</Text>
               </TouchableOpacity>
             </View>
           </View>

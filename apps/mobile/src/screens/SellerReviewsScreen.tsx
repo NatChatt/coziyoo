@@ -8,6 +8,7 @@ import { loadSettings } from "../utils/settings";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import { t } from "../copy/brandCopy";
+import { getCurrentLanguage } from "../utils/settings";
 
 type Props = {
   auth: AuthSession;
@@ -34,10 +35,11 @@ function formatDate(value: string | undefined): string {
   const normalized = value.trim().replace(" ", "T").replace(/(\.\d+)?([+-]\d{2})$/, "$1$2:00");
   const d = new Date(normalized);
   if (Number.isNaN(d.getTime())) return "-";
-  const day = d.getDate().toString().padStart(2, "0");
-  const month = (d.getMonth() + 1).toString().padStart(2, "0");
-  const year = d.getFullYear();
-  return `${day}.${month}.${year}`;
+  return new Intl.DateTimeFormat(getCurrentLanguage() === "en" ? "en-GB" : "tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(d);
 }
 
 function StarRow({ rating }: { rating: number }) {
@@ -119,7 +121,7 @@ export default function SellerReviewsScreen({ auth, onBack, onAuthRefresh }: Pro
           rating: Number(row.rating ?? 0),
           comment: String(row.comment ?? ""),
           foodName: row.foodName ? String(row.foodName) : null,
-          buyerName: String(row.buyerName ?? "Anonim Kullanıcı"),
+          buyerName: String(row.buyerName ?? t('status.seller.reviews.anonymousBuyer')),
           createdAt: String(row.createdAt ?? ""),
         })),
       );
@@ -153,19 +155,19 @@ export default function SellerReviewsScreen({ auth, onBack, onAuthRefresh }: Pro
             <View style={styles.headerBlock}>
               <View style={styles.summaryRow}>
                 <View style={styles.summaryCard}>
-                  <Text style={styles.summaryLabel}>Ortalama Puan</Text>
+                  <Text style={styles.summaryLabel}>{t('headline.seller.reviews.average')}</Text>
                   <Text style={styles.summaryValue}>{summary.averageRating.toFixed(1)}</Text>
                 </View>
                 <View style={styles.summaryCard}>
-                  <Text style={styles.summaryLabel}>Toplam Yorum</Text>
+                  <Text style={styles.summaryLabel}>{t('headline.seller.reviews.total')}</Text>
                   <Text style={styles.summaryValue}>{summary.totalReviews}</Text>
                 </View>
               </View>
               {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
               {summary.totalReviews === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyTitle}>Henüz yorum yok</Text>
-                  <Text style={styles.emptySub}>İlk yorum geldiğinde burada göreceksin.</Text>
+                  <Text style={styles.emptyTitle}>{t('headline.seller.reviews.emptyTitle')}</Text>
+                  <Text style={styles.emptySub}>{t('helper.seller.reviews.emptySubtitle')}</Text>
                 </View>
               ) : null}
             </View>
@@ -175,7 +177,7 @@ export default function SellerReviewsScreen({ auth, onBack, onAuthRefresh }: Pro
               <View style={styles.reviewTop}>
                 <View style={styles.reviewMeta}>
                   <Text style={styles.buyerName}>{item.buyerName}</Text>
-                  <Text style={styles.foodName}>{item.foodName || "Yemek bilgisi yok"}</Text>
+                  <Text style={styles.foodName}>{item.foodName || t('helper.seller.reviews.foodMissing')}</Text>
                 </View>
                 <Text style={styles.reviewDate}>{formatDate(item.createdAt)}</Text>
               </View>
@@ -183,7 +185,7 @@ export default function SellerReviewsScreen({ auth, onBack, onAuthRefresh }: Pro
               {item.comment?.trim() ? (
                 <Text style={styles.comment}>{item.comment.trim()}</Text>
               ) : (
-                <Text style={styles.commentMuted}>Yorum bırakılmadı.</Text>
+                <Text style={styles.commentMuted}>{t('helper.seller.reviews.commentMissing')}</Text>
               )}
             </View>
           )}

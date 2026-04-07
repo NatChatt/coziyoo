@@ -6,6 +6,7 @@ import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
+import { formatCopy, t } from "../copy/brandCopy";
 
 type Props = {
   auth: AuthSession;
@@ -78,14 +79,14 @@ export default function SellerLotsScreen({ auth, onBack, onAuthRefresh }: Props)
       ]);
       const foodsJson = await foodsRes.json();
       const lotsJson = await lotsRes.json();
-      if (!foodsRes.ok) throw new Error(foodsJson?.error?.message ?? "Yemekler yüklenemedi");
-      if (!lotsRes.ok) throw new Error(lotsJson?.error?.message ?? "Lotlar yüklenemedi");
+      if (!foodsRes.ok) throw new Error(foodsJson?.error?.message ?? t('error.seller.lots.foodsLoad'));
+      if (!lotsRes.ok) throw new Error(lotsJson?.error?.message ?? t('error.seller.lots.load'));
       const rows = Array.isArray(foodsJson?.data) ? foodsJson.data : [];
       setFoods(rows.map((row: any) => ({ id: row.id, name: row.name })));
       setLots(Array.isArray(lotsJson?.data) ? lotsJson.data : []);
       if (!selectedFoodId && rows[0]?.id) setSelectedFoodId(rows[0].id);
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Lotlar yüklenemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.lots.load'));
     } finally {
       setLoading(false);
     }
@@ -103,12 +104,12 @@ export default function SellerLotsScreen({ auth, onBack, onAuthRefresh }: Props)
 
   async function createLot() {
     if (!selectedFoodId) {
-      Alert.alert("Hata", "Önce yemek seç.");
+      Alert.alert(t('headline.common.error'), t('error.seller.lots.selectFood'));
       return;
     }
     const qty = Number(quantity);
     if (!Number.isFinite(qty) || qty <= 0) {
-      Alert.alert("Hata", "Geçerli adet gir.");
+      Alert.alert(t('headline.common.error'), t('error.seller.lots.validQuantity'));
       return;
     }
     const now = new Date();
@@ -123,15 +124,15 @@ export default function SellerLotsScreen({ auth, onBack, onAuthRefresh }: Props)
           saleEndsAt: end.toISOString(),
           quantityProduced: qty,
           quantityAvailable: qty,
-          notes: "Mobil hızlı lot",
+          notes: t('helper.seller.lots.note'),
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error?.message ?? "Lot açılamadı");
+      if (!res.ok) throw new Error(json?.error?.message ?? t('error.seller.lots.open'));
       setModalVisible(false);
       await loadData();
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Lot açılamadı");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.lots.open'));
     }
   }
 
@@ -142,21 +143,21 @@ export default function SellerLotsScreen({ auth, onBack, onAuthRefresh }: Props)
         body: JSON.stringify({ reason: "Mobil panel recall" }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error?.message ?? "Recall yapılamadı");
+      if (!res.ok) throw new Error(json?.error?.message ?? t('error.seller.lots.recall'));
       await loadData();
     } catch (e) {
-      Alert.alert("Hata", e instanceof Error ? e.message : "Recall yapılamadı");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.lots.recall'));
     }
   }
 
   return (
     <View style={styles.container}>
       <ScreenHeader
-        title="Lot / Stok"
+        title={t('headline.seller.lots.title')}
         onBack={onBack}
         rightAction={
           <TouchableOpacity onPress={() => setModalVisible(true)}>
-            <Text style={styles.add}>+ Lot</Text>
+            <Text style={styles.add}>{t('cta.seller.lots.add')}</Text>
           </TouchableOpacity>
         }
       />
@@ -170,11 +171,11 @@ export default function SellerLotsScreen({ auth, onBack, onAuthRefresh }: Props)
           renderItem={({ item }) => (
             <View style={styles.card}>
               <Text style={styles.lotTitle}>{foodNameById.get(item.food_id) ?? item.food_id}</Text>
-              <Text style={styles.meta}>Lot: {item.lot_number}</Text>
-              <Text style={styles.meta}>Stok: {item.quantity_available}/{item.quantity_produced}</Text>
-              <Text style={styles.meta}>Durum: {item.lifecycle_status}</Text>
+              <Text style={styles.meta}>{formatCopy('status.seller.lots.lotNo', { value: item.lot_number })}</Text>
+              <Text style={styles.meta}>{formatCopy('status.seller.lots.stock', { available: item.quantity_available, produced: item.quantity_produced })}</Text>
+              <Text style={styles.meta}>{formatCopy('status.seller.lots.status', { status: item.lifecycle_status })}</Text>
               <TouchableOpacity style={styles.recallBtn} onPress={() => void recallLot(item.id)}>
-                <Text style={styles.recallText}>Recall</Text>
+                <Text style={styles.recallText}>{t('cta.seller.lots.recall')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -183,8 +184,8 @@ export default function SellerLotsScreen({ auth, onBack, onAuthRefresh }: Props)
 
       <Modal visible={modalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modal}>
-          <Text style={styles.modalTitle}>Hızlı Lot Aç</Text>
-          <Text style={styles.label}>Yemek</Text>
+          <Text style={styles.modalTitle}>{t('headline.seller.lots.quickCreate')}</Text>
+          <Text style={styles.label}>{t('helper.seller.lots.food')}</Text>
           {foods.map((food) => (
             <TouchableOpacity
               key={food.id}
@@ -194,10 +195,10 @@ export default function SellerLotsScreen({ auth, onBack, onAuthRefresh }: Props)
               <Text>{food.name}</Text>
             </TouchableOpacity>
           ))}
-          <Text style={styles.label}>Üretim adedi</Text>
+          <Text style={styles.label}>{t('helper.seller.lots.quantity')}</Text>
           <TextInput style={styles.input} value={quantity} onChangeText={setQuantity} keyboardType="number-pad" />
-          <TouchableOpacity style={styles.saveBtn} onPress={() => void createLot()}><Text style={styles.saveText}>Lot Aç</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}><Text>Vazgeç</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.saveBtn} onPress={() => void createLot()}><Text style={styles.saveText}>{t('cta.seller.lots.open')}</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}><Text>{t('cta.common.cancel')}</Text></TouchableOpacity>
         </View>
       </Modal>
     </View>

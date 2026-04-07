@@ -44,7 +44,7 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
   const [deliveryRadiusKm, setDeliveryRadiusKm] = useState("3");
   const [deliveryEnabled, setDeliveryEnabled] = useState(false);
   const [deliveryTerms, setDeliveryTerms] = useState("");
-  const [workingHoursText, setWorkingHoursText] = useState("Pzt-Cuma 10:00-20:00");
+  const [workingHoursText, setWorkingHoursText] = useState(() => t('status.seller.profile.workingHoursDefault'));
   const [editingDeliveryRadius, setEditingDeliveryRadius] = useState(false);
   const [editingWorkingHours, setEditingWorkingHours] = useState(false);
 
@@ -69,7 +69,7 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
     const apiMessage = payload.json?.error?.message?.trim();
     if (apiMessage) return apiMessage;
     const raw = payload.rawText.trim();
-    if (raw.startsWith("<")) return `${fallback} (Sunucu JSON yerine HTML döndü, HTTP ${res.status})`;
+    if (raw.startsWith("<")) return `${t('error.seller.profile.serverHtml')} (HTTP ${res.status})`;
     if (raw) return `${fallback}: ${raw.slice(0, 180)}`;
     return `${fallback} (${res.status})`;
   }
@@ -143,13 +143,16 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
     const parts = value.split(",").map((x) => x.trim()).filter(Boolean);
     const parsed = parts
       .map((part) => {
-        const [day, range] = part.split(" ");
-        if (!day || !range || !range.includes("-")) return null;
+        const match = part.match(/^(.*)\s+(\d{2}:\d{2}-\d{2}:\d{2})$/);
+        if (!match) return null;
+        const [, day, range] = match;
         const [open, close] = range.split("-");
+        if (!day?.trim() || !open || !close) return null;
         return { day, open, close, enabled: true };
       })
       .filter((x): x is { day: string; open: string; close: string; enabled: boolean } => Boolean(x));
-    return parsed.length > 0 ? parsed : [{ day: "Her gün", open: "09:00", close: "20:00", enabled: true }];
+    if (parsed.length > 0) return parsed;
+    return [{ day: t('status.seller.profile.workingHoursDefault').replace(/\s+\d{2}:\d{2}-\d{2}:\d{2}$/, ""), open: "09:00", close: "20:00", enabled: true }];
   }
 
   async function saveProfile(submitForReview = false) {
@@ -275,7 +278,7 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
                 style={styles.input}
                 value={workingHoursText}
                 onChangeText={setWorkingHoursText}
-                placeholder="Pzt 10:00-19:00, Salı 10:00-19:00"
+                placeholder={t('helper.seller.profile.workingHoursPlaceholder')}
               />
             ) : null}
           </View>

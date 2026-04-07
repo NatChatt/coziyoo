@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ActionButton from './ActionButton';
 import { theme } from '../theme/colors';
+import { t } from '../copy/brandCopy';
 
 type Props = {
   message: string;
@@ -18,7 +19,7 @@ export default function ErrorState({ message, onRetry }: Props) {
       <Text style={styles.message}>{message}</Text>
       {onRetry ? (
         <View style={styles.actionWrap}>
-          <ActionButton label="Tekrar dene" onPress={onRetry} variant="soft" />
+          <ActionButton label={t('cta.common.retry')} onPress={onRetry} variant="soft" />
         </View>
       ) : null}
     </View>

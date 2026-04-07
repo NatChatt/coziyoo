@@ -23,6 +23,7 @@ type SellerFood = {
   price: number;
   isActive: boolean;
   stock?: number;
+  hasAnyLot?: boolean;
   [key: string]: unknown;
 };
 
@@ -99,6 +100,7 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
         price: Number(item.price ?? 0),
         isActive: toBool(item.isActive ?? item.is_active),
         stock: Number(item.stock ?? 0),
+        hasAnyLot: Boolean(item.hasAnyLot ?? item.has_any_lot),
       })) : [];
       console.info("[seller-foods-manager] foods loaded", {
         count: list.length,
@@ -158,7 +160,11 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
             <Text style={styles.summary}>{item.cardSummary || t('helper.seller.foodsManager.summaryMissing')}</Text>
             <View style={styles.rowBottom}>
               <Text style={styles.price}>{item.price.toFixed(2)} TL</Text>
-              <Text style={styles.stock}>{formatCopy('status.seller.foodsManager.stock', { stock: item.stock ?? 0 })}</Text>
+              <Text style={styles.stock}>
+                {item.hasAnyLot
+                  ? formatCopy('status.seller.foodsManager.stock', { stock: item.stock ?? 0 })
+                  : t('status.seller.foodsManager.stockLotMissing')}
+              </Text>
             </View>
             <Text style={styles.editHint}>{t('cta.seller.foodsManager.editFood')}</Text>
           </TouchableOpacity>

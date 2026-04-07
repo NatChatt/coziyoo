@@ -18,7 +18,7 @@ import { theme } from '../theme/colors';
 import { loadSettings } from '../utils/settings';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { readJsonSafe } from '../utils/http';
-import { t } from '../copy/brandCopy';
+import { formatCopy, t } from '../copy/brandCopy';
 
 type Address = {
   id: string;
@@ -96,7 +96,7 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
       const res = await authedFetch(`${apiUrl}/v1/auth/me/addresses`);
       const json = await readJsonSafe<{ data?: Address[]; error?: { message?: string } }>(res);
       if (!res.ok || json.error) {
-        throw new Error(json.error?.message ?? `Hata (${res.status})`);
+        throw new Error(json.error?.message ?? formatCopy('error.common.statusCode', { status: res.status }));
       }
       setAddresses(Array.isArray(json.data) ? json.data : []);
     } catch (e) {
@@ -131,12 +131,12 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
     }
     const trimmedAddress = formAddress.trim();
     if (!trimmedAddress || trimmedAddress.length < 10) {
-      setFormError('Adres en az 10 karakter olmalı');
+      setFormError(t('error.address.addressTooShortDetailed'));
       return;
     }
     const words = trimmedAddress.split(/\s+/).filter((w: string) => w.length > 0);
     if (words.length < 2) {
-      setFormError('Geçerli bir adres girin (mahalle, sokak, bina no gibi)');
+      setFormError(t('error.address.addressFormat'));
       return;
     }
 
@@ -165,7 +165,7 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
 
       const json = await readJsonSafe<{ error?: { message?: string } }>(res);
       if (!res.ok || json.error) {
-        throw new Error(json.error?.message ?? `Hata (${res.status})`);
+        throw new Error(json.error?.message ?? formatCopy('error.common.statusCode', { status: res.status }));
       }
 
       setFormVisible(false);
@@ -198,7 +198,7 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
               }
               await fetchAddresses();
             } catch (e) {
-              Alert.alert('Hata', e instanceof Error ? e.message : t('error.address.delete'));
+              Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.address.delete'));
             }
           },
         },
@@ -220,7 +220,7 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
       }
       await fetchAddresses();
     } catch (e) {
-      Alert.alert('Hata', e instanceof Error ? e.message : t('error.address.default'));
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.address.default'));
     }
   }
 

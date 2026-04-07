@@ -7,7 +7,8 @@ import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
-import { t } from "../copy/brandCopy";
+import { formatCopy, t } from "../copy/brandCopy";
+import { getCurrentLanguage } from "../utils/settings";
 
 type Props = {
   auth: AuthSession;
@@ -100,7 +101,7 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(t('headline.common.permission'), "Belge yüklemek için galeri izni gerekli.");
+        Alert.alert(t('headline.common.permission'), t('error.seller.compliance.galleryPermission'));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -113,7 +114,7 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
       const asset = result.assets[0];
       const dataBase64 = asset.base64;
       if (!dataBase64) {
-        Alert.alert(t('headline.common.error'), "Belge verisi okunamadı.");
+        Alert.alert(t('headline.common.error'), t('error.seller.compliance.assetMissing'));
         return;
       }
 
@@ -128,12 +129,12 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
       });
       const json = (await res.json()) as CompliancePayload;
       if (!res.ok) {
-        throw new Error(json.error?.message ?? "Belge yüklenemedi");
+        throw new Error(json.error?.message ?? t('error.seller.compliance.upload'));
       }
       await loadData();
-      Alert.alert(t('headline.common.success'), "Belge yüklendi.");
+      Alert.alert(t('headline.common.success'), t('status.seller.compliance.uploadedSuccess'));
     } catch (e) {
-      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : "Belge yüklenemedi");
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.compliance.upload'));
     } finally {
       setUploadingDocCode(null);
     }
@@ -148,20 +149,22 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
         ) : (
           <>
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Profil Durumu: {payload.profile?.status ?? "-"}</Text>
-              <Text style={styles.meta}>Zorunlu: {payload.profile?.required_count ?? 0}</Text>
-              <Text style={styles.meta}>Onaylı: {payload.profile?.approved_required_count ?? 0}</Text>
-              <Text style={styles.meta}>Yüklü: {payload.profile?.uploaded_required_count ?? 0}</Text>
-              <Text style={styles.meta}>İstenen: {payload.profile?.requested_required_count ?? 0}</Text>
-              <Text style={styles.meta}>Reddedilen: {payload.profile?.rejected_required_count ?? 0}</Text>
+              <Text style={styles.cardTitle}>{t('headline.seller.compliance.profileStatus')}</Text>
+              <Text style={styles.meta}>{formatCopy('status.seller.compliance.state', { status: payload.profile?.status ?? '-' })}</Text>
+              <Text style={styles.meta}>{formatCopy('status.seller.compliance.required', { count: payload.profile?.required_count ?? 0 })}</Text>
+              <Text style={styles.meta}>{formatCopy('status.seller.compliance.approved', { count: payload.profile?.approved_required_count ?? 0 })}</Text>
+              <Text style={styles.meta}>{formatCopy('status.seller.compliance.uploaded', { count: payload.profile?.uploaded_required_count ?? 0 })}</Text>
+              <Text style={styles.meta}>{formatCopy('status.seller.compliance.requested', { count: payload.profile?.requested_required_count ?? 0 })}</Text>
+              <Text style={styles.meta}>{formatCopy('status.seller.compliance.rejected', { count: payload.profile?.rejected_required_count ?? 0 })}</Text>
             </View>
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Zorunlu Belgeler</Text>
-              <Text style={styles.progressText}>
-                Tamamlandı: {payload.profile?.uploaded_required_count ?? 0}/{payload.profile?.required_count ?? 0}
-              </Text>
+              <Text style={styles.cardTitle}>{t('headline.seller.compliance.requiredDocuments')}</Text>
+              <Text style={styles.progressText}>{formatCopy('status.seller.compliance.completed', {
+                uploaded: payload.profile?.uploaded_required_count ?? 0,
+                required: payload.profile?.required_count ?? 0,
+              })}</Text>
               {requiredDocs.length === 0 ? (
-                <Text style={styles.empty}>Belge bulunamadı.</Text>
+                <Text style={styles.empty}>{t('helper.seller.compliance.emptyDocuments')}</Text>
               ) : null}
               {requiredDocs.map((doc) => {
                 const isUploading = uploadingDocCode === (doc.code ?? "");
@@ -169,25 +172,27 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
                   <View key={doc.id} style={styles.docRow}>
                     <View style={styles.docMeta}>
                       <Text style={styles.docTitle}>{doc.name || doc.code || doc.id}</Text>
-                      <Text style={styles.docStatus}>Durum: {doc.status || "-"}</Text>
-                      {doc.uploaded_at ? <Text style={styles.docHint}>Son yükleme: {new Date(doc.uploaded_at).toLocaleString("tr-TR")}</Text> : null}
-                      {doc.rejection_reason ? <Text style={styles.docReject}>Red nedeni: {doc.rejection_reason}</Text> : null}
+                      <Text style={styles.docStatus}>{formatCopy('status.seller.compliance.state', { status: doc.status || '-' })}</Text>
+                      {doc.uploaded_at ? <Text style={styles.docHint}>{formatCopy('status.seller.compliance.lastUpload', {
+                        date: new Date(doc.uploaded_at).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR'),
+                      })}</Text> : null}
+                      {doc.rejection_reason ? <Text style={styles.docReject}>{formatCopy('status.seller.compliance.rejectReason', { reason: doc.rejection_reason })}</Text> : null}
                     </View>
                     <TouchableOpacity
                       style={[styles.uploadBtn, isUploading ? styles.uploadBtnDisabled : null]}
                       onPress={() => void pickAndUploadDocument(doc.code ?? "")}
                       disabled={isUploading || !doc.code}
                     >
-                      <Text style={styles.uploadBtnText}>{isUploading ? "Yükleniyor..." : "Belge Yükle"}</Text>
+                      <Text style={styles.uploadBtnText}>{isUploading ? t('status.seller.compliance.uploading') : t('cta.seller.compliance.uploadDocument')}</Text>
                     </TouchableOpacity>
                   </View>
                 );
               })}
             </View>
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Opsiyonel Yüklemeler</Text>
+              <Text style={styles.cardTitle}>{t('headline.seller.compliance.optionalUploads')}</Text>
               {(payload.optionalUploads ?? []).length === 0 ? (
-                <Text style={styles.empty}>Yükleme bulunamadı.</Text>
+                <Text style={styles.empty}>{t('helper.seller.compliance.emptyUploads')}</Text>
               ) : null}
               {(payload.optionalUploads ?? []).map((upload) => (
                 <Text key={upload.id} style={styles.meta}>
@@ -196,7 +201,7 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
               ))}
             </View>
             <TouchableOpacity style={styles.refreshBtn} onPress={() => void loadData()}>
-              <Text style={styles.refreshText}>Yenile</Text>
+              <Text style={styles.refreshText}>{t('cta.seller.compliance.refresh')}</Text>
             </TouchableOpacity>
           </>
         )}
