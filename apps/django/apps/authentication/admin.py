@@ -41,6 +41,13 @@ class UsersAdmin(ModelAdmin):
         ("Meta", {"fields": ["created_at", "updated_at"]}),
     ]
 
+    def delete_model(self, request, obj):
+        obj.is_active = False
+        obj.save(update_fields=["is_active"])
+
+    def delete_queryset(self, request, queryset):
+        queryset.update(is_active=False)
+
     def get_urls(self):
         urls = super().get_urls()
         custom = [
