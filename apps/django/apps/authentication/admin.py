@@ -77,11 +77,20 @@ class UsersAdmin(ModelAdmin):
             cur.execute("SELECT count(*)::int FROM reviews WHERE buyer_id = %s", [user_id])
             review_count = cur.fetchone()[0]
 
+            cur.execute("SELECT count(*)::int FROM payment_attempts WHERE buyer_id = %s", [user_id])
+            payment_count = cur.fetchone()[0]
+
+            cur.execute("SELECT count(*)::int FROM buyer_notes WHERE buyer_id = %s", [user_id])
+            notes_count = cur.fetchone()[0]
+
+            cur.execute("SELECT count(*)::int FROM buyer_tags WHERE buyer_id = %s", [user_id])
+            tags_count = cur.fetchone()[0]
+
             # Recent orders
             cur.execute("""
                 SELECT o.id, u.display_name AS seller_name, o.total_price, o.status, o.created_at
                 FROM orders o LEFT JOIN users u ON u.id = o.seller_id
-                WHERE o.buyer_id = %s ORDER BY o.created_at DESC LIMIT 10
+                WHERE o.buyer_id = %s ORDER BY o.created_at DESC LIMIT 20
             """, [user_id])
             orders = [{"id": str(r[0]), "seller_name": r[1], "total_price": r[2], "status": r[3], "created_at": r[4]} for r in cur.fetchall()]
 
@@ -89,17 +98,58 @@ class UsersAdmin(ModelAdmin):
             cur.execute("""
                 SELECT id, description, status, created_at FROM complaints
                 WHERE COALESCE(complainant_user_id, complainant_buyer_id) = %s
-                ORDER BY created_at DESC LIMIT 10
+                ORDER BY created_at DESC LIMIT 20
             """, [user_id])
-            complaints = [{"id": str(r[0]), "subject": r[1], "status": r[2], "created_at": r[3]} for r in cur.fetchall()]
+            complaints = [{"id": str(r[0]), "description": r[1], "status": r[2], "created_at": r[3]} for r in cur.fetchall()]
 
             # Recent reviews
             cur.execute("""
                 SELECT r.id, f.name AS food_name, r.rating, r.comment, r.created_at
                 FROM reviews r LEFT JOIN foods f ON f.id = r.food_id
-                WHERE r.buyer_id = %s ORDER BY r.created_at DESC LIMIT 10
+                WHERE r.buyer_id = %s ORDER BY r.created_at DESC LIMIT 20
             """, [user_id])
-            reviews = [{"id": str(r[0]), "food_name": r[1], "stars": "★" * r[2] + "☆" * (5 - r[2]), "comment": r[3], "created_at": r[4]} for r in cur.fetchall()]
+            reviews = [{"id": str(r[0]), "food_name": r[1], "stars": "★" * int(r[2]) + "☆" * (5 - int(r[2])), "comment": r[3], "created_at": r[4]} for r in cur.fetchall()]
+
+            # Payment attempts
+            cur.execute("""
+                SELECT pa.id, pa.provider, pa.status, pa.created_at,
+                       o.total_price, o.id AS order_id
+                FROM payment_attempts pa
+                JOIN orders o ON o.id = pa.order_id
+                WHERE pa.buyer_id = %s ORDER BY pa.created_at DESC LIMIT 20
+            """, [user_id])
+            payments = [{"id": str(r[0]), "provider": r[1], "status": r[2], "created_at": r[3],
+                         "amount": r[4], "order_id": str(r[5])} for r in cur.fetchall()]
+
+            # Activity: auth sessions + presence events merged by time
+            cur.execute("""
+                SELECT 'login' AS event_type, ip, device_info AS detail, created_at
+                FROM auth_sessions WHERE user_id = %s
+                ORDER BY created_at DESC LIMIT 30
+            """, [user_id])
+            sessions = [{"event_type": r[0], "ip": r[1], "detail": r[2], "happened_at": r[3]} for r in cur.fetchall()]
+
+            cur.execute("""
+                SELECT event_type, ip, user_agent AS detail, happened_at
+                FROM user_presence_events
+                WHERE subject_type = 'user' AND subject_id = %s
+                ORDER BY happened_at DESC LIMIT 30
+            """, [user_id])
+            presence = [{"event_type": r[0], "ip": r[1], "detail": r[2], "happened_at": r[3]} for r in cur.fetchall()]
+
+            activity = sorted(sessions + presence, key=lambda x: x["happened_at"] or "", reverse=True)[:30]
+
+            # Notes & Tags
+            cur.execute("""
+                SELECT bn.id, bn.note, au.email AS admin_email, bn.created_at
+                FROM buyer_notes bn
+                LEFT JOIN admin_users au ON au.id = bn.admin_id
+                WHERE bn.buyer_id = %s ORDER BY bn.created_at DESC
+            """, [user_id])
+            notes = [{"id": str(r[0]), "note": r[1], "admin_email": r[2], "created_at": r[3]} for r in cur.fetchall()]
+
+            cur.execute("SELECT tag, created_at FROM buyer_tags WHERE buyer_id = %s ORDER BY created_at DESC", [user_id])
+            tags = [{"tag": r[0], "created_at": r[1]} for r in cur.fetchall()]
 
         summary = {
             "total_orders": orow[0] or 0,
@@ -110,16 +160,18 @@ class UsersAdmin(ModelAdmin):
             "complaint_unresolved": crow[1] or 0,
             "last_complaint_at": crow[2],
             "review_count": review_count,
+            "payment_count": payment_count,
+            "notes_count": notes_count + tags_count,
         }
 
         overview_rows = [
             {"label": "Siparişler", "tab_id": "orders", "count": summary["total_orders"], "last_activity": summary["last_order_at"].strftime("%d.%m.%Y") if summary["last_order_at"] else None},
-            {"label": "Ödemeler", "tab_id": "payments", "count": summary["total_orders"], "last_activity": summary["last_order_at"].strftime("%d.%m.%Y") if summary["last_order_at"] else None},
+            {"label": "Ödemeler", "tab_id": "payments", "count": summary["payment_count"], "last_activity": None},
             {"label": "Şikayetler", "tab_id": "complaints", "count": summary["complaint_total"], "last_activity": summary["last_complaint_at"].strftime("%d.%m.%Y") if summary["last_complaint_at"] else None},
             {"label": "Yorumlar & Puanlar", "tab_id": "reviews", "count": summary["review_count"], "last_activity": None},
-            {"label": "Aktivite Logu", "tab_id": "activity", "count": 0, "last_activity": None},
-            {"label": "Notlar & Etiketler", "tab_id": "notes", "count": 0, "last_activity": None},
-            {"label": "Ham Veri", "tab_id": "raw", "count": 10, "last_activity": None},
+            {"label": "Aktivite Logu", "tab_id": "activity", "count": len(activity), "last_activity": None},
+            {"label": "Notlar & Etiketler", "tab_id": "notes", "count": summary["notes_count"], "last_activity": None},
+            {"label": "Ham Veri", "tab_id": "raw", "count": None, "last_activity": None},
         ]
 
         tabs = [
@@ -144,6 +196,10 @@ class UsersAdmin(ModelAdmin):
             "orders": orders,
             "complaints": complaints,
             "reviews": reviews,
+            "payments": payments,
+            "activity": activity,
+            "notes": notes,
+            "tags": tags,
             "raw_json": json.dumps(raw_data, indent=2, default=str),
             "opts": self.model._meta,
         }
