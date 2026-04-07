@@ -76,7 +76,7 @@ class AdminUserListView(APIView):
             return err
 
         search = request.query_params.get("search", "").strip()
-        user_type = request.query_params.get("userType", "").strip()
+        user_type = (request.query_params.get("userType") or request.query_params.get("audience") or "").strip()
         is_active_param = request.query_params.get("isActive", "").strip()
         page = max(1, int(request.query_params.get("page", 1)))
         page_size = min(100, max(1, int(request.query_params.get("pageSize", 20))))
@@ -107,7 +107,10 @@ class AdminUserListView(APIView):
                              "userType": r[4], "isActive": r[5],
                              "createdAt": r[6].isoformat() if r[6] else None})
 
-        return Response({"data": {"users": rows, "pagination": {"page": page, "pageSize": page_size, "total": total}}})
+        return Response({
+            "data": rows,
+            "pagination": {"page": page, "pageSize": page_size, "total": total, "totalPages": -(-total // page_size)},
+        })
 
 
 class AdminUserDetailView(APIView):
