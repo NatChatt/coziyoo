@@ -486,30 +486,113 @@ class AdminSellerComplianceView(APIView):
         if err:
             return err
 
+        sid = str(seller_id)
+
         with connection.cursor() as cur:
-            cur.execute(
-                """
-                SELECT scd.id, scd.document_list_id, cdl.code, cdl.name, cdl.validity_years,
-                       scd.is_required, scd.status, scd.file_url, scd.uploaded_at,
-                       scd.reviewed_at, scd.rejection_reason, scd.notes, scd.version, scd.is_current
+            # All documents (all versions)
+            cur.execute("""
+                SELECT scd.id, scd.seller_id, scd.document_list_id,
+                       cdl.code, cdl.name, cdl.description, cdl.validity_years,
+                       cdl.is_active, cdl.doc_type,
+                       scd.is_required, scd.status, scd.file_url,
+                       scd.uploaded_at, scd.reviewed_at, scd.rejection_reason,
+                       scd.notes, scd.version, scd.is_current,
+                       scd.updated_at
                 FROM seller_compliance_documents scd
                 JOIN compliance_documents_list cdl ON cdl.id = scd.document_list_id
-                WHERE scd.seller_id = %s AND scd.is_current = TRUE
-                ORDER BY cdl.name
-                """,
-                [str(seller_id)],
-            )
-            cols = ["id", "documentListId", "code", "name", "validityYears",
-                    "isRequired", "status", "fileUrl", "uploadedAt",
-                    "reviewedAt", "rejectionReason", "notes", "version", "isCurrent"]
-            rows = []
+                WHERE scd.seller_id = %s
+                ORDER BY cdl.name, scd.version DESC
+            """, [sid])
+            cols = ["id", "seller_id", "document_list_id", "code", "name", "description",
+                    "validity_years", "is_active", "doc_type", "is_required", "status",
+                    "file_url", "uploaded_at", "reviewed_at", "rejection_reason",
+                    "notes", "version", "is_current", "updated_at"]
+            all_docs = []
             for row in cur.fetchall():
                 d = dict(zip(cols, row))
                 d["id"] = str(d["id"])
-                d["documentListId"] = str(d["documentListId"])
-                d["uploadedAt"] = d["uploadedAt"].isoformat() if d["uploadedAt"] else None
-                d["reviewedAt"] = d["reviewedAt"].isoformat() if d["reviewedAt"] else None
-                d["fileUrl"] = s3_utils.hydrate_file_url(d["fileUrl"])
-                rows.append(d)
+                d["seller_id"] = str(d["seller_id"])
+                d["document_list_id"] = str(d["document_list_id"])
+                d["file_url"] = s3_utils.hydrate_file_url(d["file_url"])
+                for f in ("uploaded_at", "reviewed_at", "updated_at"):
+                    d[f] = d[f].isoformat() if d[f] else None
+                all_docs.append(d)
 
-        return Response({"data": rows})
+            # Optional uploads
+            cur.execute("""
+                SELECT sou.id, sou.seller_id, sou.document_list_id,
+                       cdl.code AS catalog_doc_code, cdl.name AS catalog_doc_name,
+                       sou.custom_title, sou.file_url, sou.status,
+                       sou.uploaded_at, sou.reviewed_at, sou.rejection_reason, sou.updated_at
+                FROM seller_optional_uploads sou
+                LEFT JOIN compliance_documents_list cdl ON cdl.id = sou.document_list_id
+                WHERE sou.seller_id = %s
+                ORDER BY sou.uploaded_at DESC
+            """, [sid])
+            opt_cols = ["id", "seller_id", "document_list_id", "catalog_doc_code",
+                        "catalog_doc_name", "custom_title", "file_url", "status",
+                        "uploaded_at", "reviewed_at", "rejection_reason", "updated_at"]
+            optional_uploads = []
+            for row in cur.fetchall():
+                d = dict(zip(opt_cols, row))
+                d["id"] = str(d["id"])
+                d["seller_id"] = str(d["seller_id"])
+                if d["document_list_id"]:
+                    d["document_list_id"] = str(d["document_list_id"])
+                d["file_url"] = s3_utils.hydrate_file_url(d["file_url"])
+                for f in ("uploaded_at", "reviewed_at", "updated_at"):
+                    d[f] = d[f].isoformat() if d[f] else None
+                optional_uploads.append(d)
+
+        current_docs = [d for d in all_docs if d["is_current"]]
+
+        # Compute profile stats
+        required = [d for d in current_docs if d["is_required"]]
+        profile_status = "pending"
+        approved_req = sum(1 for d in required if d["status"] == "approved")
+        uploaded_req = sum(1 for d in required if d["status"] == "uploaded")
+        requested_req = sum(1 for d in required if d["status"] == "requested")
+        rejected_req = sum(1 for d in required if d["status"] == "rejected")
+        if required and approved_req == len(required):
+            profile_status = "approved"
+        elif rejected_req > 0:
+            profile_status = "rejected"
+        elif uploaded_req > 0 or requested_req > 0:
+            profile_status = "in_review"
+
+        updated_at = max((d["updated_at"] for d in current_docs), default=None)
+
+        profile = {
+            "seller_id": sid,
+            "status": profile_status,
+            "required_count": len(required),
+            "approved_required_count": approved_req,
+            "uploaded_required_count": uploaded_req,
+            "requested_required_count": requested_req,
+            "rejected_required_count": rejected_req,
+            "review_notes": None,
+            "updated_at": updated_at,
+        }
+
+        profile_documents = [
+            {
+                "id": d["id"],
+                "seller_id": d["seller_id"],
+                "doc_type": d["code"],
+                "latest_document_id": d["id"],
+                "status": d["status"],
+                "required": d["is_required"],
+                "updated_at": d["updated_at"],
+            }
+            for d in current_docs
+        ]
+
+        return Response({
+            "data": {
+                "profile": profile,
+                "checks": [],
+                "documents": all_docs,
+                "profileDocuments": profile_documents,
+                "optionalUploads": optional_uploads,
+            }
+        })
