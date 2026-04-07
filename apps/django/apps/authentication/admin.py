@@ -59,6 +59,52 @@ class UsersAdmin(ModelAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).filter(is_active=True)
 
+    def changelist_view(self, request, extra_context=None):
+        role = request.GET.get("role", "")
+        if role == "seller":
+            types = ("seller", "both")
+            label = "Seller"
+        else:
+            types = ("buyer", "both")
+            label = "Buyer"
+
+        with connection.cursor() as cur:
+            ph = ",".join(["%s"] * len(types))
+            cur.execute(f"SELECT count(*)::int FROM users WHERE user_type IN ({ph}) AND is_active = TRUE", list(types))
+            total = cur.fetchone()[0]
+
+            cur.execute(f"""
+                SELECT count(DISTINCT o.buyer_id)::int FROM orders o
+                JOIN users u ON u.id = o.buyer_id
+                WHERE u.user_type IN ({ph}) AND u.is_active = TRUE
+                  AND o.created_at >= now() - interval '30 days'
+            """, list(types))
+            active = cur.fetchone()[0]
+
+            cur.execute(f"""
+                SELECT count(*)::int FROM complaints c
+                JOIN users u ON u.id = COALESCE(c.complainant_user_id, c.complainant_buyer_id)
+                WHERE u.user_type IN ({ph}) AND u.is_active = TRUE
+                  AND c.status IN ('open', 'in_review')
+            """, list(types))
+            open_complaints = cur.fetchone()[0]
+
+            cur.execute(f"""
+                SELECT count(*)::int FROM users
+                WHERE user_type IN ({ph}) AND is_active = TRUE AND legal_hold_state = TRUE
+            """, list(types))
+            risky = cur.fetchone()[0]
+
+        extra_context = extra_context or {}
+        extra_context["buyer_stats"] = {
+            "label": label,
+            "total": total,
+            "active": active,
+            "open_complaints": open_complaints,
+            "risky": risky,
+        }
+        return super().changelist_view(request, extra_context=extra_context)
+
     def delete_model(self, request, obj):
         obj.is_active = False
         obj.save(update_fields=["is_active"])
