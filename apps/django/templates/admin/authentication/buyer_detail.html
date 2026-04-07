@@ -6,7 +6,7 @@
 
   {# ── Header ── #}
   <div class="rounded-xl p-5 flex flex-wrap gap-4 items-center border border-base-200 dark:border-base-700 bg-white dark:bg-base-800">
-    {# Avatar + Name #}
+    {# Avatar + Name + Edit #}
     <div class="flex items-center gap-4 shrink-0">
       {% if user.profile_image_url %}
         <img src="{{ user.profile_image_url }}" class="w-16 h-16 rounded-full object-cover bg-base-700 shrink-0" onerror="this.src=''">
@@ -19,6 +19,11 @@
         <h1 class="text-xl font-bold text-base-900 dark:text-white">{{ user.display_name }}</h1>
         <p class="text-base-500 dark:text-base-400 text-sm">{{ user.email }}</p>
         {% if user.phone %}<p class="text-base-500 dark:text-base-400 text-sm">{{ user.phone }}</p>{% endif %}
+        <a href="{% url 'admin:authentication_users_change' user.id %}"
+           class="inline-flex items-center gap-1 mt-2 px-3 py-1.5 rounded-lg bg-primary-600 text-white text-xs font-medium hover:bg-primary-700 transition-colors">
+          <span class="material-symbols-outlined text-sm leading-none">edit</span>
+          {% trans "Düzenle" %}
+        </a>
       </div>
     </div>
 
@@ -47,14 +52,6 @@
       </div>
     </div>
 
-    {# Edit button #}
-    <div class="flex gap-2 shrink-0">
-      <a href="{% url 'admin:authentication_users_change' user.id %}"
-         class="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors">
-        <span class="material-symbols-outlined text-base leading-none">edit</span>
-        {% trans "Düzenle" %}
-      </a>
-    </div>
   </div>
 
   {# ── Tab Bar ── #}
