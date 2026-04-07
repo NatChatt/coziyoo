@@ -10,3 +10,4 @@ django[argon2]>=4.2
 python-decouple>=3.8
 dj-database-url>=2.1
 gunicorn
+whitenoise[brotli]
