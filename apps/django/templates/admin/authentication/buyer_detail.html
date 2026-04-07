@@ -5,7 +5,7 @@
 <div class="space-y-4" x-data="{ tab: 'general' }">
 
   {# ── Header: avatar + name + edit button ── #}
-  <div class="bg-base-900 dark:bg-base-900 rounded-xl p-5 flex flex-col sm:flex-row gap-4 items-center">
+  <div class="rounded-xl p-5 flex gap-4 items-center border border-base-200 dark:border-base-700 bg-white dark:bg-base-800">
     <div class="flex items-center gap-4 grow">
       {% if user.profile_image_url %}
         <img src="{{ user.profile_image_url }}" class="w-16 h-16 rounded-full object-cover bg-base-700 shrink-0" onerror="this.src=''">
@@ -15,9 +15,9 @@
         </div>
       {% endif %}
       <div>
-        <h1 class="text-xl font-bold text-white">{{ user.display_name }}</h1>
-        <p class="text-base-400 text-sm">{{ user.email }}</p>
-        {% if user.phone %}<p class="text-base-400 text-sm">{{ user.phone }}</p>{% endif %}
+        <h1 class="text-xl font-bold text-base-900 dark:text-white">{{ user.display_name }}</h1>
+        <p class="text-base-500 dark:text-base-400 text-sm">{{ user.email }}</p>
+        {% if user.phone %}<p class="text-base-500 dark:text-base-400 text-sm">{{ user.phone }}</p>{% endif %}
       </div>
     </div>
     <div class="flex gap-2 shrink-0">
@@ -30,7 +30,7 @@
   </div>
 
   {# ── KPI Cards — own row on page background (matches listing page style) ── #}
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+  <div class="grid grid-cols-3 gap-3">
     {# Open Complaints — rose #}
     <div class="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl px-5 py-4 flex items-center gap-3">
       <span class="material-symbols-outlined text-2xl text-rose-500 dark:text-rose-400">report</span>
