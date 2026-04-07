@@ -179,7 +179,7 @@
                 <td class="py-2 pr-4 text-base-400">{{ f.category_name|default:"—" }}</td>
                 <td class="py-2 pr-4">₺{{ f.price }}</td>
                 <td class="py-2">
-                  {% if f.is_available %}
+                  {% if f.is_active %}
                     <span class="text-green-500 text-xs font-medium">Aktif</span>
                   {% else %}
                     <span class="text-base-400 text-xs font-medium">Pasif</span>

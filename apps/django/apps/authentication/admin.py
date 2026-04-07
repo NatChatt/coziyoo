@@ -200,7 +200,7 @@ class UsersAdmin(ModelAdmin):
 
             # Recent reviews
             cur.execute("""
-                SELECT r.id, f.name AS food_name, r.rating, r.comment, r.created_at,
+                SELECT r.id, f.name AS food_name, r.rating AS review_rating, r.comment, r.created_at,
                        u.display_name AS buyer_name
                 FROM reviews r
                 JOIN foods f ON f.id = r.food_id
@@ -220,11 +220,11 @@ class UsersAdmin(ModelAdmin):
 
             # Foods list
             cur.execute("""
-                SELECT f.id, f.name, f.price, f.is_available, c.name AS category_name
+                SELECT f.id, f.name, f.price, f.is_active, c.name AS category_name
                 FROM foods f LEFT JOIN categories c ON c.id = f.category_id
                 WHERE f.seller_id = %s ORDER BY f.name LIMIT 20
             """, [user_id])
-            foods = [{"id": str(r[0]), "name": r[1], "price": r[2], "is_available": r[3], "category_name": r[4]} for r in cur.fetchall()]
+            foods = [{"id": str(r[0]), "name": r[1], "price": r[2], "is_active": r[3], "category_name": r[4]} for r in cur.fetchall()]
 
             # Address
             cur.execute("""
