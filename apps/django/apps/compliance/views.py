@@ -493,7 +493,7 @@ class AdminSellerComplianceView(APIView):
             cur.execute("""
                 SELECT scd.id, scd.seller_id, scd.document_list_id,
                        cdl.code, cdl.name, cdl.description, cdl.validity_years,
-                       cdl.is_active, cdl.doc_type,
+                       cdl.is_active, cdl.code AS doc_type,
                        scd.is_required, scd.status, scd.file_url,
                        scd.uploaded_at, scd.reviewed_at, scd.rejection_reason,
                        scd.notes, scd.version, scd.is_current,
