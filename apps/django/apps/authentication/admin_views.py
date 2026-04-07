@@ -308,6 +308,28 @@ class GlobalSearchView(APIView):
         return Response({"data": {"results": results[:limit]}})
 
 
+# ── Sellers Daily Sales ───────────────────────────────────────────────────────
+
+class SellersDailySalesView(APIView):
+    def get(self, request):
+        err = _require_admin(request)
+        if err:
+            return err
+        with connection.cursor() as cur:
+            cur.execute("""
+                SELECT COALESCE(sum(o.total_price), 0)::text AS daily_sales
+                FROM orders o
+                JOIN users s ON s.id = o.seller_id
+                WHERE o.payment_completed = TRUE
+                  AND o.created_at >= date_trunc('day', now())
+                  AND o.created_at < (date_trunc('day', now()) + interval '1 day')
+                  AND s.user_type IN ('seller', 'both')
+            """)
+            row = cur.fetchone()
+        from datetime import date
+        return Response({"data": {"dailySales": float(row[0] or 0), "currency": "TRY", "date": date.today().isoformat()}})
+
+
 # ── Notifications Test ────────────────────────────────────────────────────────
 
 class NotificationTestView(APIView):

@@ -22,5 +22,6 @@ urlpatterns = [
     path("search/global", admin_views.GlobalSearchView.as_view()),
     path("sales-commission-settings/latest", CommissionLatestView.as_view()),
     path("sales-commission-settings", CommissionCreateView.as_view()),
+    path("users/sellers/daily-sales", admin_views.SellersDailySalesView.as_view()),
     path("notifications/test", admin_views.NotificationTestView.as_view()),
 ]
