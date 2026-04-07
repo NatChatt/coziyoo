@@ -4,17 +4,17 @@
     <div class="px-4 flex items-center gap-0.5 h-20">
 
         {# Brand #}
-        <a href="/admin/" class="flex items-center gap-2 text-primary-600 font-bold text-base mr-5 shrink-0">
-            <span class="material-symbols-outlined text-xl">restaurant</span>
+        <a href="/admin/" class="flex items-center gap-2 text-primary-600 font-bold text-lg mr-6 shrink-0">
+            <span class="material-symbols-outlined text-2xl">restaurant</span>
             Coziyoo
         </a>
 
         {# ── Buyers ── #}
         <div x-data="{ open: false }" @click.outside="open = false" class="relative">
             <button @click="open = !open"
-                class="flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
+                class="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-base font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
                 :class="{ 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400': open }">
-                <span class="material-symbols-outlined text-lg leading-none">person</span>
+                <span class="material-symbols-outlined text-xl leading-none">person</span>
                 {% trans "Buyers" %}
                 <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
             </button>
@@ -39,9 +39,9 @@
         {# ── Sellers ── #}
         <div x-data="{ open: false }" @click.outside="open = false" class="relative">
             <button @click="open = !open"
-                class="flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
+                class="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-base font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
                 :class="{ 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400': open }">
-                <span class="material-symbols-outlined text-lg leading-none">storefront</span>
+                <span class="material-symbols-outlined text-xl leading-none">storefront</span>
                 {% trans "Sellers" %}
                 <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
             </button>
@@ -72,9 +72,9 @@
         {# ── Complaints ── #}
         <div x-data="{ open: false }" @click.outside="open = false" class="relative">
             <button @click="open = !open"
-                class="flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
+                class="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-base font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
                 :class="{ 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400': open }">
-                <span class="material-symbols-outlined text-lg leading-none">report</span>
+                <span class="material-symbols-outlined text-xl leading-none">report</span>
                 {% trans "Complaints" %}
                 <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
             </button>
@@ -99,9 +99,9 @@
         {# ── Foods ── #}
         <div x-data="{ open: false }" @click.outside="open = false" class="relative">
             <button @click="open = !open"
-                class="flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
+                class="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-base font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
                 :class="{ 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400': open }">
-                <span class="material-symbols-outlined text-lg leading-none">restaurant_menu</span>
+                <span class="material-symbols-outlined text-xl leading-none">restaurant_menu</span>
                 {% trans "Foods" %}
                 <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
             </button>
@@ -131,9 +131,9 @@
         {# ── Management ── #}
         <div x-data="{ open: false }" @click.outside="open = false" class="relative">
             <button @click="open = !open"
-                class="flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
+                class="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-base font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
                 :class="{ 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400': open }">
-                <span class="material-symbols-outlined text-lg leading-none">admin_panel_settings</span>
+                <span class="material-symbols-outlined text-xl leading-none">admin_panel_settings</span>
                 {% trans "Management" %}
                 <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
             </button>
@@ -187,7 +187,7 @@
         <button @click="$dispatch('open-global-search')"
             class="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors shrink-0"
             title="Global Search (/)">
-            <span class="material-symbols-outlined text-lg leading-none">search</span>
+            <span class="material-symbols-outlined text-xl leading-none">search</span>
         </button>
 
     </div>
