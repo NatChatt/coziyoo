@@ -2,13 +2,22 @@
 
 #import <React/RCTBundleURLProvider.h>
 #import <React/RCTLinkingManager.h>
+
+#if __has_include("LivekitReactNative.h")
 #import "LivekitReactNative.h"
+#define COZIYOO_HAS_LIVEKIT 1
+#elif __has_include(<LivekitReactNative/LivekitReactNative.h>)
+#import <LivekitReactNative/LivekitReactNative.h>
+#define COZIYOO_HAS_LIVEKIT 1
+#endif
 
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+#if COZIYOO_HAS_LIVEKIT
   [LivekitReactNative setup];
+#endif
 
   self.moduleName = @"main";
 
