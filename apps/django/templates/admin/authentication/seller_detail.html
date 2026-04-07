@@ -174,7 +174,7 @@
             </thead>
             <tbody class="divide-y divide-base-100 dark:divide-base-800">
               {% for f in foods %}
-              <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+              <tr class="hover:bg-base-100/40 dark:hover:bg-base-700/30">
                 <td class="py-2 pr-4 font-medium">{{ f.name }}</td>
                 <td class="py-2 pr-4 text-base-400">{{ f.category_name|default:"—" }}</td>
                 <td class="py-2 pr-4">₺{{ f.price }}</td>
@@ -211,7 +211,7 @@
             </thead>
             <tbody class="divide-y divide-base-100 dark:divide-base-800">
               {% for o in orders %}
-              <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+              <tr class="hover:bg-base-100/40 dark:hover:bg-base-700/30">
                 <td class="py-2 pr-4 font-mono text-xs">{{ o.id|slice:":8" }}…</td>
                 <td class="py-2 pr-4">{{ o.buyer_name|default:"—" }}</td>
                 <td class="py-2 pr-4 font-medium">₺{{ o.total_price }}</td>

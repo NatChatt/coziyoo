@@ -84,7 +84,7 @@
         </thead>
         <tbody class="divide-y divide-base-100 dark:divide-base-800">
           {% for row in overview_rows %}
-          <tr class="hover:bg-base-50 dark:hover:bg-base-800/50 transition-colors">
+          <tr class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
             <td class="px-6 py-3 font-medium text-base-700 dark:text-base-200">{{ row.label }}</td>
             <td class="px-6 py-3 text-base-600 dark:text-base-300">{{ row.count|default:"—" }}</td>
             <td class="px-6 py-3 text-base-400">{{ row.last_activity|default:"-" }}</td>
@@ -116,7 +116,7 @@
             </thead>
             <tbody class="divide-y divide-base-100 dark:divide-base-800">
               {% for o in orders %}
-              <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+              <tr class="hover:bg-base-100/40 dark:hover:bg-base-700/30">
                 <td class="py-2 pr-4 font-mono text-xs">{{ o.id|slice:":8" }}…</td>
                 <td class="py-2 pr-4">{{ o.seller_name|default:"—" }}</td>
                 <td class="py-2 pr-4 font-medium">₺{{ o.total_price }}</td>
@@ -194,7 +194,7 @@
             </thead>
             <tbody class="divide-y divide-base-100 dark:divide-base-800">
               {% for p in payments %}
-              <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+              <tr class="hover:bg-base-100/40 dark:hover:bg-base-700/30">
                 <td class="py-2 pr-4 font-mono text-xs">{{ p.order_id|slice:":8" }}…</td>
                 <td class="py-2 pr-4 text-base-400">{{ p.provider }}</td>
                 <td class="py-2 pr-4 font-medium">₺{{ p.amount }}</td>
