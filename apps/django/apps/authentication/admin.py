@@ -14,6 +14,21 @@ from .models import (
 )
 
 
+class BuyerFilter(admin.SimpleListFilter):
+    title = "role"
+    parameter_name = "role"
+
+    def lookups(self, request, model_admin):
+        return [("buyer", "Buyer / Both"), ("seller", "Seller / Both")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "buyer":
+            return queryset.filter(user_type__in=["buyer", "both"])
+        if self.value() == "seller":
+            return queryset.filter(user_type__in=["seller", "both"])
+        return queryset
+
+
 @admin.register(Users)
 class UsersAdmin(ModelAdmin):
     list_display = [
@@ -21,7 +36,7 @@ class UsersAdmin(ModelAdmin):
         "seller_status_badge", "created_at",
     ]
     list_display_links = None
-    list_filter = ["user_type", "is_active", "seller_profile_status"]
+    list_filter = [BuyerFilter, "is_active", "seller_profile_status"]
     search_fields = ["email", "display_name", "username", "phone"]
     readonly_fields = [
         "id", "password_hash", "created_at", "updated_at",
@@ -384,12 +399,14 @@ class UsersAdmin(ModelAdmin):
 
 @admin.register(AllUsers)
 class AllUsersAdmin(ModelAdmin):
+    actions_on_top = True
+    actions_on_bottom = False
     list_display = [
         "display_name_link", "email", "user_type_badge", "is_active",
         "seller_status_badge", "created_at",
     ]
     list_display_links = None
-    list_filter = ["user_type", "is_active", "seller_profile_status"]
+    list_filter = [BuyerFilter, "is_active", "seller_profile_status"]
     search_fields = ["email", "display_name", "username", "phone"]
     ordering = ["-created_at"]
     list_per_page = 50
@@ -431,8 +448,94 @@ class AllUsersAdmin(ModelAdmin):
     def has_add_permission(self, request):
         return False
 
-    def has_delete_permission(self, request, obj=None):
-        return False
+    def delete_model(self, request, obj):
+        _cascade_delete_users(connection, [obj.id])
+
+    def delete_queryset(self, request, queryset):
+        _cascade_delete_users(connection, list(queryset.values_list("id", flat=True)))
+
+
+def _cascade_delete_users(conn, user_ids):
+    """Hard-delete users and all dependent records in FK dependency order."""
+    if not user_ids:
+        return
+    ids = [str(u) for u in user_ids]
+    ph = ",".join(["%s"] * len(ids))  # e.g. %s,%s,%s
+
+    with conn.cursor() as cur:
+        # ── Level 1: deepest leaf tables ──────────────────────────────────────
+        # Via foods
+        cur.execute(f"DELETE FROM allergen_disclosure_records WHERE food_id IN (SELECT id FROM foods WHERE seller_id IN ({ph}))", ids)
+        cur.execute(f"DELETE FROM favorites WHERE food_id IN (SELECT id FROM foods WHERE seller_id IN ({ph}))", ids)
+        cur.execute(f"DELETE FROM reviews WHERE food_id IN (SELECT id FROM foods WHERE seller_id IN ({ph}))", ids)
+        # Via orders (seller side)
+        cur.execute(f"DELETE FROM allergen_disclosure_records WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM delivery_proof_records WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM order_item_lot_allocations WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM order_notification_milestones WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM order_events WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM order_delivery_tracking WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM order_finance WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM finance_adjustments WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM payment_dispute_cases WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM payment_attempts WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM reviews WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        # Via chats (→ messages)
+        cur.execute(f"DELETE FROM messages WHERE chat_id IN (SELECT id FROM chats WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        # Via complaints (→ notes)
+        cur.execute(f"DELETE FROM complaint_admin_notes WHERE complaint_id IN (SELECT id FROM complaints WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph})))", ids + ids)
+
+        # ── Level 2: tables referencing orders / chats ─────────────────────────
+        cur.execute(f"DELETE FROM complaints WHERE order_id IN (SELECT id FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph}))", ids + ids)
+        cur.execute(f"DELETE FROM chats WHERE seller_id IN ({ph}) OR buyer_id IN ({ph})", ids + ids)
+        cur.execute(f"DELETE FROM lot_events WHERE lot_id IN (SELECT id FROM production_lots WHERE seller_id IN ({ph}))", ids)
+
+        # ── Level 3: orders, production_lots ──────────────────────────────────
+        cur.execute(f"DELETE FROM order_item_lot_allocations WHERE lot_id IN (SELECT id FROM production_lots WHERE seller_id IN ({ph}))", ids)
+        cur.execute(f"DELETE FROM production_lots WHERE seller_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM orders WHERE seller_id IN ({ph}) OR buyer_id IN ({ph})", ids + ids)
+
+        # ── Level 4: foods and seller/buyer direct refs ────────────────────────
+        cur.execute(f"DELETE FROM seller_compliance_documents WHERE seller_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM seller_optional_uploads WHERE seller_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM seller_notes WHERE seller_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM seller_tags WHERE seller_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM foods WHERE seller_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM buyer_notes WHERE buyer_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM buyer_tags WHERE buyer_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM favorites WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM reviews WHERE buyer_id IN ({ph}) OR seller_id IN ({ph})", ids + ids)
+        cur.execute(f"DELETE FROM sms_logs WHERE buyer_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM finance_adjustments WHERE seller_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM delivery_proof_records WHERE buyer_id IN ({ph}) OR seller_id IN ({ph})", ids + ids)
+        cur.execute(f"DELETE FROM allergen_disclosure_records WHERE buyer_id IN ({ph}) OR seller_id IN ({ph})", ids + ids)
+        cur.execute(f"DELETE FROM media_assets WHERE owner_user_id IN ({ph})", ids)
+
+        # ── Level 5: auth / identity / session / device ───────────────────────
+        cur.execute(f"DELETE FROM auth_audit WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM auth_sessions WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM user_addresses WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM user_device_tokens WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM user_login_locations WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM identities WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM long_term_memory WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM session_memory WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM mfa_factors WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM notification_events WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM oauth_authorizations WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM oauth_consents WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM one_time_tokens WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM sessions WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM webauthn_challenges WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM webauthn_credentials WHERE user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM order_events WHERE actor_user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM lot_events WHERE created_by IN ({ph})", ids)
+        cur.execute(f"DELETE FROM order_delivery_tracking WHERE seller_user_id IN ({ph})", ids)
+        cur.execute(f"DELETE FROM messages WHERE sender_id IN ({ph})", ids)
+
+        # ── Final: users ───────────────────────────────────────────────────────
+        cur.execute(f"DELETE FROM users WHERE id IN ({ph})", ids)
 
 
 @admin.register(AdminUsers)
