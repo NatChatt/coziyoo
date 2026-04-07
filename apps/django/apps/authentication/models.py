@@ -33,6 +33,8 @@ class AdminApiTokens(models.Model):
     class Meta:
         managed = False
         db_table = 'admin_api_tokens'
+        verbose_name = "Admin API Token"
+        verbose_name_plural = "Admin API Tokens"
 
 
 
@@ -51,6 +53,8 @@ class AdminAuditLogs(models.Model):
     class Meta:
         managed = False
         db_table = 'admin_audit_logs'
+        verbose_name = "Admin Audit Log"
+        verbose_name_plural = "Admin Audit Logs"
 
 
 
@@ -94,6 +98,8 @@ class AdminSalesCommissionSettings(models.Model):
     class Meta:
         managed = False
         db_table = 'admin_sales_commission_settings'
+        verbose_name = "Sales Commission Setting"
+        verbose_name_plural = "Admin Sales Commission Settings"
 
 
 
@@ -125,6 +131,8 @@ class AdminUsers(models.Model):
     class Meta:
         managed = False
         db_table = 'admin_users'
+        verbose_name = "Admin User"
+        verbose_name_plural = "Admin Users"
 
 
 
@@ -175,6 +183,8 @@ class SecurityLoginEvents(models.Model):
     class Meta:
         managed = False
         db_table = 'security_login_events'
+        verbose_name = "Security Login Event"
+        verbose_name_plural = "Security Login Events"
 
 
 
@@ -292,6 +302,8 @@ class Users(models.Model):
     class Meta:
         managed = False
         db_table = 'users'
+        verbose_name = "User"
+        verbose_name_plural = "Users"
 
 
 class AllUsers(Users):

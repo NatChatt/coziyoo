@@ -17,6 +17,8 @@ class ComplianceDocumentsList(models.Model):
     class Meta:
         managed = False
         db_table = 'compliance_documents_list'
+        verbose_name = "Compliance Document"
+        verbose_name_plural = "Compliance Documents List"
 
 
 
@@ -43,6 +45,8 @@ class SellerComplianceDocuments(models.Model):
         managed = False
         db_table = 'seller_compliance_documents'
         unique_together = (('seller', 'document_list'), ('seller', 'document_list'),)
+        verbose_name = "Seller Compliance Document"
+        verbose_name_plural = "Seller Compliance Documents"
 
 
 

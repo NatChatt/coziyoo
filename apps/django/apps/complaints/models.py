@@ -24,6 +24,8 @@ class ComplaintCategories(models.Model):
     class Meta:
         managed = False
         db_table = 'complaint_categories'
+        verbose_name = "Complaint Category"
+        verbose_name_plural = "Complaint Categories"
 
 
 
@@ -46,5 +48,7 @@ class Complaints(models.Model):
     class Meta:
         managed = False
         db_table = 'complaints'
+        verbose_name = "Complaint"
+        verbose_name_plural = "Complaints"
 
 

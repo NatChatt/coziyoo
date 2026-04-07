@@ -163,6 +163,8 @@ class Orders(models.Model):
     class Meta:
         managed = False
         db_table = 'orders'
+        verbose_name = "Order"
+        verbose_name_plural = "Orders"
 
 
 
@@ -220,5 +222,7 @@ class Reviews(models.Model):
         managed = False
         db_table = 'reviews'
         unique_together = (('buyer', 'food', 'order'),)
+        verbose_name = "Review"
+        verbose_name_plural = "Reviews"
 
 

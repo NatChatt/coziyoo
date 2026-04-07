@@ -13,6 +13,8 @@ class Categories(models.Model):
     class Meta:
         managed = False
         db_table = 'categories'
+        verbose_name = "Category"
+        verbose_name_plural = "Categories"
 
 
 
@@ -57,6 +59,8 @@ class Foods(models.Model):
     class Meta:
         managed = False
         db_table = 'foods'
+        verbose_name = "Food"
+        verbose_name_plural = "Foods"
 
 
 
@@ -97,6 +101,8 @@ class ProductionLots(models.Model):
     class Meta:
         managed = False
         db_table = 'production_lots'
+        verbose_name = "Production Lot"
+        verbose_name_plural = "Production Lots"
 
 
 
