@@ -1,0 +1,198 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="space-y-4" x-data="{ tab: 'general' }">
+
+  {# ── Header ── #}
+  <div class="bg-base-900 dark:bg-base-900 rounded-xl p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+    {# Avatar + Name #}
+    <div class="flex items-center gap-4 shrink-0">
+      {% if user.profile_image_url %}
+        <img src="{{ user.profile_image_url }}" class="w-16 h-16 rounded-full object-cover bg-base-700" onerror="this.src=''">
+      {% else %}
+        <div class="w-16 h-16 rounded-full bg-base-700 flex items-center justify-center">
+          <span class="material-symbols-outlined text-4xl text-base-400">person</span>
+        </div>
+      {% endif %}
+      <div>
+        <h1 class="text-xl font-bold text-white">{{ user.display_name }}</h1>
+        <p class="text-base-400 text-sm">{{ user.email }}</p>
+        {% if user.phone %}<p class="text-base-400 text-sm">{{ user.phone }}</p>{% endif %}
+      </div>
+    </div>
+
+    {# Stat Cards #}
+    <div class="flex flex-wrap gap-3 sm:ml-6 grow">
+      <div class="bg-base-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[180px] grow">
+        <span class="material-symbols-outlined text-red-400">report</span>
+        <div>
+          <div class="text-xs text-base-400 uppercase tracking-wide">{% trans "Açık Şikayet" %}</div>
+          <div class="text-2xl font-bold text-white">{{ summary.complaint_unresolved }}</div>
+        </div>
+      </div>
+      <div class="bg-base-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[180px] grow">
+        <span class="material-symbols-outlined text-green-400">trending_up</span>
+        <div>
+          <div class="text-xs text-base-400 uppercase tracking-wide">{% trans "Son 30 Gün" %}</div>
+          <div class="text-2xl font-bold text-green-400">₺{{ summary.monthly_spent|floatformat:2 }}</div>
+        </div>
+      </div>
+      <div class="bg-base-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[180px] grow">
+        <span class="material-symbols-outlined text-yellow-400">payments</span>
+        <div>
+          <div class="text-xs text-base-400 uppercase tracking-wide">{% trans "Ödeme Durumu" %}</div>
+          <div class="text-2xl font-bold text-white">{{ summary.total_orders }} {% trans "sipariş" %}</div>
+        </div>
+      </div>
+    </div>
+
+    {# Actions #}
+    <div class="flex gap-2 shrink-0">
+      <a href="{% url 'admin:authentication_users_change' user.id %}"
+         class="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors">
+        <span class="material-symbols-outlined text-base leading-none">edit</span>
+        {% trans "Düzenle" %}
+      </a>
+    </div>
+  </div>
+
+  {# ── Tab Bar ── #}
+  <div class="bg-white dark:bg-base-900 rounded-xl border border-base-200 dark:border-base-700 overflow-hidden">
+    <div class="flex items-center border-b border-base-200 dark:border-base-700 overflow-x-auto">
+      {% for t_id, t_label in tabs %}
+        <button @click="tab = '{{ t_id }}'"
+          class="px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors"
+          :class="tab === '{{ t_id }}'
+            ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+            : 'border-transparent text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200'">
+          {{ t_label }}
+        </button>
+      {% endfor %}
+    </div>
+
+    {# ── Genel (Overview) Tab ── #}
+    <div x-show="tab === 'general'" class="p-0">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-base-200 dark:border-base-700">
+            <th class="text-left px-6 py-3 text-xs font-semibold text-base-500 uppercase tracking-wide w-40">{% trans "Sekme" %}</th>
+            <th class="text-left px-6 py-3 text-xs font-semibold text-base-500 uppercase tracking-wide">{% trans "Kayıt Özeti" %}</th>
+            <th class="text-left px-6 py-3 text-xs font-semibold text-base-500 uppercase tracking-wide">{% trans "Son Hareket" %}</th>
+            <th class="text-left px-6 py-3 text-xs font-semibold text-base-500 uppercase tracking-wide w-24">{% trans "Detay" %}</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-base-100 dark:divide-base-800">
+          {% for row in overview_rows %}
+          <tr class="hover:bg-base-50 dark:hover:bg-base-800/50 transition-colors">
+            <td class="px-6 py-3 font-medium text-base-700 dark:text-base-200">{{ row.label }}</td>
+            <td class="px-6 py-3 text-base-600 dark:text-base-300">{{ row.count }}</td>
+            <td class="px-6 py-3 text-base-400">{{ row.last_activity|default:"-" }}</td>
+            <td class="px-6 py-3">
+              <button @click="tab = '{{ row.tab_id }}'"
+                class="px-3 py-1 rounded bg-base-200 dark:bg-base-700 text-base-700 dark:text-base-200 text-xs font-medium hover:bg-base-300 dark:hover:bg-base-600 transition-colors">
+                {% trans "Aç" %}
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# ── Orders Tab ── #}
+    <div x-show="tab === 'orders'" class="p-6">
+      {% if orders %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-base-200 dark:border-base-700 text-xs font-semibold text-base-500 uppercase tracking-wide">
+                <th class="text-left py-2 pr-4">{% trans "Sipariş" %}</th>
+                <th class="text-left py-2 pr-4">{% trans "Satıcı" %}</th>
+                <th class="text-left py-2 pr-4">{% trans "Tutar" %}</th>
+                <th class="text-left py-2 pr-4">{% trans "Durum" %}</th>
+                <th class="text-left py-2">{% trans "Tarih" %}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-base-100 dark:divide-base-800">
+              {% for o in orders %}
+              <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+                <td class="py-2 pr-4 font-mono text-xs">{{ o.id|slice:":8" }}…</td>
+                <td class="py-2 pr-4">{{ o.seller_name|default:"—" }}</td>
+                <td class="py-2 pr-4 font-medium">₺{{ o.total_price }}</td>
+                <td class="py-2 pr-4">
+                  <span class="px-2 py-0.5 rounded text-xs font-medium bg-base-100 dark:bg-base-800">{{ o.status }}</span>
+                </td>
+                <td class="py-2 text-base-400 text-xs">{{ o.created_at|date:"d.m.Y H:i" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-base-400 text-center py-8">{% trans "Sipariş bulunamadı." %}</p>
+      {% endif %}
+    </div>
+
+    {# ── Complaints Tab ── #}
+    <div x-show="tab === 'complaints'" class="p-6">
+      {% if complaints %}
+        <div class="space-y-3">
+          {% for c in complaints %}
+          <div class="border border-base-200 dark:border-base-700 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-medium text-sm">{{ c.subject|default:"Şikayet" }}</span>
+              <span class="px-2 py-0.5 rounded text-xs font-medium bg-base-100 dark:bg-base-800">{{ c.status }}</span>
+            </div>
+            <p class="text-base-400 text-xs">{{ c.created_at|date:"d.m.Y H:i" }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-base-400 text-center py-8">{% trans "Şikayet bulunamadı." %}</p>
+      {% endif %}
+    </div>
+
+    {# ── Reviews Tab ── #}
+    <div x-show="tab === 'reviews'" class="p-6">
+      {% if reviews %}
+        <div class="space-y-3">
+          {% for r in reviews %}
+          <div class="border border-base-200 dark:border-base-700 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-yellow-500">{{ r.stars }}</span>
+              <span class="text-sm font-medium">{{ r.food_name|default:"—" }}</span>
+            </div>
+            {% if r.comment %}<p class="text-base-500 text-sm">{{ r.comment }}</p>{% endif %}
+            <p class="text-base-400 text-xs mt-1">{{ r.created_at|date:"d.m.Y H:i" }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-base-400 text-center py-8">{% trans "Yorum bulunamadı." %}</p>
+      {% endif %}
+    </div>
+
+    {# ── Raw Data Tab ── #}
+    <div x-show="tab === 'raw'" class="p-6">
+      <pre class="bg-base-50 dark:bg-base-800 rounded-lg p-4 text-xs overflow-x-auto text-base-700 dark:text-base-300">{{ raw_json }}</pre>
+    </div>
+
+    {# ── Payments Tab (placeholder) ── #}
+    <div x-show="tab === 'payments'" class="p-6">
+      <p class="text-base-400 text-center py-8">{% trans "Ödeme geçmişi yakında." %}</p>
+    </div>
+
+    {# ── Activity Tab (placeholder) ── #}
+    <div x-show="tab === 'activity'" class="p-6">
+      <p class="text-base-400 text-center py-8">{% trans "Aktivite logu yakında." %}</p>
+    </div>
+
+    {# ── Notes Tab (placeholder) ── #}
+    <div x-show="tab === 'notes'" class="p-6">
+      <p class="text-base-400 text-center py-8">{% trans "Notlar yakında." %}</p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
