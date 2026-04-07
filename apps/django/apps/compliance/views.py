@@ -523,11 +523,11 @@ class AdminSellerComplianceView(APIView):
                 SELECT sou.id, sou.seller_id, sou.document_list_id,
                        cdl.code AS catalog_doc_code, cdl.name AS catalog_doc_name,
                        sou.custom_title, sou.file_url, sou.status,
-                       sou.uploaded_at, sou.reviewed_at, sou.rejection_reason, sou.updated_at
+                       sou.created_at AS uploaded_at, sou.reviewed_at, sou.rejection_reason, sou.updated_at
                 FROM seller_optional_uploads sou
                 LEFT JOIN compliance_documents_list cdl ON cdl.id = sou.document_list_id
                 WHERE sou.seller_id = %s
-                ORDER BY sou.uploaded_at DESC
+                ORDER BY sou.created_at DESC
             """, [sid])
             opt_cols = ["id", "seller_id", "document_list_id", "catalog_doc_code",
                         "catalog_doc_name", "custom_title", "file_url", "status",
