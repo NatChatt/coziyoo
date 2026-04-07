@@ -3,6 +3,124 @@
 {% load admin_list i18n unfold %}
 
 {% block base %}
+    {# ── Global Search Modal ── #}
+    <div
+        x-data="{
+            open: false,
+            query: '',
+            groups: [],
+            loading: false,
+            hasResults: false,
+            timer: null,
+            init() {
+                window.addEventListener('open-global-search', () => { this.openModal(); });
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === '/' && !['INPUT','TEXTAREA'].includes(e.target.tagName)) {
+                        e.preventDefault(); this.openModal();
+                    }
+                    if (e.key === 'Escape') this.close();
+                });
+            },
+            openModal() {
+                this.open = true;
+                this.$nextTick(() => this.$refs.searchInput && this.$refs.searchInput.focus());
+            },
+            close() {
+                this.open = false;
+                this.query = '';
+                this.groups = [];
+                this.hasResults = false;
+            },
+            onInput() {
+                clearTimeout(this.timer);
+                if (this.query.length < 2) { this.groups = []; this.hasResults = false; return; }
+                this.loading = true;
+                this.timer = setTimeout(() => this.search(), 280);
+            },
+            async search() {
+                const resp = await fetch('/admin/global-search/?q=' + encodeURIComponent(this.query));
+                const data = await resp.json();
+                this.groups = data.groups;
+                this.hasResults = this.groups.length > 0;
+                this.loading = false;
+            },
+            navigate(url) { this.close(); window.location.href = url; }
+        }"
+        x-show="open"
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-100"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        @click.self="close()"
+        style="display:none"
+        class="fixed inset-0 z-[9999] flex flex-col backdrop-blur-sm bg-black/70"
+        :class="hasResults ? 'items-center pt-16' : 'items-center justify-center'"
+    >
+        <div class="w-full max-w-2xl px-4 flex flex-col gap-4">
+            {# Search input #}
+            <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-xl text-base-400">search</span>
+                <input
+                    x-ref="searchInput"
+                    x-model="query"
+                    @input="onInput()"
+                    type="text"
+                    placeholder="Search users, orders, foods, complaints…"
+                    class="w-full border-2 border-primary-500/60 rounded-xl pl-12 pr-12 py-4 text-white text-lg placeholder-base-500 focus:outline-none focus:border-primary-500"
+                    style="background:#0a0f1e"
+                >
+                <span x-show="loading" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-base-400 animate-spin">progress_activity</span>
+                <kbd x-show="!loading" class="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-base-500 border border-base-700 rounded px-1.5 py-0.5">ESC</kbd>
+            </div>
+
+            {# Results #}
+            <div x-show="hasResults" class="rounded-xl overflow-hidden shadow-2xl max-h-[60vh] overflow-y-auto" style="background:#0d1117;border:1px solid #30363d">
+                <template x-for="group in groups" :key="group.key">
+                    <div>
+                        <div class="flex items-center gap-2 px-4 py-2 border-b sticky top-0 z-10" style="border-color:#30363d;background:#161b22">
+                            <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="'background:' + group.color"></span>
+                            <span class="text-xs font-semibold uppercase tracking-wider" style="color:#8b949e" x-text="group.label"></span>
+                        </div>
+                        <template x-for="item in group.items" :key="item.id">
+                            <button
+                                @click="navigate(item.url)"
+                                class="w-full flex items-center gap-3 px-4 py-3 transition-colors text-left border-b last:border-0"
+                                style="border-color:#21262d"
+                                @mouseenter="$el.style.background='#1c2128'"
+                                @mouseleave="$el.style.background=''"
+                            >
+                                <span class="w-1 h-8 rounded-full shrink-0" :style="'background:' + group.color"></span>
+                                <div class="min-w-0 grow">
+                                    <div class="text-sm font-medium text-white truncate" x-text="item.label"></div>
+                                    <div class="text-xs truncate" style="color:#8b949e" x-text="item.sublabel"></div>
+                                </div>
+                                <span class="text-xs px-2 py-0.5 rounded-full shrink-0 font-medium"
+                                    :style="'background:' + group.color + '22;color:' + group.color"
+                                    x-text="item.badge">
+                                </span>
+                                <span class="material-symbols-outlined text-base" style="color:#30363d">arrow_forward</span>
+                            </button>
+                        </template>
+                    </div>
+                </template>
+            </div>
+
+            {# Empty state #}
+            <div x-show="query.length >= 2 && !loading && !hasResults"
+                class="text-center text-sm py-2" style="color:#8b949e">
+                No results for "<span x-text="query" class="text-white"></span>"
+            </div>
+
+            {# Hint #}
+            <div x-show="!hasResults && query.length < 2"
+                class="flex items-center justify-center gap-2 text-xs" style="color:#484f58">
+                <span>Users</span><span>·</span><span>Orders</span><span>·</span><span>Foods</span><span>·</span><span>Complaints</span>
+            </div>
+        </div>
+    </div>
+
     <div id="page" class="flex flex-col max-w-full min-h-screen {% element_classes 'page' %}">
         {% if not is_popup and is_nav_sidebar_enabled %}
             {% block nav-sidebar %}

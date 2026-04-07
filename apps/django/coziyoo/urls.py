@@ -3,10 +3,12 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
+from coziyoo.admin_search import admin_global_search
 
 urlpatterns = [
     # Django Admin UI (django-unfold)
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
+    path("admin/global-search/", admin_global_search, name="admin_global_search"),
     path("admin/", admin.site.urls),
 
     # REST API v1
