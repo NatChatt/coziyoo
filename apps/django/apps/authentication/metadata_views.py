@@ -246,7 +246,7 @@ class AdminTablePreferencesView(APIView):
                 """SELECT visible_columns, column_order, updated_at::text
                    FROM admin_table_preferences
                    WHERE admin_user_id = %s AND table_key = %s""",
-                [str(request.user.user_id), table_key],
+                [str(request.user.id), table_key],
             )
             row = cur.fetchone()
 
@@ -283,6 +283,6 @@ class AdminTablePreferencesView(APIView):
                    DO UPDATE SET visible_columns = EXCLUDED.visible_columns,
                                  column_order = EXCLUDED.column_order,
                                  updated_at = NOW()""",
-                [str(request.user.user_id), table_key, json.dumps(visible), json.dumps(order)],
+                [str(request.user.id), table_key, json.dumps(visible), json.dumps(order)],
             )
         return Response({"data": {"tableKey": table_key, "visibleColumns": visible, "columnOrder": order}})
