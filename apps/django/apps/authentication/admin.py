@@ -176,7 +176,7 @@ class UsersAdmin(ModelAdmin):
 
             # Review stats
             cur.execute("""
-                SELECT count(*)::int, COALESCE(avg(rating), 0)::numeric(3,2)
+                SELECT count(*)::int, COALESCE(avg(r.rating), 0)::numeric(3,2)
                 FROM reviews r JOIN foods f ON f.id = r.food_id WHERE f.seller_id = %s
             """, [user_id])
             rrow = cur.fetchone()
@@ -207,7 +207,7 @@ class UsersAdmin(ModelAdmin):
                 LEFT JOIN users u ON u.id = r.buyer_id
                 WHERE f.seller_id = %s ORDER BY r.created_at DESC LIMIT 10
             """, [user_id])
-            reviews = [{"id": str(r[0]), "food_name": r[1], "stars": "★" * r[2] + "☆" * (5 - r[2]),
+            reviews = [{"id": str(r[0]), "food_name": r[1], "stars": "★" * int(r[2]) + "☆" * (5 - int(r[2])),
                         "comment": r[3], "created_at": r[4], "buyer_name": r[5]} for r in cur.fetchall()]
 
             # Recent complaints (via orders)
