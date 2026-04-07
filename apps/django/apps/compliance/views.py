@@ -1,6 +1,9 @@
+from django.conf import settings
 from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
+
+from coziyoo import s3 as s3_utils
 
 
 # ── Permission helpers ────────────────────────────────────────────────────────
@@ -49,6 +52,8 @@ class SellerComplianceProfileView(APIView):
                 doc["docId"] = str(doc["docId"]) if doc["docId"] else None
                 doc["uploadedAt"] = doc["uploadedAt"].isoformat() if doc["uploadedAt"] else None
                 doc["expiresAt"] = doc["expiresAt"].isoformat() if doc["expiresAt"] else None
+                if "fileUrl" in doc:
+                    doc["fileUrl"] = s3_utils.hydrate_file_url(doc["fileUrl"])
                 documents.append(doc)
 
         return Response({"data": {"documents": documents, "status": "in_progress"}})
@@ -106,7 +111,7 @@ class SellerDocumentListView(APIView):
             return err
 
         document_list_id = request.data.get("documentListId")
-        file_url = request.data.get("fileUrl")
+        file_url = request.data.get("fileUrl")  # s3:// pointer after direct upload
         notes = request.data.get("notes", "")
 
         if not document_list_id or not file_url:
@@ -130,6 +135,56 @@ class SellerDocumentListView(APIView):
             row = cur.fetchone()
 
         return Response({"data": {"id": str(row[0]), "status": "uploaded"}}, status=201)
+
+
+class SellerDocumentPresignView(APIView):
+    """POST /v1/seller/compliance/documents/presign — get a presigned PUT URL for direct upload."""
+
+    def post(self, request):
+        err = _require_app(request)
+        if err:
+            return err
+
+        if not s3_utils.is_configured():
+            return Response(
+                {"error": {"code": "STORAGE_NOT_CONFIGURED", "message": "S3 storage is not configured"}},
+                status=503,
+            )
+
+        doc_type = request.data.get("docType")
+        file_name = request.data.get("fileName", "document.bin")
+        content_type = request.data.get("contentType", "application/octet-stream")
+
+        if not doc_type:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "docType is required"}},
+                status=400,
+            )
+
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM compliance_documents_list WHERE code = %s AND is_active = TRUE",
+                [doc_type],
+            )
+            if cur.fetchone() is None:
+                return Response(
+                    {"error": {"code": "DOCUMENT_TYPE_NOT_FOUND", "message": "Document type not found"}},
+                    status=404,
+                )
+
+        seller_id = str(request.user.id)
+        bucket = settings.S3_BUCKET_SELLER_DOCS
+        key = s3_utils.build_seller_document_key(seller_id, doc_type, file_name)
+        upload_url = s3_utils.presign_put(bucket, key, content_type)
+
+        return Response({
+            "data": {
+                "uploadUrl": upload_url,
+                "fileUrl": s3_utils.to_storage_pointer(bucket, key),
+                "objectKey": key,
+                "expiresInSeconds": getattr(settings, "S3_SIGNED_URL_TTL_SECONDS", 900),
+            }
+        })
 
 
 class SellerOptionalUploadsView(APIView):
@@ -156,6 +211,7 @@ class SellerOptionalUploadsView(APIView):
                 d = dict(zip(cols, row))
                 d["id"] = str(d["id"])
                 d["createdAt"] = d["createdAt"].isoformat() if d["createdAt"] else None
+                d["fileUrl"] = s3_utils.hydrate_file_url(d.get("fileUrl"))
                 rows.append(d)
 
         return Response({"data": rows})
@@ -203,7 +259,8 @@ class AdminComplianceQueueView(APIView):
                 """
                 SELECT scd.id, scd.seller_id, scd.status, scd.uploaded_at,
                        u.display_name as seller_name, u.email as seller_email,
-                       cdl.name as document_name, cdl.code as document_code
+                       cdl.name as document_name, cdl.code as document_code,
+                       scd.file_url
                 FROM seller_compliance_documents scd
                 JOIN users u ON u.id = scd.seller_id
                 JOIN compliance_documents_list cdl ON cdl.id = scd.document_list_id
@@ -213,13 +270,14 @@ class AdminComplianceQueueView(APIView):
                 """,
             )
             cols = ["id", "sellerId", "status", "uploadedAt",
-                    "sellerName", "sellerEmail", "documentName", "documentCode"]
+                    "sellerName", "sellerEmail", "documentName", "documentCode", "fileUrl"]
             rows = []
             for row in cur.fetchall():
                 d = dict(zip(cols, row))
                 d["id"] = str(d["id"])
                 d["sellerId"] = str(d["sellerId"])
                 d["uploadedAt"] = d["uploadedAt"].isoformat() if d["uploadedAt"] else None
+                d["fileUrl"] = s3_utils.hydrate_file_url(d["fileUrl"])
                 rows.append(d)
 
         return Response({"data": rows})
@@ -369,3 +427,89 @@ class AdminReviewDocumentView(APIView):
             )
 
         return Response({"data": {"id": str(row[0]), "status": status}})
+
+
+class AdminPresignUploadView(APIView):
+    """POST /v1/admin/compliance/:seller_id/documents/presign-upload"""
+
+    def post(self, request, seller_id):
+        err = _require_admin(request)
+        if err:
+            return err
+
+        if not s3_utils.is_configured():
+            return Response(
+                {"error": {"code": "STORAGE_NOT_CONFIGURED", "message": "S3 storage is not configured"}},
+                status=503,
+            )
+
+        doc_type = request.data.get("docType")
+        file_name = request.data.get("fileName", "document.bin")
+        content_type = request.data.get("contentType", "application/octet-stream")
+
+        if not doc_type:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "docType is required"}},
+                status=400,
+            )
+
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM compliance_documents_list WHERE code = %s AND is_active = TRUE",
+                [doc_type],
+            )
+            if cur.fetchone() is None:
+                return Response(
+                    {"error": {"code": "DOCUMENT_TYPE_NOT_FOUND", "message": "Document type not found"}},
+                    status=404,
+                )
+
+        bucket = settings.S3_BUCKET_SELLER_DOCS
+        key = s3_utils.build_seller_document_key(str(seller_id), doc_type, file_name)
+        upload_url = s3_utils.presign_put(bucket, key, content_type)
+
+        return Response({
+            "data": {
+                "uploadUrl": upload_url,
+                "fileUrl": s3_utils.to_storage_pointer(bucket, key),
+                "objectKey": key,
+                "expiresInSeconds": getattr(settings, "S3_SIGNED_URL_TTL_SECONDS", 900),
+            }
+        })
+
+
+class AdminSellerComplianceView(APIView):
+    """GET /v1/admin/compliance/:seller_id — full compliance profile for a seller"""
+
+    def get(self, request, seller_id):
+        err = _require_admin(request)
+        if err:
+            return err
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT scd.id, scd.document_list_id, cdl.code, cdl.name, cdl.validity_years,
+                       scd.is_required, scd.status, scd.file_url, scd.uploaded_at,
+                       scd.reviewed_at, scd.rejection_reason, scd.notes, scd.version, scd.is_current
+                FROM seller_compliance_documents scd
+                JOIN compliance_documents_list cdl ON cdl.id = scd.document_list_id
+                WHERE scd.seller_id = %s AND scd.is_current = TRUE
+                ORDER BY cdl.name
+                """,
+                [str(seller_id)],
+            )
+            cols = ["id", "documentListId", "code", "name", "validityYears",
+                    "isRequired", "status", "fileUrl", "uploadedAt",
+                    "reviewedAt", "rejectionReason", "notes", "version", "isCurrent"]
+            rows = []
+            for row in cur.fetchall():
+                d = dict(zip(cols, row))
+                d["id"] = str(d["id"])
+                d["documentListId"] = str(d["documentListId"])
+                d["uploadedAt"] = d["uploadedAt"].isoformat() if d["uploadedAt"] else None
+                d["reviewedAt"] = d["reviewedAt"].isoformat() if d["reviewedAt"] else None
+                d["fileUrl"] = s3_utils.hydrate_file_url(d["fileUrl"])
+                rows.append(d)
+
+        return Response({"data": rows})
