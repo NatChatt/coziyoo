@@ -220,7 +220,7 @@ class UsersAdmin(ModelAdmin):
 
             # Foods list
             cur.execute("""
-                SELECT f.id, f.name, f.price, f.is_active, c.name AS category_name
+                SELECT f.id, f.name, f.price, f.is_active, c.name_tr AS category_name
                 FROM foods f LEFT JOIN categories c ON c.id = f.category_id
                 WHERE f.seller_id = %s ORDER BY f.name LIMIT 20
             """, [user_id])
