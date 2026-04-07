@@ -1,10 +1,12 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
     # Django Admin UI (django-unfold)
+    path("", RedirectView.as_view(url="/admin/", permanent=False)),
     path("admin/", admin.site.urls),
 
     # REST API v1
