@@ -6,44 +6,40 @@
 <div class="mb-4">
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
 
-    {# Total #}
-    <div class="rounded-xl p-4 flex items-center justify-between"
-         style="background: linear-gradient(135deg, #1a2744 0%, #0f1c35 100%); border: 1.5px solid #e55;">
+    {# Total — blue tone #}
+    <div class="rounded-xl p-4 flex items-center justify-between bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
       <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-2xl text-base-300">group</span>
-        <span class="text-sm font-medium text-base-200">Total {{ buyer_stats.label }}s</span>
+        <span class="material-symbols-outlined text-2xl text-blue-500 dark:text-blue-400">group</span>
+        <span class="text-sm font-medium text-blue-700 dark:text-blue-300">Total {{ buyer_stats.label }}s</span>
       </div>
-      <span class="text-3xl font-bold text-white">{{ buyer_stats.total }}</span>
+      <span class="text-3xl font-bold text-blue-800 dark:text-blue-100">{{ buyer_stats.total }}</span>
     </div>
 
-    {# Active #}
-    <div class="rounded-xl p-4 flex items-center justify-between"
-         style="background: linear-gradient(135deg, #0d2e1a 0%, #071a0e 100%); border: 1.5px solid #1a5c30;">
+    {# Active — green tone #}
+    <div class="rounded-xl p-4 flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
       <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-2xl text-green-400">check_circle</span>
-        <span class="text-sm font-medium text-base-200">Active {{ buyer_stats.label }}s</span>
+        <span class="material-symbols-outlined text-2xl text-emerald-500 dark:text-emerald-400">check_circle</span>
+        <span class="text-sm font-medium text-emerald-700 dark:text-emerald-300">Active {{ buyer_stats.label }}s</span>
       </div>
-      <span class="text-3xl font-bold text-white">{{ buyer_stats.active }}</span>
+      <span class="text-3xl font-bold text-emerald-800 dark:text-emerald-100">{{ buyer_stats.active }}</span>
     </div>
 
-    {# Open Complaints #}
-    <div class="rounded-xl p-4 flex items-center justify-between"
-         style="background: linear-gradient(135deg, #2e1a00 0%, #1c1000 100%); border: 1.5px solid #7a4500;">
+    {# Open Complaints — amber tone #}
+    <div class="rounded-xl p-4 flex items-center justify-between bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
       <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-2xl text-orange-400">report_problem</span>
-        <span class="text-sm font-medium text-base-200">Open Complaints</span>
+        <span class="material-symbols-outlined text-2xl text-amber-500 dark:text-amber-400">report_problem</span>
+        <span class="text-sm font-medium text-amber-700 dark:text-amber-300">Open Complaints</span>
       </div>
-      <span class="text-3xl font-bold text-white">{{ buyer_stats.open_complaints }}</span>
+      <span class="text-3xl font-bold text-amber-800 dark:text-amber-100">{{ buyer_stats.open_complaints }}</span>
     </div>
 
-    {# Risky #}
-    <div class="rounded-xl p-4 flex items-center justify-between"
-         style="background: linear-gradient(135deg, #1a1a2e 0%, #0d0d1e 100%); border: 1.5px solid #5c1a1a;">
+    {# Risky — rose tone #}
+    <div class="rounded-xl p-4 flex items-center justify-between bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
       <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-2xl text-red-400">shield_with_heart</span>
-        <span class="text-sm font-medium text-base-200">Risky {{ buyer_stats.label }}s</span>
+        <span class="material-symbols-outlined text-2xl text-rose-500 dark:text-rose-400">shield_with_heart</span>
+        <span class="text-sm font-medium text-rose-700 dark:text-rose-300">Risky {{ buyer_stats.label }}s</span>
       </div>
-      <span class="text-3xl font-bold text-white">{{ buyer_stats.risky }}</span>
+      <span class="text-3xl font-bold text-rose-800 dark:text-rose-100">{{ buyer_stats.risky }}</span>
     </div>
 
   </div>
