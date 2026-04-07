@@ -294,6 +294,14 @@ class Users(models.Model):
         db_table = 'users'
 
 
+class AllUsers(Users):
+    """Proxy model for viewing all users including inactive ones."""
+    class Meta:
+        proxy = True
+        verbose_name = "All Users"
+        verbose_name_plural = "All Users"
+
+
 class SmsLogs(models.Model):
     id = models.UUIDField(primary_key=True)
     buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING)

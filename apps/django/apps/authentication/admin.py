@@ -9,7 +9,7 @@ from unfold.admin import ModelAdmin
 from unfold.decorators import display
 
 from .models import (
-    Users, AdminUsers, AdminSalesCommissionSettings,
+    Users, AllUsers, AdminUsers, AdminSalesCommissionSettings,
     AdminAuditLogs, SecurityLoginEvents, AdminApiTokens,
 )
 
@@ -380,6 +380,59 @@ class UsersAdmin(ModelAdmin):
             '<span style="color:{};font-weight:600">{}</span>',
             color, obj.seller_profile_status or "—",
         )
+
+
+@admin.register(AllUsers)
+class AllUsersAdmin(ModelAdmin):
+    list_display = [
+        "display_name_link", "email", "user_type_badge", "is_active",
+        "seller_status_badge", "created_at",
+    ]
+    list_display_links = None
+    list_filter = ["user_type", "is_active", "seller_profile_status"]
+    search_fields = ["email", "display_name", "username", "phone"]
+    ordering = ["-created_at"]
+    list_per_page = 50
+
+    @display(description="Name", ordering="display_name")
+    def display_name_link(self, obj):
+        from django.urls import reverse
+        if obj.user_type == "seller":
+            url = reverse("admin:authentication_users_seller_detail", args=[obj.id])
+        elif obj.user_type in ("buyer", "both"):
+            url = reverse("admin:authentication_users_buyer_detail", args=[obj.id])
+        else:
+            return obj.display_name
+        return format_html('<a href="{}" class="text-primary-600 hover:underline font-medium">{}</a>', url, obj.display_name)
+
+    @display(description="Type", ordering="user_type")
+    def user_type_badge(self, obj):
+        colors = {"buyer": "#2563eb", "seller": "#16a34a", "both": "#7c3aed"}
+        color = colors.get(obj.user_type, "#6b7280")
+        return format_html(
+            '<span style="background:{};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">{}</span>',
+            color, obj.user_type,
+        )
+
+    @display(description="Seller Status", ordering="seller_profile_status")
+    def seller_status_badge(self, obj):
+        if obj.user_type not in ("seller", "both"):
+            return "—"
+        colors = {
+            "approved": "#16a34a", "pending": "#d97706",
+            "rejected": "#dc2626", "suspended": "#6b7280",
+        }
+        color = colors.get(obj.seller_profile_status, "#6b7280")
+        return format_html(
+            '<span style="color:{};font-weight:600">{}</span>',
+            color, obj.seller_profile_status or "—",
+        )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(AdminUsers)
