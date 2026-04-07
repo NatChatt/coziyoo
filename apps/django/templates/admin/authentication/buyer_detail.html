@@ -24,25 +24,28 @@
 
     {# Stat Cards #}
     <div class="flex flex-wrap gap-3 sm:ml-6 grow">
-      <div class="bg-base-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[180px] grow">
-        <span class="material-symbols-outlined text-red-400">report</span>
+      {# Open Complaints — rose #}
+      <div class="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[160px] grow">
+        <span class="material-symbols-outlined text-rose-500 dark:text-rose-400">report</span>
         <div>
-          <div class="text-xs text-base-400 uppercase tracking-wide">{% trans "Açık Şikayet" %}</div>
-          <div class="text-2xl font-bold text-white">{{ summary.complaint_unresolved }}</div>
+          <div class="text-xs font-medium text-rose-600 dark:text-rose-300 uppercase tracking-wide">{% trans "Açık Şikayet" %}</div>
+          <div class="text-2xl font-bold text-rose-800 dark:text-rose-100">{{ summary.complaint_unresolved }}</div>
         </div>
       </div>
-      <div class="bg-base-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[180px] grow">
-        <span class="material-symbols-outlined text-green-400">trending_up</span>
+      {# Monthly Spend — emerald #}
+      <div class="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[160px] grow">
+        <span class="material-symbols-outlined text-emerald-500 dark:text-emerald-400">trending_up</span>
         <div>
-          <div class="text-xs text-base-400 uppercase tracking-wide">{% trans "Son 30 Gün" %}</div>
-          <div class="text-2xl font-bold text-green-400">₺{{ summary.monthly_spent|floatformat:2 }}</div>
+          <div class="text-xs font-medium text-emerald-600 dark:text-emerald-300 uppercase tracking-wide">{% trans "Son 30 Gün" %}</div>
+          <div class="text-2xl font-bold text-emerald-800 dark:text-emerald-100">₺{{ summary.monthly_spent|floatformat:2 }}</div>
         </div>
       </div>
-      <div class="bg-base-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[180px] grow">
-        <span class="material-symbols-outlined text-yellow-400">payments</span>
+      {# Total Orders — blue #}
+      <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[160px] grow">
+        <span class="material-symbols-outlined text-blue-500 dark:text-blue-400">payments</span>
         <div>
-          <div class="text-xs text-base-400 uppercase tracking-wide">{% trans "Ödeme Durumu" %}</div>
-          <div class="text-2xl font-bold text-white">{{ summary.total_orders }} {% trans "sipariş" %}</div>
+          <div class="text-xs font-medium text-blue-600 dark:text-blue-300 uppercase tracking-wide">{% trans "Ödeme Durumu" %}</div>
+          <div class="text-2xl font-bold text-blue-800 dark:text-blue-100">{{ summary.total_orders }} {% trans "sipariş" %}</div>
         </div>
       </div>
     </div>
