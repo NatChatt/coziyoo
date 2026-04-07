@@ -1,0 +1,321 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="space-y-4" x-data="{ tab: 'general' }">
+
+  {# ── Tab Bar ── #}
+  <div class="bg-white dark:bg-base-900 rounded-xl border border-base-200 dark:border-base-700 overflow-hidden">
+    <div class="flex items-center justify-between border-b border-base-200 dark:border-base-700">
+      <div class="flex items-center overflow-x-auto">
+        {% for t_id, t_label in tabs %}
+          <button @click="tab = '{{ t_id }}'"
+            class="px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors"
+            :class="tab === '{{ t_id }}'
+              ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200'">
+            {{ t_label }}
+          </button>
+        {% endfor %}
+      </div>
+      <div class="px-4 shrink-0">
+        <span class="text-base-400 text-sm cursor-not-allowed">Export to Excel</span>
+      </div>
+    </div>
+
+    {# ── General Tab ── #}
+    <div x-show="tab === 'general'" class="p-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {# Left — Identity Card #}
+        <div class="bg-base-800 rounded-xl p-5 space-y-4">
+          <h2 class="text-white font-bold text-lg">Identity Card</h2>
+          <div class="bg-base-900 rounded-lg p-4">
+            <div class="text-xs text-base-400 mb-1">Customer ID:</div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-mono text-sm text-white break-all">{{ user_obj.id }}</span>
+              <button onclick="navigator.clipboard.writeText('{{ user_obj.id }}')"
+                class="text-base-400 hover:text-white transition-colors shrink-0"
+                title="Copy">
+                <span class="material-symbols-outlined text-base">content_copy</span>
+              </button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <div class="text-base-400 text-xs mb-1">Role</div>
+              <div class="text-white">{{ user_obj.user_type|default:"—" }}</div>
+            </div>
+            <div>
+              <div class="text-base-400 text-xs mb-1">Created</div>
+              <div class="text-white">{{ user_obj.created_at|date:"n/j/Y" }}</div>
+            </div>
+            <div>
+              <div class="text-base-400 text-xs mb-1">City/District</div>
+              <div class="text-white">{% if address %}{{ address.title }}{% else %}—{% endif %}</div>
+            </div>
+            <div>
+              <div class="text-base-400 text-xs mb-1">Address</div>
+              <div class="text-white text-xs">{% if address %}{{ address.line }}{% else %}—{% endif %}</div>
+            </div>
+          </div>
+        </div>
+
+        {# Right — Profile edit card #}
+        <div class="bg-base-800 rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-white font-bold text-lg">{{ user_obj.display_name }}</h2>
+            <span class="flex items-center gap-1 text-sm {% if user_obj.is_active %}text-green-400{% else %}text-base-400{% endif %}">
+              <span class="w-2 h-2 rounded-full inline-block {% if user_obj.is_active %}bg-green-400{% else %}bg-base-400{% endif %}"></span>
+              {% if user_obj.is_active %}active{% else %}disabled{% endif %}
+            </span>
+          </div>
+
+          <form method="post" action="{% url 'admin:authentication_users_change' user_obj.id %}">
+            {% csrf_token %}
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-base-400 block mb-1">Display Name</label>
+                <input type="text" name="display_name" value="{{ user_obj.display_name }}"
+                  class="w-full bg-base-900 border border-base-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary-500">
+              </div>
+              <div>
+                <label class="text-xs text-base-400 block mb-1">Email</label>
+                <input type="email" name="email" value="{{ user_obj.email }}"
+                  class="w-full bg-base-900 border border-base-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary-500">
+              </div>
+              <div>
+                <label class="text-xs text-base-400 block mb-1">Full Name</label>
+                <input type="text" name="full_name" value="{{ user_obj.full_name|default:'' }}"
+                  class="w-full bg-base-900 border border-base-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary-500">
+              </div>
+              <div>
+                <label class="text-xs text-base-400 block mb-1">Phone</label>
+                <input type="text" name="phone" value="{{ user_obj.phone|default:'' }}"
+                  class="w-full bg-base-900 border border-base-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary-500">
+              </div>
+              <div>
+                <label class="text-xs text-base-400 block mb-1">Date of Birth</label>
+                <input type="text" name="dob" value="{{ user_obj.dob|date:'d/m/Y'|default:'' }}"
+                  placeholder="dd/mm/yyyy"
+                  class="w-full bg-base-900 border border-base-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary-500">
+              </div>
+              <div>
+                <label class="text-xs text-base-400 block mb-1">Country Code</label>
+                <input type="text" name="country_code" value="{{ user_obj.country_code|default:'' }}"
+                  class="w-full bg-base-900 border border-base-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary-500">
+              </div>
+            </div>
+
+            <div class="flex gap-2 mt-4">
+              <button type="button"
+                class="flex-1 px-4 py-2 rounded-lg bg-base-700 text-white text-sm font-medium hover:bg-base-600 transition-colors">
+                Password (optional reset)
+              </button>
+              <a href="{% url 'admin:authentication_users_change' user_obj.id %}"
+                class="px-4 py-2 rounded-lg bg-base-700 text-white text-sm font-medium hover:bg-base-600 transition-colors whitespace-nowrap">
+                Identity Details
+              </a>
+              <button type="submit"
+                class="px-6 py-2 rounded-lg bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 transition-colors">
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+      {# Stat cards #}
+      <div class="flex flex-wrap gap-3 mt-4">
+        <div class="bg-base-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[180px] grow">
+          <span class="material-symbols-outlined text-green-400">payments</span>
+          <div>
+            <div class="text-xs text-base-400 uppercase tracking-wide">Toplam Kazanç</div>
+            <div class="text-2xl font-bold text-green-400">₺{{ summary.total_earnings|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="bg-base-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[180px] grow">
+          <span class="material-symbols-outlined text-blue-400">trending_up</span>
+          <div>
+            <div class="text-xs text-base-400 uppercase tracking-wide">Son 30 Gün</div>
+            <div class="text-2xl font-bold text-blue-400">₺{{ summary.monthly_earnings|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="bg-base-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[180px] grow">
+          <span class="material-symbols-outlined text-yellow-400">star</span>
+          <div>
+            <div class="text-xs text-base-400 uppercase tracking-wide">Ortalama Puan</div>
+            <div class="text-2xl font-bold text-white">{{ summary.avg_rating }} / 5</div>
+          </div>
+        </div>
+        <div class="bg-base-800 rounded-xl px-5 py-3 flex items-center gap-3 min-w-[180px] grow">
+          <span class="material-symbols-outlined text-red-400">report</span>
+          <div>
+            <div class="text-xs text-base-400 uppercase tracking-wide">Açık Şikayet</div>
+            <div class="text-2xl font-bold text-white">{{ summary.complaint_unresolved }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Foods Tab ── #}
+    <div x-show="tab === 'foods'" class="p-6">
+      {% if foods %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-base-200 dark:border-base-700 text-xs font-semibold text-base-500 uppercase tracking-wide">
+                <th class="text-left py-2 pr-4">Yemek</th>
+                <th class="text-left py-2 pr-4">Kategori</th>
+                <th class="text-left py-2 pr-4">Fiyat</th>
+                <th class="text-left py-2">Durum</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-base-100 dark:divide-base-800">
+              {% for f in foods %}
+              <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+                <td class="py-2 pr-4 font-medium">{{ f.name }}</td>
+                <td class="py-2 pr-4 text-base-400">{{ f.category_name|default:"—" }}</td>
+                <td class="py-2 pr-4">₺{{ f.price }}</td>
+                <td class="py-2">
+                  {% if f.is_available %}
+                    <span class="text-green-500 text-xs font-medium">Aktif</span>
+                  {% else %}
+                    <span class="text-base-400 text-xs font-medium">Pasif</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-base-400 text-center py-8">Yemek bulunamadı.</p>
+      {% endif %}
+    </div>
+
+    {# ── Orders & Earnings Tab ── #}
+    <div x-show="tab === 'orders'" class="p-6">
+      {% if orders %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-base-200 dark:border-base-700 text-xs font-semibold text-base-500 uppercase tracking-wide">
+                <th class="text-left py-2 pr-4">Sipariş</th>
+                <th class="text-left py-2 pr-4">Alıcı</th>
+                <th class="text-left py-2 pr-4">Tutar</th>
+                <th class="text-left py-2 pr-4">Durum</th>
+                <th class="text-left py-2">Tarih</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-base-100 dark:divide-base-800">
+              {% for o in orders %}
+              <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+                <td class="py-2 pr-4 font-mono text-xs">{{ o.id|slice:":8" }}…</td>
+                <td class="py-2 pr-4">{{ o.buyer_name|default:"—" }}</td>
+                <td class="py-2 pr-4 font-medium">₺{{ o.total_price }}</td>
+                <td class="py-2 pr-4">
+                  <span class="px-2 py-0.5 rounded text-xs font-medium bg-base-100 dark:bg-base-800">{{ o.status }}</span>
+                </td>
+                <td class="py-2 text-base-400 text-xs">{{ o.created_at|date:"d.m.Y H:i" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-base-400 text-center py-8">Sipariş bulunamadı.</p>
+      {% endif %}
+    </div>
+
+    {# ── Compliance Tab ── #}
+    <div x-show="tab === 'compliance'" class="p-6">
+      {% if compliance_docs %}
+        <div class="space-y-2">
+          {% for doc in compliance_docs %}
+          <div class="flex items-center justify-between border border-base-200 dark:border-base-700 rounded-lg px-4 py-3">
+            <span class="text-sm font-medium">{{ doc.name }}</span>
+            <div class="flex items-center gap-3">
+              {% if doc.uploaded_at %}
+                <span class="text-xs text-base-400">{{ doc.uploaded_at|date:"d.m.Y" }}</span>
+              {% endif %}
+              <span class="px-2 py-0.5 rounded text-xs font-medium
+                {% if doc.status == 'approved' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
+                {% elif doc.status == 'uploaded' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400
+                {% elif doc.status == 'rejected' %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400
+                {% else %}bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400{% endif %}">
+                {{ doc.status }}
+              </span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-base-400 text-center py-8">Uyumluluk belgesi bulunamadı.</p>
+      {% endif %}
+    </div>
+
+    {# ── Reviews Tab ── #}
+    <div x-show="tab === 'reviews'" class="p-6">
+      {% if reviews %}
+        <div class="space-y-3">
+          {% for r in reviews %}
+          <div class="border border-base-200 dark:border-base-700 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-yellow-500">{{ r.stars }}</span>
+              <span class="text-sm font-medium">{{ r.food_name|default:"—" }}</span>
+              <span class="text-xs text-base-400 ml-auto">{{ r.buyer_name|default:"" }}</span>
+            </div>
+            {% if r.comment %}<p class="text-base-500 text-sm">{{ r.comment }}</p>{% endif %}
+            <p class="text-base-400 text-xs mt-1">{{ r.created_at|date:"d.m.Y H:i" }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-base-400 text-center py-8">Yorum bulunamadı.</p>
+      {% endif %}
+    </div>
+
+    {# ── Complaints Tab ── #}
+    <div x-show="tab === 'complaints'" class="p-6">
+      {% if complaints %}
+        <div class="space-y-3">
+          {% for c in complaints %}
+          <div class="border border-base-200 dark:border-base-700 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-medium text-sm">{{ c.description|truncatechars:80|default:"Şikayet" }}</span>
+              <span class="px-2 py-0.5 rounded text-xs font-medium bg-base-100 dark:bg-base-800">{{ c.status }}</span>
+            </div>
+            <p class="text-base-400 text-xs">{{ c.created_at|date:"d.m.Y H:i" }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-base-400 text-center py-8">Şikayet bulunamadı.</p>
+      {% endif %}
+    </div>
+
+    {# ── Wallet & Transactions Tab (placeholder) ── #}
+    <div x-show="tab === 'wallet'" class="p-6">
+      <p class="text-base-400 text-center py-8">Cüzdan ve işlem geçmişi yakında.</p>
+    </div>
+
+    {# ── Location & Security Tab (placeholder) ── #}
+    <div x-show="tab === 'location'" class="p-6">
+      <p class="text-base-400 text-center py-8">Konum ve güvenlik bilgileri yakında.</p>
+    </div>
+
+    {# ── Notes Tab (placeholder) ── #}
+    <div x-show="tab === 'notes'" class="p-6">
+      <p class="text-base-400 text-center py-8">Notlar yakında.</p>
+    </div>
+
+    {# ── Raw Data Tab ── #}
+    <div x-show="tab === 'raw'" class="p-6">
+      <pre class="bg-base-50 dark:bg-base-800 rounded-lg p-4 text-xs overflow-x-auto text-base-700 dark:text-base-300">{{ raw_json }}</pre>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

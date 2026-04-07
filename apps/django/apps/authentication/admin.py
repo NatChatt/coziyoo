@@ -18,7 +18,7 @@ from .models import (
 class UsersAdmin(ModelAdmin):
     list_display = [
         "display_name", "email", "user_type_badge", "is_active",
-        "seller_status_badge", "created_at", "buyer_detail_link",
+        "seller_status_badge", "created_at", "detail_link",
     ]
     list_filter = ["user_type", "is_active", "seller_profile_status"]
     search_fields = ["email", "display_name", "username", "phone"]
@@ -44,6 +44,7 @@ class UsersAdmin(ModelAdmin):
         urls = super().get_urls()
         custom = [
             path("<uuid:user_id>/buyer-detail/", self.admin_site.admin_view(self.buyer_detail_view), name="authentication_users_buyer_detail"),
+            path("<uuid:user_id>/seller-detail/", self.admin_site.admin_view(self.seller_detail_view), name="authentication_users_seller_detail"),
         ]
         return custom + urls
 
@@ -147,13 +148,148 @@ class UsersAdmin(ModelAdmin):
         }
         return TemplateResponse(request, "admin/authentication/buyer_detail.html", context)
 
+    def seller_detail_view(self, request, user_id):
+        user = get_object_or_404(Users, pk=user_id)
+
+        with connection.cursor() as cur:
+            # Order/earnings stats
+            cur.execute("""
+                SELECT
+                    count(*)::int AS total_orders,
+                    COALESCE(sum(CASE WHEN payment_completed THEN total_price ELSE 0 END), 0) AS total_earnings,
+                    COALESCE(sum(CASE WHEN payment_completed AND created_at >= now() - interval '30 days' THEN total_price ELSE 0 END), 0) AS monthly_earnings,
+                    max(created_at) AS last_order_at
+                FROM orders WHERE seller_id = %s
+            """, [user_id])
+            orow = cur.fetchone()
+
+            # Complaint stats (via orders)
+            cur.execute("""
+                SELECT count(*)::int, count(*) FILTER (WHERE c.status IN ('open','in_review'))::int
+                FROM complaints c JOIN orders o ON o.id = c.order_id WHERE o.seller_id = %s
+            """, [user_id])
+            crow = cur.fetchone()
+
+            # Foods count
+            cur.execute("SELECT count(*)::int FROM foods WHERE seller_id = %s", [user_id])
+            foods_count = cur.fetchone()[0]
+
+            # Review stats
+            cur.execute("""
+                SELECT count(*)::int, COALESCE(avg(rating), 0)::numeric(3,2)
+                FROM reviews r JOIN foods f ON f.id = r.food_id WHERE f.seller_id = %s
+            """, [user_id])
+            rrow = cur.fetchone()
+
+            # Compliance docs
+            cur.execute("""
+                SELECT cdl.name, scd.status, scd.uploaded_at
+                FROM seller_compliance_documents scd
+                JOIN compliance_documents_list cdl ON cdl.id = scd.document_list_id
+                WHERE scd.seller_id = %s ORDER BY cdl.name
+            """, [user_id])
+            compliance_docs = [{"name": r[0], "status": r[1], "uploaded_at": r[2]} for r in cur.fetchall()]
+
+            # Recent orders
+            cur.execute("""
+                SELECT o.id, u.display_name AS buyer_name, o.total_price, o.status, o.created_at
+                FROM orders o LEFT JOIN users u ON u.id = o.buyer_id
+                WHERE o.seller_id = %s ORDER BY o.created_at DESC LIMIT 10
+            """, [user_id])
+            orders = [{"id": str(r[0]), "buyer_name": r[1], "total_price": r[2], "status": r[3], "created_at": r[4]} for r in cur.fetchall()]
+
+            # Recent reviews
+            cur.execute("""
+                SELECT r.id, f.name AS food_name, r.rating, r.comment, r.created_at,
+                       u.display_name AS buyer_name
+                FROM reviews r
+                JOIN foods f ON f.id = r.food_id
+                LEFT JOIN users u ON u.id = r.buyer_id
+                WHERE f.seller_id = %s ORDER BY r.created_at DESC LIMIT 10
+            """, [user_id])
+            reviews = [{"id": str(r[0]), "food_name": r[1], "stars": "★" * r[2] + "☆" * (5 - r[2]),
+                        "comment": r[3], "created_at": r[4], "buyer_name": r[5]} for r in cur.fetchall()]
+
+            # Recent complaints (via orders)
+            cur.execute("""
+                SELECT c.id, c.description, c.status, c.created_at
+                FROM complaints c JOIN orders o ON o.id = c.order_id
+                WHERE o.seller_id = %s ORDER BY c.created_at DESC LIMIT 10
+            """, [user_id])
+            complaints = [{"id": str(r[0]), "description": r[1], "status": r[2], "created_at": r[3]} for r in cur.fetchall()]
+
+            # Foods list
+            cur.execute("""
+                SELECT f.id, f.name, f.price, f.is_available, c.name AS category_name
+                FROM foods f LEFT JOIN categories c ON c.id = f.category_id
+                WHERE f.seller_id = %s ORDER BY f.name LIMIT 20
+            """, [user_id])
+            foods = [{"id": str(r[0]), "name": r[1], "price": r[2], "is_available": r[3], "category_name": r[4]} for r in cur.fetchall()]
+
+            # Address
+            cur.execute("""
+                SELECT title, address_line FROM user_addresses WHERE user_id = %s LIMIT 1
+            """, [user_id])
+            addr_row = cur.fetchone()
+            address = {"title": addr_row[0], "line": addr_row[1]} if addr_row else None
+
+        summary = {
+            "total_orders": orow[0] or 0,
+            "total_earnings": orow[1] or 0,
+            "monthly_earnings": orow[2] or 0,
+            "last_order_at": orow[3],
+            "complaint_total": crow[0] or 0,
+            "complaint_unresolved": crow[1] or 0,
+            "foods_count": foods_count,
+            "review_count": rrow[0] or 0,
+            "avg_rating": float(rrow[1] or 0),
+        }
+
+        tabs = [
+            ("general", "General"), ("foods", "Foods"), ("orders", "Orders & Earnings"),
+            ("wallet", "Wallet & Transactions"), ("compliance", "Compliance"),
+            ("location", "Location & Security"), ("reviews", "Reviews"),
+            ("complaints", "Complaints"), ("notes", "Notes & Tags"), ("raw", "Raw Data"),
+        ]
+
+        raw_data = {
+            "id": str(user.id), "email": user.email, "display_name": user.display_name,
+            "full_name": user.full_name, "username": user.username, "phone": user.phone,
+            "user_type": user.user_type, "is_active": user.is_active,
+            "seller_profile_status": user.seller_profile_status,
+            "kitchen_title": user.kitchen_title, "kitchen_description": user.kitchen_description,
+            "dob": str(user.dob) if user.dob else None,
+            "country_code": user.country_code, "national_id": user.national_id,
+            "created_at": str(user.created_at),
+        }
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": f"Satıcı Detayı — {user.display_name}",
+            "user_obj": user,
+            "summary": summary,
+            "tabs": tabs,
+            "orders": orders,
+            "reviews": reviews,
+            "complaints": complaints,
+            "foods": foods,
+            "compliance_docs": compliance_docs,
+            "address": address,
+            "raw_json": json.dumps(raw_data, indent=2, default=str),
+            "opts": self.model._meta,
+        }
+        return TemplateResponse(request, "admin/authentication/seller_detail.html", context)
+
     @display(description="Detail", label=True)
-    def buyer_detail_link(self, obj):
-        if obj.user_type in ("buyer", "both"):
-            from django.urls import reverse
+    def detail_link(self, obj):
+        from django.urls import reverse
+        if obj.user_type == "seller":
+            url = reverse("admin:authentication_users_seller_detail", args=[obj.id])
+        elif obj.user_type in ("buyer", "both"):
             url = reverse("admin:authentication_users_buyer_detail", args=[obj.id])
-            return format_html('<a href="{}" class="text-primary-600 hover:underline text-sm">Detail →</a>', url)
-        return "—"
+        else:
+            return "—"
+        return format_html('<a href="{}" class="text-primary-600 hover:underline text-sm">Detail →</a>', url)
 
     @display(description="Type", ordering="user_type")
     def user_type_badge(self, obj):
