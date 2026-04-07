@@ -1,15 +1,14 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, type LayoutChangeEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { AuthSession } from "../utils/auth";
 import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
-import { loadSettings } from "../utils/settings";
+import { getCurrentLanguage, loadSettings } from "../utils/settings";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
-import { HOME_FOOD_CATEGORIES } from "../constants/foodCategories";
 import { formatCopy, t } from "../copy/brandCopy";
 
 const SELLER_FORM_PERSIST_KEY_PREFIX = "seller_food_form_fields_v1";
@@ -64,6 +63,44 @@ type SellerMenuAddon = {
   price?: number;
 };
 
+type SellerFoodDraft = {
+  name?: string;
+  price?: string;
+  cardSummary?: string;
+  description?: string;
+  recipe?: string;
+  ingredients?: string;
+  allergens?: string;
+  imageUrls?: string[];
+  prepTime?: string;
+  cuisine?: string;
+  categoryId?: string;
+  dailyStock?: string;
+  startDate?: string;
+  endDate?: string;
+  freeAddonNameInput?: string;
+  freeAddonKindInput?: AddonKind;
+  paidAddonNameInput?: string;
+  paidAddonKindInput?: AddonKind;
+  paidAddonPriceInput?: string;
+  menuItems?: SellerMenuAddon[];
+};
+
+type SellerFoodsFieldKey =
+  | "name"
+  | "cuisine"
+  | "category"
+  | "sideItems"
+  | "ingredients"
+  | "recipe"
+  | "addons"
+  | "allergens"
+  | "price"
+  | "dailyStock"
+  | "prepTime"
+  | "startDate"
+  | "endDate";
+
 function toBool(value: unknown): boolean {
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value !== 0;
@@ -81,6 +118,18 @@ function normalizeSellerFood(item: Record<string, unknown>): SellerFood {
       ? item.image_urls_json
       : [];
 
+  const ingredientsRaw = Array.isArray(item.ingredients)
+    ? item.ingredients
+    : Array.isArray(item.ingredients_json)
+      ? item.ingredients_json
+      : [];
+
+  const allergensRaw = Array.isArray(item.allergens)
+    ? item.allergens
+    : Array.isArray(item.allergens_json)
+      ? item.allergens_json
+      : [];
+
   const menuItemsRaw = Array.isArray(item.menuItems)
     ? item.menuItems
     : Array.isArray(item.menu_items_json)
@@ -90,7 +139,9 @@ function normalizeSellerFood(item: Record<string, unknown>): SellerFood {
   return {
     id: String(item.id ?? ""),
     categoryId: typeof item.categoryId === "string" ? item.categoryId : (typeof item.category_id === "string" ? item.category_id : null),
-    categoryName: typeof item.categoryName === "string" ? item.categoryName : (typeof item.category_name === "string" ? item.category_name : null),
+    categoryName: typeof item.categoryName === "string"
+      ? item.categoryName
+      : (typeof item.category_name === "string" ? item.category_name : null),
     name: String(item.name ?? ""),
     cardSummary: typeof item.cardSummary === "string" ? item.cardSummary : null,
     description: typeof item.description === "string" ? item.description : null,
@@ -101,8 +152,8 @@ function normalizeSellerFood(item: Record<string, unknown>): SellerFood {
     price: Number(item.price ?? 0),
     imageUrl: typeof item.imageUrl === "string" ? item.imageUrl : (typeof item.image_url === "string" ? item.image_url : null),
     imageUrls: imageUrlsRaw.map((url) => String(url ?? "")).filter(Boolean).slice(0, 5),
-    ingredients: Array.isArray(item.ingredients) ? item.ingredients.map((v) => String(v ?? "")).filter(Boolean) : [],
-    allergens: Array.isArray(item.allergens) ? item.allergens.map((v) => String(v ?? "")).filter(Boolean) : [],
+    ingredients: ingredientsRaw.map((v) => String(v ?? "")).filter(Boolean),
+    allergens: allergensRaw.map((v) => String(v ?? "")).filter(Boolean),
     preparationTimeMinutes: Number.isFinite(Number(item.preparationTimeMinutes))
       ? Number(item.preparationTimeMinutes)
       : (Number.isFinite(Number(item.preparation_time_minutes)) ? Number(item.preparation_time_minutes) : null),
@@ -117,8 +168,11 @@ const ADDON_KIND_OPTIONS: Array<{ value: AddonKind; label: string }> = [
   { value: "appetizer", label: "label.seller.foods.kindAppetizer" },
 ];
 
-function fallbackHomeCategoryOptions(): FoodCategoryOption[] {
-  return HOME_FOOD_CATEGORIES.map((name) => ({
+function fallbackHomeCategoryOptions(language: "tr" | "en"): FoodCategoryOption[] {
+  const names = language === "en"
+    ? ["Soups", "Main Dishes", "Salads", "Meze", "Desserts", "Drinks"]
+    : ["Çorbalar", "Ana Yemekler", "Salata", "Meze", "Tatlılar", "İçecekler"];
+  return names.map((name) => ({
     id: `home:${name.toLocaleLowerCase("tr-TR").replace(/\s+/g, "-")}`,
     name,
   }));
@@ -200,6 +254,28 @@ function resolveApiMessage(payload: unknown, fallback: string): string {
   return fallback;
 }
 
+function withTrailingSlash(path: string): string {
+  if (path.endsWith("/")) return path;
+  const queryIndex = path.indexOf("?");
+  if (queryIndex === -1) return `${path}/`;
+  return `${path.slice(0, queryIndex)}/${path.slice(queryIndex)}`;
+}
+
+function isLegacyLotPublishFailure(res: Response, payload: unknown): boolean {
+  if ([404, 405, 501].includes(res.status)) return true;
+  if (payload && typeof payload === "object") {
+    const obj = payload as Record<string, unknown>;
+    const rawText = typeof obj.rawText === "string" ? obj.rawText.trim() : "";
+    if (rawText.startsWith("<")) return true;
+    const message = typeof obj.message === "string" ? obj.message : "";
+    if (/method not allowed|not found/i.test(message)) return true;
+    const err = obj.error as Record<string, unknown> | undefined;
+    const errMessage = typeof err?.message === "string" ? err.message : "";
+    if (/method not allowed|not found/i.test(errMessage)) return true;
+  }
+  return false;
+}
+
 function parseFreeAddonNames(value: string): string[] {
   const normalizedInput = value
     .replace(/\s+(ve|ile)\s+/gi, ", ")
@@ -219,6 +295,19 @@ function parseFreeAddonNames(value: string): string[] {
 
 export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, initialEditFood, onAuthRefresh }: Props) {
   const PLACEHOLDER_COLOR = "#8A7A6A";
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const fieldOffsetsRef = useRef<Partial<Record<SellerFoodsFieldKey, number>>>({});
+  const nameInputRef = useRef<TextInput | null>(null);
+  const cuisineInputRef = useRef<TextInput | null>(null);
+  const sideItemsInputRef = useRef<TextInput | null>(null);
+  const ingredientsInputRef = useRef<TextInput | null>(null);
+  const recipeInputRef = useRef<TextInput | null>(null);
+  const allergensInputRef = useRef<TextInput | null>(null);
+  const priceInputRef = useRef<TextInput | null>(null);
+  const dailyStockInputRef = useRef<TextInput | null>(null);
+  const prepTimeInputRef = useRef<TextInput | null>(null);
+  const currentLanguage = getCurrentLanguage();
+  const locale = currentLanguage === "en" ? "en-GB" : "tr-TR";
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
   const [loading, setLoading] = useState(true);
@@ -264,9 +353,12 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const [addonLibraryKind, setAddonLibraryKind] = useState<AddonKind>("extra");
   const [addonLibraryPricing, setAddonLibraryPricing] = useState<AddonPricing>("free");
   const [persistentFieldsHydrated, setPersistentFieldsHydrated] = useState(false);
+  const suppressNextDraftPersistRef = useRef(false);
   const [pendingInitialEditId, setPendingInitialEditId] = useState<string | null>(
     initialEditFood ? null : (initialEditFoodId ?? null),
   );
+  const [requiredFieldHighlight, setRequiredFieldHighlight] = useState<SellerFoodsFieldKey | null>(null);
+  const requiredFieldHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const formPersistKey = useMemo(
     () => `${SELLER_FORM_PERSIST_KEY_PREFIX}:${currentAuth.userId}`,
     [currentAuth.userId],
@@ -277,6 +369,12 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setPendingInitialEditId(initialEditFood ? null : (initialEditFoodId ?? null));
   }, [initialEditFoodId, initialEditFood]);
 
+  useEffect(() => () => {
+    if (requiredFieldHighlightTimeoutRef.current) {
+      clearTimeout(requiredFieldHighlightTimeoutRef.current);
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
     setPersistentFieldsHydrated(false);
@@ -285,14 +383,45 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         const raw = await AsyncStorage.getItem(formPersistKey);
         if (!active) return;
         if (!raw) return;
-        const parsed = JSON.parse(raw) as {
-          startDate?: unknown;
-          endDate?: unknown;
-        };
+        const parsed = JSON.parse(raw) as SellerFoodDraft;
         const hasInitialEditContext = Boolean(initialEditFood || initialEditFoodId);
         if (!hasInitialEditContext) {
+          setName(typeof parsed.name === "string" ? parsed.name : "");
+          setPrice(typeof parsed.price === "string" ? parsed.price : "");
+          setCardSummary(typeof parsed.cardSummary === "string" ? parsed.cardSummary : "");
+          setDescription(typeof parsed.description === "string" ? parsed.description : "");
+          setRecipe(typeof parsed.recipe === "string" ? parsed.recipe : "");
+          setIngredients(typeof parsed.ingredients === "string" ? parsed.ingredients : "");
+          setAllergens(typeof parsed.allergens === "string" ? parsed.allergens : "");
+          const hydratedImageUrls = Array.isArray(parsed.imageUrls)
+            ? parsed.imageUrls.map((item) => String(item ?? "").trim()).slice(0, 5)
+            : [];
+          while (hydratedImageUrls.length < 5) hydratedImageUrls.push("");
+          setImageUrls(hydratedImageUrls);
+          setPrepTime(typeof parsed.prepTime === "string" ? parsed.prepTime : "");
+          setCuisine(typeof parsed.cuisine === "string" ? parsed.cuisine : "");
+          setCategoryId(typeof parsed.categoryId === "string" ? parsed.categoryId : "");
+          setDailyStock(typeof parsed.dailyStock === "string" ? parsed.dailyStock : "");
           setStartDate(typeof parsed.startDate === "string" ? parsed.startDate : "");
           setEndDate(typeof parsed.endDate === "string" ? parsed.endDate : "");
+          setFreeAddonNameInput(typeof parsed.freeAddonNameInput === "string" ? parsed.freeAddonNameInput : "");
+          setFreeAddonKindInput(
+            parsed.freeAddonKindInput === "sauce" || parsed.freeAddonKindInput === "appetizer"
+              ? parsed.freeAddonKindInput
+              : "extra",
+          );
+          setPaidAddonNameInput(typeof parsed.paidAddonNameInput === "string" ? parsed.paidAddonNameInput : "");
+          setPaidAddonKindInput(
+            parsed.paidAddonKindInput === "sauce" || parsed.paidAddonKindInput === "appetizer"
+              ? parsed.paidAddonKindInput
+              : "extra",
+          );
+          setPaidAddonPriceInput(typeof parsed.paidAddonPriceInput === "string" ? parsed.paidAddonPriceInput : "");
+          setMenuItems(
+            Array.isArray(parsed.menuItems)
+              ? parsed.menuItems.filter((item) => item && typeof item.name === "string" && item.name.trim())
+              : [],
+          );
         }
       } catch (error) {
         console.warn("[seller-foods] failed to load persisted form fields", error);
@@ -307,14 +436,64 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
 
   useEffect(() => {
     if (!persistentFieldsHydrated) return;
+    if (editingFood || pendingInitialEditId || initialEditFood || initialEditFoodId) return;
+    if (suppressNextDraftPersistRef.current) {
+      suppressNextDraftPersistRef.current = false;
+      return;
+    }
     const payload = JSON.stringify({
+      name,
+      price,
+      cardSummary,
+      description,
+      recipe,
+      ingredients,
+      allergens,
+      imageUrls,
+      prepTime,
+      cuisine,
+      categoryId,
+      dailyStock,
       startDate: startDate.trim(),
       endDate: endDate.trim(),
-    });
+      freeAddonNameInput,
+      freeAddonKindInput,
+      paidAddonNameInput,
+      paidAddonKindInput,
+      paidAddonPriceInput,
+      menuItems,
+    } satisfies SellerFoodDraft);
     AsyncStorage.setItem(formPersistKey, payload).catch((error) => {
       console.warn("[seller-foods] failed to persist form fields", error);
     });
-  }, [persistentFieldsHydrated, formPersistKey, startDate, endDate]);
+  }, [
+    persistentFieldsHydrated,
+    formPersistKey,
+    editingFood,
+    pendingInitialEditId,
+    initialEditFood,
+    initialEditFoodId,
+    name,
+    price,
+    cardSummary,
+    description,
+    recipe,
+    ingredients,
+    allergens,
+    imageUrls,
+    prepTime,
+    cuisine,
+    categoryId,
+    dailyStock,
+    startDate,
+    endDate,
+    freeAddonNameInput,
+    freeAddonKindInput,
+    paidAddonNameInput,
+    paidAddonKindInput,
+    paidAddonPriceInput,
+    menuItems,
+  ]);
 
   useLayoutEffect(() => {
     if (!initialEditFood) return;
@@ -322,7 +501,73 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setPendingInitialEditId(null);
   }, [initialEditFood]);
 
+  function handleFieldLayout(field: SellerFoodsFieldKey, event: LayoutChangeEvent) {
+    fieldOffsetsRef.current[field] = event.nativeEvent.layout.y;
+  }
+
+  function markRequiredField(field: SellerFoodsFieldKey) {
+    setRequiredFieldHighlight(field);
+    if (requiredFieldHighlightTimeoutRef.current) {
+      clearTimeout(requiredFieldHighlightTimeoutRef.current);
+    }
+    requiredFieldHighlightTimeoutRef.current = setTimeout(() => {
+      setRequiredFieldHighlight((current) => (current === field ? null : current));
+    }, 4000);
+  }
+
+  function clearRequiredFieldHighlight(field: SellerFoodsFieldKey) {
+    setRequiredFieldHighlight((current) => (current === field ? null : current));
+  }
+
+  function isRequiredFieldHighlighted(field: SellerFoodsFieldKey): boolean {
+    return requiredFieldHighlight === field;
+  }
+
+  function navigateToRequiredField(
+    field: SellerFoodsFieldKey,
+    options?: {
+      focusRef?: React.RefObject<TextInput | null>;
+      openCategoryModal?: boolean;
+      openDatePicker?: "start" | "end";
+    },
+  ) {
+    markRequiredField(field);
+    const y = fieldOffsetsRef.current[field] ?? 0;
+    scrollViewRef.current?.scrollTo({ y: Math.max(0, y - 18), animated: true });
+    if (options?.openCategoryModal) {
+      setTimeout(() => {
+        if (!loadingCategories && categories.length === 0) {
+          void loadCategories();
+        }
+        setCategoryModalVisible(true);
+      }, 220);
+      return;
+    }
+    if (options?.openDatePicker) {
+      setTimeout(() => openDatePicker(options.openDatePicker!), 220);
+      return;
+    }
+    if (options?.focusRef?.current) {
+      setTimeout(() => options.focusRef?.current?.focus(), 220);
+    }
+  }
+
   async function authedFetch(path: string, init?: RequestInit, baseUrl = apiUrl): Promise<Response> {
+    const fetchWithSession = async (session: AuthSession): Promise<Response> => {
+      const primary = await fetch(`${baseUrl}${path}`, { ...init, headers: makeHeaders(session) });
+      if (
+        primary.status !== 404 &&
+        primary.status !== 405 &&
+        primary.status !== 301 &&
+        primary.status !== 308
+      ) {
+        return primary;
+      }
+      const fallbackPath = withTrailingSlash(path);
+      if (fallbackPath === path) return primary;
+      return fetch(`${baseUrl}${fallbackPath}`, { ...init, headers: makeHeaders(session) });
+    };
+
     const makeHeaders = (session: AuthSession): Record<string, string> => ({
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.accessToken}`,
@@ -330,8 +575,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       ...(init?.headers as Record<string, string> | undefined),
     });
 
-    const headers = makeHeaders(currentAuth);
-    let res = await fetch(`${baseUrl}${path}`, { ...init, headers });
+    let res = await fetchWithSession(currentAuth);
     if (res.status !== 401 && res.status !== 403) return res;
 
     // Another screen may have already refreshed auth; try persisted session first.
@@ -339,7 +583,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     if (persisted && persisted.userId === currentAuth.userId && persisted.accessToken !== currentAuth.accessToken) {
       setCurrentAuth(persisted);
       onAuthRefresh?.(persisted);
-      res = await fetch(`${baseUrl}${path}`, { ...init, headers: makeHeaders(persisted) });
+      res = await fetchWithSession(persisted);
       if (res.status !== 401 && res.status !== 403) return res;
     }
 
@@ -347,10 +591,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     if (!refreshed) return res;
     setCurrentAuth(refreshed);
     onAuthRefresh?.(refreshed);
-    return fetch(`${baseUrl}${path}`, {
-      ...init,
-      headers: makeHeaders(refreshed),
-    });
+    return fetchWithSession(refreshed);
   }
 
   async function loadFoods() {
@@ -398,21 +639,53 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       const mapped =
         items
           .map((item) => {
-            const row = item as { id?: unknown; nameTr?: unknown; name?: unknown };
+            const row = item as {
+              id?: unknown;
+              nameTr?: unknown;
+              nameEn?: unknown;
+              name_tr?: unknown;
+              name_en?: unknown;
+              name?: unknown;
+            };
             const id = typeof row.id === "string" ? row.id : "";
-            const nameTr = typeof row.nameTr === "string" ? row.nameTr.trim() : "";
+            const nameTr = typeof row.nameTr === "string"
+              ? row.nameTr.trim()
+              : (typeof row.name_tr === "string" ? row.name_tr.trim() : "");
+            const nameEn = typeof row.nameEn === "string"
+              ? row.nameEn.trim()
+              : (typeof row.name_en === "string" ? row.name_en.trim() : "");
             const fallbackName = typeof row.name === "string" ? row.name.trim() : "";
             return {
               id,
-              name: nameTr || fallbackName,
+              name: currentLanguage === "en"
+                ? nameEn || fallbackName || nameTr
+                : nameTr || fallbackName || nameEn,
             };
           })
           .filter((item) => item.id && item.name);
 
-      setCategories(mapped.length > 0 ? mapped : fallbackHomeCategoryOptions());
+      if (mapped.length > 0) {
+        setCategories(mapped);
+        return;
+      }
+
+      const derivedFromFoods = foods
+        .map((food) => ({
+          id: String(food.categoryId ?? "").trim(),
+          name: String(food.categoryName ?? "").trim(),
+        }))
+        .filter((item) => item.id && item.name);
+
+      setCategories(derivedFromFoods.length > 0 ? derivedFromFoods : fallbackHomeCategoryOptions(currentLanguage));
     } catch (e) {
       console.warn("[seller-foods] categories load failed:", e);
-      setCategories(fallbackHomeCategoryOptions());
+      const derivedFromFoods = foods
+        .map((food) => ({
+          id: String(food.categoryId ?? "").trim(),
+          name: String(food.categoryName ?? "").trim(),
+        }))
+        .filter((item) => item.id && item.name);
+      setCategories(derivedFromFoods.length > 0 ? derivedFromFoods : fallbackHomeCategoryOptions(currentLanguage));
     } finally {
       setLoadingCategories(false);
     }
@@ -437,6 +710,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   }, [pendingInitialEditId, foods, loading]);
 
   function resetForm() {
+    suppressNextDraftPersistRef.current = true;
+    setRequiredFieldHighlight(null);
     setEditingFood(null);
     setName("");
     setPrice("");
@@ -451,6 +726,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setCuisine("");
     setCategoryId("");
     setDailyStock("");
+    setStartDate("");
+    setEndDate("");
     setMenuItems([]);
     setFreeAddonNameInput("");
     setFreeAddonKindInput("extra");
@@ -460,6 +737,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   }
 
   function openEdit(food: SellerFood) {
+    setRequiredFieldHighlight(null);
     setEditingFood(food);
     setName(food.name);
     setPrice(String(food.price));
@@ -582,50 +860,64 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       const endIsoRequired = parseDisplayDateToIso(endDate);
 
       if (!name.trim()) {
+        navigateToRequiredField("name", { focusRef: nameInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.nameRequired'));
         return;
       }
       if (!isUuid(categoryId)) {
+        navigateToRequiredField("category", { openCategoryModal: true });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.categoryRequired'));
         return;
       }
       if (!cuisine.trim()) {
+        navigateToRequiredField("cuisine", { focusRef: cuisineInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.cuisineRequired'));
         return;
       }
       if (!description.trim()) {
+        navigateToRequiredField("ingredients", { focusRef: ingredientsInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.ingredientsRequired'));
         return;
       }
       if (!recipe.trim()) {
+        navigateToRequiredField("recipe", { focusRef: recipeInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.recipeRequired'));
         return;
       }
       if (parsedAllergens.length === 0) {
+        navigateToRequiredField("allergens", { focusRef: allergensInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.allergensRequired'));
         return;
       }
       if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+        navigateToRequiredField("price", { focusRef: priceInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.priceRequired'));
         return;
       }
       if (!Number.isFinite(parsedDailyStock) || parsedDailyStock <= 0) {
+        navigateToRequiredField("dailyStock", { focusRef: dailyStockInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.stockRequired'));
         return;
       }
       if (!Number.isFinite(parsedPrepTime) || parsedPrepTime <= 0) {
+        navigateToRequiredField("prepTime", { focusRef: prepTimeInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.prepRequired'));
         return;
       }
       if (!startIsoRequired || !endIsoRequired) {
+        navigateToRequiredField(!startIsoRequired ? "startDate" : "endDate", {
+          openDatePicker: !startIsoRequired ? "start" : "end",
+        });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.datesRequired'));
         return;
       }
       if (new Date(endIsoRequired).getTime() <= new Date(startIsoRequired).getTime()) {
+        navigateToRequiredField("endDate", { openDatePicker: "end" });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.endDateInvalid'));
         return;
       }
       if (workingMenuItems.length < 1) {
+        navigateToRequiredField("sideItems", { focusRef: sideItemsInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.addonsRequired'));
         return;
       }
@@ -679,13 +971,15 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       const method = editingFood ? "PATCH" : "POST";
       const res = await authedFetch(path, { method, body: JSON.stringify(payload) });
       const json = await parseResponseBodySafe(res);
-      if (!res.ok) throw new Error(resolveApiMessage(json, "Kaydedilemedi"));
+      if (!res.ok) throw new Error(resolveApiMessage(json, t('error.seller.foods.save')));
       const responsePayload = (json && typeof json === "object") ? (json as Record<string, unknown>) : {};
       const responseData = (responsePayload.data && typeof responsePayload.data === "object")
         ? (responsePayload.data as Record<string, unknown>)
         : null;
 
-      const foodId = editingFood?.id ?? (typeof responseData?.foodId === "string" ? responseData.foodId : null);
+      const foodId = editingFood?.id
+        ?? (typeof responseData?.foodId === "string" ? responseData.foodId : null)
+        ?? (typeof responseData?.id === "string" ? responseData.id : null);
 
       if (options?.publishAfterSave && foodId) {
         const startIso = startIsoRequired;
@@ -740,7 +1034,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         });
         if (!statusRes.ok) {
           const statusJson = await parseResponseBodySafe(statusRes);
-          throw new Error(resolveApiMessage(statusJson, "Yemek durumu güncellenemedi"));
+          throw new Error(resolveApiMessage(statusJson, t('error.seller.foods.statusUpdate')));
         }
 
         let hasVisibleLot = false;
@@ -753,12 +1047,14 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
           const lots = Array.isArray(lotsPayload.data) ? (lotsPayload.data as unknown[]) : [];
           const now = Date.now();
           hasVisibleLot = lots.some((lot: any) => {
+            const lotFoodId = String(lot?.food_id ?? lot?.foodId ?? "").trim();
             const status = String(lot?.status ?? "").toLowerCase();
-            const qty = Number(lot?.quantity_available ?? 0);
-            const startsAt = Date.parse(String(lot?.sale_starts_at ?? ""));
-            const endsAt = Date.parse(String(lot?.sale_ends_at ?? ""));
+            const qty = Number(lot?.quantity_available ?? lot?.quantityAvailable ?? 0);
+            const startsAt = Date.parse(String(lot?.sale_starts_at ?? lot?.saleStartsAt ?? ""));
+            const endsAt = Date.parse(String(lot?.sale_ends_at ?? lot?.saleEndsAt ?? ""));
             return (
-              status === "active" &&
+              lotFoodId === foodId &&
+              (status === "active" || status === "open") &&
               qty > 0 &&
               Number.isFinite(startsAt) &&
               Number.isFinite(endsAt) &&
@@ -783,17 +1079,24 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
           });
           const lotJson = await parseResponseBodySafe(lotRes);
           if (!lotRes.ok) {
-            throw new Error(resolveApiMessage(lotJson, "Lot oluşturulamadı"));
+            if (isLegacyLotPublishFailure(lotRes, lotJson)) {
+              console.warn("[seller-foods] legacy publish fallback without lot creation", {
+                status: lotRes.status,
+                foodId,
+                response: lotJson,
+              });
+            } else {
+              throw new Error(resolveApiMessage(lotJson, t('error.seller.foods.lotCreate')));
+            }
           }
         }
       }
 
       await loadFoods();
-      resetForm();
       if (options?.publishAfterSave) {
         Alert.alert(
-          "Başarılı",
-          editingFood ? "Yemek güncellenip yayınlandı." : "Yemek yayınlandı.",
+          t('status.seller.foods.publishedTitle'),
+          editingFood ? t('status.seller.foods.publishedBodyEdit') : t('status.seller.foods.publishedBodyNew'),
           [{ text: t('headline.common.success'), onPress: onBack }],
         );
       } else {
@@ -871,7 +1174,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
         body: JSON.stringify({ isActive: !food.isActive }),
       });
       const json = await parseResponseBodySafe(res);
-      if (!res.ok) throw new Error(resolveApiMessage(json, "Durum değiştirilemedi"));
+      if (!res.ok) throw new Error(resolveApiMessage(json, t('error.seller.foods.statusUpdate')));
       await loadFoods();
     } catch (e) {
       Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.foods.statusUpdate'));
@@ -885,13 +1188,21 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
     return `${dd}/${mm}/${yyyy}`;
   }
 
-  const pickerMonthLabel = useMemo(() => {
-    const months = [
-      "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-      "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
-    ];
-    return `${months[pickerMonth.getMonth()]} ${pickerMonth.getFullYear()}`;
-  }, [pickerMonth]);
+  const pickerMonthLabel = useMemo(() => (
+    new Intl.DateTimeFormat(locale, {
+      month: "long",
+      year: "numeric",
+    }).format(pickerMonth)
+  ), [locale, pickerMonth]);
+
+  const pickerWeekdays = useMemo(() => {
+    const monday = new Date(Date.UTC(2024, 0, 1));
+    return Array.from({ length: 7 }, (_, index) =>
+      new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(
+        new Date(monday.getTime() + index * 24 * 60 * 60 * 1000),
+      ),
+    );
+  }, [locale]);
 
   const pickerDays = useMemo(() => {
     const year = pickerMonth.getFullYear();
@@ -939,33 +1250,39 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
   function selectDate(day: number) {
     const selected = new Date(pickerMonth.getFullYear(), pickerMonth.getMonth(), day);
     const value = toDisplayDate(selected);
-    if (datePickerVisible === "start") setStartDate(value);
-    if (datePickerVisible === "end") setEndDate(value);
+    if (datePickerVisible === "start") {
+      setStartDate(value);
+      clearRequiredFieldHighlight("startDate");
+    }
+    if (datePickerVisible === "end") {
+      setEndDate(value);
+      clearRequiredFieldHighlight("endDate");
+    }
     setDatePickerVisible(null);
   }
 
   const previewImage = imageUrls.map((x) => x.trim()).find(Boolean) || "";
   const selectedCategoryName = categories.find((item) => item.id === categoryId)?.name ?? "";
-  const previewTitle = name.trim() || "Yemek Adı";
+  const previewTitle = name.trim() || t('headline.seller.foods.previewNameFallback');
   const previewStockLine = (() => {
     const stock = Number.parseInt(dailyStock.trim() || "0", 10);
-    if (Number.isFinite(stock) && stock > 0) return `${stock} porsiyon kaldı`;
-    return "Stok girilmedi";
+    if (Number.isFinite(stock) && stock > 0) return formatCopy('status.seller.foods.stockRemaining', { count: stock });
+    return t('status.seller.foods.stockMissing');
   })();
   const parsedPreviewPrice = parseLocalizedDecimal(price);
   const previewPrice = Number.isFinite(parsedPreviewPrice) && parsedPreviewPrice > 0 ? `${parsedPreviewPrice.toFixed(2)} ₺` : "-- ₺";
   const previewSellerHandle = useMemo(() => {
     const emailLocal = String(currentAuth.email ?? "").split("@")[0]?.trim();
-    const normalized = (emailLocal || "ev.usta")
-      .toLocaleLowerCase("tr-TR")
+    const normalized = (emailLocal || t('helper.seller.foods.previewHandleFallback'))
+      .toLocaleLowerCase(locale)
       .replace(/\s+/g, ".")
       .replace(/[^a-z0-9._]/g, "");
     return normalized.startsWith("@") ? normalized : `@${normalized}`;
-  }, [currentAuth.email]);
+  }, [currentAuth.email, locale]);
   const previewCuisine = cuisine.trim()
-    ? (/(mutfağı|mutfagi)$/i.test(cuisine.trim()) ? cuisine.trim() : `${cuisine.trim()} Mutfağı`)
-    : "Ev Mutfağı";
-  const previewMeta = prepTime.trim() ? `${prepTime.trim()} dk` : "40 dk";
+    ? (/(mutfağı|mutfagi|cuisine)$/i.test(cuisine.trim()) ? cuisine.trim() : `${cuisine.trim()}${currentLanguage === "en" ? " Cuisine" : " Mutfağı"}`)
+    : t('status.seller.foods.defaultCuisine');
+  const previewMeta = prepTime.trim() ? `${prepTime.trim()} ${t('label.seller.foods.minutesShort')}` : `40 ${t('label.seller.foods.minutesShort')}`;
   const previewMetaText = previewMeta;
   const previewAllergens = allergens
     .split(",")
@@ -1015,6 +1332,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
           </View>
         ) : (
           <ScrollView
+            ref={scrollViewRef}
             style={styles.page}
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
@@ -1065,34 +1383,44 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               </View>
             ))}
           </ScrollView>
-          <Text style={styles.sectionTitle}>{t('headline.seller.foods.name')}</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder={t('helper.seller.foods.namePlaceholder')}
-            placeholderTextColor={PLACEHOLDER_COLOR}
-          />
+          <View onLayout={(event) => handleFieldLayout("name", event)}>
+            <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("name") && styles.sectionTitleError]}>{t('headline.seller.foods.name')}</Text>
+            <TextInput
+              ref={nameInputRef}
+              style={[styles.input, isRequiredFieldHighlighted("name") && styles.inputError]}
+              value={name}
+              onChangeText={(value) => {
+                setName(value);
+                if (value.trim()) clearRequiredFieldHighlight("name");
+              }}
+              placeholder={t('helper.seller.foods.namePlaceholder')}
+              placeholderTextColor={PLACEHOLDER_COLOR}
+            />
+          </View>
 
           <View style={styles.row2}>
-            <View style={styles.rowItem}>
+            <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("cuisine", event)}>
               <View style={styles.rowLabelWrap}>
-                <Text style={styles.sectionTitle}>{t('headline.seller.foods.cuisine')}</Text>
+                <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("cuisine") && styles.sectionTitleError]}>{t('headline.seller.foods.cuisine')}</Text>
               </View>
               <TextInput
-                style={styles.input}
+                ref={cuisineInputRef}
+                style={[styles.input, isRequiredFieldHighlighted("cuisine") && styles.inputError]}
                 value={cuisine}
-                onChangeText={setCuisine}
+                onChangeText={(value) => {
+                  setCuisine(value);
+                  if (value.trim()) clearRequiredFieldHighlight("cuisine");
+                }}
                 placeholder={t('helper.seller.foods.cuisinePlaceholder')}
                 placeholderTextColor={PLACEHOLDER_COLOR}
               />
             </View>
-            <View style={styles.rowItem}>
+            <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("category", event)}>
               <View style={styles.rowLabelWrap}>
-                <Text style={styles.sectionTitle}>{t('headline.seller.foods.category')}</Text>
+                <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("category") && styles.sectionTitleError]}>{t('headline.seller.foods.category')}</Text>
               </View>
               <TouchableOpacity
-                style={[styles.input, styles.dropdownInput]}
+                style={[styles.input, styles.dropdownInput, isRequiredFieldHighlighted("category") && styles.inputError]}
                 onPress={() => {
                   if (!loadingCategories && categories.length === 0) {
                     void loadCategories();
@@ -1109,36 +1437,55 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             </View>
           </View>
 
-          <Text style={styles.sectionTitle}>{t('headline.seller.foods.sideItems')}</Text>
-          <TextInput
-            style={styles.input}
-            value={freeAddonNameInput}
-            onChangeText={setFreeAddonNameInput}
-            placeholder={t('helper.seller.foods.sideItemsPlaceholder')}
-            placeholderTextColor={PLACEHOLDER_COLOR}
-            returnKeyType="done"
-          />
+          <View onLayout={(event) => handleFieldLayout("sideItems", event)}>
+            <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("sideItems") && styles.sectionTitleError]}>{t('headline.seller.foods.sideItems')}</Text>
+            <TextInput
+              ref={sideItemsInputRef}
+              style={[styles.input, isRequiredFieldHighlighted("sideItems") && styles.inputError]}
+              value={freeAddonNameInput}
+              onChangeText={(value) => {
+                setFreeAddonNameInput(value);
+                if (parseFreeAddonNames(value).length > 0) clearRequiredFieldHighlight("sideItems");
+              }}
+              placeholder={t('helper.seller.foods.sideItemsPlaceholder')}
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              returnKeyType="done"
+            />
+          </View>
 
-          <Text style={styles.sectionTitle}>{t('headline.seller.foods.ingredients')}</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={description}
-            onChangeText={(value) => setDescription((prev) => normalizeIngredientTyping(prev, value))}
-            placeholder={t('helper.seller.foods.ingredientsPlaceholder')}
-            placeholderTextColor={PLACEHOLDER_COLOR}
-            multiline
-          />
+          <View onLayout={(event) => handleFieldLayout("ingredients", event)}>
+            <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("ingredients") && styles.sectionTitleError]}>{t('headline.seller.foods.ingredients')}</Text>
+            <TextInput
+              ref={ingredientsInputRef}
+              style={[styles.input, styles.textArea, isRequiredFieldHighlighted("ingredients") && styles.inputError]}
+              value={description}
+              onChangeText={(value) => {
+                setDescription((prev) => normalizeIngredientTyping(prev, value));
+                if (value.trim()) clearRequiredFieldHighlight("ingredients");
+              }}
+              placeholder={t('helper.seller.foods.ingredientsPlaceholder')}
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              multiline
+            />
+          </View>
 
-          <Text style={styles.sectionTitle}>{t('headline.seller.foods.recipe')}</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={recipe}
-            onChangeText={setRecipe}
-            placeholder={t('helper.seller.foods.recipePlaceholder')}
-            placeholderTextColor={PLACEHOLDER_COLOR}
-            multiline
-          />
+          <View onLayout={(event) => handleFieldLayout("recipe", event)}>
+            <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("recipe") && styles.sectionTitleError]}>{t('headline.seller.foods.recipe')}</Text>
+            <TextInput
+              ref={recipeInputRef}
+              style={[styles.input, styles.textArea, isRequiredFieldHighlighted("recipe") && styles.inputError]}
+              value={recipe}
+              onChangeText={(value) => {
+                setRecipe(value);
+                if (value.trim()) clearRequiredFieldHighlight("recipe");
+              }}
+              placeholder={t('helper.seller.foods.recipePlaceholder')}
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              multiline
+            />
+          </View>
 
+          <View onLayout={(event) => handleFieldLayout("addons", event)}>
           <Text style={styles.sectionTitle}>{t('headline.seller.foods.paidAddons')}</Text>
           <View style={styles.kindRow}>
             {ADDON_KIND_OPTIONS.map((option) => (
@@ -1191,34 +1538,54 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               );
             })}
           </View>
+          </View>
 
-          <Text style={styles.sectionTitle}>{t('headline.seller.foods.allergens')}</Text>
-          <TextInput
-            style={styles.input}
-            value={allergens}
-            onChangeText={setAllergens}
-            placeholder={t('helper.seller.foods.allergensPlaceholder')}
-            placeholderTextColor={PLACEHOLDER_COLOR}
-          />
+          <View onLayout={(event) => handleFieldLayout("allergens", event)}>
+            <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("allergens") && styles.sectionTitleError]}>{t('headline.seller.foods.allergens')}</Text>
+            <TextInput
+              ref={allergensInputRef}
+              style={[styles.input, isRequiredFieldHighlighted("allergens") && styles.inputError]}
+              value={allergens}
+              onChangeText={(value) => {
+                setAllergens(value);
+                if (value.split(",").map((x) => x.trim()).filter(Boolean).length > 0) {
+                  clearRequiredFieldHighlight("allergens");
+                }
+              }}
+              placeholder={t('helper.seller.foods.allergensPlaceholder')}
+              placeholderTextColor={PLACEHOLDER_COLOR}
+            />
+          </View>
 
           <View style={styles.row2}>
-            <View style={styles.rowItem}>
-              <Text style={styles.sectionTitle}>{t('headline.seller.foods.price')}</Text>
+            <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("price", event)}>
+              <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("price") && styles.sectionTitleError]}>{t('headline.seller.foods.price')}</Text>
               <TextInput
-                style={styles.input}
+                ref={priceInputRef}
+                style={[styles.input, isRequiredFieldHighlighted("price") && styles.inputError]}
                 value={price}
-                onChangeText={setPrice}
+                onChangeText={(value) => {
+                  setPrice(value);
+                  if (Number.isFinite(parseLocalizedDecimal(value)) && parseLocalizedDecimal(value) > 0) {
+                    clearRequiredFieldHighlight("price");
+                  }
+                }}
                 placeholder="25"
                 placeholderTextColor={PLACEHOLDER_COLOR}
                 keyboardType="decimal-pad"
               />
             </View>
-            <View style={styles.rowItem}>
-              <Text style={styles.sectionTitle}>{t('headline.seller.foods.dailyStock')}</Text>
+            <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("dailyStock", event)}>
+              <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("dailyStock") && styles.sectionTitleError]}>{t('headline.seller.foods.dailyStock')}</Text>
               <TextInput
-                style={styles.input}
+                ref={dailyStockInputRef}
+                style={[styles.input, isRequiredFieldHighlighted("dailyStock") && styles.inputError]}
                 value={dailyStock}
-                onChangeText={setDailyStock}
+                onChangeText={(value) => {
+                  setDailyStock(value);
+                  const parsedValue = Number.parseInt(value.trim() || "0", 10);
+                  if (Number.isFinite(parsedValue) && parsedValue > 0) clearRequiredFieldHighlight("dailyStock");
+                }}
                 placeholder={t('helper.seller.foods.dailyStockPlaceholder')}
                 placeholderTextColor={PLACEHOLDER_COLOR}
                 keyboardType="number-pad"
@@ -1226,12 +1593,17 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             </View>
           </View>
 
-          <View style={styles.rowItem}>
-            <Text style={styles.sectionTitle}>{t('headline.seller.foods.prepTime')}</Text>
+          <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("prepTime", event)}>
+            <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("prepTime") && styles.sectionTitleError]}>{t('headline.seller.foods.prepTime')}</Text>
             <TextInput
-              style={styles.input}
+              ref={prepTimeInputRef}
+              style={[styles.input, isRequiredFieldHighlighted("prepTime") && styles.inputError]}
               value={prepTime}
-              onChangeText={setPrepTime}
+              onChangeText={(value) => {
+                setPrepTime(value);
+                const parsedValue = Number.parseInt(value.trim() || "0", 10);
+                if (Number.isFinite(parsedValue) && parsedValue > 0) clearRequiredFieldHighlight("prepTime");
+              }}
               placeholder={t('helper.seller.foods.prepTimePlaceholder')}
               placeholderTextColor={PLACEHOLDER_COLOR}
               keyboardType="number-pad"
@@ -1239,33 +1611,33 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
           </View>
 
           <View style={styles.row2}>
-            <View style={styles.rowItem}>
-              <Text style={styles.sectionTitle}>{t('headline.seller.foods.startDate')}</Text>
+            <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("startDate", event)}>
+              <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("startDate") && styles.sectionTitleError]}>{t('headline.seller.foods.startDate')}</Text>
               <View style={styles.dateInputWrap}>
                 <TextInput
-                  style={[styles.input, styles.dateInput]}
+                  style={[styles.input, styles.dateInput, isRequiredFieldHighlighted("startDate") && styles.inputError]}
                   value={startDate}
-                  placeholder="DD/MM/YYYY"
+                  placeholder={t('label.common.datePlaceholder')}
                   placeholderTextColor={PLACEHOLDER_COLOR}
                   editable={false}
                 />
                 <TouchableOpacity style={styles.dateIconBtn} onPress={() => openDatePicker("start")}>
-                  <Ionicons name="calendar-outline" size={18} color="#7A6B5D" />
+                  <Ionicons name="calendar-outline" size={18} color={isRequiredFieldHighlighted("startDate") ? "#C2410C" : "#7A6B5D"} />
                 </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.rowItem}>
-              <Text style={styles.sectionTitle}>{t('headline.seller.foods.endDate')}</Text>
+            <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("endDate", event)}>
+              <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("endDate") && styles.sectionTitleError]}>{t('headline.seller.foods.endDate')}</Text>
               <View style={styles.dateInputWrap}>
                 <TextInput
-                  style={[styles.input, styles.dateInput]}
+                  style={[styles.input, styles.dateInput, isRequiredFieldHighlighted("endDate") && styles.inputError]}
                   value={endDate}
-                  placeholder="DD/MM/YYYY"
+                  placeholder={t('label.common.datePlaceholder')}
                   placeholderTextColor={PLACEHOLDER_COLOR}
                   editable={false}
                 />
                 <TouchableOpacity style={styles.dateIconBtn} onPress={() => openDatePicker("end")}>
-                  <Ionicons name="calendar-outline" size={18} color="#7A6B5D" />
+                  <Ionicons name="calendar-outline" size={18} color={isRequiredFieldHighlighted("endDate") ? "#C2410C" : "#7A6B5D"} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -1363,7 +1735,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               </TouchableOpacity>
             </View>
             <View style={styles.dateWeekRow}>
-              {["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].map((label) => (
+              {pickerWeekdays.map((label) => (
                 <Text key={label} style={styles.dateWeekLabel}>{label}</Text>
               ))}
             </View>
@@ -1470,6 +1842,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                       style={[styles.categoryOption, isSelected && styles.categoryOptionActive]}
                       onPress={() => {
                         setCategoryId(item.id);
+                        clearRequiredFieldHighlight("category");
                         setCategoryModalVisible(false);
                       }}
                     >
@@ -1506,6 +1879,7 @@ const styles = StyleSheet.create({
   page: { flex: 1 },
   content: { padding: 14, paddingBottom: 42 },
   sectionTitle: { color: "#2E241C", fontWeight: "700", marginBottom: 6, marginTop: 10 },
+  sectionTitleError: { color: "#B42318" },
   input: {
     backgroundColor: "#fff",
     borderRadius: 10,
@@ -1514,6 +1888,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
     color: "#2E241C",
+  },
+  inputError: {
+    borderColor: "#E5484D",
+    backgroundColor: "#FFF5F5",
   },
   dropdownInput: {
     flexDirection: "row",
