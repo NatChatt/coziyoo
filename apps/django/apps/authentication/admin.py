@@ -447,6 +447,7 @@ class UsersAdmin(ModelAdmin):
 class AllUsersAdmin(ModelAdmin):
     actions_on_top = True
     actions_on_bottom = False
+    actions = ["make_active", "make_inactive"]
     list_display = [
         "display_name_link", "email", "user_type_badge", "is_active",
         "seller_status_badge", "created_at",
@@ -490,6 +491,16 @@ class AllUsersAdmin(ModelAdmin):
             '<span style="color:{};font-weight:600">{}</span>',
             color, obj.seller_profile_status or "—",
         )
+
+    @admin.action(description="Make selected users active")
+    def make_active(self, request, queryset):
+        updated = queryset.update(is_active=True)
+        self.message_user(request, f"{updated} user(s) marked as active.")
+
+    @admin.action(description="Make selected users inactive (passive)")
+    def make_inactive(self, request, queryset):
+        updated = queryset.update(is_active=False)
+        self.message_user(request, f"{updated} user(s) marked as inactive.")
 
     def has_add_permission(self, request):
         return False
