@@ -106,7 +106,139 @@ class UsersAdmin(ModelAdmin):
             "open_complaints": open_complaints,
             "risky": risky,
         }
-        return super().changelist_view(request, extra_context=extra_context)
+
+        response = super().changelist_view(request, extra_context=extra_context)
+
+        # Enrich buyer table with risk/complaint/spend columns
+        if role == "buyer" and hasattr(response, 'context_data') and response.context_data:
+            cl = response.context_data.get('cl')
+            if cl and hasattr(cl, 'result_list') and cl.result_list is not None:
+                try:
+                    users_page = list(cl.result_list)
+                    if users_page:
+                        user_ids = [u.id for u in users_page]
+                        enriched_map = self._fetch_buyer_row_data(user_ids)
+                        buyer_rows = []
+                        for u in users_page:
+                            uid_str = str(u.id)
+                            data = enriched_map.get(uid_str, {
+                                "orders_current": 0, "orders_previous": 0,
+                                "spent_current": 0.0, "spent_previous": 0.0,
+                                "complaints_total": 0, "complaints_open": 0,
+                                "last_login": None, "order_trend": "flat",
+                                "spend_trend": "flat", "risk_level": "low", "risk_score": 0,
+                            })
+                            buyer_rows.append({
+                                "id": uid_str,
+                                "display_name": u.display_name or u.email,
+                                "email": u.email,
+                                "user_type": u.user_type,
+                                "is_active": u.is_active,
+                                **data,
+                            })
+                        response.context_data['buyer_rows'] = buyer_rows
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error("Buyer row enrichment failed: %s", e)
+
+        return response
+
+    def _fetch_buyer_row_data(self, user_ids):
+        """Single SQL query to get risk/complaint/spend metrics per buyer."""
+        uid_strs = [str(uid) for uid in user_ids]
+        result = {}
+        with connection.cursor() as cur:
+            cur.execute("""
+                WITH
+                cur_orders AS (
+                    SELECT buyer_id::text, count(*) AS cnt,
+                           COALESCE(sum(CASE WHEN payment_completed THEN total_price ELSE 0 END), 0) AS spent
+                    FROM orders
+                    WHERE created_at >= now() - interval '30 days'
+                      AND buyer_id::text = ANY(%s)
+                    GROUP BY buyer_id
+                ),
+                prev_orders AS (
+                    SELECT buyer_id::text, count(*) AS cnt,
+                           COALESCE(sum(CASE WHEN payment_completed THEN total_price ELSE 0 END), 0) AS spent
+                    FROM orders
+                    WHERE created_at >= now() - interval '60 days'
+                      AND created_at < now() - interval '30 days'
+                      AND buyer_id::text = ANY(%s)
+                    GROUP BY buyer_id
+                ),
+                complaint_stats AS (
+                    SELECT COALESCE(complainant_user_id, complainant_buyer_id)::text AS user_id,
+                           count(*) AS total,
+                           count(*) FILTER (WHERE status IN ('open', 'in_review')) AS open_count
+                    FROM complaints
+                    WHERE COALESCE(complainant_user_id, complainant_buyer_id)::text = ANY(%s)
+                    GROUP BY COALESCE(complainant_user_id, complainant_buyer_id)
+                ),
+                last_login AS (
+                    SELECT user_id::text, max(created_at) AS last_at
+                    FROM auth_sessions
+                    WHERE user_id::text = ANY(%s)
+                    GROUP BY user_id
+                )
+                SELECT
+                    u.id::text,
+                    COALESCE(co.cnt, 0)        AS orders_current,
+                    COALESCE(po.cnt, 0)        AS orders_previous,
+                    COALESCE(co.spent, 0)      AS spent_current,
+                    COALESCE(po.spent, 0)      AS spent_previous,
+                    COALESCE(cs.total, 0)      AS complaints_total,
+                    COALESCE(cs.open_count, 0) AS complaints_open,
+                    ll.last_at                 AS last_login
+                FROM users u
+                LEFT JOIN cur_orders  co ON co.buyer_id = u.id::text
+                LEFT JOIN prev_orders po ON po.buyer_id = u.id::text
+                LEFT JOIN complaint_stats cs ON cs.user_id = u.id::text
+                LEFT JOIN last_login   ll ON ll.user_id  = u.id::text
+                WHERE u.id::text = ANY(%s)
+            """, [uid_strs, uid_strs, uid_strs, uid_strs, uid_strs])
+
+            for row in cur.fetchall():
+                uid, ord_cur, ord_prev, sp_cur, sp_prev, comp_total, comp_open, last_login = row
+
+                def trend(cur_val, prev_val):
+                    if cur_val > prev_val:
+                        return "up"
+                    if cur_val < prev_val:
+                        return "down"
+                    return "flat"
+
+                ord_cur, ord_prev = int(ord_cur), int(ord_prev)
+                sp_cur, sp_prev = float(sp_cur), float(sp_prev)
+                comp_total, comp_open = int(comp_total), int(comp_open)
+                order_trend = trend(ord_cur, ord_prev)
+                spend_trend = trend(sp_cur, sp_prev)
+
+                # Risk score (same algorithm as old admin)
+                score = min(comp_open, 2) * 30
+                if comp_total >= 2:
+                    score += 15
+                if order_trend == "down":
+                    score += 12
+                if spend_trend == "down":
+                    score += 12
+
+                risk_level = "high" if score >= 70 else "medium" if score >= 35 else "low"
+
+                result[uid] = {
+                    "orders_current": ord_cur,
+                    "orders_previous": ord_prev,
+                    "spent_current": sp_cur,
+                    "spent_previous": sp_prev,
+                    "complaints_total": comp_total,
+                    "complaints_open": comp_open,
+                    "last_login": last_login,
+                    "order_trend": order_trend,
+                    "spend_trend": spend_trend,
+                    "risk_level": risk_level,
+                    "risk_score": score,
+                }
+        return result
 
     def delete_model(self, request, obj):
         obj.is_active = False
