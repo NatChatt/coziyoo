@@ -17,9 +17,10 @@ from .models import (
 @admin.register(Users)
 class UsersAdmin(ModelAdmin):
     list_display = [
-        "display_name", "email", "user_type_badge", "is_active",
-        "seller_status_badge", "created_at", "detail_link",
+        "display_name_link", "email", "user_type_badge", "is_active",
+        "seller_status_badge", "created_at",
     ]
+    list_display_links = None
     list_filter = ["user_type", "is_active", "seller_profile_status"]
     search_fields = ["email", "display_name", "username", "phone"]
     readonly_fields = [
@@ -280,16 +281,16 @@ class UsersAdmin(ModelAdmin):
         }
         return TemplateResponse(request, "admin/authentication/seller_detail.html", context)
 
-    @display(description="Detail", label=True)
-    def detail_link(self, obj):
+    @display(description="Name", ordering="display_name")
+    def display_name_link(self, obj):
         from django.urls import reverse
         if obj.user_type == "seller":
             url = reverse("admin:authentication_users_seller_detail", args=[obj.id])
         elif obj.user_type in ("buyer", "both"):
             url = reverse("admin:authentication_users_buyer_detail", args=[obj.id])
         else:
-            return "—"
-        return format_html('<a href="{}" class="text-primary-600 hover:underline text-sm">Detail →</a>', url)
+            return obj.display_name
+        return format_html('<a href="{}" class="text-primary-600 hover:underline font-medium">{}</a>', url, obj.display_name)
 
     @display(description="Type", ordering="user_type")
     def user_type_badge(self, obj):
