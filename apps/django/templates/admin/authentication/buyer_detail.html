@@ -4,52 +4,58 @@
 {% block content %}
 <div class="space-y-4" x-data="{ tab: 'general' }">
 
-  {# ── Header ── #}
-  <div class="rounded-xl p-5 flex flex-wrap gap-4 items-center border border-base-200 dark:border-base-700 bg-white dark:bg-base-800">
-    {# Avatar + Name + Edit #}
-    <div class="flex items-center gap-4 shrink-0">
+  {# ── Header — 5-column grid ── #}
+  <div class="grid grid-cols-5 gap-4 items-stretch">
+
+    {# Col 1: Profile #}
+    <div class="rounded-xl p-5 flex items-center gap-4 border border-base-200 dark:border-base-700 bg-white dark:bg-base-800">
       {% if user.profile_image_url %}
-        <img src="{{ user.profile_image_url }}" class="w-16 h-16 rounded-full object-cover bg-base-700 shrink-0" onerror="this.src=''">
+        <img src="{{ user.profile_image_url }}" class="w-14 h-14 rounded-full object-cover bg-base-700 shrink-0" onerror="this.src=''">
       {% else %}
-        <div class="w-16 h-16 rounded-full bg-base-700 flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-4xl text-base-400">person</span>
+        <div class="w-14 h-14 rounded-full bg-base-700 flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-3xl text-base-400">person</span>
         </div>
       {% endif %}
-      <div>
-        <h1 class="text-xl font-bold text-base-900 dark:text-white">{{ user.display_name }}</h1>
-        <p class="text-base-500 dark:text-base-400 text-sm">{{ user.email }}</p>
-        {% if user.phone %}<p class="text-base-500 dark:text-base-400 text-sm">{{ user.phone }}</p>{% endif %}
+      <div class="min-w-0">
+        <h1 class="text-base font-bold text-base-900 dark:text-white truncate">{{ user.display_name }}</h1>
+        <p class="text-base-500 dark:text-base-400 text-xs truncate">{{ user.email }}</p>
+        {% if user.phone %}<p class="text-base-500 dark:text-base-400 text-xs">{{ user.phone }}</p>{% endif %}
         <a href="{% url 'admin:authentication_users_change' user.id %}"
-           class="inline-flex items-center gap-1 mt-2 px-3 py-1.5 rounded-lg bg-primary-600 text-white text-xs font-medium hover:bg-primary-700 transition-colors">
+           class="inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-lg bg-primary-600 text-white text-xs font-medium hover:bg-primary-700 transition-colors">
           <span class="material-symbols-outlined text-sm leading-none">edit</span>
           {% trans "Düzenle" %}
         </a>
       </div>
     </div>
 
-    {# KPI Cards #}
-    <div class="grid grid-cols-3 gap-3 grow">
-      <div class="rounded-xl p-4 flex items-center justify-between bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
-        <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-2xl text-rose-500 dark:text-rose-400">report</span>
-          <span class="text-sm font-medium text-rose-700 dark:text-rose-300">{% trans "Açık Şikayet" %}</span>
-        </div>
-        <span class="text-3xl font-bold text-rose-800 dark:text-rose-100">{{ summary.complaint_unresolved }}</span>
+    {# Col 2: Empty spacer #}
+    <div></div>
+
+    {# Col 3: Open Complaints — rose #}
+    <div class="rounded-xl p-4 flex items-center justify-between bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-2xl text-rose-500 dark:text-rose-400">report</span>
+        <span class="text-sm font-medium text-rose-700 dark:text-rose-300">{% trans "Açık Şikayet" %}</span>
       </div>
-      <div class="rounded-xl p-4 flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-        <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-2xl text-emerald-500 dark:text-emerald-400">trending_up</span>
-          <span class="text-sm font-medium text-emerald-700 dark:text-emerald-300">{% trans "Son 30 Gün" %}</span>
-        </div>
-        <span class="text-3xl font-bold text-emerald-800 dark:text-emerald-100">₺{{ summary.monthly_spent|floatformat:2 }}</span>
+      <span class="text-3xl font-bold text-rose-800 dark:text-rose-100">{{ summary.complaint_unresolved }}</span>
+    </div>
+
+    {# Col 4: Monthly Spend — emerald #}
+    <div class="rounded-xl p-4 flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-2xl text-emerald-500 dark:text-emerald-400">trending_up</span>
+        <span class="text-sm font-medium text-emerald-700 dark:text-emerald-300">{% trans "Son 30 Gün" %}</span>
       </div>
-      <div class="rounded-xl p-4 flex items-center justify-between bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
-        <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-2xl text-blue-500 dark:text-blue-400">payments</span>
-          <span class="text-sm font-medium text-blue-700 dark:text-blue-300">{% trans "Toplam Sipariş" %}</span>
-        </div>
-        <span class="text-3xl font-bold text-blue-800 dark:text-blue-100">{{ summary.total_orders }}</span>
+      <span class="text-3xl font-bold text-emerald-800 dark:text-emerald-100">₺{{ summary.monthly_spent|floatformat:2 }}</span>
+    </div>
+
+    {# Col 5: Total Orders — blue #}
+    <div class="rounded-xl p-4 flex items-center justify-between bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-2xl text-blue-500 dark:text-blue-400">payments</span>
+        <span class="text-sm font-medium text-blue-700 dark:text-blue-300">{% trans "Toplam Sipariş" %}</span>
       </div>
+      <span class="text-3xl font-bold text-blue-800 dark:text-blue-100">{{ summary.total_orders }}</span>
     </div>
 
   </div>
