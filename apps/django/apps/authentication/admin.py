@@ -85,7 +85,7 @@ class UsersAdmin(ModelAdmin):
 
             # Recent complaints
             cur.execute("""
-                SELECT id, subject, status, created_at FROM complaints
+                SELECT id, description, status, created_at FROM complaints
                 WHERE COALESCE(complainant_user_id, complainant_buyer_id) = %s
                 ORDER BY created_at DESC LIMIT 10
             """, [user_id])
