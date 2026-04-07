@@ -58,20 +58,37 @@
 {% endblock %}
 
 {% block filters %}
-{% if cl.has_filters %}
-<a class="border border-primary-500 dark:border-primary-500 text-primary-600 dark:text-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex font-medium gap-2 items-center px-3 py-2 rounded-default text-sm lg:ml-auto md:mt-0 {% if not cl.model_admin.list_filter_sheet %}2xl:hidden{% endif %}"
-   x-on:click="filterOpen = true" x-on:keydown.escape.window="filterOpen = false">
+
+  {# ── Inline action form (uses form= to submit with changelist-form outside the <form> tag) ── #}
+  {% if action_form %}
+  <div class="flex items-center gap-2 shrink-0">
+    <select form="changelist-form" name="action" id="action-select-inline"
+            class="rounded-default border border-base-300 dark:border-base-600 bg-white dark:bg-base-800 text-sm text-base-700 dark:text-base-200 py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-[160px]">
+      {% for choice in action_form.action.field.choices %}
+      <option value="{{ choice.0 }}">{{ choice.1 }}</option>
+      {% endfor %}
+    </select>
+    <input form="changelist-form" type="hidden" name="select_across" value="0">
+    <button form="changelist-form" type="submit" name="index" value="0"
+            class="px-3 py-2 rounded-default bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors shrink-0">
+      {% trans "Apply" %}
+    </button>
+  </div>
+  {% endif %}
+
+  {# ── Filters button ── #}
+  {% if cl.has_filters %}
+  <a class="border border-primary-500 dark:border-primary-500 text-primary-600 dark:text-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex font-medium gap-2 items-center px-3 py-2 rounded-default text-sm {% if not cl.model_admin.list_filter_sheet %}2xl:hidden{% endif %}"
+     x-on:click="filterOpen = true" x-on:keydown.escape.window="filterOpen = false">
     {% trans "Filters" %}
     <span class="material-symbols-outlined md-18 ml-auto">filter_list</span>
-</a>
-{% endif %}
+  </a>
+  {% endif %}
+
 {% endblock %}
 
 {% block result_list %}
 {% if buyer_rows %}
-
-  {# ── Bulk action bar (needed for checkboxes to work) ── #}
-  {% include "unfold/helpers/change_list_actions.html" %}
 
   {# ── Custom Buyer Table ── #}
   <div class="overflow-x-auto rounded-lg border border-base-200 dark:border-base-800 shadow-xs bg-white dark:bg-base-900 mt-2">
