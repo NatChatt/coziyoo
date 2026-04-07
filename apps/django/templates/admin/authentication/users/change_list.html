@@ -61,6 +61,16 @@
 {{ block.super }}
 {% endblock %}
 
+{% block filters %}
+{% if cl.has_filters %}
+<a class="border border-primary-500 dark:border-primary-500 text-primary-600 dark:text-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex font-medium gap-2 items-center px-3 py-2 rounded-default text-sm lg:ml-auto md:mt-0 {% if not cl.model_admin.list_filter_sheet %}2xl:hidden{% endif %}"
+   x-on:click="filterOpen = true" x-on:keydown.escape.window="filterOpen = false">
+    {% trans "Filters" %}
+    <span class="material-symbols-outlined md-18 ml-auto">filter_list</span>
+</a>
+{% endif %}
+{% endblock %}
+
 {% block result_list %}
 {% if buyer_rows %}
 
