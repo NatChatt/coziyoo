@@ -3,7 +3,7 @@ from decouple import config
 
 DEBUG = False
 
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="api.coziyoo.com,admin.coziyoo.com", cast=lambda v: [s.strip() for s in v.split(",")])
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="api.coziyoo.com,admin.coziyoo.com,127.0.0.1,localhost", cast=lambda v: [s.strip() for s in v.split(",")])
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = False  # Nginx handles SSL termination
