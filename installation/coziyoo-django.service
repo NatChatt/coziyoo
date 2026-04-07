@@ -12,8 +12,8 @@ Wants=network.target
 
 [Service]
 Type=notify
-User=coziyoo
-Group=coziyoo
+User=ubuntu
+Group=ubuntu
 WorkingDirectory=/opt/coziyoo/apps/django
 
 # Load shared environment (DB credentials, JWT secrets, S3, etc.)
@@ -32,7 +32,7 @@ RestartSec=5
 
 # Create log directory if missing
 ExecStartPre=/bin/mkdir -p /var/log/coziyoo
-ExecStartPre=/bin/chown coziyoo:coziyoo /var/log/coziyoo
+ExecStartPre=/bin/chown ubuntu:ubuntu /var/log/coziyoo
 
 [Install]
 WantedBy=multi-user.target
