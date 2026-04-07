@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, AppState, Dimensions, Easing, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, AppState, Easing, FlatList, Platform, SectionList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { AuthSession } from "../utils/auth";
 import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
@@ -47,6 +47,7 @@ type ActiveFood = {
   name: string;
   price: number;
   isActive: boolean;
+  hasAnyLot: boolean;
   stock: number;
 };
 const BUSINESS_DAY_RESET_HOUR = 5;
@@ -235,6 +236,45 @@ function orderGroupKey(status: string, deliveryType?: string): OrderGroupKey {
   return "preparing";
 }
 
+function sellerOrdersSignature(items: SellerOrder[]): string {
+  return items
+    .map((order) => [
+      order.id ?? "",
+      order.status ?? "",
+      order.updatedAt ?? "",
+      order.buyerProgressStatus ?? "",
+      order.buyerProgressAt ?? "",
+      order.totalPrice ?? "",
+      order.deliveryType ?? "",
+    ].join("|"))
+    .join("||");
+}
+
+function normalizeSellerOrder(raw: Record<string, unknown>): SellerOrder {
+  const id = String(raw.id ?? "");
+  return {
+    id,
+    sellerId: typeof raw.sellerId === "string" ? raw.sellerId : (typeof raw.seller_id === "string" ? raw.seller_id : null),
+    orderNo: typeof raw.orderNo === "string" ? raw.orderNo : `#${id.slice(0, 8).toUpperCase()}`,
+    buyerName: typeof raw.buyerName === "string" ? raw.buyerName : (typeof raw.buyer_name === "string" ? raw.buyer_name : null),
+    primaryFoodName: typeof raw.primaryFoodName === "string" ? raw.primaryFoodName : (typeof raw.primary_food_name === "string" ? raw.primary_food_name : null),
+    itemCount: Number(raw.itemCount ?? raw.item_count ?? 0),
+    status: String(raw.status ?? ""),
+    deliveryType: typeof raw.deliveryType === "string" ? raw.deliveryType : (typeof raw.delivery_type === "string" ? raw.delivery_type : undefined),
+    totalPrice: Number(raw.totalPrice ?? raw.total_price ?? 0),
+    createdAt: typeof raw.createdAt === "string" ? raw.createdAt : (typeof raw.created_at === "string" ? raw.created_at : undefined),
+    updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : (typeof raw.updated_at === "string" ? raw.updated_at : undefined),
+    buyerProgressStatus:
+      typeof raw.buyerProgressStatus === "string"
+        ? raw.buyerProgressStatus
+        : (typeof raw.buyer_progress_status === "string" ? raw.buyer_progress_status : null),
+    buyerProgressAt:
+      typeof raw.buyerProgressAt === "string"
+        ? raw.buyerProgressAt
+        : (typeof raw.buyer_progress_at === "string" ? raw.buyer_progress_at : null),
+  };
+}
+
 export default function SellerHomeScreen({
   auth,
   onAuthRefresh,
@@ -260,12 +300,12 @@ export default function SellerHomeScreen({
     const cached = getSellerFoodsCache();
     if (!Array.isArray(cached)) return [];
     return cached
-      .filter((f) => toBool(f.isActive) && Number(f.stock ?? 0) > 0)
       .map((f) => ({
         id: String(f.id ?? ""),
         name: String(f.name ?? ""),
         price: Number(f.price ?? 0),
-        isActive: true,
+        isActive: toBool(f.isActive),
+        hasAnyLot: toBool(f.hasAnyLot ?? f.has_any_lot),
         stock: Number(f.stock ?? 0),
       }));
   });
@@ -274,11 +314,11 @@ export default function SellerHomeScreen({
   const [newOrderUntilById, setNewOrderUntilById] = useState<Record<string, number>>({});
   const [clockMs, setClockMs] = useState(() => Date.now());
   const [sellerCountryCode, setSellerCountryCode] = useState<string>(() => normalizeCountryCode(getSellerMeCache()?.countryCode ?? ""));
-  const pagerRef = useRef<ScrollView>(null);
-  const screenWidth = Dimensions.get("window").width;
+  const appStateRef = useRef(AppState.currentState);
   const deliveredEmojiScale = useRef(new Animated.Value(0.4)).current;
   const deliveredEmojiOpacity = useRef(new Animated.Value(0)).current;
   const pulseValue = useRef(new Animated.Value(0)).current;
+  const lastOrdersSignatureRef = useRef<string>(sellerOrdersSignature(orders));
   const seenOrderIdsRef = useRef<Set<string>>(new Set());
   const hasSeenInitialOrdersRef = useRef(false);
   const refreshOrdersOnlyRef = useRef<(baseUrl?: string) => Promise<void>>(async () => {});
@@ -296,17 +336,6 @@ export default function SellerHomeScreen({
     const id = setInterval(() => setClockMs(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseValue, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulseValue, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [pulseValue]);
 
   async function fetchWithAuth(path: string, baseUrl = apiUrl): Promise<Response> {
     const makeHeaders = (session: AuthSession): Record<string, string> => ({
@@ -370,17 +399,25 @@ export default function SellerHomeScreen({
       return;
     }
     const ordersJson = await ordersRes.json().catch(() => ({}));
-    let sellerOrders: SellerOrder[] = Array.isArray(ordersJson?.data) ? ordersJson.data : [];
+    let sellerOrders: SellerOrder[] = Array.isArray(ordersJson?.data)
+      ? ordersJson.data.map((row: unknown) => normalizeSellerOrder((row ?? {}) as Record<string, unknown>))
+      : [];
 
     // Keep home feed aligned with fallback list when seller endpoint returns empty.
     if (sellerOrders.length === 0) {
       const fallbackRes = await fetchWithAuth("/v1/orders?page=1&pageSize=200&role=seller", baseUrl);
       const fallbackJson = await fallbackRes.json().catch(() => ({}));
       if (fallbackRes.ok && Array.isArray(fallbackJson?.data)) {
-        const fromAll = fallbackJson.data.filter((row: SellerOrder & { sellerId?: string }) => row.sellerId === currentAuth.userId);
-        sellerOrders = fromAll.length > 0 ? fromAll : fallbackJson.data;
+        const normalizedFallback = (fallbackJson.data as unknown[]).map((row: unknown) => normalizeSellerOrder((row ?? {}) as Record<string, unknown>));
+        const fromAll = normalizedFallback.filter((row) => row.sellerId === currentAuth.userId);
+        sellerOrders = fromAll.length > 0 ? fromAll : normalizedFallback;
       }
     }
+
+    const nextSignature = sellerOrdersSignature(sellerOrders);
+    const canSkipStateUpdate = hasSeenInitialOrdersRef.current && nextSignature === lastOrdersSignatureRef.current;
+    lastOrdersSignatureRef.current = nextSignature;
+    if (canSkipStateUpdate) return;
 
     setSellerOrdersCache(sellerOrders as Record<string, unknown>[]);
     const now = Date.now();
@@ -447,17 +484,18 @@ export default function SellerHomeScreen({
             name: String(f.name ?? ""),
             price: Number(f.price ?? 0),
             isActive: toBool(f.isActive ?? f.is_active),
+            hasAnyLot: toBool(f.hasAnyLot ?? f.has_any_lot),
             stock: Number(f.stock ?? 0),
           }));
           setSellerFoodsCache(foods);
           setActiveFoods(
             foods
-              .filter((f) => toBool(f.isActive) && Number(f.stock ?? 0) > 0)
               .map((f) => ({
                 id: String(f.id ?? ""),
                 name: String(f.name ?? ""),
                 price: Number(f.price ?? 0),
-                isActive: true,
+                isActive: toBool(f.isActive),
+                hasAnyLot: toBool(f.hasAnyLot),
                 stock: Number(f.stock ?? 0),
               })),
           );
@@ -500,16 +538,22 @@ export default function SellerHomeScreen({
   // Reload when app returns to foreground (covers case where realtime is not configured)
   useEffect(() => {
     const sub = AppState.addEventListener("change", (nextState) => {
+      appStateRef.current = nextState;
       if (nextState === "active") void loadRef.current();
     });
     return () => sub.remove();
   }, []);
 
-  // Polling fallback: refresh every 8 s so seller list stays near-realtime
+  // Polling fallback: refresh less aggressively and only while the orders page is visible.
   useEffect(() => {
-    const id = setInterval(() => { void refreshOrdersOnlyRef.current(); }, 8_000);
+    const id = setInterval(() => {
+      if (appStateRef.current !== "active") return;
+      if (activePage !== 0) return;
+      if (updatingOrderId) return;
+      void refreshOrdersOnlyRef.current();
+    }, 20_000);
     return () => clearInterval(id);
-  }, []);
+  }, [activePage, updatingOrderId]);
 
   const todayOrders = useMemo(() => {
     const now = new Date();
@@ -519,13 +563,14 @@ export default function SellerHomeScreen({
       if (!["pending_seller_approval", "seller_approved", "awaiting_payment", "paid", "preparing", "ready", "in_delivery", "approaching", "at_door", "delivered", "completed", "cancelled", "rejected"].includes(o.status)) return false;
       return true;
     });
+    const datedScopedCount = scoped.filter((o) => Boolean(parseApiDate(o.createdAt) ?? parseApiDate(o.updatedAt))).length;
     const filtered = scoped.filter((o) => {
-      const activityAt = parseApiDate(o.createdAt) ?? parseApiDate(o.updatedAt);
-      if (!activityAt) return false;
-      return isCurrentBusinessDay(activityAt, now, useTurkeyTime);
+      const receivedAt = parseApiDate(o.createdAt) ?? parseApiDate(o.updatedAt);
+      if (!receivedAt) return false;
+      return isCurrentBusinessDay(receivedAt, now, useTurkeyTime);
     });
-    // Fallback: timezone/date parse edge-case durumunda sipariş listesi tamamen kaybolmasın.
-    return filtered.length > 0 ? filtered : scoped;
+    // Sadece tarih parse edilemeyen edge-case durumda fallback uygula.
+    return datedScopedCount === 0 ? scoped : filtered;
   }, [orders, currentAuth.userId, clockMs, sellerCountryCode]);
 
   const groupedOrders = useMemo(() => {
@@ -543,6 +588,37 @@ export default function SellerHomeScreen({
     done.sort((a, b) => orderTimeForSort(b) - orderTimeForSort(a));
     return { preparing, route, done };
   }, [todayOrders]);
+
+  const orderSections = useMemo(
+    (): Array<{ key: OrderGroupKey; title: string; data: SellerOrder[] }> => ([
+      { key: "preparing", title: t('headline.seller.home.groupPreparing'), data: groupedOrders.preparing },
+      { key: "route", title: t('headline.seller.home.groupRoute'), data: groupedOrders.route },
+      { key: "done", title: t('headline.seller.home.groupDone'), data: groupedOrders.done },
+    ]),
+    [groupedOrders],
+  );
+
+  const shouldAnimatePulse = useMemo(() => {
+    const hasDoorOrder = todayOrders.some((order) => normalizeDisplayStatus(order.status, order.deliveryType) === "at_door");
+    const hasNewOrder = Object.values(newOrderUntilById).some((expiresAt) => expiresAt > clockMs);
+    return hasDoorOrder || hasNewOrder;
+  }, [todayOrders, newOrderUntilById, clockMs]);
+
+  useEffect(() => {
+    if (!shouldAnimatePulse) {
+      pulseValue.stopAnimation();
+      pulseValue.setValue(0);
+      return;
+    }
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseValue, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulseValue, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [pulseValue, shouldAnimatePulse]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -657,246 +733,285 @@ export default function SellerHomeScreen({
 
       {/* Stats header */}
       <View style={styles.ordersHead}>
-        <TouchableOpacity style={styles.statBlock} activeOpacity={0.75} onPress={() => {
-          pagerRef.current?.scrollTo({ x: 0, animated: true });
-          setActivePage(0);
-        }}>
+        <TouchableOpacity style={styles.statBlock} activeOpacity={0.75} onPress={() => setActivePage(0)}>
           <Text style={[styles.statCount, activePage === 0 && styles.statCountActive]}>{loading ? "—" : todayOrders.length}</Text>
           <Text style={[styles.statLabel, activePage === 0 && styles.statLabelActive]}>{t('headline.seller.home.todayOrders')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.statBlock} activeOpacity={0.75} onPress={() => {
-          pagerRef.current?.scrollTo({ x: screenWidth, animated: true });
-          setActivePage(1);
-        }}>
+        <TouchableOpacity style={styles.statBlock} activeOpacity={0.75} onPress={() => setActivePage(1)}>
           <Text style={[styles.statCount, activePage === 1 && styles.statCountActive]}>{loading ? "—" : activeFoods.length}</Text>
           <Text style={[styles.statLabel, activePage === 1 && styles.statLabelActive]}>{t('headline.seller.home.activeFoods')}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Horizontal pager */}
-      <ScrollView
-        ref={pagerRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        directionalLockEnabled={true}
-        disableIntervalMomentum={true}
-        onMomentumScrollEnd={(e) => {
-          const page = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
-          setActivePage(page);
-        }}
-        style={styles.pager}
-      >
-        {/* Sayfa 1: Bugünkü Siparişler */}
-        <ScrollView
-          style={{ width: screenWidth }}
-          contentContainerStyle={styles.ordersContent}
-          nestedScrollEnabled={true}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        >
-          <View style={styles.ordersSection}>
-            {loading ? (
-              <>
-                <View style={styles.skeletonCard}><View style={styles.skeletonLine} /><View style={styles.skeletonLineShort} /></View>
-                <View style={styles.skeletonCard}><View style={styles.skeletonLine} /><View style={styles.skeletonLineShort} /></View>
-              </>
-            ) : todayOrders.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>{t('headline.seller.home.emptyOrdersTitle')}</Text>
-                <Text style={styles.emptySub}>{t('helper.seller.home.emptyOrdersSubtitle')}</Text>
+      {activePage === 0 ? (
+        loading ? (
+          <View style={[styles.ordersContent, styles.listContentGrow]}>
+            <View style={styles.ordersSection}>
+              <View style={styles.skeletonCard}><View style={styles.skeletonLine} /><View style={styles.skeletonLineShort} /></View>
+              <View style={styles.skeletonCard}><View style={styles.skeletonLine} /><View style={styles.skeletonLineShort} /></View>
+            </View>
+          </View>
+        ) : todayOrders.length === 0 ? (
+          <FlatList
+            style={styles.ordersScroll}
+            data={[]}
+            keyExtractor={(item) => item}
+            renderItem={null}
+            contentContainerStyle={[styles.ordersContent, styles.listContentGrow]}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            ListEmptyComponent={
+              <View style={styles.ordersSection}>
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyTitle}>{t('headline.seller.home.emptyOrdersTitle')}</Text>
+                  <Text style={styles.emptySub}>{t('helper.seller.home.emptyOrdersSubtitle')}</Text>
+                </View>
               </View>
-            ) : (
-              ([
-                { key: "preparing" as const, title: t('headline.seller.home.groupPreparing'), data: groupedOrders.preparing },
-                { key: "route" as const, title: t('headline.seller.home.groupRoute'), data: groupedOrders.route },
-                { key: "done" as const, title: t('headline.seller.home.groupDone'), data: groupedOrders.done },
-              ]).map((section) => (
-                <View key={section.key} style={styles.groupSection}>
-                  <View style={styles.groupHeader}>
-                    <Text style={styles.groupTitle}>{section.title}</Text>
-                    <Text style={styles.groupCount}>{section.data.length}</Text>
+            }
+            ListFooterComponent={onSwitchToBuyer ? (
+              <View style={styles.actions}>
+                <TouchableOpacity activeOpacity={0.86} style={styles.switchRoleButton} onPress={onSwitchToBuyer}>
+                  <Text style={styles.switchRoleButtonText}>{t('cta.seller.home.switchToBuyer')}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          />
+        ) : (
+          <SectionList
+            style={styles.ordersScroll}
+            sections={orderSections}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.ordersContent}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            stickySectionHeadersEnabled={false}
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={8}
+            removeClippedSubviews={Platform.OS === "android"}
+            renderSectionHeader={({ section }) => (
+              <View style={styles.groupSection}>
+                <View style={styles.groupHeader}>
+                  <Text style={styles.groupTitle}>{section.title}</Text>
+                  <Text style={styles.groupCount}>{section.data.length}</Text>
+                </View>
+                {section.data.length === 0 ? (
+                  <View style={styles.groupEmptyCard}>
+                    <Text style={styles.groupEmptyText}>{t('helper.seller.home.groupEmpty')}</Text>
                   </View>
-                  {section.data.length === 0 ? (
-                    <View style={styles.groupEmptyCard}>
-                      <Text style={styles.groupEmptyText}>{t('helper.seller.home.groupEmpty')}</Text>
-                    </View>
-                  ) : (
-                    section.data.map((item) => {
-                      const action = cardActionByStatus(item.status, item.deliveryType);
-                      const isUpdating = updatingOrderId === item.id;
-                      const buyerFlowText = buyerProgressLabel(item.buyerProgressStatus);
-                      const statusText = statusLabel(item.status, item.deliveryType);
-                      const passiveTone = toneFromStatus(item.status, item.deliveryType);
-                      const resolvedTone = action?.tone ?? passiveTone;
-                      const canRunAction = Boolean(action);
-                      const normalizedStatus = normalizeDisplayStatus(item.status, item.deliveryType);
-                      const showSmallThumb = normalizedStatus === "delivered";
-                      const isDoorStep = normalizedStatus === "at_door";
-                      const isNewOrder = (newOrderUntilById[item.id] ?? 0) > clockMs;
-                      return (
-                        <View key={item.id} style={styles.orderCard}>
-                          {isDoorStep ? (
-                            <Animated.View
-                              pointerEvents="none"
-                              style={[
-                                styles.kapidaHighlightLayer,
-                                {
-                                  opacity: pulseValue.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [0.08, 0.2],
-                                  }),
-                                },
-                              ]}
-                            />
-                          ) : null}
+                ) : null}
+              </View>
+            )}
+            renderItem={({ item, section, index }) => {
+              const action = cardActionByStatus(item.status, item.deliveryType);
+              const isUpdating = updatingOrderId === item.id;
+              const buyerFlowText = buyerProgressLabel(item.buyerProgressStatus);
+              const statusText = statusLabel(item.status, item.deliveryType);
+              const passiveTone = toneFromStatus(item.status, item.deliveryType);
+              const resolvedTone = action?.tone ?? passiveTone;
+              const canRunAction = Boolean(action);
+              const normalizedStatus = normalizeDisplayStatus(item.status, item.deliveryType);
+              const showSmallThumb = normalizedStatus === "delivered";
+              const isDoorStep = normalizedStatus === "at_door";
+              const isNewOrder = (newOrderUntilById[item.id] ?? 0) > clockMs;
+              const isLastInSection = index === section.data.length - 1;
+              return (
+                <View style={[styles.orderCard, isLastInSection && styles.orderCardLast]}>
+                  {isDoorStep ? (
+                    <Animated.View
+                      pointerEvents="none"
+                      style={[
+                        styles.kapidaHighlightLayer,
+                        {
+                          opacity: pulseValue.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.08, 0.2],
+                          }),
+                        },
+                      ]}
+                    />
+                  ) : null}
+                  {isNewOrder ? (
+                    <Animated.View
+                      pointerEvents="none"
+                      style={[
+                        styles.newHighlightLayer,
+                        {
+                          opacity: pulseValue.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.12, 0.24],
+                          }),
+                        },
+                      ]}
+                    />
+                  ) : null}
+                  <TouchableOpacity activeOpacity={0.82} onPress={() => onOpenOrder(item.id)}>
+                    <View style={styles.orderTopRow}>
+                      <View style={styles.orderTitleWrap}>
+                        <View style={styles.orderTitleRow}>
+                          <Text style={styles.orderNo} numberOfLines={1}>
+                            {item.primaryFoodName?.trim() || item.orderNo || `#${item.id.slice(0, 8).toUpperCase()}`}
+                            {item.itemCount && item.itemCount > 1 ? ` +${item.itemCount - 1}` : ""}
+                          </Text>
                           {isNewOrder ? (
-                            <Animated.View
-                              pointerEvents="none"
-                              style={[
-                                styles.newHighlightLayer,
-                                {
-                                  opacity: pulseValue.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [0.12, 0.24],
-                                  }),
-                                },
-                              ]}
-                            />
-                          ) : null}
-                          <TouchableOpacity activeOpacity={0.82} onPress={() => onOpenOrder(item.id)}>
-                            <View style={styles.orderTopRow}>
-                              <View style={styles.orderTitleWrap}>
-                                <View style={styles.orderTitleRow}>
-                                  <Text style={styles.orderNo} numberOfLines={1}>
-                                    {item.primaryFoodName?.trim() || item.orderNo || `#${item.id.slice(0, 8).toUpperCase()}`}
-                                    {item.itemCount && item.itemCount > 1 ? ` +${item.itemCount - 1}` : ""}
-                                  </Text>
-                                  {isNewOrder ? (
-                                    <View style={styles.newBadge}>
-                                      <Text style={styles.newBadgeText}>{t('status.seller.home.new')}</Text>
-                                    </View>
-                                  ) : null}
-                                </View>
-                                {buyerFlowText ? <Text style={styles.orderBuyerFlowMeta}>{buyerFlowText}</Text> : null}
-                                <Text style={styles.orderMeta}>{formatCopy('status.seller.orders.buyer', { name: item.buyerName || "-" })}</Text>
-                              </View>
-                              <View style={styles.orderTopRight}>
-                                <Text style={styles.orderIdText}>{item.orderNo || `#${item.id.slice(0, 8).toUpperCase()}`}</Text>
-                                <Text style={styles.orderDateText}>{formatOrderDateTime(item.createdAt)}</Text>
-                              </View>
-                            </View>
-                            <View style={styles.orderBottomRow}>
-                              <Text style={styles.orderTotal}>{Number(item.totalPrice ?? 0).toFixed(2)} TL</Text>
-                              <View style={styles.orderBottomRight}>
-                                <Text style={styles.orderElapsedText}>{formatElapsed(item.createdAt, clockMs)}</Text>
-                                {showSmallThumb ? <Text style={styles.orderThumbSmall}>👍</Text> : null}
-                              </View>
-                            </View>
-                          </TouchableOpacity>
-                          {resolvedTone ? (
-                            <View style={styles.cardActionRow}>
-                              {celebrationOrderId === item.id ? (
-                                <Animated.View
-                                  pointerEvents="none"
-                                  style={[
-                                    styles.cardCelebrateEmojiWrap,
-                                    {
-                                      opacity: deliveredEmojiOpacity,
-                                      transform: [{ scale: deliveredEmojiScale }],
-                                    },
-                                  ]}
-                                >
-                                  <Text style={styles.cardCelebrateEmoji}>👍</Text>
-                                </Animated.View>
-                              ) : null}
-                              <TouchableOpacity
-                                activeOpacity={0.86}
-                                style={[
-                                  styles.cardActionBtn,
-                                  resolvedTone === "preparing"
-                                    ? styles.cardActionBtnPreparing
-                                    : resolvedTone === "ready"
-                                      ? styles.cardActionBtnReady
-                                    : resolvedTone === "in_delivery"
-                                      ? styles.cardActionBtnInDelivery
-                                    : resolvedTone === "approaching"
-                                      ? styles.cardActionBtnApproaching
-                                    : resolvedTone === "at_door"
-                                      ? styles.cardActionBtnDelivered
-                                      : styles.cardActionBtnCompleted,
-                                  isDoorStep && styles.cardActionBtnKapidaPulse,
-                                  isUpdating && styles.cardActionBtnDisabled,
-                                ]}
-                                disabled={isUpdating || (!canRunAction && !isDoorStep)}
-                                onPress={() => {
-                                  if (action) {
-                                    void runCardAction(item.id, action);
-                                  } else if (isDoorStep) {
-                                    onOpenOrder(item.id);
-                                  }
-                                }}
-                              >
-                                <Text style={styles.cardActionBtnText}>
-                                  {isUpdating ? t('status.seller.home.processing') : isDoorStep && !action ? t('cta.seller.home.verifyPin') : (action?.label ?? statusText)}
-                                </Text>
-                              </TouchableOpacity>
+                            <View style={styles.newBadge}>
+                              <Text style={styles.newBadgeText}>{t('status.seller.home.new')}</Text>
                             </View>
                           ) : null}
                         </View>
-                      );
-                    })
-                  )}
+                        {buyerFlowText ? <Text style={styles.orderBuyerFlowMeta}>{buyerFlowText}</Text> : null}
+                        <Text style={styles.orderMeta}>{formatCopy('status.seller.orders.buyer', { name: item.buyerName || "-" })}</Text>
+                      </View>
+                      <View style={styles.orderTopRight}>
+                        <Text style={styles.orderIdText}>{item.orderNo || `#${item.id.slice(0, 8).toUpperCase()}`}</Text>
+                        <Text style={styles.orderDateText}>{formatOrderDateTime(item.createdAt)}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.orderBottomRow}>
+                      <Text style={styles.orderTotal}>{Number(item.totalPrice ?? 0).toFixed(2)} TL</Text>
+                      <View style={styles.orderBottomRight}>
+                        <Text style={styles.orderElapsedText}>{formatElapsed(item.createdAt, clockMs)}</Text>
+                        {showSmallThumb ? <Text style={styles.orderThumbSmall}>👍</Text> : null}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                  {resolvedTone ? (
+                    <View style={styles.cardActionRow}>
+                      {celebrationOrderId === item.id ? (
+                        <Animated.View
+                          pointerEvents="none"
+                          style={[
+                            styles.cardCelebrateEmojiWrap,
+                            {
+                              opacity: deliveredEmojiOpacity,
+                              transform: [{ scale: deliveredEmojiScale }],
+                            },
+                          ]}
+                        >
+                          <Text style={styles.cardCelebrateEmoji}>👍</Text>
+                        </Animated.View>
+                      ) : null}
+                      <TouchableOpacity
+                        activeOpacity={0.86}
+                        style={[
+                          styles.cardActionBtn,
+                          resolvedTone === "preparing"
+                            ? styles.cardActionBtnPreparing
+                            : resolvedTone === "ready"
+                              ? styles.cardActionBtnReady
+                              : resolvedTone === "in_delivery"
+                                ? styles.cardActionBtnInDelivery
+                                : resolvedTone === "approaching"
+                                  ? styles.cardActionBtnApproaching
+                                  : resolvedTone === "at_door"
+                                    ? styles.cardActionBtnDelivered
+                                    : styles.cardActionBtnCompleted,
+                          isDoorStep && styles.cardActionBtnKapidaPulse,
+                          isUpdating && styles.cardActionBtnDisabled,
+                        ]}
+                        disabled={isUpdating || (!canRunAction && !isDoorStep)}
+                        onPress={() => {
+                          if (action) {
+                            void runCardAction(item.id, action);
+                          } else if (isDoorStep) {
+                            onOpenOrder(item.id);
+                          }
+                        }}
+                      >
+                        <Text style={styles.cardActionBtnText}>
+                          {isUpdating ? t('status.seller.home.processing') : isDoorStep && !action ? t('cta.seller.home.verifyPin') : (action?.label ?? statusText)}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
                 </View>
-              ))
-            )}
-          </View>
-          {onSwitchToBuyer ? (
-            <View style={styles.actions}>
-              <TouchableOpacity activeOpacity={0.86} style={styles.switchRoleButton} onPress={onSwitchToBuyer}>
-                <Text style={styles.switchRoleButtonText}>{t('cta.seller.home.switchToBuyer')}</Text>
-              </TouchableOpacity>
+              );
+            }}
+            ListFooterComponent={onSwitchToBuyer ? (
+              <View style={styles.actions}>
+                <TouchableOpacity activeOpacity={0.86} style={styles.switchRoleButton} onPress={onSwitchToBuyer}>
+                  <Text style={styles.switchRoleButtonText}>{t('cta.seller.home.switchToBuyer')}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          />
+        )
+      ) : (
+        <FlatList
+          style={styles.ordersScroll}
+          data={loading ? [] : activeFoods}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[styles.ordersContent, activeFoods.length === 0 && styles.listContentGrow]}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={8}
+          removeClippedSubviews={Platform.OS === "android"}
+          ListHeaderComponent={loading ? (
+            <View style={styles.ordersSection}>
+              <View style={styles.skeletonCard}><View style={styles.skeletonLine} /><View style={styles.skeletonLineShort} /></View>
+              <View style={styles.skeletonCard}><View style={styles.skeletonLine} /><View style={styles.skeletonLineShort} /></View>
             </View>
           ) : null}
-        </ScrollView>
-
-        {/* Sayfa 2: Satıştaki Yemekler */}
-        <ScrollView style={{ width: screenWidth }} contentContainerStyle={styles.ordersContent} nestedScrollEnabled={true}>
-          <View style={styles.ordersSection}>
-            {loading ? (
-              <>
-                <View style={styles.skeletonCard}><View style={styles.skeletonLine} /><View style={styles.skeletonLineShort} /></View>
-                <View style={styles.skeletonCard}><View style={styles.skeletonLine} /><View style={styles.skeletonLineShort} /></View>
-              </>
-            ) : activeFoods.length === 0 ? (
+          ListEmptyComponent={!loading ? (
+            <View style={styles.ordersSection}>
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyTitle}>{t('headline.seller.home.emptyFoodsTitle')}</Text>
                 <Text style={styles.emptySub}>{t('helper.seller.home.emptyFoodsSubtitle')}</Text>
               </View>
-            ) : (
-              activeFoods.map((food) => (
-                <TouchableOpacity
-                  key={food.id}
-                  style={styles.orderCard}
-                  activeOpacity={0.84}
-                  onPress={() => onOpenFoodsManager(food.id)}
-                >
-                  <View style={styles.orderTopRow}>
-                    <Text style={styles.orderNo} numberOfLines={1}>{food.name}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: "#EAF7EE", borderColor: "#B7DEC3" }]}>
-                      <Text style={[styles.statusBadgeText, { color: "#166534" }]}>{t('status.seller.home.active')}</Text>
+            </View>
+          ) : null}
+          renderItem={({ item: food, index }) => (
+            <TouchableOpacity
+              style={[styles.orderCard, index === activeFoods.length - 1 && styles.orderCardLast]}
+              activeOpacity={0.84}
+              onPress={() => onOpenFoodsManager(food.id)}
+            >
+              {(() => {
+                const hasStock = food.stock > 0;
+                const badgeActiveTone = food.isActive && hasStock;
+                const badgeLabel = !food.isActive
+                  ? t('status.seller.foodsManager.passive')
+                  : (!food.hasAnyLot
+                    ? t('status.seller.home.noLot')
+                    : (hasStock ? t('status.seller.home.active') : t('status.seller.home.outOfStock')));
+                const stockLabel = !food.hasAnyLot
+                  ? t('status.seller.home.stockLotMissing')
+                  : (hasStock ? formatCopy('status.seller.home.stockLine', { stock: food.stock }) : t('status.seller.home.stockDepleted'));
+                return (
+                  <>
+                    <View style={styles.orderTopRow}>
+                      <Text style={styles.orderNo} numberOfLines={1}>{food.name}</Text>
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          badgeActiveTone
+                            ? { backgroundColor: "#EAF7EE", borderColor: "#B7DEC3" }
+                            : { backgroundColor: "#F3ECE5", borderColor: "#DFD1C3" },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.statusBadgeText,
+                            { color: badgeActiveTone ? "#166534" : "#7C6A58" },
+                          ]}
+                        >
+                          {badgeLabel}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                    <Text style={styles.orderTotal}>{Number(food.price).toFixed(2)} TL</Text>
-                    <Text style={styles.orderMeta}>{formatCopy('status.seller.home.stockLine', { stock: food.stock })}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-        </ScrollView>
-      </ScrollView>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                      <Text style={styles.orderTotal}>{Number(food.price).toFixed(2)} TL</Text>
+                      <Text style={styles.orderMeta}>{stockLabel}</Text>
+                    </View>
+                  </>
+                );
+              })()}
+            </TouchableOpacity>
+          )}
+        />
+      )}
     </View>
   );
 }
@@ -996,6 +1111,7 @@ const styles = StyleSheet.create({
   },
   ordersScroll: { flex: 1 },
   ordersContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 48 },
+  listContentGrow: { flexGrow: 1 },
   ordersSection: { marginBottom: 14 },
   ordersHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingHorizontal: 16 },
   ordersTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -1042,6 +1158,7 @@ const styles = StyleSheet.create({
   groupEmptyCard: { backgroundColor: "#FCFAF7", borderRadius: 10, borderWidth: 1, borderColor: "#ECE3D7", padding: 10, marginBottom: 8 },
   groupEmptyText: { color: "#8A7A6B", fontWeight: "600" },
   orderCard: { backgroundColor: "#fff", borderRadius: 14, borderWidth: 1, borderColor: "#E5DDCF", padding: 14, marginBottom: 12, overflow: "hidden" },
+  orderCardLast: { marginBottom: 0 },
   kapidaHighlightLayer: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#FFD166",

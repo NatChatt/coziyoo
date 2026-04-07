@@ -823,6 +823,11 @@ sellerRouter.get("/foods", async (req, res) => {
          f.is_active,
          f.created_at::text,
          f.updated_at::text,
+         EXISTS (
+           SELECT 1
+           FROM production_lots pl_any
+           WHERE pl_any.food_id = f.id
+         ) AS has_any_lot,
          COALESCE((
            SELECT SUM(pl.quantity_available)::int
            FROM production_lots pl
@@ -878,6 +883,7 @@ sellerRouter.get("/foods", async (req, res) => {
         allergens: Array.isArray(row.allergens_json) ? row.allergens_json : [],
         preparationTimeMinutes: row.preparation_time_minutes,
         isActive: Boolean(row.is_active),
+        hasAnyLot: Boolean(row.has_any_lot),
         stock: Number(row.stock ?? 0),
         createdAt: row.created_at,
         updatedAt: row.updated_at,
