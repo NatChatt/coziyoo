@@ -29,7 +29,6 @@ export function subscribeBuyerFeedRealtime(onChange: () => void): RealtimeUnsubs
     .channel(`mobile-feed-${Date.now()}`)
     .on("postgres_changes", { event: "*", schema: "public", table: "foods" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "production_lots" }, onChange)
-    .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, onChange)
     .subscribe();
 
   return () => {

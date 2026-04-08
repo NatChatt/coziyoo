@@ -2000,6 +2000,9 @@ export default function HomeScreen({
   const sloganMarqueeLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const feedScrollRef = useRef<ScrollView>(null);
   const searchInputRef = useRef<TextInput>(null);
+  const mealsLoadedOnceRef = useRef(false);
+  const recommendedMealsLoadedOnceRef = useRef(false);
+  const buyerFeedRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setCurrentAuth(auth);
@@ -2197,14 +2200,14 @@ export default function HomeScreen({
       });
       return;
     }
-    fetchFoods(apiUrl);
+    fetchFoods(apiUrl, { silent: mealsLoadedOnceRef.current });
   }, [apiUrl, currentAuth.accessToken]);
 
   // Refresh feed every time user returns to home tab (e.g. after publishing from seller side)
   useEffect(() => {
     if (activeTab !== 'home') return;
     if (!apiUrl) return;
-    fetchFoods(apiUrl);
+    fetchFoods(apiUrl, { silent: true });
   }, [activeTab, apiUrl]);
 
   // Refresh feed when app comes back from background while home is open.
@@ -2213,7 +2216,7 @@ export default function HomeScreen({
       if (nextState !== 'active') return;
       if (activeTab !== 'home') return;
       if (!apiUrl) return;
-      fetchFoods(apiUrl);
+      fetchFoods(apiUrl, { silent: true });
     });
     return () => sub.remove();
   }, [activeTab, apiUrl, currentAuth.accessToken]);
@@ -2222,7 +2225,7 @@ export default function HomeScreen({
   useEffect(() => {
     if (activeTab !== 'home' || !apiUrl) return;
     const id = setInterval(() => {
-      fetchFoods(apiUrl);
+      fetchFoods(apiUrl, { silent: true });
     }, 15000);
     return () => clearInterval(id);
   }, [activeTab, apiUrl, currentAuth.accessToken]);
@@ -2230,14 +2233,25 @@ export default function HomeScreen({
   useEffect(() => {
     if (activeTab !== 'home' || !apiUrl) return;
     const unsubscribe = subscribeBuyerFeedRealtime(() => {
-      fetchFoods(apiUrl);
+      if (buyerFeedRefreshTimerRef.current) return;
+      buyerFeedRefreshTimerRef.current = setTimeout(() => {
+        buyerFeedRefreshTimerRef.current = null;
+        void fetchFoods(apiUrl, { silent: true });
+      }, 1200);
     });
-    return unsubscribe;
+    return () => {
+      if (buyerFeedRefreshTimerRef.current) {
+        clearTimeout(buyerFeedRefreshTimerRef.current);
+        buyerFeedRefreshTimerRef.current = null;
+      }
+      unsubscribe();
+    };
   }, [activeTab, apiUrl, currentAuth.accessToken]);
 
   useEffect(() => {
     let cancelled = false;
-    setRecommendedMealsLoading(true);
+    const showLoading = !recommendedMealsLoadedOnceRef.current;
+    if (showLoading) setRecommendedMealsLoading(true);
     apiRequest<ApiRecommendationItem[]>(
       '/v1/foods/recommendations?limit=8',
       currentAuth,
@@ -2247,7 +2261,9 @@ export default function HomeScreen({
       .then((result) => {
         if (cancelled) return;
         if (!result.ok) {
-          setRecommendedMeals([]);
+          if (!recommendedMealsLoadedOnceRef.current) {
+            setRecommendedMeals([]);
+          }
           return;
         }
         const mapped = (Array.isArray(result.data) ? result.data : []).map((item) => ({
@@ -2257,7 +2273,9 @@ export default function HomeScreen({
         setRecommendedMeals(mapped);
       })
       .finally(() => {
-        setRecommendedMealsLoading(false);
+        if (cancelled) return;
+        recommendedMealsLoadedOnceRef.current = true;
+        if (showLoading) setRecommendedMealsLoading(false);
       });
     return () => {
       cancelled = true;
@@ -2329,9 +2347,12 @@ export default function HomeScreen({
     });
   }, [currentAuth, favoriteIds, favoritePendingIds, handleAuthRefresh]);
 
-  async function fetchFoods(url: string) {
-    setMealsLoading(true);
-    setMealsError(null);
+  async function fetchFoods(url: string, options?: { silent?: boolean }) {
+    const silent = Boolean(options?.silent) && mealsLoadedOnceRef.current;
+    if (!silent) {
+      setMealsLoading(true);
+      setMealsError(null);
+    }
     try {
       const maxRetries = 3;
 
@@ -2355,13 +2376,15 @@ export default function HomeScreen({
           }
           const json = await readJsonSafe<{ data?: ApiFoodItem[] }>(response);
           if (!Array.isArray(json.data)) {
-            setMealsError(t('error.home.noMealsInResponse'));
+            if (!silent) setMealsError(t('error.home.noMealsInResponse'));
             return 'failed';
           }
           setMeals(json.data.map(apiToMealCard));
+          setMealsError(null);
+          mealsLoadedOnceRef.current = true;
           return 'ok';
         }
-        setMealsError(t('error.home.retryLater'));
+        if (!silent) setMealsError(t('error.home.retryLater'));
         return 'failed';
       };
 
@@ -2371,17 +2394,20 @@ export default function HomeScreen({
 
       const refreshed = await refreshAuthSession(url, currentAuth);
       if (!refreshed) {
-        setMealsError(t('error.home.sessionExpired'));
+        if (!silent) setMealsError(t('error.home.sessionExpired'));
         return;
       }
       setCurrentAuth(refreshed);
       onAuthRefresh?.(refreshed);
-      await fetchFoodsWithToken(refreshed.accessToken);
+      const retryResult = await fetchFoodsWithToken(refreshed.accessToken);
+      if (retryResult === 'ok') {
+        mealsLoadedOnceRef.current = true;
+      }
     } catch (err) {
       console.warn('[HomeScreen] failed to fetch foods:', err);
-      setMealsError(err instanceof Error ? err.message : t('error.home.requestFailed'));
+      if (!silent) setMealsError(err instanceof Error ? err.message : t('error.home.requestFailed'));
     } finally {
-      setMealsLoading(false);
+      if (!silent) setMealsLoading(false);
     }
   }
 
