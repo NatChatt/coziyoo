@@ -16,7 +16,7 @@
                 this.$watch('open', val => {
                     const page = document.getElementById('page');
                     if (page) {
-                        page.style.filter = val ? 'blur(4px)' : '';
+                        page.style.filter = val ? 'blur(4px) brightness(0.3)' : '';
                         page.style.pointerEvents = val ? 'none' : '';
                         page.style.userSelect = val ? 'none' : '';
                     }
@@ -68,7 +68,7 @@
             <div
                 x-show="open"
 @click.self="close()"
-                class="fixed inset-0 z-[99999] flex flex-col bg-base-900/85 dark:bg-base-950/85"
+                class="fixed inset-0 z-[99999] flex flex-col"
                 :class="hasResults ? 'items-center pt-16' : 'items-center justify-center'"
             >
                 <div class="w-full max-w-2xl px-4 flex flex-col gap-3">
