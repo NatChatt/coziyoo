@@ -12,7 +12,7 @@ on:
 
 concurrency:
   group: deploy-django-main
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -46,23 +46,31 @@ jobs:
 
             echo "Triggering deploy → ${NAME} (${WEBHOOK_URL})"
 
-            HTTP_CODE=$(curl -s -o /tmp/response.txt -w '%{http_code}' \
-              --max-time 30 \
-              -X POST \
-              -H "Content-Type: application/json" \
-              -H "X-Webhook-Signature: ${SIGNATURE}" \
-              -d '{}' \
-              "${WEBHOOK_URL}")
+            for attempt in 1 2 3; do
+              HTTP_CODE=$(curl -s -o /tmp/response.txt -w '%{http_code}' \
+                --max-time 90 \
+                -X POST \
+                -H "Content-Type: application/json" \
+                -H "X-Webhook-Signature: ${SIGNATURE}" \
+                -d '{}' \
+                "${WEBHOOK_URL}")
 
-            BODY=$(cat /tmp/response.txt)
-            echo "Response: ${HTTP_CODE} — ${BODY}"
+              BODY=$(cat /tmp/response.txt)
+              echo "Attempt ${attempt}/3 — Response: ${HTTP_CODE} — ${BODY}"
 
-            if [[ "${HTTP_CODE}" -ne 200 ]]; then
-              echo "ERROR: Webhook returned ${HTTP_CODE} for ${NAME}" >&2
-              exit 1
-            fi
+              if [[ "${HTTP_CODE}" -eq 200 ]]; then
+                echo "Deploy triggered for ${NAME}"
+                break
+              fi
 
-            echo "Deploy triggered for ${NAME}"
+              if [[ "${attempt}" -lt 3 ]]; then
+                echo "Webhook failed (HTTP ${HTTP_CODE}), retrying in 15s..."
+                sleep 15
+              else
+                echo "ERROR: Webhook failed for ${NAME} after 3 attempts" >&2
+                exit 1
+              fi
+            done
           done <<< "${DEPLOY_TARGETS}"
 
       - name: Wait and verify health
