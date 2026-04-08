@@ -2003,9 +2003,13 @@ export default function HomeScreen({
   const mealsLoadedOnceRef = useRef(false);
   const recommendedMealsLoadedOnceRef = useRef(false);
   const buyerFeedRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const authInitialized = useRef(false);
 
   useEffect(() => {
-    setCurrentAuth(auth);
+    if (!authInitialized.current) {
+      authInitialized.current = true;
+      setCurrentAuth(auth);
+    }
   }, [auth]);
 
   const handleAuthRefresh = useCallback((session: AuthSession) => {
