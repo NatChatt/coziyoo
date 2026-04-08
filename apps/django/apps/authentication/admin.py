@@ -529,17 +529,34 @@ class SellerUsersAdmin(ModelAdmin):
                     ) t),
                     (SELECT row_to_json(t) FROM (
                         SELECT title, address_line AS line FROM user_addresses WHERE user_id = %s LIMIT 1
+                    ) t),
+                    (SELECT row_to_json(t) FROM (
+                        SELECT COALESCE(sum(gross_amount), 0) AS gross_total,
+                               COALESCE(sum(commission_amount), 0) AS commission_total,
+                               COALESCE(sum(seller_net_amount), 0) AS net_total,
+                               count(*)::int AS finalized_count
+                        FROM order_finance WHERE seller_id = %s
+                    ) t),
+                    (SELECT row_to_json(t) FROM (
+                        SELECT COALESCE(sum(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0) AS total_credits,
+                               COALESCE(sum(CASE WHEN amount < 0 THEN amount ELSE 0 END), 0) AS total_debits,
+                               count(*)::int AS adj_count
+                        FROM finance_adjustments WHERE seller_id = %s
                     ) t)
-            """, [uid, uid, uid, uid, uid])
-            orow_json, crow_json, foods_count, rrow_json, address = cur.fetchone()
+            """, [uid, uid, uid, uid, uid, uid, uid])
+            orow_json, crow_json, foods_count, rrow_json, address, efin_json, adj_sum_json = cur.fetchone()
 
             # ── 2. All list data in one query using json_agg ──
             cur.execute("""
                 SELECT
                     (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
-                        SELECT o.id, u.display_name AS buyer_name, o.total_price, o.status, o.created_at
-                        FROM orders o LEFT JOIN users u ON u.id = o.buyer_id
-                        WHERE o.seller_id = %s ORDER BY o.created_at DESC LIMIT 10
+                        SELECT o.id, u.display_name AS buyer_name, o.total_price, o.status, o.created_at,
+                               ofi.gross_amount, ofi.commission_amount, ofi.seller_net_amount,
+                               ofi.commission_rate_snapshot, ofi.finalized_at
+                        FROM orders o
+                        LEFT JOIN users u ON u.id = o.buyer_id
+                        LEFT JOIN order_finance ofi ON ofi.order_id = o.id
+                        WHERE o.seller_id = %s ORDER BY o.created_at DESC LIMIT 20
                     ) t),
                     (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
                         SELECT r.id, f.name AS food_name, r.rating AS review_rating, r.comment, r.created_at,
@@ -558,9 +575,15 @@ class SellerUsersAdmin(ModelAdmin):
                         SELECT f.id, f.name, f.price, f.is_active, c.name_tr AS category_name
                         FROM foods f LEFT JOIN categories c ON c.id = f.category_id
                         WHERE f.seller_id = %s ORDER BY f.name LIMIT 20
+                    ) t),
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT fa.id, fa.type, fa.amount, fa.reason, fa.created_at,
+                               fa.order_id::text AS order_id
+                        FROM finance_adjustments fa
+                        WHERE fa.seller_id = %s ORDER BY fa.created_at DESC LIMIT 20
                     ) t)
-            """, [uid, uid, uid, uid])
-            orders_json, reviews_json, complaints_json, foods_json = cur.fetchone()
+            """, [uid, uid, uid, uid, uid])
+            orders_json, reviews_json, complaints_json, foods_json, adjustments_json = cur.fetchone()
 
             # ── 3. Compliance docs (kept separate — needs s3 URL hydration) ──
             cur.execute("""
@@ -591,7 +614,16 @@ class SellerUsersAdmin(ModelAdmin):
         # Parse JSON results
         orders = [{"id": str(r["id"]), "buyer_name": r["buyer_name"], "total_price": r["total_price"],
                    "status": r["status"], "status_tr": STATUS_TR.get(r["status"], r["status"]),
-                   "created_at": r["created_at"]} for r in (orders_json or [])]
+                   "created_at": r["created_at"],
+                   "gross_amount": r.get("gross_amount"),
+                   "commission_amount": r.get("commission_amount"),
+                   "seller_net_amount": r.get("seller_net_amount"),
+                   "commission_rate_snapshot": r.get("commission_rate_snapshot"),
+                   "finalized_at": r.get("finalized_at")} for r in (orders_json or [])]
+
+        adjustments = [{"id": str(r["id"]), "type": r["type"], "amount": float(r["amount"]),
+                        "reason": r.get("reason") or "", "created_at": r["created_at"],
+                        "order_id": r.get("order_id")} for r in (adjustments_json or [])]
 
         reviews = [{"id": str(r["id"]), "food_name": r["food_name"],
                     "stars": "★" * int(r["review_rating"]) + "☆" * (5 - int(r["review_rating"])),
@@ -608,6 +640,8 @@ class SellerUsersAdmin(ModelAdmin):
         odata = orow_json or {}
         cdata = crow_json or {}
         rdata = rrow_json or {}
+        efin = efin_json or {}
+        adj_sum = adj_sum_json or {}
         summary = {
             "total_orders": odata.get("total_orders", 0),
             "total_earnings": odata.get("total_earnings", 0),
@@ -620,13 +654,27 @@ class SellerUsersAdmin(ModelAdmin):
             "avg_rating": float(rdata.get("avg_rating", 0)),
         }
 
+        earnings_summary = {
+            "gross_total": float(efin.get("gross_total", 0)),
+            "commission_total": float(efin.get("commission_total", 0)),
+            "net_total": float(efin.get("net_total", 0)),
+            "finalized_count": efin.get("finalized_count", 0),
+        }
+
+        wallet_summary = {
+            "total_credits": float(adj_sum.get("total_credits", 0)),
+            "total_debits": float(adj_sum.get("total_debits", 0)),
+            "adj_count": adj_sum.get("adj_count", 0),
+        }
+
         compliance_summary = {
             "total": sum(1 for d in compliance_docs if d["is_required"]),
             "approved": sum(1 for d in compliance_docs if d["is_required"] and d["status"] == "approved"),
         }
 
         tabs = [
-            ("general", _("General")), ("foods", _("Foods")), ("orders", _("Orders")),
+            ("general", _("General")), ("foods", _("Foods")),
+            ("orders", _("Orders & Earnings")), ("wallet", _("Wallet & Transactions")),
             ("compliance", _("Compliance")), ("reviews", _("Reviews")),
             ("complaints", _("Complaints")), ("raw", _("Raw Data")),
         ]
@@ -647,8 +695,11 @@ class SellerUsersAdmin(ModelAdmin):
             "title": f"Satıcı Detayı — {user.display_name}",
             "user_obj": user,
             "summary": summary,
+            "earnings_summary": earnings_summary,
+            "wallet_summary": wallet_summary,
             "tabs": tabs,
             "orders": orders,
+            "adjustments": adjustments,
             "reviews": reviews,
             "complaints": complaints,
             "foods": foods,
