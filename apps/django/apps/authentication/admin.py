@@ -19,6 +19,7 @@ from .models import (
     Users, BuyerUsers, SellerUsers, AllUsers,
     AdminUsers, AdminSalesCommissionSettings,
     AdminAuditLogs, SecurityLoginEvents, AdminApiTokens,
+    RolePermissions,
 )
 
 STATUS_TR = {
@@ -1003,6 +1004,42 @@ class AdminUsersAdmin(ModelAdmin):
             obj.updated_at = timezone.now()
         super().save_model(request, obj, form, change)
 
+    # Permission definitions: (section_label, [(permission_key, display_label), ...])
+    PERMISSION_SECTIONS = [
+        (_("Users & Orders"), [
+            ("view_buyers", _("View buyers")),
+            ("view_sellers", _("View sellers")),
+            ("view_all_users", _("View all users")),
+            ("view_orders", _("View orders")),
+            ("delete_users", _("Delete users")),
+        ]),
+        (_("Content"), [
+            ("manage_foods", _("Manage foods")),
+            ("manage_categories", _("Manage categories")),
+            ("manage_production_lots", _("Manage production lots")),
+            ("view_reviews", _("View reviews")),
+        ]),
+        (_("Support"), [
+            ("manage_complaints", _("Manage complaints")),
+            ("manage_compliance_docs", _("Manage compliance docs")),
+            ("view_doc_types", _("View doc types")),
+        ]),
+        (_("Finance & Security"), [
+            ("view_audit_logs", _("View audit logs")),
+            ("view_login_events", _("View login events")),
+            ("change_commission_rate", _("Change commission rate")),
+            ("manage_api_tokens", _("Manage API tokens")),
+        ]),
+        (_("Administration"), [
+            ("view_admin_users", _("View admin users")),
+            ("add_admin_users", _("Add admin users")),
+            ("change_admin_roles", _("Change admin roles")),
+            ("deactivate_admins", _("Deactivate admins")),
+        ]),
+    ]
+
+    EDITABLE_ROLES = ["admin", "user"]
+
     def get_urls(self):
         urls = super().get_urls()
         custom = [
@@ -1016,48 +1053,47 @@ class AdminUsersAdmin(ModelAdmin):
                 self.admin_site.admin_view(self.change_role_view),
                 name="authentication_permissions_change_role",
             ),
+            path(
+                "permissions/toggle/",
+                self.admin_site.admin_view(self.toggle_permission_view),
+                name="authentication_permissions_toggle",
+            ),
         ]
         return custom + urls
+
+    def _get_permissions_lookup(self):
+        """Build {(role, key): is_allowed} lookup from DB."""
+        rows = RolePermissions.objects.filter(role__in=self.EDITABLE_ROLES)
+        return {(r.role, r.permission_key): r.is_allowed for r in rows}
 
     def permissions_view(self, request):
         all_admins = list(AdminUsers.objects.all().order_by("email"))
         total_admins = len(all_admins)
         super_admin_count = sum(1 for a in all_admins if a.role == "super_admin")
         admin_count = sum(1 for a in all_admins if a.role == "admin")
+        user_count = sum(1 for a in all_admins if a.role == "user")
         inactive_count = sum(1 for a in all_admins if not a.is_active)
 
-        permissions_matrix = [
-            (_("Users & Orders"), [
-                (_("View buyers"), True, True),
-                (_("View sellers"), True, True),
-                (_("View all users"), True, True),
-                (_("View orders"), True, True),
-                (_("Delete users"), True, True),
-            ]),
-            (_("Content"), [
-                (_("Manage foods"), True, True),
-                (_("Manage categories"), True, True),
-                (_("Manage production lots"), True, True),
-                (_("View reviews"), True, True),
-            ]),
-            (_("Support"), [
-                (_("Manage complaints"), True, True),
-                (_("Manage compliance docs"), True, True),
-                (_("View doc types"), True, True),
-            ]),
-            (_("Finance & Security"), [
-                (_("View audit logs"), True, True),
-                (_("View login events"), True, True),
-                (_("Change commission rate"), False, True),
-                (_("Manage API tokens"), False, True),
-            ]),
-            (_("Administration"), [
-                (_("View admin users"), True, True),
-                (_("Add admin users"), False, True),
-                (_("Change admin roles"), False, True),
-                (_("Deactivate admins"), False, True),
-            ]),
-        ]
+        lookup = self._get_permissions_lookup()
+
+        # Build matrix: [(section_label, [(perm_label, perm_key, {role: bool}), ...])]
+        permissions_matrix = []
+        for section_label, perms in self.PERMISSION_SECTIONS:
+            section_perms = []
+            for key, label in perms:
+                role_values = {}
+                for role in self.EDITABLE_ROLES:
+                    role_values[role] = lookup.get((role, key), False)
+                section_perms.append((label, key, role_values))
+            permissions_matrix.append((section_label, section_perms))
+
+        # Build JSON for Alpine.js: {"admin:view_buyers": true, "user:view_buyers": false, ...}
+        perms_json = json.dumps({
+            f"{role}:{key}": lookup.get((role, key), False)
+            for _, perms in self.PERMISSION_SECTIONS
+            for key, _ in perms
+            for role in self.EDITABLE_ROLES
+        })
 
         context = {
             **self.admin_site.each_context(request),
@@ -1066,10 +1102,54 @@ class AdminUsersAdmin(ModelAdmin):
             "total_admins": total_admins,
             "super_admin_count": super_admin_count,
             "admin_count": admin_count,
+            "user_count": user_count,
             "inactive_count": inactive_count,
             "permissions_matrix": permissions_matrix,
+            "editable_roles": self.EDITABLE_ROLES,
+            "perms_json": perms_json,
         }
         return TemplateResponse(request, "admin/authentication/permissions.html", context)
+
+    def toggle_permission_view(self, request):
+        """AJAX endpoint to toggle a single permission."""
+        if request.method != "POST":
+            return JsonResponse({"error": "POST required"}, status=405)
+
+        try:
+            data = json.loads(request.body)
+            role = data.get("role")
+            permission_key = data.get("permission_key")
+        except (json.JSONDecodeError, AttributeError):
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        if role not in self.EDITABLE_ROLES:
+            return JsonResponse({"error": "Invalid role"}, status=400)
+
+        all_keys = [k for _, perms in self.PERMISSION_SECTIONS for k, _ in perms]
+        if permission_key not in all_keys:
+            return JsonResponse({"error": "Invalid permission key"}, status=400)
+
+        try:
+            from django.utils import timezone
+            perm = RolePermissions.objects.get(role=role, permission_key=permission_key)
+            perm.is_allowed = not perm.is_allowed
+            perm.updated_at = timezone.now()
+            perm.save(update_fields=["is_allowed", "updated_at"])
+            new_value = perm.is_allowed
+        except RolePermissions.DoesNotExist:
+            import uuid
+            from django.utils import timezone
+            RolePermissions.objects.create(
+                id=uuid.uuid4(),
+                role=role,
+                permission_key=permission_key,
+                is_allowed=True,
+                created_at=timezone.now(),
+                updated_at=timezone.now(),
+            )
+            new_value = True
+
+        return JsonResponse({"ok": True, "is_allowed": new_value})
 
     def change_role_view(self, request):
         if request.method != "POST":
@@ -1078,7 +1158,7 @@ class AdminUsersAdmin(ModelAdmin):
         admin_id = request.POST.get("admin_id")
         new_role = request.POST.get("new_role")
 
-        if new_role not in ("admin", "super_admin"):
+        if new_role not in ("user", "admin", "super_admin"):
             messages.error(request, _("Invalid role."))
             return redirect("admin:authentication_permissions")
 

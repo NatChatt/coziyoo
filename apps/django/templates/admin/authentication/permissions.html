@@ -5,41 +5,48 @@
 <div class="space-y-4">
 
   {# ── Page Header ── #}
-  <div class="rounded-xl p-5 flex flex-wrap gap-4 items-center border border-base-200 dark:border-base-700 bg-white dark:bg-base-800">
-    <div class="flex items-center gap-3 shrink-0">
+  <div class="flex flex-col gap-4 rounded-xl border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800 lg:p-5">
+    <div class="flex items-center gap-3">
       <div class="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
         <span class="material-symbols-outlined text-2xl text-primary-600 dark:text-primary-400">shield_person</span>
       </div>
       <div>
         <h1 class="text-xl font-bold text-base-900 dark:text-white">{% trans "Permissions" %}</h1>
-        <p class="text-base-500 dark:text-base-400 text-sm">{% trans "Manage admin and super admin roles" %}</p>
+        <p class="text-base-500 dark:text-base-400 text-sm">{% trans "Manage role-based permissions for admin and user roles" %}</p>
       </div>
     </div>
 
     {# KPI Cards #}
-    <div class="flex gap-3 grow flex-wrap">
-      <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl px-5 py-3 flex items-center gap-3 grow">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div class="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 dark:border-blue-800 dark:bg-blue-950/40">
         <span class="material-symbols-outlined text-blue-500 dark:text-blue-400">group</span>
         <div>
           <div class="text-xs font-medium text-blue-600 dark:text-blue-300 uppercase tracking-wide">{% trans "Total Admins" %}</div>
           <div class="text-2xl font-bold text-blue-800 dark:text-blue-100">{{ total_admins }}</div>
         </div>
       </div>
-      <div class="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl px-5 py-3 flex items-center gap-3 grow">
+      <div class="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 dark:border-emerald-800 dark:bg-emerald-950/40">
         <span class="material-symbols-outlined text-emerald-500 dark:text-emerald-400">verified_user</span>
         <div>
           <div class="text-xs font-medium text-emerald-600 dark:text-emerald-300 uppercase tracking-wide">{% trans "Super Admins" %}</div>
           <div class="text-2xl font-bold text-emerald-800 dark:text-emerald-100">{{ super_admin_count }}</div>
         </div>
       </div>
-      <div class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-3 flex items-center gap-3 grow">
+      <div class="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 dark:border-amber-800 dark:bg-amber-950/40">
         <span class="material-symbols-outlined text-amber-500 dark:text-amber-400">manage_accounts</span>
         <div>
-          <div class="text-xs font-medium text-amber-600 dark:text-amber-300 uppercase tracking-wide">{% trans "Regular Admins" %}</div>
+          <div class="text-xs font-medium text-amber-600 dark:text-amber-300 uppercase tracking-wide">{% trans "Admins" %}</div>
           <div class="text-2xl font-bold text-amber-800 dark:text-amber-100">{{ admin_count }}</div>
         </div>
       </div>
-      <div class="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl px-5 py-3 flex items-center gap-3 grow">
+      <div class="flex items-center gap-3 rounded-xl border border-base-200 bg-base-50 px-5 py-3 dark:border-base-700 dark:bg-base-800/40">
+        <span class="material-symbols-outlined text-base-500 dark:text-base-400">person</span>
+        <div>
+          <div class="text-xs font-medium text-base-600 dark:text-base-300 uppercase tracking-wide">{% trans "Users" %}</div>
+          <div class="text-2xl font-bold text-base-800 dark:text-base-100">{{ user_count }}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 dark:border-rose-800 dark:bg-rose-950/40">
         <span class="material-symbols-outlined text-rose-500 dark:text-rose-400">person_off</span>
         <div>
           <div class="text-xs font-medium text-rose-600 dark:text-rose-300 uppercase tracking-wide">{% trans "Inactive" %}</div>
@@ -65,107 +72,88 @@
   {# ── Two-column layout: admin table + permissions matrix ── #}
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
-    {# ── Admin Users Table (2/3 width) ── #}
-    <div class="xl:col-span-2 bg-white dark:bg-base-900 rounded-xl border border-base-200 dark:border-base-700 overflow-hidden">
-      <div class="px-5 py-4 border-b border-base-200 dark:border-base-700 flex items-center justify-between">
+    {# ── Admin Users Table (1/3 width) ── #}
+    <div class="bg-white dark:bg-base-900 rounded-xl border border-base-200 dark:border-base-700 overflow-hidden self-start">
+      <div class="flex flex-col gap-3 border-b border-base-200 px-5 py-4 dark:border-base-700 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-sm font-semibold text-base-900 dark:text-white">{% trans "Admin Users" %}</h2>
         <a href="/admin/authentication/adminusers/add/"
-           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary-600 text-white hover:bg-primary-700 transition-colors">
+           class="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-700 sm:w-auto">
           <span class="material-symbols-outlined text-sm leading-none">add</span>
           {% trans "Add Admin" %}
         </a>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="min-w-[720px] w-full text-sm">
-          <thead>
-            <tr class="border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
-              <th class="px-5 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Email" %}</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Current Role" %}</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Status" %}</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Last Login" %}</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Change Role" %}</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-base-100 dark:divide-base-800">
-            {% for admin_user in admin_users %}
-            <tr class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
-              <td class="px-5 py-3">
-                <div class="flex items-center gap-2">
-                  <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0
-                    {% if admin_user.role == 'super_admin' %}bg-primary-100 dark:bg-primary-900/30{% else %}bg-base-200 dark:bg-base-700{% endif %}">
-                    <span class="material-symbols-outlined text-base leading-none
-                      {% if admin_user.role == 'super_admin' %}text-primary-600 dark:text-primary-400{% else %}text-base-500 dark:text-base-400{% endif %}">
-                      {% if admin_user.role == 'super_admin' %}shield{% else %}manage_accounts{% endif %}
-                    </span>
-                  </div>
-                  <span class="text-base-900 dark:text-base-100 font-medium">{{ admin_user.email }}</span>
-                </div>
-              </td>
-              <td class="px-4 py-3">
-                {% if admin_user.role == 'super_admin' %}
-                  <span class="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2.5 py-0.5 text-[11px] font-semibold text-primary-700 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-300">Super Admin</span>
-                {% else %}
-                  <span class="inline-flex rounded-full border border-base-300 bg-base-100 px-2.5 py-0.5 text-[11px] font-semibold text-base-600 dark:border-base-700 dark:bg-base-800 dark:text-base-300">Admin</span>
-                {% endif %}
-              </td>
-              <td class="px-4 py-3">
-                {% if admin_user.is_active %}
-                  <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">{% trans "Active" %}</span>
-                {% else %}
-                  <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400">{% trans "Inactive" %}</span>
-                {% endif %}
-              </td>
-              <td class="px-4 py-3 text-xs text-base-500 dark:text-base-400">
-                {% if admin_user.last_login_at %}
-                  {{ admin_user.last_login_at|date:"d M Y H:i" }}
-                {% else %}
-                  <span class="text-base-400">—</span>
-                {% endif %}
-              </td>
-              <td class="px-4 py-3">
-                <form method="post" action="{% url 'admin:authentication_permissions_change_role' %}">
-                  {% csrf_token %}
-                  <input type="hidden" name="admin_id" value="{{ admin_user.id }}">
-                  <div class="flex items-center gap-2">
-                    <select name="new_role"
-                      class="text-xs border border-base-300 dark:border-base-600 rounded-lg px-2 py-1.5 bg-white dark:bg-base-800 text-base-700 dark:text-base-300 focus:outline-none focus:ring-1 focus:ring-primary-500">
-                      <option value="admin" {% if admin_user.role == 'admin' %}selected{% endif %}>Admin</option>
-                      <option value="super_admin" {% if admin_user.role == 'super_admin' %}selected{% endif %}>Super Admin</option>
-                    </select>
-                    <button type="submit"
-                      class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-primary-500 text-primary-600 dark:text-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
-                      <span class="material-symbols-outlined text-sm leading-none">save</span>
-                      {% trans "Save" %}
-                    </button>
-                  </div>
-                </form>
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="5" class="px-5 py-8 text-center text-sm text-base-400">{% trans "No admin users found." %}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="divide-y divide-base-100 dark:divide-base-800">
+        {% for admin_user in admin_users %}
+        <div class="flex items-center justify-between gap-3 px-5 py-3 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0
+              {% if admin_user.role == 'super_admin' %}bg-primary-100 dark:bg-primary-900/30{% elif admin_user.role == 'admin' %}bg-amber-100 dark:bg-amber-900/30{% else %}bg-base-200 dark:bg-base-700{% endif %}">
+              <span class="material-symbols-outlined text-base leading-none
+                {% if admin_user.role == 'super_admin' %}text-primary-600 dark:text-primary-400{% elif admin_user.role == 'admin' %}text-amber-600 dark:text-amber-400{% else %}text-base-500 dark:text-base-400{% endif %}">
+                {% if admin_user.role == 'super_admin' %}shield{% elif admin_user.role == 'admin' %}manage_accounts{% else %}person{% endif %}
+              </span>
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-base-900 dark:text-base-100 truncate">{{ admin_user.email }}</div>
+              <div class="text-xs text-base-400 dark:text-base-500">
+                {% if admin_user.last_login_at %}{{ admin_user.last_login_at|date:"d M Y" }}{% else %}—{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            {% if admin_user.is_active %}
+              <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">{% trans "Active" %}</span>
+            {% else %}
+              <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400">{% trans "Inactive" %}</span>
+            {% endif %}
+            <form method="post" action="{% url 'admin:authentication_permissions_change_role' %}" class="flex items-center gap-1">
+              {% csrf_token %}
+              <input type="hidden" name="admin_id" value="{{ admin_user.id }}">
+              <select name="new_role"
+                class="text-xs border border-base-300 dark:border-base-600 rounded-lg px-2 py-1 bg-white dark:bg-base-800 text-base-700 dark:text-base-300 focus:outline-none focus:ring-1 focus:ring-primary-500">
+                <option value="user" {% if admin_user.role == 'user' %}selected{% endif %}>User</option>
+                <option value="admin" {% if admin_user.role == 'admin' %}selected{% endif %}>Admin</option>
+                <option value="super_admin" {% if admin_user.role == 'super_admin' %}selected{% endif %}>Super Admin</option>
+              </select>
+              <button type="submit"
+                class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium border border-primary-500 text-primary-600 dark:text-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+                <span class="material-symbols-outlined text-sm leading-none">save</span>
+              </button>
+            </form>
+          </div>
+        </div>
+        {% empty %}
+        <div class="px-5 py-8 text-center text-sm text-base-400">{% trans "No admin users found." %}</div>
+        {% endfor %}
       </div>
     </div>
 
-    {# ── Permissions Matrix (1/3 width) ── #}
-    <div class="bg-white dark:bg-base-900 rounded-xl border border-base-200 dark:border-base-700 overflow-hidden self-start">
+    {# ── Permissions Matrix (2/3 width) ── #}
+    <div class="xl:col-span-2 bg-white dark:bg-base-900 rounded-xl border border-base-200 dark:border-base-700 overflow-hidden self-start"
+         x-data="permissionsMatrix()">
       <div class="px-5 py-4 border-b border-base-200 dark:border-base-700">
         <h2 class="text-sm font-semibold text-base-900 dark:text-white">{% trans "Permissions Matrix" %}</h2>
-        <p class="text-xs text-base-500 dark:text-base-400 mt-0.5">{% trans "What each role can access" %}</p>
+        <p class="text-xs text-base-500 dark:text-base-400 mt-0.5">{% trans "Click to toggle permissions. Super Admin always has full access." %}</p>
       </div>
 
       {# Column headers #}
       <div class="overflow-x-auto">
-        <div class="min-w-[360px]">
-          <div class="grid grid-cols-3 px-5 py-2 border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
+        <div class="min-w-[480px]">
+          <div class="grid grid-cols-4 px-5 py-2 border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
             <div class="col-span-1 text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Feature" %}</div>
-            <div class="text-center text-xs font-semibold text-base-600 dark:text-base-300">Admin</div>
-            <div class="text-center text-xs font-semibold text-primary-700 dark:text-primary-300">Super Admin</div>
+            <div class="text-center text-xs font-semibold text-primary-700 dark:text-primary-300">
+              <span class="material-symbols-outlined text-sm leading-none align-middle">shield</span>
+              Super Admin
+            </div>
+            <div class="text-center text-xs font-semibold text-base-600 dark:text-base-300">
+              <span class="material-symbols-outlined text-sm leading-none align-middle">manage_accounts</span>
+              Admin
+            </div>
+            <div class="text-center text-xs font-semibold text-base-600 dark:text-base-300">
+              <span class="material-symbols-outlined text-sm leading-none align-middle">person</span>
+              User
+            </div>
           </div>
 
           <div class="divide-y divide-base-100 dark:divide-base-800">
@@ -173,22 +161,39 @@
             <div class="px-5 py-2 bg-base-50/50 dark:bg-base-800/20">
               <span class="text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{{ section_label }}</span>
             </div>
-            {% for perm_label, admin_has, super_has in perms %}
-            <div class="grid grid-cols-3 px-5 py-2.5 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
-              <div class="col-span-1 pr-2 text-xs text-base-700 dark:text-base-300">{{ perm_label }}</div>
-              <div class="text-center">
-                {% if admin_has %}
-                  <span class="material-symbols-outlined text-base leading-none text-emerald-500">check_circle</span>
-                {% else %}
-                  <span class="material-symbols-outlined text-base leading-none text-base-300 dark:text-base-600">cancel</span>
-                {% endif %}
+            {% for perm_label, perm_key, role_values in perms %}
+            <div class="grid grid-cols-4 px-5 py-2.5 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
+              <div class="col-span-1 pr-2 text-xs text-base-700 dark:text-base-300 flex items-center">{{ perm_label }}</div>
+
+              {# Super Admin — always allowed, not clickable #}
+              <div class="text-center flex items-center justify-center">
+                <span class="material-symbols-outlined text-base leading-none text-emerald-500">check_circle</span>
               </div>
-              <div class="text-center">
-                {% if super_has %}
-                  <span class="material-symbols-outlined text-base leading-none text-emerald-500">check_circle</span>
-                {% else %}
-                  <span class="material-symbols-outlined text-base leading-none text-base-300 dark:text-base-600">cancel</span>
-                {% endif %}
+
+              {# Admin — clickable toggle #}
+              <div class="text-center flex items-center justify-center">
+                <button
+                  type="button"
+                  class="focus:outline-none transition-transform hover:scale-110"
+                  :class="loading === 'admin:{{ perm_key }}' ? 'animate-pulse' : ''"
+                  @click="toggle('admin', '{{ perm_key }}')"
+                  :title="perms['admin:{{ perm_key }}'] ? '{% trans "Allowed — click to deny" %}' : '{% trans "Denied — click to allow" %}'">
+                  <span x-show="perms['admin:{{ perm_key }}']" class="material-symbols-outlined text-base leading-none text-emerald-500">check_circle</span>
+                  <span x-show="!perms['admin:{{ perm_key }}']" class="material-symbols-outlined text-base leading-none text-base-300 dark:text-base-600">cancel</span>
+                </button>
+              </div>
+
+              {# User — clickable toggle #}
+              <div class="text-center flex items-center justify-center">
+                <button
+                  type="button"
+                  class="focus:outline-none transition-transform hover:scale-110"
+                  :class="loading === 'user:{{ perm_key }}' ? 'animate-pulse' : ''"
+                  @click="toggle('user', '{{ perm_key }}')"
+                  :title="perms['user:{{ perm_key }}'] ? '{% trans "Allowed — click to deny" %}' : '{% trans "Denied — click to allow" %}'">
+                  <span x-show="perms['user:{{ perm_key }}']" class="material-symbols-outlined text-base leading-none text-emerald-500">check_circle</span>
+                  <span x-show="!perms['user:{{ perm_key }}']" class="material-symbols-outlined text-base leading-none text-base-300 dark:text-base-600">cancel</span>
+                </button>
               </div>
             </div>
             {% endfor %}
@@ -208,6 +213,10 @@
             <span class="material-symbols-outlined text-sm leading-none text-base-300 dark:text-base-600">cancel</span>
             {% trans "Denied" %}
           </div>
+          <div class="flex items-center gap-1 ml-auto">
+            <span class="material-symbols-outlined text-sm leading-none text-primary-500">shield</span>
+            {% trans "Super Admin has all permissions" %}
+          </div>
         </div>
       </div>
     </div>
@@ -215,4 +224,38 @@
   </div>
 
 </div>
+
+<script>
+function permissionsMatrix() {
+  return {
+    perms: JSON.parse('{{ perms_json|escapejs }}'),
+    loading: null,
+
+    async toggle(role, key) {
+      const compKey = role + ':' + key;
+      if (this.loading) return;
+      this.loading = compKey;
+
+      try {
+        const res = await fetch('{% url "admin:authentication_permissions_toggle" %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}',
+          },
+          body: JSON.stringify({ role: role, permission_key: key }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          this.perms[compKey] = data.is_allowed;
+        }
+      } catch (e) {
+        console.error('Toggle failed:', e);
+      } finally {
+        this.loading = null;
+      }
+    }
+  }
+}
+</script>
 {% endblock %}

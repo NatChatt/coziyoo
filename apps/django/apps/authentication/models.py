@@ -144,6 +144,22 @@ class AdminUsers(models.Model):
         return self.email
 
 
+class RolePermissions(models.Model):
+    id = models.UUIDField(primary_key=True)
+    role = models.TextField()
+    permission_key = models.TextField()
+    is_allowed = models.BooleanField(default=False)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'role_permissions'
+        unique_together = [('role', 'permission_key')]
+
+    def __str__(self):
+        return f"{self.role}:{self.permission_key} = {self.is_allowed}"
+
 
 class AuthAudit(models.Model):
     id = models.UUIDField(primary_key=True)
