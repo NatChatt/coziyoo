@@ -21,6 +21,9 @@ class ComplaintCategories(models.Model):
     is_active = models.BooleanField()
     created_at = models.DateTimeField()
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         managed = False
         db_table = 'complaint_categories'
