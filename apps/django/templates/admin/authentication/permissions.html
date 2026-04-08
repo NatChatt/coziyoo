@@ -76,7 +76,7 @@
     <div class="bg-white dark:bg-base-900 rounded-xl border border-base-200 dark:border-base-700 overflow-hidden self-start">
       <div class="flex flex-col gap-3 border-b border-base-200 px-5 py-4 dark:border-base-700 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-sm font-semibold text-base-900 dark:text-white">{% trans "Admin Users" %}</h2>
-        <a href="/admin/authentication/adminusers/add/"
+        <a href="/admin/auth/user/add/"
            class="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-700 sm:w-auto">
           <span class="material-symbols-outlined text-sm leading-none">add</span>
           {% trans "Add Admin" %}
@@ -95,9 +95,9 @@
               </span>
             </div>
             <div class="min-w-0">
-              <div class="text-sm font-medium text-base-900 dark:text-base-100 truncate">{{ admin_user.email }}</div>
+              <div class="text-sm font-medium text-base-900 dark:text-base-100 truncate">{{ admin_user.username }}</div>
               <div class="text-xs text-base-400 dark:text-base-500">
-                {% if admin_user.last_login_at %}{{ admin_user.last_login_at|date:"d M Y" }}{% else %}—{% endif %}
+                {% if admin_user.last_login %}{{ admin_user.last_login|date:"d M Y" }}{% else %}—{% endif %}
               </div>
             </div>
           </div>

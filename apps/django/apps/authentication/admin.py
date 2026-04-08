@@ -15,6 +15,9 @@ from unfold.decorators import display
 
 from coziyoo import s3 as s3_utils
 
+from django.contrib.auth.models import User, Group
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
 from .models import (
     Users, BuyerUsers, SellerUsers, AllUsers,
     AdminUsers, AdminSalesCommissionSettings,
@@ -918,90 +921,98 @@ def _cascade_delete_users(conn, user_ids):
         cur.execute(f"DELETE FROM users WHERE id IN ({ph})", ids)
 
 
-class AdminUserForm(forms.ModelForm):
-    email = forms.CharField(
-        widget=forms.TextInput(),
-        label=_("Email"),
-    )
-    role = forms.ChoiceField(
-        choices=[("admin", "Admin"), ("super_admin", "Super Admin")],
-        label=_("Role"),
-    )
-    username = forms.CharField(
-        widget=forms.TextInput(),
-        required=False,
-        label=_("Username"),
-    )
-    name = forms.CharField(
-        widget=forms.TextInput(),
-        required=False,
-        label=_("Name"),
-    )
-    surname = forms.CharField(
-        widget=forms.TextInput(),
-        required=False,
-        label=_("Surname"),
-    )
-    password = forms.CharField(
-        widget=forms.PasswordInput(render_value=False),
-        required=False,
-        label=_("Password"),
-        help_text=_("Required when creating. Leave blank to keep the existing password."),
-    )
+# ── Helper: get user's role from groups ──────────────────────────────────────
 
-    class Meta:
-        model = AdminUsers
-        fields = ["email", "role", "username", "name", "surname"]
+ROLE_GROUPS = ["Super Admin", "Admin", "User"]
 
-    def clean_password(self):
-        password = self.cleaned_data.get("password")
-        if not self.instance.pk and not password:
-            raise forms.ValidationError(_("Password is required when creating a new admin user."))
-        return password
+def _get_user_role(user):
+    """Return the role name based on group membership."""
+    group_names = set(user.groups.values_list("name", flat=True))
+    if "Super Admin" in group_names:
+        return "super_admin"
+    if "Admin" in group_names:
+        return "admin"
+    if "User" in group_names:
+        return "user"
+    if user.is_superuser:
+        return "super_admin"
+    if user.is_staff:
+        return "admin"
+    return "user"
 
 
-@admin.register(AdminUsers)
-class AdminUsersAdmin(ModelAdmin):
-    form = AdminUserForm
-    list_display = ["email", "username", "name", "surname", "role", "is_active", "last_login_at", "created_at"]
-    list_filter = ["role", "is_active"]
-    search_fields = ["email", "username", "name", "surname"]
-    ordering = ["-created_at"]
+def _set_user_role(user, role_name):
+    """Set user's role by updating group membership and flags."""
+    super_admin_grp, _ = Group.objects.get_or_create(name="Super Admin")
+    admin_grp, _ = Group.objects.get_or_create(name="Admin")
+    user_grp, _ = Group.objects.get_or_create(name="User")
+
+    user.groups.remove(super_admin_grp, admin_grp, user_grp)
+
+    if role_name == "super_admin":
+        user.groups.add(super_admin_grp)
+        user.is_superuser = True
+        user.is_staff = True
+    elif role_name == "admin":
+        user.groups.add(admin_grp)
+        user.is_superuser = False
+        user.is_staff = True
+    else:
+        user.groups.add(user_grp)
+        user.is_superuser = False
+        user.is_staff = True  # still needs admin panel access
+    user.save(update_fields=["is_superuser", "is_staff"])
+
+
+# ── Django User Admin (replaces AdminUsers) ──────────────────────────────────
+
+# Unregister default User and Group admin
+admin.site.unregister(User)
+admin.site.unregister(Group)
+
+
+@admin.register(User)
+class CoziyooUserAdmin(ModelAdmin):
+    list_display = ["username", "email", "first_name", "last_name", "display_role", "is_active", "last_login", "date_joined"]
+    list_filter = ["is_active", "groups"]
+    search_fields = ["username", "email", "first_name", "last_name"]
+    ordering = ["-date_joined"]
+    filter_horizontal = ["groups"]
 
     def get_fieldsets(self, request, obj=None):
         if obj is None:
-            # Add: only the fields that need input
             return [
-                (None, {"fields": ["email", "username", "name", "surname", "role", "password"]}),
+                (None, {"fields": ["username", "email", "first_name", "last_name", "password"]}),
+                (_("Role"), {"fields": ["groups"]}),
             ]
-        # Change: editable fields + system info (readonly)
         return [
-            (None, {"fields": ["email", "username", "name", "surname", "role", "password"]}),
-            (_("System Info"), {
-                "fields": ["id", "password_hash", "is_active", "last_login_at", "created_at", "updated_at"],
-                "classes": ["collapse"],
-            }),
+            (None, {"fields": ["username", "email", "first_name", "last_name"]}),
+            (_("Role"), {"fields": ["groups"]}),
+            (_("Status"), {"fields": ["is_active", "last_login", "date_joined"]}),
         ]
 
     def get_readonly_fields(self, request, obj=None):
         if obj is None:
             return []
-        return ["id", "password_hash", "is_active", "last_login_at", "created_at", "updated_at"]
+        return ["last_login", "date_joined"]
+
+    @display(description=_("Role"))
+    def display_role(self, obj):
+        role = _get_user_role(obj)
+        labels = {"super_admin": "Super Admin", "admin": "Admin", "user": "User"}
+        colors = {"super_admin": "#9333ea", "admin": "#d97706", "user": "#6b7280"}
+        color = colors.get(role, "#6b7280")
+        return format_html(
+            '<span style="background:{}18;color:{};border:1px solid {}40;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600">{}</span>',
+            color, color, color, labels.get(role, role),
+        )
 
     def save_model(self, request, obj, form, change):
-        import uuid
-        from django.utils import timezone
-        from .security import hash_password as _hash_password
-        password = form.cleaned_data.get("password")
-        if password:
-            obj.password_hash = _hash_password(password)
         if not change:
-            obj.id = uuid.uuid4()
-            obj.is_active = True
-            obj.created_at = timezone.now()
-            obj.updated_at = timezone.now()
-        else:
-            obj.updated_at = timezone.now()
+            password = form.cleaned_data.get("password")
+            if password:
+                obj.set_password(password)
+            obj.is_staff = True
         super().save_model(request, obj, form, change)
 
     # Permission definitions: (section_label, [(permission_key, display_label), ...])
@@ -1067,16 +1078,21 @@ class AdminUsersAdmin(ModelAdmin):
         return {(r.role, r.permission_key): r.is_allowed for r in rows}
 
     def permissions_view(self, request):
-        all_admins = list(AdminUsers.objects.all().order_by("email"))
-        total_admins = len(all_admins)
-        super_admin_count = sum(1 for a in all_admins if a.role == "super_admin")
-        admin_count = sum(1 for a in all_admins if a.role == "admin")
-        user_count = sum(1 for a in all_admins if a.role == "user")
-        inactive_count = sum(1 for a in all_admins if not a.is_active)
+        all_staff = list(User.objects.filter(is_staff=True).order_by("username"))
+        total_admins = len(all_staff)
+        super_admin_count = sum(1 for u in all_staff if _get_user_role(u) == "super_admin")
+        admin_count = sum(1 for u in all_staff if _get_user_role(u) == "admin")
+        user_count = sum(1 for u in all_staff if _get_user_role(u) == "user")
+        inactive_count = sum(1 for u in all_staff if not u.is_active)
+
+        # Annotate users with role
+        admin_users = []
+        for u in all_staff:
+            u.role = _get_user_role(u)
+            admin_users.append(u)
 
         lookup = self._get_permissions_lookup()
 
-        # Build matrix: [(section_label, [(perm_label, perm_key, {role: bool}), ...])]
         permissions_matrix = []
         for section_label, perms in self.PERMISSION_SECTIONS:
             section_perms = []
@@ -1087,7 +1103,6 @@ class AdminUsersAdmin(ModelAdmin):
                 section_perms.append((label, key, role_values))
             permissions_matrix.append((section_label, section_perms))
 
-        # Build JSON for Alpine.js: {"admin:view_buyers": true, "user:view_buyers": false, ...}
         perms_json = json.dumps({
             f"{role}:{key}": lookup.get((role, key), False)
             for _, perms in self.PERMISSION_SECTIONS
@@ -1098,7 +1113,7 @@ class AdminUsersAdmin(ModelAdmin):
         context = {
             **self.admin_site.each_context(request),
             "title": _("Permissions"),
-            "admin_users": all_admins,
+            "admin_users": admin_users,
             "total_admins": total_admins,
             "super_admin_count": super_admin_count,
             "admin_count": admin_count,
@@ -1155,7 +1170,7 @@ class AdminUsersAdmin(ModelAdmin):
         if request.method != "POST":
             return redirect("admin:authentication_permissions")
 
-        admin_id = request.POST.get("admin_id")
+        user_id = request.POST.get("admin_id")
         new_role = request.POST.get("new_role")
 
         if new_role not in ("user", "admin", "super_admin"):
@@ -1163,19 +1178,18 @@ class AdminUsersAdmin(ModelAdmin):
             return redirect("admin:authentication_permissions")
 
         try:
-            admin_user = AdminUsers.objects.get(pk=admin_id)
-            old_role = admin_user.role
+            target_user = User.objects.get(pk=user_id)
+            old_role = _get_user_role(target_user)
             if old_role != new_role:
-                admin_user.role = new_role
-                admin_user.save(update_fields=["role"])
+                _set_user_role(target_user, new_role)
                 messages.success(
                     request,
-                    _(f"Role for {admin_user.email} changed from {old_role} to {new_role}."),
+                    _(f"Role for {target_user.username} changed from {old_role} to {new_role}."),
                 )
             else:
-                messages.info(request, _(f"{admin_user.email} already has role: {new_role}."))
-        except AdminUsers.DoesNotExist:
-            messages.error(request, _("Admin user not found."))
+                messages.info(request, _(f"{target_user.username} already has role: {new_role}."))
+        except User.DoesNotExist:
+            messages.error(request, _("User not found."))
 
         return redirect("admin:authentication_permissions")
 

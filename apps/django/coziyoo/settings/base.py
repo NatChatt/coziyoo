@@ -271,7 +271,7 @@ UNFOLD = {
                     {
                         "title": "Admin Users",
                         "icon": "admin_panel_settings",
-                        "link": "/admin/authentication/adminusers/",
+                        "link": "/admin/auth/user/",
                         "permission": lambda request: request.user.is_staff,
                     },
                     {
