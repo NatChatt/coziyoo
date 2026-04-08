@@ -1050,13 +1050,14 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
             : {};
           const lots = Array.isArray(lotsPayload.data) ? (lotsPayload.data as unknown[]) : [];
           const now = Date.now();
+          let existingLotId: string | null = null;
           hasVisibleLot = lots.some((lot: any) => {
             const lotFoodId = String(lot?.food_id ?? lot?.foodId ?? "").trim();
             const status = String(lot?.status ?? "").toLowerCase();
             const qty = Number(lot?.quantity_available ?? lot?.quantityAvailable ?? 0);
             const startsAt = Date.parse(String(lot?.sale_starts_at ?? lot?.saleStartsAt ?? ""));
             const endsAt = Date.parse(String(lot?.sale_ends_at ?? lot?.saleEndsAt ?? ""));
-            return (
+            if (
               lotFoodId === foodId &&
               (status === "active" || status === "open") &&
               qty > 0 &&
@@ -1064,8 +1065,22 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
               Number.isFinite(endsAt) &&
               startsAt <= now &&
               endsAt > now
-            );
+            ) {
+              existingLotId = String(lot?.id ?? lot?.lotId ?? "");
+              return true;
+            }
+            return false;
           });
+
+          if (hasVisibleLot && existingLotId && parsedDailyStock && parsedDailyStock > 0) {
+            const adjustRes = await authedFetch(`/v1/seller/lots/${existingLotId}/adjust`, {
+              method: "POST",
+              body: JSON.stringify({ quantityAvailable: parsedDailyStock }),
+            });
+            if (!adjustRes.ok) {
+              console.warn("[seller-foods] lot adjust failed", { status: adjustRes.status, lotId: existingLotId });
+            }
+          }
         }
 
         if (!hasVisibleLot) {
@@ -1097,6 +1112,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       }
 
       await loadFoods();
+      clearSellerFoodsCache();
       if (options?.publishAfterSave) {
         Alert.alert(
           t('status.seller.foods.publishedTitle'),
