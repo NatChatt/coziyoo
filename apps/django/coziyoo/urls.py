@@ -29,4 +29,7 @@ urlpatterns = [
 
     # Health check
     path("v1/health/", include("coziyoo.health")),
+
+    # Deploy webhook
+    path("webhook/", include("coziyoo.webhook")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
