@@ -926,6 +926,21 @@ class AdminUserForm(forms.ModelForm):
         choices=[("admin", "Admin"), ("super_admin", "Super Admin")],
         label=_("Role"),
     )
+    username = forms.CharField(
+        widget=forms.TextInput(),
+        required=False,
+        label=_("Username"),
+    )
+    name = forms.CharField(
+        widget=forms.TextInput(),
+        required=False,
+        label=_("Name"),
+    )
+    surname = forms.CharField(
+        widget=forms.TextInput(),
+        required=False,
+        label=_("Surname"),
+    )
     password = forms.CharField(
         widget=forms.PasswordInput(render_value=False),
         required=False,
@@ -935,7 +950,7 @@ class AdminUserForm(forms.ModelForm):
 
     class Meta:
         model = AdminUsers
-        fields = ["email", "role"]
+        fields = ["email", "role", "username", "name", "surname"]
 
     def clean_password(self):
         password = self.cleaned_data.get("password")
@@ -947,20 +962,20 @@ class AdminUserForm(forms.ModelForm):
 @admin.register(AdminUsers)
 class AdminUsersAdmin(ModelAdmin):
     form = AdminUserForm
-    list_display = ["email", "role", "is_active", "last_login_at", "created_at"]
+    list_display = ["email", "username", "name", "surname", "role", "is_active", "last_login_at", "created_at"]
     list_filter = ["role", "is_active"]
-    search_fields = ["email"]
+    search_fields = ["email", "username", "name", "surname"]
     ordering = ["-created_at"]
 
     def get_fieldsets(self, request, obj=None):
         if obj is None:
             # Add: only the fields that need input
             return [
-                (None, {"fields": ["email", "role", "password"]}),
+                (None, {"fields": ["email", "username", "name", "surname", "role", "password"]}),
             ]
         # Change: editable fields + system info (readonly)
         return [
-            (None, {"fields": ["email", "role", "password"]}),
+            (None, {"fields": ["email", "username", "name", "surname", "role", "password"]}),
             (_("System Info"), {
                 "fields": ["id", "password_hash", "is_active", "last_login_at", "created_at", "updated_at"],
                 "classes": ["collapse"],
