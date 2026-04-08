@@ -108,9 +108,8 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "coziyoo.exceptions.custom_exception_handler",
 }
 
-# --- JWT ---
+# --- JWT (app realm only — admin panel uses Django session auth) ---
 APP_JWT_SECRET = config("APP_JWT_SECRET")
-ADMIN_JWT_SECRET = config("ADMIN_JWT_SECRET")
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(

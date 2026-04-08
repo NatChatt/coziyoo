@@ -59,37 +59,6 @@ class AdminAuditLogs(models.Model):
 
 
 
-class AdminAuthAudit(models.Model):
-    id = models.UUIDField(primary_key=True)
-    admin_user = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING, blank=True, null=True)
-    event_type = models.TextField()
-    ip = models.TextField(blank=True, null=True)
-    user_agent = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
-
-    class Meta:
-        managed = False
-        db_table = 'admin_auth_audit'
-
-
-
-class AdminAuthSessions(models.Model):
-    id = models.UUIDField(primary_key=True)
-    admin_user = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
-    refresh_token_hash = models.TextField()
-    expires_at = models.DateTimeField()
-    revoked_at = models.DateTimeField(blank=True, null=True)
-    device_info = models.TextField(blank=True, null=True)
-    ip = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
-    last_used_at = models.DateTimeField(blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'admin_auth_sessions'
-
-
-
 class AdminSalesCommissionSettings(models.Model):
     id = models.UUIDField(primary_key=True)
     commission_rate_percent = models.DecimalField(max_digits=5, decimal_places=2)
@@ -101,21 +70,6 @@ class AdminSalesCommissionSettings(models.Model):
         db_table = 'admin_sales_commission_settings'
         verbose_name = "Sales Commission Setting"
         verbose_name_plural = "Admin Sales Commission Settings"
-
-
-
-class AdminTablePreferences(models.Model):
-    id = models.UUIDField(primary_key=True)
-    admin_user = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
-    table_key = models.TextField()
-    visible_columns = models.JSONField()
-    column_order = models.JSONField(blank=True, null=True)
-    updated_at = models.DateTimeField()
-
-    class Meta:
-        managed = False
-        db_table = 'admin_table_preferences'
-        unique_together = (('admin_user', 'table_key'),)
 
 
 

@@ -3,8 +3,8 @@
 
 {% block content %}
 {% if buyer_stats %}
-<div class="mb-4">
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+<div class="mb-4 space-y-3">
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
 
     {# Total — blue tone #}
     <div class="rounded-xl py-2 px-3 flex items-center justify-between bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
@@ -44,7 +44,7 @@
 
   </div>
 
-  <div class="flex justify-end mb-2">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
     <a href="?{{ request.GET.urlencode }}&export=xlsx"
        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors">
       <span class="material-symbols-outlined text-base leading-none">download</span>
@@ -65,18 +65,18 @@
        x-transition:enter="transition ease-out duration-150"
        x-transition:enter-start="opacity-0 -translate-y-1"
        x-transition:enter-end="opacity-100 translate-y-0"
-       class="flex items-center gap-2 shrink-0">
+       class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center shrink-0">
     <span class="text-xs text-base-500 dark:text-base-400 whitespace-nowrap"
           x-text="$store.buyerSel.count + ' {% trans "selected" %}'"></span>
     <select form="changelist-form" name="action" id="action-select-inline"
-            class="rounded-default border border-base-300 dark:border-base-600 bg-white dark:bg-base-800 text-sm text-base-700 dark:text-base-200 py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-[160px]">
+            class="w-full rounded-default border border-base-300 dark:border-base-600 bg-white dark:bg-base-800 text-sm text-base-700 dark:text-base-200 py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-primary-500 sm:min-w-[180px] sm:w-auto">
       {% for choice in action_form.action.field.choices %}
       <option value="{{ choice.0 }}">{{ choice.1 }}</option>
       {% endfor %}
     </select>
     <input form="changelist-form" type="hidden" name="select_across" value="0">
     <button form="changelist-form" type="submit" name="index" value="0"
-            class="px-3 py-2 rounded-default bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors shrink-0">
+            class="w-full px-3 py-2 rounded-default bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors shrink-0 sm:w-auto">
       {% trans "Apply" %}
     </button>
   </div>
@@ -84,7 +84,7 @@
 
   {# ── Filters button ── #}
   {% if cl.has_filters %}
-  <a class="ml-auto border border-primary-500 dark:border-primary-500 text-primary-600 dark:text-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex font-medium gap-2 items-center px-3 py-2 rounded-default text-sm {% if not cl.model_admin.list_filter_sheet %}2xl:hidden{% endif %}"
+  <a class="w-full sm:w-auto sm:ml-auto border border-primary-500 dark:border-primary-500 text-primary-600 dark:text-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex font-medium gap-2 items-center justify-center px-3 py-2 rounded-default text-sm {% if not cl.model_admin.list_filter_sheet %}2xl:hidden{% endif %}"
      x-on:click="filterOpen = true" x-on:keydown.escape.window="filterOpen = false">
     {% trans "Filters" %}
     <span class="material-symbols-outlined md-18 ml-auto">filter_list</span>
@@ -104,8 +104,8 @@
   </script>
 
   {# ── Custom Buyer Table ── #}
-  <div x-data class="overflow-x-auto rounded-lg border border-base-200 dark:border-base-800 shadow-xs bg-white dark:bg-base-900 mt-2">
-    <table id="result_list" class="w-full text-sm">
+  <div x-data class="mt-2 overflow-x-auto rounded-lg border border-base-200 bg-white shadow-xs dark:border-base-800 dark:bg-base-900">
+    <table id="result_list" class="min-w-[980px] w-full text-sm">
       <thead>
         <tr class="border-b border-base-200 dark:border-base-700">
           <th class="py-3 px-4 w-10 text-left">

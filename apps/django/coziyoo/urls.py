@@ -14,7 +14,6 @@ urlpatterns = [
 
     # REST API v1
     path("v1/auth/", include("apps.authentication.urls.app")),
-    path("v1/admin/auth/", include("apps.authentication.urls.admin_auth")),
     path("v1/orders/", include("apps.orders.urls")),
     path("v1/foods/", include("apps.foods.urls")),
     path("v1/seller/", include("apps.foods.urls_seller")),
@@ -24,8 +23,6 @@ urlpatterns = [
     path("v1/tickets/", include("apps.complaints.urls_tickets")),
     path("v1/finance/", include("apps.finance.urls")),
     path("v1/seller/compliance/", include("apps.compliance.urls_seller")),
-    path("v1/admin/compliance/", include("apps.compliance.urls_admin")),
-    path("v1/admin/", include("apps.authentication.urls.admin_panel")),
 
     # Health check
     path("v1/health/", include("coziyoo.health")),

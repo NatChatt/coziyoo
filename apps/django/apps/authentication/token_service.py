@@ -6,10 +6,6 @@ import jwt
 from django.conf import settings
 
 
-def _secret(realm: str) -> str:
-    return settings.ADMIN_JWT_SECRET if realm == "admin" else settings.APP_JWT_SECRET
-
-
 def sign_access_token(sub: str, session_id: str, realm: str, role: str) -> str:
     ttl: timedelta = settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"]
     payload = {
@@ -20,7 +16,7 @@ def sign_access_token(sub: str, session_id: str, realm: str, role: str) -> str:
         "exp": datetime.now(tz=timezone.utc) + ttl,
         "iat": datetime.now(tz=timezone.utc),
     }
-    return jwt.encode(payload, _secret(realm), algorithm="HS256")
+    return jwt.encode(payload, settings.APP_JWT_SECRET, algorithm="HS256")
 
 
 def generate_refresh_token() -> str:

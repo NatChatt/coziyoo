@@ -1,6 +1,6 @@
 """
-Single JWT authentication backend supporting two realms: 'app' and 'admin'.
-Uses the appropriate secret based on the realm claim inside the token.
+JWT authentication backend for the app realm (buyer/seller mobile).
+Admin panel uses Django session auth — no JWT needed.
 """
 import jwt
 from django.conf import settings
@@ -37,12 +37,7 @@ class CoziyooJWTAuthentication(BaseAuthentication):
 
         token = header[7:]
         try:
-            # Peek at realm without verifying signature
-            unverified = jwt.decode(token, options={"verify_signature": False})
-            realm = unverified.get("realm", "app")
-            secret = settings.ADMIN_JWT_SECRET if realm == "admin" else settings.APP_JWT_SECRET
-
-            payload = jwt.decode(token, secret, algorithms=["HS256"])
+            payload = jwt.decode(token, settings.APP_JWT_SECRET, algorithms=["HS256"])
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed({"code": "TOKEN_EXPIRED", "message": "Token has expired"})
         except jwt.InvalidTokenError as e:
