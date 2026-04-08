@@ -7,6 +7,7 @@ import { loadSettings } from "../utils/settings";
 import { getSellerFoodsCache, setSellerFoodsCache } from "../utils/sellerFoodsCache";
 import { getSellerOrdersCache, setSellerOrdersCache, getSellerDisplayNameCache, setSellerDisplayNameCache } from "../utils/sellerOrdersCache";
 import { getSellerMeCache } from "../utils/sellerProfileCache";
+import { normalizeSellerLotSnapshot, summarizeSellerLotsByFood } from "../utils/sellerLotSummary";
 import { subscribeSellerOrdersRealtime } from "../utils/realtime";
 import { getStatusInfo } from "../components/StatusBadge";
 import { formatCopy, t } from "../copy/brandCopy";
@@ -449,9 +450,10 @@ export default function SellerHomeScreen({
       // Orders are highest priority; do not block them behind profile/foods fetches.
       await refreshOrdersOnly(baseUrl);
 
-      const [profileRes, foodsRes, reviewsRes, meRes] = await Promise.all([
+      const [profileRes, foodsRes, lotsRes, reviewsRes, meRes] = await Promise.all([
         fetchWithAuth("/v1/seller/profile", baseUrl),
         fetchWithAuth("/v1/seller/foods", baseUrl),
+        fetchWithAuth("/v1/seller/lots", baseUrl),
         fetchWithAuth("/v1/seller/reviews?pageSize=1", baseUrl),
         fetchWithAuth("/v1/auth/me", baseUrl),
       ]);
@@ -477,6 +479,10 @@ export default function SellerHomeScreen({
 
       if (foodsRes.ok) {
         const foodsJson = await foodsRes.json().catch(() => ({}));
+        const lotsJson = lotsRes.ok ? await lotsRes.json().catch(() => ({})) : {};
+        const lotSummaries = lotsRes.ok && Array.isArray((lotsJson as Record<string, unknown>)?.data)
+          ? summarizeSellerLotsByFood((((lotsJson as Record<string, unknown>).data) as Record<string, unknown>[]).map((item) => normalizeSellerLotSnapshot(item)))
+          : new Map<string, { hasAnyLot: boolean; stock: number }>();
         if (Array.isArray(foodsJson?.data)) {
           const foods = (foodsJson.data as Record<string, unknown>[]).map((f) => ({
             ...f,
@@ -484,8 +490,8 @@ export default function SellerHomeScreen({
             name: String(f.name ?? ""),
             price: Number(f.price ?? 0),
             isActive: toBool(f.isActive ?? f.is_active),
-            hasAnyLot: toBool(f.hasAnyLot ?? f.has_any_lot),
-            stock: Number(f.stock ?? 0),
+            hasAnyLot: lotSummaries.get(String(f.id ?? ""))?.hasAnyLot ?? toBool(f.hasAnyLot ?? f.has_any_lot),
+            stock: lotSummaries.get(String(f.id ?? ""))?.stock ?? Number(f.stock ?? 0),
           }));
           setSellerFoodsCache(foods);
           setActiveFoods(

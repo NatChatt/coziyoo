@@ -429,7 +429,8 @@ class SellerLotListView(APIView):
         where_sql = " AND ".join(where_clauses)
         sql = """
             SELECT id, food_id, quantity_produced, quantity_available,
-                   status, produced_at, use_by, created_at
+                   status, produced_at, sale_starts_at, sale_ends_at,
+                   use_by, best_before, notes, created_at, updated_at
             FROM production_lots
             WHERE """ + where_sql + """
             ORDER BY created_at DESC

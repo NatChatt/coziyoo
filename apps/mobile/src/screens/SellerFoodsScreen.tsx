@@ -262,16 +262,16 @@ function withTrailingSlash(path: string): string {
 }
 
 function isLegacyLotPublishFailure(res: Response, payload: unknown): boolean {
-  if ([404, 405, 501].includes(res.status)) return true;
+  if ([404, 501].includes(res.status)) return true;
   if (payload && typeof payload === "object") {
     const obj = payload as Record<string, unknown>;
     const rawText = typeof obj.rawText === "string" ? obj.rawText.trim() : "";
     if (rawText.startsWith("<")) return true;
     const message = typeof obj.message === "string" ? obj.message : "";
-    if (/method not allowed|not found/i.test(message)) return true;
+    if (/not found/i.test(message)) return true;
     const err = obj.error as Record<string, unknown> | undefined;
     const errMessage = typeof err?.message === "string" ? err.message : "";
-    if (/method not allowed|not found/i.test(errMessage)) return true;
+    if (/not found/i.test(errMessage)) return true;
   }
   return false;
 }

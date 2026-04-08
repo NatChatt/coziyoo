@@ -6,6 +6,7 @@ import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { getSellerFoodsCache, setSellerFoodsCache } from "../utils/sellerFoodsCache";
+import { normalizeSellerLotSnapshot, summarizeSellerLotsByFood } from "../utils/sellerLotSummary";
 import { theme } from "../theme/colors";
 import { formatCopy, t } from "../copy/brandCopy";
 
@@ -81,17 +82,24 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
     try {
       const settings = await loadSettings();
       setApiUrl(settings.apiUrl);
-      const res = await authedFetch("/v1/seller/foods", undefined, settings.apiUrl);
-      const json = await res.json();
-      if (!res.ok) {
+      const [foodsRes, lotsRes] = await Promise.all([
+        authedFetch("/v1/seller/foods", undefined, settings.apiUrl),
+        authedFetch("/v1/seller/lots", undefined, settings.apiUrl),
+      ]);
+      const json = await foodsRes.json();
+      const lotsJson = await lotsRes.json().catch(() => ({}));
+      if (!foodsRes.ok) {
         console.warn("[seller-foods-manager] foods fetch failed", {
-          status: res.status,
+          status: foodsRes.status,
           message: json?.error?.message ?? null,
           userId: currentAuth.userId,
           actorRole: "seller",
         });
         throw new Error(json?.error?.message ?? t('error.seller.foodsManager.load'));
       }
+      const lotSummaries = lotsRes.ok && Array.isArray(lotsJson?.data)
+        ? summarizeSellerLotsByFood((lotsJson.data as Record<string, unknown>[]).map((item) => normalizeSellerLotSnapshot(item)))
+        : new Map<string, { hasAnyLot: boolean; stock: number }>();
       const list: SellerFood[] = Array.isArray(json?.data) ? json.data.map((item: any) => ({
         ...item,
         id: String(item.id),
@@ -99,8 +107,8 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
         cardSummary: typeof item.cardSummary === "string" ? item.cardSummary : null,
         price: Number(item.price ?? 0),
         isActive: toBool(item.isActive ?? item.is_active),
-        stock: Number(item.stock ?? 0),
-        hasAnyLot: Boolean(item.hasAnyLot ?? item.has_any_lot),
+        stock: lotSummaries.get(String(item.id))?.stock ?? Number(item.stock ?? 0),
+        hasAnyLot: lotSummaries.get(String(item.id))?.hasAnyLot ?? Boolean(item.hasAnyLot ?? item.has_any_lot),
       })) : [];
       console.info("[seller-foods-manager] foods loaded", {
         count: list.length,
