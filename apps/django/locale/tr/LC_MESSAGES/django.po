@@ -324,3 +324,33 @@ msgstr "Genel"
 
 msgid "Raw Data"
 msgstr "Ham Veri"
+
+msgid "S3 storage is not configured. File upload is unavailable."
+msgstr "S3 depolama yapılandırılmamış. Dosya yükleme kullanılamıyor."
+
+msgid "Storage upload failed"
+msgstr "Depolama yüklemesi başarısız"
+
+msgid "Uploading..."
+msgstr "Yükleniyor..."
+
+msgid "Upload"
+msgstr "Yükle"
+
+msgid "Preview"
+msgstr "Önizleme"
+
+msgid "Approved"
+msgstr "Onaylandı"
+
+msgid "Uploaded"
+msgstr "Yüklendi"
+
+msgid "Rejected"
+msgstr "Reddedildi"
+
+msgid "Not Uploaded"
+msgstr "Yüklenmedi"
+
+msgid "Requested"
+msgstr "İstendi"

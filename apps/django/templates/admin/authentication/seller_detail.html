@@ -222,26 +222,128 @@
 
     {# ── Compliance Tab ── #}
     <div x-show="tab === 'compliance'" class="p-6">
+
+      {% if not s3_configured %}
+        <div class="mb-4 flex items-center gap-2 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-sm">
+          <span class="material-symbols-outlined text-base">warning</span>
+          {% trans "S3 storage is not configured. File upload is unavailable." %}
+        </div>
+      {% endif %}
+
       {% if compliance_docs %}
+        <script>
+          function docRow(docListId, docCode, sellerId, initialPreviewUrl, initialStatus) {
+            return {
+              docListId, docCode, sellerId,
+              previewUrl: initialPreviewUrl,
+              status: initialStatus,
+              uploading: false,
+              error: '',
+              get statusClass() {
+                return {
+                  'approved': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                  'uploaded':  'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                  'rejected':  'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+                }[this.status] || 'bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400';
+              },
+              get statusIcon() {
+                return {approved: 'check_circle', uploaded: 'schedule', rejected: 'cancel'}[this.status] || 'radio_button_unchecked';
+              },
+              get statusIconClass() {
+                return {approved: 'text-emerald-500', uploaded: 'text-amber-500', rejected: 'text-rose-500'}[this.status] || 'text-base-300 dark:text-base-600';
+              },
+              get statusLabel() {
+                const map = {approved:'{% trans "Approved" %}', uploaded:'{% trans "Uploaded" %}', rejected:'{% trans "Rejected" %}', not_uploaded:'{% trans "Not Uploaded" %}', requested:'{% trans "Requested" %}'};
+                return map[this.status] || this.status;
+              },
+              triggerUpload(input) { input.value = ''; input.click(); },
+              async handleFile(file, input) {
+                if (!file) return;
+                this.uploading = true; this.error = '';
+                try {
+                  const csrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+                  const r1 = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/presign/`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+                    body: JSON.stringify({docType: this.docCode, fileName: file.name, contentType: file.type || 'application/octet-stream'})
+                  });
+                  if (!r1.ok) { const e = await r1.json(); throw new Error(e.error || 'Presign failed'); }
+                  const {upload_url, file_url} = await r1.json();
+                  const r2 = await fetch(upload_url, {method: 'PUT', body: file, headers: {'Content-Type': file.type || 'application/octet-stream'}});
+                  if (!r2.ok) throw new Error('{% trans "Storage upload failed" %}');
+                  const r3 = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/confirm/`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+                    body: JSON.stringify({document_list_id: this.docListId, file_url})
+                  });
+                  if (!r3.ok) { const e = await r3.json(); throw new Error(e.error || 'Confirm failed'); }
+                  const res = await r3.json();
+                  this.status = 'uploaded';
+                  this.previewUrl = res.preview_url || null;
+                } catch (e) {
+                  this.error = e.message;
+                } finally {
+                  this.uploading = false;
+                  input.value = '';
+                }
+              }
+            };
+          }
+        </script>
+
         <div class="space-y-2">
           {% for doc in compliance_docs %}
-          <div class="flex items-center justify-between border border-base-200 dark:border-base-700 rounded-lg px-4 py-3 hover:bg-base-50 dark:hover:bg-base-800/50 transition-colors">
-            <span class="text-sm font-medium text-base-800 dark:text-base-200">{{ doc.name }}</span>
-            <div class="flex items-center gap-3">
+          <div x-data="docRow('{{ doc.document_list_id }}', '{{ doc.code }}', '{{ user_obj.id }}', '{{ doc.file_url|default:''|escapejs }}', '{{ doc.status }}')"
+               class="flex items-center justify-between border border-base-200 dark:border-base-700 rounded-lg px-4 py-3 transition-colors hover:bg-base-50 dark:hover:bg-base-800/50">
+
+            {# Left: icon + name + status pill #}
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="material-symbols-outlined text-base shrink-0"
+                    :class="statusIconClass"
+                    x-text="statusIcon"></span>
+              <span class="text-sm font-medium text-base-800 dark:text-base-200">{{ doc.name }}</span>
               {% if doc.uploaded_at %}
-                <span class="text-xs text-base-400">{{ doc.uploaded_at|date:"d.m.Y" }}</span>
+                <span class="text-xs text-base-400 shrink-0">{{ doc.uploaded_at|date:"d.m.Y" }}</span>
               {% endif %}
-              <span class="px-2 py-0.5 rounded text-xs font-medium
-                {% if doc.status == 'approved' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400
-                {% elif doc.status == 'uploaded' %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400
-                {% elif doc.status == 'rejected' %}bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400
-                {% else %}bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400{% endif %}">
-                {{ doc.status_tr }}
-              </span>
+              <span class="px-2 py-0.5 rounded text-xs font-medium shrink-0"
+                    :class="statusClass"
+                    x-text="statusLabel"></span>
+              <span x-show="error" x-cloak x-text="error"
+                    class="text-xs text-rose-500 truncate max-w-[160px]"></span>
+            </div>
+
+            {# Right: Upload + Preview buttons #}
+            <div class="flex items-center gap-2 shrink-0">
+
+              {# Upload — label wraps hidden file input #}
+              {% if s3_configured %}
+              <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 transition-colors"
+                     :class="uploading ? 'opacity-50 pointer-events-none' : 'cursor-pointer'">
+                <span class="material-symbols-outlined text-sm leading-none"
+                      :class="uploading ? 'animate-spin' : ''"
+                      x-text="uploading ? 'progress_activity' : 'upload_file'"></span>
+                <span x-text="uploading ? '{% trans "Uploading..." %}' : '{% trans "Upload" %}'"></span>
+                <input type="file" accept="image/*,.pdf" class="hidden"
+                       @change="handleFile($event.target.files[0], $event.target)">
+              </label>
+              {% endif %}
+
+              {# Preview #}
+              <button @click="previewUrl && window.open(previewUrl, '_blank')"
+                      :disabled="!previewUrl"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                      :class="previewUrl
+                        ? 'border-base-300 dark:border-base-600 text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 cursor-pointer'
+                        : 'border-base-200 dark:border-base-700 text-base-300 dark:text-base-600 cursor-not-allowed'">
+                <span class="material-symbols-outlined text-sm leading-none">visibility</span>
+                {% trans "Preview" %}
+              </button>
+
             </div>
           </div>
           {% endfor %}
         </div>
+
       {% else %}
         <div class="text-center py-8">
           <span class="material-symbols-outlined text-3xl text-base-300 block mb-2">verified</span>

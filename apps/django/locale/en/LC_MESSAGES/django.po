@@ -323,3 +323,33 @@ msgstr "General"
 
 msgid "Raw Data"
 msgstr "Raw Data"
+
+msgid "S3 storage is not configured. File upload is unavailable."
+msgstr "S3 storage is not configured. File upload is unavailable."
+
+msgid "Storage upload failed"
+msgstr "Storage upload failed"
+
+msgid "Uploading..."
+msgstr "Uploading..."
+
+msgid "Upload"
+msgstr "Upload"
+
+msgid "Preview"
+msgstr "Preview"
+
+msgid "Approved"
+msgstr "Approved"
+
+msgid "Uploaded"
+msgstr "Uploaded"
+
+msgid "Rejected"
+msgstr "Rejected"
+
+msgid "Not Uploaded"
+msgstr "Not Uploaded"
+
+msgid "Requested"
+msgstr "Requested"

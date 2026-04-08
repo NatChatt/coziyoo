@@ -1,6 +1,8 @@
 import json
+from django.conf import settings
 from django.contrib import admin
 from django.db import connection
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path
@@ -8,6 +10,8 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
+
+from coziyoo import s3 as s3_utils
 
 from .models import (
     Users, BuyerUsers, SellerUsers, AllUsers,
@@ -499,6 +503,8 @@ class SellerUsersAdmin(ModelAdmin):
         urls = super().get_urls()
         custom = [
             path("<uuid:user_id>/seller-detail/", self.admin_site.admin_view(self.seller_detail_view), name="authentication_sellerusers_seller_detail"),
+            path("<uuid:seller_id>/compliance/presign/", self.admin_site.admin_view(self.compliance_presign_view), name="authentication_sellerusers_compliance_presign"),
+            path("<uuid:seller_id>/compliance/confirm/", self.admin_site.admin_view(self.compliance_confirm_view), name="authentication_sellerusers_compliance_confirm"),
         ]
         return custom + urls
 
@@ -533,12 +539,26 @@ class SellerUsersAdmin(ModelAdmin):
             rrow = cur.fetchone()
 
             cur.execute("""
-                SELECT cdl.name, scd.status, scd.uploaded_at
-                FROM seller_compliance_documents scd
-                JOIN compliance_documents_list cdl ON cdl.id = scd.document_list_id
-                WHERE scd.seller_id = %s ORDER BY cdl.name
+                SELECT cdl.id::text, cdl.code, cdl.name,
+                       scd.id::text AS doc_id, scd.status, scd.uploaded_at, scd.file_url
+                FROM compliance_documents_list cdl
+                LEFT JOIN seller_compliance_documents scd
+                    ON scd.document_list_id = cdl.id AND scd.seller_id = %s
+                WHERE cdl.is_active = TRUE
+                ORDER BY cdl.name
             """, [user_id])
-            compliance_docs = [{"name": r[0], "status": r[1], "status_tr": STATUS_TR.get(r[1], r[1]), "uploaded_at": r[2]} for r in cur.fetchall()]
+            compliance_docs = []
+            for r in cur.fetchall():
+                compliance_docs.append({
+                    "document_list_id": r[0],
+                    "code": r[1],
+                    "name": r[2],
+                    "doc_id": r[3],
+                    "status": r[4] or "not_uploaded",
+                    "status_tr": STATUS_TR.get(r[4], r[4]) if r[4] else "Yüklenmedi",
+                    "uploaded_at": r[5],
+                    "file_url": s3_utils.hydrate_file_url(r[6]) if r[6] else None,
+                })
 
             cur.execute("""
                 SELECT o.id, u.display_name AS buyer_name, o.total_price, o.status, o.created_at
@@ -626,9 +646,77 @@ class SellerUsersAdmin(ModelAdmin):
             "compliance_summary": compliance_summary,
             "address": address,
             "raw_json": json.dumps(raw_data, indent=2, default=str),
+            "s3_configured": s3_utils.is_configured(),
             "opts": self.model._meta,
         }
         return TemplateResponse(request, "admin/authentication/seller_detail.html", context)
+
+    def compliance_presign_view(self, request, seller_id):
+        if request.method != "POST":
+            return JsonResponse({"error": "Method not allowed"}, status=405)
+        try:
+            data = json.loads(request.body)
+        except (ValueError, KeyError):
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        doc_type = data.get("docType")
+        file_name = data.get("fileName", "document.bin")
+        content_type = data.get("contentType", "application/octet-stream")
+
+        if not doc_type:
+            return JsonResponse({"error": "docType required"}, status=400)
+
+        if not s3_utils.is_configured():
+            return JsonResponse({"error": "S3 storage not configured"}, status=503)
+
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM compliance_documents_list WHERE code = %s AND is_active = TRUE",
+                [doc_type],
+            )
+            if cur.fetchone() is None:
+                return JsonResponse({"error": "Document type not found"}, status=404)
+
+        bucket = settings.S3_BUCKET_SELLER_DOCS
+        key = s3_utils.build_seller_document_key(str(seller_id), doc_type, file_name)
+        upload_url = s3_utils.presign_put(bucket, key, content_type)
+
+        return JsonResponse({
+            "upload_url": upload_url,
+            "file_url": s3_utils.to_storage_pointer(bucket, key),
+        })
+
+    def compliance_confirm_view(self, request, seller_id):
+        if request.method != "POST":
+            return JsonResponse({"error": "Method not allowed"}, status=405)
+        try:
+            data = json.loads(request.body)
+        except (ValueError, KeyError):
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        document_list_id = data.get("document_list_id")
+        file_url = data.get("file_url")
+
+        if not document_list_id or not file_url:
+            return JsonResponse({"error": "document_list_id and file_url required"}, status=400)
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO seller_compliance_documents
+                    (seller_id, document_list_id, file_url, status, uploaded_at)
+                VALUES (%s, %s, %s, 'uploaded', now())
+                ON CONFLICT (seller_id, document_list_id)
+                DO UPDATE SET file_url=%s, status='uploaded', uploaded_at=now(), updated_at=now()
+                RETURNING id
+                """,
+                [str(seller_id), document_list_id, file_url, file_url],
+            )
+            row = cur.fetchone()
+
+        preview_url = s3_utils.hydrate_file_url(file_url) if s3_utils.is_configured() else None
+
+        return JsonResponse({"id": str(row[0]), "status": "uploaded", "preview_url": preview_url})
 
     @display(description=_("Name"), ordering="display_name")
     def display_name_link(self, obj):
