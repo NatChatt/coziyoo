@@ -34,6 +34,7 @@ class OrdersAdmin(ModelAdmin):
         "short_id", "status_badge", "buyer", "seller",
         "total_price", "delivery_type", "payment_completed", "created_at",
     ]
+    list_select_related = ["buyer", "seller"]
     list_filter = ["status", "delivery_type", "payment_completed", "seller_decision_state"]
     search_fields = ["buyer__email", "buyer__display_name", "seller__display_name"]
     readonly_fields = [
@@ -80,6 +81,7 @@ class OrdersAdmin(ModelAdmin):
 @admin.register(Reviews)
 class ReviewsAdmin(ModelAdmin):
     list_display = ["buyer", "seller", "food", "rating_stars", "created_at"]
+    list_select_related = ["buyer", "seller", "food"]
     list_filter = ["rating"]
     search_fields = ["buyer__email", "seller__display_name", "food__name"]
     readonly_fields = ["id", "buyer", "seller", "food", "order", "rating",

@@ -37,6 +37,7 @@ class SellerComplianceDocumentsAdmin(ModelAdmin):
         "seller", "document_list", "status_badge", "is_required",
         "is_current", "uploaded_at", "reviewed_by_admin",
     ]
+    list_select_related = ["seller", "document_list", "reviewed_by_admin"]
     list_filter = ["status", "is_required", "is_current"]
     search_fields = ["seller__email", "seller__display_name", "document_list__name"]
     readonly_fields = [

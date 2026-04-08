@@ -21,6 +21,7 @@ class FoodsAdmin(ModelAdmin):
         "name", "seller", "category", "price", "is_active",
         "image_count", "menu_item_count", "rating", "review_count", "created_at",
     ]
+    list_select_related = ["seller", "category"]
     list_filter = ["is_active", "category"]
     search_fields = ["name", "seller__display_name", "seller__email"]
     readonly_fields = [
@@ -60,6 +61,7 @@ class ProductionLotsAdmin(ModelAdmin):
         "lot_number", "seller", "food_id", "status_badge", "quantity_produced",
         "quantity_available", "produced_at", "sale_window", "use_by",
     ]
+    list_select_related = ["seller"]
     list_filter = ["status"]
     search_fields = ["lot_number", "seller__display_name"]
     readonly_fields = [

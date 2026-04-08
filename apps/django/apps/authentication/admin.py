@@ -199,31 +199,21 @@ class BuyerUsersAdmin(ModelAdmin):
         extra_context = extra_context or {}
 
         with connection.cursor() as cur:
-            ph = "%s,%s"
-            cur.execute(f"SELECT count(*)::int FROM users WHERE user_type IN ({ph}) AND is_active = TRUE", list(types))
-            total = cur.fetchone()[0]
-
-            cur.execute(f"""
-                SELECT count(DISTINCT o.buyer_id)::int FROM orders o
-                JOIN users u ON u.id = o.buyer_id
-                WHERE u.user_type IN ({ph}) AND u.is_active = TRUE
-                  AND o.created_at >= now() - interval '30 days'
-            """, list(types))
-            active = cur.fetchone()[0]
-
-            cur.execute(f"""
-                SELECT count(*)::int FROM complaints c
-                JOIN users u ON u.id = COALESCE(c.complainant_user_id, c.complainant_buyer_id)
-                WHERE u.user_type IN ({ph}) AND u.is_active = TRUE
-                  AND c.status IN ('open', 'in_review')
-            """, list(types))
-            open_complaints = cur.fetchone()[0]
-
-            cur.execute(f"""
-                SELECT count(*)::int FROM users
-                WHERE user_type IN ({ph}) AND is_active = TRUE AND legal_hold_state = TRUE
-            """, list(types))
-            risky = cur.fetchone()[0]
+            cur.execute("""
+                SELECT
+                    (SELECT count(*)::int FROM users WHERE user_type IN ('buyer','both') AND is_active = TRUE),
+                    (SELECT count(DISTINCT o.buyer_id)::int FROM orders o
+                     JOIN users u ON u.id = o.buyer_id
+                     WHERE u.user_type IN ('buyer','both') AND u.is_active = TRUE
+                       AND o.created_at >= now() - interval '30 days'),
+                    (SELECT count(*)::int FROM complaints c
+                     JOIN users u ON u.id = COALESCE(c.complainant_user_id, c.complainant_buyer_id)
+                     WHERE u.user_type IN ('buyer','both') AND u.is_active = TRUE
+                       AND c.status IN ('open', 'in_review')),
+                    (SELECT count(*)::int FROM users
+                     WHERE user_type IN ('buyer','both') AND is_active = TRUE AND legal_hold_state = TRUE)
+            """)
+            total, active, open_complaints, risky = cur.fetchone()
 
         extra_context["buyer_stats"] = {
             "total": total,
@@ -463,35 +453,25 @@ class SellerUsersAdmin(ModelAdmin):
         extra_context = extra_context or {}
 
         with connection.cursor() as cur:
-            ph = "%s,%s"
-            cur.execute(f"SELECT count(*)::int FROM users WHERE user_type IN ({ph}) AND is_active = TRUE", list(types))
-            total = cur.fetchone()[0]
-
             cur.execute("""
-                SELECT count(DISTINCT scd.seller_id)::int
-                FROM seller_compliance_documents scd
-                JOIN users u ON u.id = scd.seller_id
-                WHERE scd.status = 'uploaded'
-                  AND u.user_type IN ('seller', 'both')
-                  AND u.is_active = TRUE
+                SELECT
+                    (SELECT count(*)::int FROM users WHERE user_type IN ('seller','both') AND is_active = TRUE),
+                    (SELECT count(DISTINCT scd.seller_id)::int
+                     FROM seller_compliance_documents scd
+                     JOIN users u ON u.id = scd.seller_id
+                     WHERE scd.status = 'uploaded'
+                       AND u.user_type IN ('seller', 'both')
+                       AND u.is_active = TRUE),
+                    (SELECT count(*)::int FROM complaints c
+                     JOIN orders o ON o.id = c.order_id
+                     JOIN users u ON u.id = o.seller_id
+                     WHERE u.user_type IN ('seller','both') AND u.is_active = TRUE
+                       AND c.status IN ('open', 'in_review')),
+                    (SELECT count(*)::int FROM users
+                     WHERE user_type IN ('seller','both') AND is_active = TRUE
+                       AND created_at::date = CURRENT_DATE)
             """)
-            pending_approvals = cur.fetchone()[0]
-
-            cur.execute(f"""
-                SELECT count(*)::int FROM complaints c
-                JOIN orders o ON o.id = c.order_id
-                JOIN users u ON u.id = o.seller_id
-                WHERE u.user_type IN ({ph}) AND u.is_active = TRUE
-                  AND c.status IN ('open', 'in_review')
-            """, list(types))
-            open_complaints = cur.fetchone()[0]
-
-            cur.execute(f"""
-                SELECT count(*)::int FROM users
-                WHERE user_type IN ({ph}) AND is_active = TRUE
-                  AND created_at::date = CURRENT_DATE
-            """, list(types))
-            new_today = cur.fetchone()[0]
+            total, pending_approvals, open_complaints, new_today = cur.fetchone()
 
         extra_context["seller_stats"] = {
             "total": total,
@@ -1197,6 +1177,7 @@ class CoziyooUserAdmin(ModelAdmin):
 @admin.register(AdminSalesCommissionSettings)
 class AdminSalesCommissionSettingsAdmin(ModelAdmin):
     list_display = ["commission_rate_percent", "created_by_admin", "created_at"]
+    list_select_related = ["created_by_admin"]
     readonly_fields = ["id", "created_at", "created_by_admin"]
     ordering = ["-created_at"]
 
@@ -1246,6 +1227,7 @@ class SecurityLoginEventsAdmin(ModelAdmin):
 @admin.register(AdminApiTokens)
 class AdminApiTokensAdmin(ModelAdmin):
     list_display = ["label", "role", "token_preview", "created_by_admin", "revoked_at", "created_at"]
+    list_select_related = ["created_by_admin"]
     list_filter = ["role"]
     search_fields = ["label", "token_preview"]
     readonly_fields = ["id", "session_id", "token_hash", "token_preview", "created_by_admin", "created_at"]

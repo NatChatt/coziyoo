@@ -31,6 +31,7 @@ class ComplaintsAdmin(ModelAdmin):
         "ticket_no", "complainant_user", "category", "status_badge",
         "priority_badge", "assigned_admin", "created_at",
     ]
+    list_select_related = ["complainant_user", "category", "assigned_admin"]
     list_filter = ["status", "priority", "category"]
     search_fields = ["complainant_user__email", "description"]
     readonly_fields = [
