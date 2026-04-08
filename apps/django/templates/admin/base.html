@@ -72,7 +72,7 @@
                 class="fixed inset-0 z-[99999] flex flex-col"
                 :class="hasResults ? 'items-center pt-16 pb-16' : 'items-center justify-center'"
             >
-                <div class="w-full max-w-2xl px-4 flex flex-col gap-3">
+                <div class="w-full max-w-2xl px-4 flex flex-col gap-3 flex-1 overflow-hidden">
 
                     {# ── Search input ── #}
                     <div class="relative">
@@ -97,7 +97,7 @@
                     {# ── Results ── #}
                     <div
                         x-show="hasResults"
-                        class="max-h-[60vh] overflow-y-auto rounded-2xl border border-base-200 bg-white shadow-2xl dark:border-base-700 dark:bg-base-900"
+                        class="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-base-200 bg-white shadow-2xl dark:border-base-700 dark:bg-base-900"
                     >
                         <template x-for="group in groups" :key="group.key">
                             <div>
