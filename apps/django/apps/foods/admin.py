@@ -151,6 +151,18 @@ class FoodsAdmin(ModelAdmin):
     ]
 
     def changelist_view(self, request, extra_context=None):
+        # `open_food` is a custom param from global search — strip it before
+        # Django's ChangeList sees it, otherwise it throws IncorrectLookupParameters
+        # and redirects to ?e=1 (ERROR_FLAG).
+        open_food_id = request.GET.get("open_food")
+        if open_food_id:
+            request.GET = request.GET.copy()
+            del request.GET["open_food"]
+        if extra_context is None:
+            extra_context = {}
+        if open_food_id:
+            extra_context["open_food_id"] = open_food_id
+
         response = super().changelist_view(request, extra_context=extra_context)
         if not hasattr(response, "context_data"):
             return response

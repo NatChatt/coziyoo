@@ -681,14 +681,12 @@ function foodsTable() {
     foodModal: null,
     foodModalLoading: false,
     init() {
-      const params = new URLSearchParams(window.location.search);
-      const openFood = params.get('open_food');
+      // open_food_id is injected via template context by changelist_view
+      // (the param is stripped from GET before Django's ChangeList sees it,
+      //  otherwise Django throws IncorrectLookupParameters → ?e=1 redirect)
+      const openFood = '{{ open_food_id|default:"" }}';
       if (openFood) {
         this.fetchFoodDetail(openFood);
-        // Clean up URL without reloading
-        const url = new URL(window.location.href);
-        url.searchParams.delete('open_food');
-        window.history.replaceState({}, '', url);
       }
     },
     toggle(id) {
