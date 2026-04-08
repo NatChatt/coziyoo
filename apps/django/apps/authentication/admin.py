@@ -1,9 +1,10 @@
 import json
 from django.conf import settings
 from django.contrib import admin
+from django.contrib import messages
 from django.db import connection
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path
 from django.utils.html import format_html
@@ -922,6 +923,102 @@ class AdminUsersAdmin(ModelAdmin):
     search_fields = ["email"]
     readonly_fields = ["id", "password_hash", "created_at", "updated_at"]
     ordering = ["-created_at"]
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "permissions/",
+                self.admin_site.admin_view(self.permissions_view),
+                name="authentication_permissions",
+            ),
+            path(
+                "permissions/change-role/",
+                self.admin_site.admin_view(self.change_role_view),
+                name="authentication_permissions_change_role",
+            ),
+        ]
+        return custom + urls
+
+    def permissions_view(self, request):
+        all_admins = list(AdminUsers.objects.all().order_by("email"))
+        total_admins = len(all_admins)
+        super_admin_count = sum(1 for a in all_admins if a.role == "super_admin")
+        admin_count = sum(1 for a in all_admins if a.role == "admin")
+        inactive_count = sum(1 for a in all_admins if not a.is_active)
+
+        permissions_matrix = [
+            (_("Users & Orders"), [
+                (_("View buyers"), True, True),
+                (_("View sellers"), True, True),
+                (_("View all users"), True, True),
+                (_("View orders"), True, True),
+                (_("Delete users"), True, True),
+            ]),
+            (_("Content"), [
+                (_("Manage foods"), True, True),
+                (_("Manage categories"), True, True),
+                (_("Manage production lots"), True, True),
+                (_("View reviews"), True, True),
+            ]),
+            (_("Support"), [
+                (_("Manage complaints"), True, True),
+                (_("Manage compliance docs"), True, True),
+                (_("View doc types"), True, True),
+            ]),
+            (_("Finance & Security"), [
+                (_("View audit logs"), True, True),
+                (_("View login events"), True, True),
+                (_("Change commission rate"), False, True),
+                (_("Manage API tokens"), False, True),
+            ]),
+            (_("Administration"), [
+                (_("View admin users"), True, True),
+                (_("Add admin users"), False, True),
+                (_("Change admin roles"), False, True),
+                (_("Deactivate admins"), False, True),
+            ]),
+        ]
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": _("Permissions"),
+            "admin_users": all_admins,
+            "total_admins": total_admins,
+            "super_admin_count": super_admin_count,
+            "admin_count": admin_count,
+            "inactive_count": inactive_count,
+            "permissions_matrix": permissions_matrix,
+        }
+        return TemplateResponse(request, "admin/authentication/permissions.html", context)
+
+    def change_role_view(self, request):
+        if request.method != "POST":
+            return redirect("admin:authentication_permissions")
+
+        admin_id = request.POST.get("admin_id")
+        new_role = request.POST.get("new_role")
+
+        if new_role not in ("admin", "super_admin"):
+            messages.error(request, _("Invalid role."))
+            return redirect("admin:authentication_permissions")
+
+        try:
+            admin_user = AdminUsers.objects.get(pk=admin_id)
+            old_role = admin_user.role
+            if old_role != new_role:
+                admin_user.role = new_role
+                admin_user.save(update_fields=["role"])
+                messages.success(
+                    request,
+                    _(f"Role for {admin_user.email} changed from {old_role} to {new_role}."),
+                )
+            else:
+                messages.info(request, _(f"{admin_user.email} already has role: {new_role}."))
+        except AdminUsers.DoesNotExist:
+            messages.error(request, _("Admin user not found."))
+
+        return redirect("admin:authentication_permissions")
 
 
 @admin.register(AdminSalesCommissionSettings)
