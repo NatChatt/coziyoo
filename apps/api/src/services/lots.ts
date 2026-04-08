@@ -6,7 +6,7 @@ async function markExpiredLotsForFoodTx(client: PoolClient, foodId: string): Pro
      SET status = 'expired',
          updated_at = now()
      WHERE food_id = $1
-       AND status = 'active'
+       AND status = 'open'
        AND sale_ends_at < now()`,
     [foodId]
   );
@@ -52,7 +52,7 @@ export async function allocateLotsFefoTx(params: {
     }
     const selectedLot = lot.rows[0];
     if (
-      selectedLot.status !== "active" ||
+      selectedLot.status !== "open" ||
       new Date(selectedLot.sale_starts_at).getTime() > Date.now() ||
       new Date(selectedLot.sale_ends_at).getTime() < Date.now() ||
       Number(selectedLot.quantity_available) < Number(item.quantity)
