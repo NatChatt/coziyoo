@@ -262,7 +262,18 @@
                 return map[this.status] || this.status;
               },
               csrf() { return (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''; },
-              async handleFile(file, input) {
+              triggerUpload() {
+                if (this.uploading || this.rejectMode) return;
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*,.pdf';
+                input.addEventListener('change', async (e) => {
+                  const file = e.target.files[0];
+                  if (file) await this.handleFile(file);
+                });
+                input.click();
+              },
+              async handleFile(file) {
                 if (!file) return;
                 this.uploading = true; this.error = '';
                 try {
@@ -290,7 +301,6 @@
                   this.error = e.message;
                 } finally {
                   this.uploading = false;
-                  input.value = '';
                 }
               },
               async approve() {
@@ -385,17 +395,16 @@
                   {% trans "Reject" %}
                 </button>
 
-                {# Upload — label wraps hidden file input #}
+                {# Upload — creates transient file input via JS (avoids Unfold JS conflicts) #}
                 {% if s3_configured %}
-                <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 transition-colors"
-                       :class="(uploading || rejectMode) ? 'opacity-50 pointer-events-none' : 'cursor-pointer'">
+                <button @click="triggerUpload()"
+                        :disabled="uploading || rejectMode"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   <span class="material-symbols-outlined text-sm leading-none"
                         :class="uploading ? 'animate-spin' : ''"
                         x-text="uploading ? 'progress_activity' : 'upload_file'"></span>
                   <span x-text="uploading ? '{% trans "Uploading..." %}' : '{% trans "Upload" %}'"></span>
-                  <input type="file" accept="image/*,.pdf" class="hidden"
-                         @change="handleFile($event.target.files[0], $event.target)">
-                </label>
+                </button>
                 {% endif %}
 
                 {# Preview #}
