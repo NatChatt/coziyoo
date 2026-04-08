@@ -92,6 +92,9 @@ class FoodsAdmin(ModelAdmin):
     ordering = ["-created_at"]
     list_per_page = 50
 
+    def has_add_permission(self, request):
+        return False
+
     fieldsets = [
         ("Food", {"fields": ["id", "name", "seller", "category", "price", "is_active"]}),
         ("Details", {"fields": ["card_summary", "description", "recipe", "serving_size",

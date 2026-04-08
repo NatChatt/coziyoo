@@ -24,6 +24,9 @@ class ComplaintCategoriesAdmin(ModelAdmin):
     search_fields = ["name", "code"]
     readonly_fields = ["id", "created_at"]
 
+    def has_add_permission(self, request):
+        return False
+
 
 @admin.register(Complaints)
 class ComplaintsAdmin(ModelAdmin):
@@ -41,6 +44,9 @@ class ComplaintsAdmin(ModelAdmin):
     ordering = ["-created_at"]
     inlines = [ComplaintAdminNotesInline]
     list_per_page = 50
+
+    def has_add_permission(self, request):
+        return False
 
     fieldsets = [
         ("Ticket", {"fields": ["id", "ticket_no", "status", "priority", "category"]}),
