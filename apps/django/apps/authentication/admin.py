@@ -81,43 +81,82 @@ class UsersAdmin(ModelAdmin):
             types = ("buyer", "both")
             label = "Buyer"
 
+        extra_context = extra_context or {}
+
         with connection.cursor() as cur:
             ph = ",".join(["%s"] * len(types))
-            cur.execute(f"SELECT count(*)::int FROM users WHERE user_type IN ({ph}) AND is_active = TRUE", list(types))
-            total = cur.fetchone()[0]
 
-            cur.execute(f"""
-                SELECT count(DISTINCT o.buyer_id)::int FROM orders o
-                JOIN users u ON u.id = o.buyer_id
-                WHERE u.user_type IN ({ph}) AND u.is_active = TRUE
-                  AND o.created_at >= now() - interval '30 days'
-            """, list(types))
-            active = cur.fetchone()[0]
+            if role == "seller":
+                # Total sellers
+                cur.execute(f"SELECT count(*)::int FROM users WHERE user_type IN ({ph}) AND is_active = TRUE", list(types))
+                total = cur.fetchone()[0]
 
-            cur.execute(f"""
-                SELECT count(*)::int FROM complaints c
-                JOIN users u ON u.id = COALESCE(c.complainant_user_id, c.complainant_buyer_id)
-                WHERE u.user_type IN ({ph}) AND u.is_active = TRUE
-                  AND c.status IN ('open', 'in_review')
-            """, list(types))
-            open_complaints = cur.fetchone()[0]
+                # Pending approvals
+                cur.execute(f"""
+                    SELECT count(*)::int FROM users
+                    WHERE user_type IN ({ph}) AND is_active = TRUE
+                      AND seller_profile_status = 'pending'
+                """, list(types))
+                pending_approvals = cur.fetchone()[0]
 
-            cur.execute(f"""
-                SELECT count(*)::int FROM users
-                WHERE user_type IN ({ph}) AND is_active = TRUE AND legal_hold_state = TRUE
-            """, list(types))
-            risky = cur.fetchone()[0]
+                # Open complaints (against sellers via orders)
+                cur.execute(f"""
+                    SELECT count(*)::int FROM complaints c
+                    JOIN orders o ON o.id = c.order_id
+                    JOIN users u ON u.id = o.seller_id
+                    WHERE u.user_type IN ({ph}) AND u.is_active = TRUE
+                      AND c.status IN ('open', 'in_review')
+                """, list(types))
+                open_complaints = cur.fetchone()[0]
 
-        extra_context = extra_context or {}
-        label_tr = "Alıcı" if role != "seller" else "Satıcı"
-        extra_context["buyer_stats"] = {
-            "label": label,
-            "label_tr": label_tr,
-            "total": total,
-            "active": active,
-            "open_complaints": open_complaints,
-            "risky": risky,
-        }
+                # New sellers today
+                cur.execute(f"""
+                    SELECT count(*)::int FROM users
+                    WHERE user_type IN ({ph}) AND is_active = TRUE
+                      AND created_at::date = CURRENT_DATE
+                """, list(types))
+                new_today = cur.fetchone()[0]
+
+                extra_context["seller_stats"] = {
+                    "total": total,
+                    "pending_approvals": pending_approvals,
+                    "open_complaints": open_complaints,
+                    "new_today": new_today,
+                }
+            else:
+                cur.execute(f"SELECT count(*)::int FROM users WHERE user_type IN ({ph}) AND is_active = TRUE", list(types))
+                total = cur.fetchone()[0]
+
+                cur.execute(f"""
+                    SELECT count(DISTINCT o.buyer_id)::int FROM orders o
+                    JOIN users u ON u.id = o.buyer_id
+                    WHERE u.user_type IN ({ph}) AND u.is_active = TRUE
+                      AND o.created_at >= now() - interval '30 days'
+                """, list(types))
+                active = cur.fetchone()[0]
+
+                cur.execute(f"""
+                    SELECT count(*)::int FROM complaints c
+                    JOIN users u ON u.id = COALESCE(c.complainant_user_id, c.complainant_buyer_id)
+                    WHERE u.user_type IN ({ph}) AND u.is_active = TRUE
+                      AND c.status IN ('open', 'in_review')
+                """, list(types))
+                open_complaints = cur.fetchone()[0]
+
+                cur.execute(f"""
+                    SELECT count(*)::int FROM users
+                    WHERE user_type IN ({ph}) AND is_active = TRUE AND legal_hold_state = TRUE
+                """, list(types))
+                risky = cur.fetchone()[0]
+
+                extra_context["buyer_stats"] = {
+                    "label": label,
+                    "label_tr": "Alıcı",
+                    "total": total,
+                    "active": active,
+                    "open_complaints": open_complaints,
+                    "risky": risky,
+                }
 
         response = super().changelist_view(request, extra_context=extra_context)
 
