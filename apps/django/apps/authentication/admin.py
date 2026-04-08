@@ -314,8 +314,11 @@ class BuyerUsersAdmin(ModelAdmin):
                         ORDER BY created_at DESC LIMIT 20
                     ) t),
                     (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
-                        SELECT r.id, f.name AS food_name, r.rating, r.comment, r.created_at
-                        FROM reviews r LEFT JOIN foods f ON f.id = r.food_id
+                        SELECT r.id, f.name AS food_name, r.rating, r.comment, r.created_at,
+                               r.order_id, s.display_name AS seller_name
+                        FROM reviews r
+                        LEFT JOIN foods f ON f.id = r.food_id
+                        LEFT JOIN users s ON s.id = r.seller_id
                         WHERE r.buyer_id = %s ORDER BY r.created_at DESC LIMIT 20
                     ) t),
                     (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
@@ -363,7 +366,9 @@ class BuyerUsersAdmin(ModelAdmin):
 
         reviews = [{"id": str(r["id"]), "food_name": r["food_name"],
                     "stars": "★" * int(r["rating"]) + "☆" * (5 - int(r["rating"])),
-                    "comment": r["comment"], "created_at": r["created_at"]} for r in (reviews_json or [])]
+                    "comment": r["comment"], "created_at": r["created_at"],
+                    "order_id": str(r["order_id"]) if r.get("order_id") else None,
+                    "seller_name": r.get("seller_name") or "—"} for r in (reviews_json or [])]
 
         payments = [{"id": str(r["id"]), "provider": r["provider"], "status": r["status"],
                      "status_tr": STATUS_TR.get(r["status"], r["status"]),
