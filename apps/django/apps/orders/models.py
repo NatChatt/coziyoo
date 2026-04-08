@@ -6,7 +6,7 @@ class AllergenDisclosureRecords(models.Model):
     order = models.ForeignKey('orders.Orders', models.DO_NOTHING)
     seller = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING, related_name='allergendisclosurerecords_buyer_set')
-    food = models.ForeignKey('foods.Foods', models.DO_NOTHING)
+    food = models.ForeignKey('menu.Foods', models.DO_NOTHING)
     phase = models.TextField()
     allergen_snapshot_json = models.JSONField()
     disclosure_method = models.TextField()
@@ -95,7 +95,7 @@ class OrderItemLotAllocations(models.Model):
     id = models.UUIDField(primary_key=True)
     order = models.ForeignKey('orders.Orders', models.DO_NOTHING)
     order_item = models.ForeignKey('orders.OrderItems', models.DO_NOTHING)
-    lot = models.ForeignKey('foods.ProductionLots', models.DO_NOTHING)
+    lot = models.ForeignKey('menu.ProductionLots', models.DO_NOTHING)
     quantity_allocated = models.IntegerField()
     created_at = models.DateTimeField()
 
@@ -108,7 +108,7 @@ class OrderItemLotAllocations(models.Model):
 class OrderItems(models.Model):
     id = models.UUIDField(primary_key=True)
     order = models.ForeignKey('orders.Orders', models.DO_NOTHING)
-    lot = models.ForeignKey('foods.ProductionLots', models.DO_NOTHING, blank=True, null=True)
+    lot = models.ForeignKey('menu.ProductionLots', models.DO_NOTHING, blank=True, null=True)
     food_id = models.UUIDField()
     quantity = models.IntegerField()
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
@@ -205,7 +205,7 @@ class OutboxEvents(models.Model):
 
 class Reviews(models.Model):
     id = models.UUIDField(primary_key=True)
-    food = models.ForeignKey('foods.Foods', models.DO_NOTHING)
+    food = models.ForeignKey('menu.Foods', models.DO_NOTHING)
     buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     seller = models.ForeignKey('authentication.Users', models.DO_NOTHING, related_name='reviews_seller_set')
     order = models.ForeignKey('orders.Orders', models.DO_NOTHING)

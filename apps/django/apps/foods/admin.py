@@ -1,9 +1,27 @@
+import json
+from collections import defaultdict
+
 from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
 
 from .models import Foods, Categories, ProductionLots
+
+_LOT_STATUS_STYLE = {
+    "open":      "background:#dcfce7;color:#166534;border:1px solid #86efac",
+    "active":    "background:#dcfce7;color:#166534;border:1px solid #86efac",
+    "locked":    "background:#fef3c7;color:#92400e;border:1px solid #fcd34d",
+    "depleted":  "background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0",
+    "exhausted": "background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0",
+    "discarded": "background:#fee2e2;color:#991b1b;border:1px solid #fca5a5",
+    "expired":   "background:#fee2e2;color:#991b1b;border:1px solid #fca5a5",
+    "recalled":  "background:#fee2e2;color:#991b1b;border:1px solid #fca5a5",
+}
+
+
+def _fmt(dt):
+    return dt.strftime("%d.%m.%Y %H:%M") if dt else None
 
 
 @admin.register(Categories)
@@ -40,6 +58,61 @@ class FoodsAdmin(ModelAdmin):
         ("Stats", {"fields": ["rating", "review_count", "favorite_count"]}),
         ("Meta", {"fields": ["created_at", "updated_at"]}),
     ]
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context=extra_context)
+        if not hasattr(response, "context_data"):
+            return response
+        cl = response.context_data.get("cl")
+        if cl is None:
+            return response
+
+        try:
+            result_foods = list(cl.result_list)
+        except Exception:
+            return response
+
+        food_ids = [food.id for food in result_foods]
+        lots_qs = ProductionLots.objects.filter(
+            food_id__in=food_ids
+        ).order_by("-produced_at")
+
+        lots_by_food = defaultdict(list)
+        for lot in lots_qs:
+            lots_by_food[lot.food_id].append(lot)
+
+        # Attach _lots to each food for template use
+        for food in result_foods:
+            food._lots = lots_by_food.get(food.id, [])
+
+        # Build JSON for Alpine.js modal (all details pre-serialised)
+        food_lots_json = {}
+        for food in result_foods:
+            food_lots_json[str(food.id)] = [
+                {
+                    "id": str(lot.id),
+                    "lot_number": lot.lot_number,
+                    "food_name": food.name,
+                    "status": lot.status,
+                    "status_style": _LOT_STATUS_STYLE.get(lot.status, "background:#f1f5f9;color:#64748b"),
+                    "qty_produced": lot.quantity_produced,
+                    "qty_available": lot.quantity_available,
+                    "produced_at": _fmt(lot.produced_at),
+                    "sale_starts_at": _fmt(lot.sale_starts_at),
+                    "sale_ends_at": _fmt(lot.sale_ends_at),
+                    "use_by": _fmt(lot.use_by),
+                    "best_before": _fmt(lot.best_before),
+                    "recipe_snapshot": lot.recipe_snapshot or "",
+                    "ingredients": lot.ingredients_snapshot_json or [],
+                    "allergens": lot.allergens_snapshot_json or [],
+                    "notes": lot.notes or "",
+                }
+                for lot in food._lots
+            ]
+
+        response.context_data["food_with_lots"] = result_foods
+        response.context_data["food_lots_json"] = json.dumps(food_lots_json, ensure_ascii=False)
+        return response
 
     @display(description="Images")
     def image_count(self, obj):

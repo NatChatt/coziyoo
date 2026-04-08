@@ -211,19 +211,13 @@ UNFOLD = {
                     {
                         "title": "Foods",
                         "icon": "restaurant_menu",
-                        "link": "/admin/foods/foods/",
+                        "link": "/admin/menu/foods/",
                         "permission": lambda request: request.user.is_staff,
                     },
                     {
                         "title": "Categories",
                         "icon": "category",
-                        "link": "/admin/foods/categories/",
-                        "permission": lambda request: request.user.is_staff,
-                    },
-                    {
-                        "title": "Production Lots",
-                        "icon": "inventory_2",
-                        "link": "/admin/foods/productionlots/",
+                        "link": "/admin/menu/categories/",
                         "permission": lambda request: request.user.is_staff,
                     },
                     {

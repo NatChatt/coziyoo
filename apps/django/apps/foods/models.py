@@ -23,7 +23,7 @@ class Categories(models.Model):
 
 class Favorites(models.Model):
     user = models.OneToOneField('authentication.Users', models.DO_NOTHING, primary_key=True)  # The composite primary key (user_id, food_id) found, that is not supported. The first column is selected.
-    food = models.ForeignKey('foods.Foods', models.DO_NOTHING)
+    food = models.ForeignKey('menu.Foods', models.DO_NOTHING)
     created_at = models.DateTimeField()
 
     class Meta:
@@ -36,7 +36,7 @@ class Favorites(models.Model):
 class Foods(models.Model):
     id = models.UUIDField(primary_key=True)
     seller = models.ForeignKey('authentication.Users', models.DO_NOTHING)
-    category = models.ForeignKey('foods.Categories', models.DO_NOTHING, blank=True, null=True)
+    category = models.ForeignKey('menu.Categories', models.DO_NOTHING, blank=True, null=True)
     name = models.TextField()
     card_summary = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
@@ -72,7 +72,7 @@ class Foods(models.Model):
 
 class LotEvents(models.Model):
     id = models.UUIDField(primary_key=True)
-    lot = models.ForeignKey('foods.ProductionLots', models.DO_NOTHING)
+    lot = models.ForeignKey('menu.ProductionLots', models.DO_NOTHING)
     event_type = models.TextField()
     event_payload_json = models.JSONField(blank=True, null=True)
     created_by = models.ForeignKey('authentication.Users', models.DO_NOTHING, db_column='created_by', blank=True, null=True)
@@ -118,7 +118,7 @@ class ProductionLots(models.Model):
 class AgentCallLogs(models.Model):
     id = models.UUIDField(primary_key=True)
     room_name = models.TextField()
-    profile = models.ForeignKey('foods.AgentProfiles', models.DO_NOTHING, blank=True, null=True)
+    profile = models.ForeignKey('menu.AgentProfiles', models.DO_NOTHING, blank=True, null=True)
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField()
     duration_seconds = models.IntegerField()

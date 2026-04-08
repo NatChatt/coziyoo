@@ -1,0 +1,378 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block result_list %}
+{% if food_with_lots is not None %}
+
+<script>
+const FOOD_LOTS = {{ food_lots_json|safe }};
+</script>
+
+<div x-data="foodsTable()" x-cloak>
+
+  {# ── Full-screen Lot Modal ── #}
+  <template x-teleport="body">
+    <div x-show="modal" x-cloak
+         class="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto py-8 px-4"
+         style="background:rgba(0,0,0,0.75)"
+         @keydown.escape.window="modal = null"
+         @click.self="modal = null"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+
+      <div class="relative w-full max-w-2xl rounded-xl bg-white dark:bg-base-900 shadow-2xl"
+           style="border:1px solid #30363d"
+           @click.stop
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100">
+
+        <template x-if="modal">
+          <div>
+            {# Modal Header #}
+            <div class="flex items-start justify-between border-b border-base-200 dark:border-base-700 px-6 py-4">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-mono text-sm font-bold text-base-900 dark:text-white" x-text="modal.lot_number"></span>
+                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                        :style="modal.status_style + ';padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600'"
+                        x-text="modal.status"></span>
+                </div>
+                <div class="text-sm text-base-500 dark:text-base-400" x-text="modal.food_name"></div>
+              </div>
+              <button @click="modal = null"
+                      class="ml-4 rounded-lg p-1.5 text-base-400 hover:bg-base-100 dark:hover:bg-base-800 transition-colors">
+                <span class="material-symbols-outlined text-xl leading-none">close</span>
+              </button>
+            </div>
+
+            {# Modal Body #}
+            <div class="space-y-5 px-6 py-5">
+
+              {# Quantities #}
+              <div>
+                <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Miktarlar" %}</div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 px-4 py-3">
+                    <div class="text-xs text-blue-600 dark:text-blue-300 mb-0.5">{% trans "Üretilen" %}</div>
+                    <div class="text-xl font-bold text-blue-800 dark:text-blue-100" x-text="modal.qty_produced"></div>
+                  </div>
+                  <div class="rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-4 py-3">
+                    <div class="text-xs text-emerald-600 dark:text-emerald-300 mb-0.5">{% trans "Mevcut" %}</div>
+                    <div class="text-xl font-bold text-emerald-800 dark:text-emerald-100" x-text="modal.qty_available"></div>
+                  </div>
+                </div>
+              </div>
+
+              {# Timeline #}
+              <div>
+                <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Zaman Çizelgesi" %}</div>
+                <div class="grid grid-cols-1 gap-1.5 text-sm sm:grid-cols-2">
+                  <template x-if="modal.produced_at">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-base text-base-400">factory</span>
+                      <span class="text-base-500 dark:text-base-400 text-xs">{% trans "Üretim:" %}</span>
+                      <span class="font-medium text-base-800 dark:text-base-200 text-xs" x-text="modal.produced_at"></span>
+                    </div>
+                  </template>
+                  <template x-if="modal.sale_starts_at">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-base text-emerald-500">play_circle</span>
+                      <span class="text-base-500 dark:text-base-400 text-xs">{% trans "Satış Başl.:" %}</span>
+                      <span class="font-medium text-base-800 dark:text-base-200 text-xs" x-text="modal.sale_starts_at"></span>
+                    </div>
+                  </template>
+                  <template x-if="modal.sale_ends_at">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-base text-rose-500">stop_circle</span>
+                      <span class="text-base-500 dark:text-base-400 text-xs">{% trans "Satış Bitiş:" %}</span>
+                      <span class="font-medium text-base-800 dark:text-base-200 text-xs" x-text="modal.sale_ends_at"></span>
+                    </div>
+                  </template>
+                  <template x-if="modal.use_by">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-base text-amber-500">schedule</span>
+                      <span class="text-base-500 dark:text-base-400 text-xs">{% trans "SKT:" %}</span>
+                      <span class="font-medium text-base-800 dark:text-base-200 text-xs" x-text="modal.use_by"></span>
+                    </div>
+                  </template>
+                  <template x-if="modal.best_before">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-base text-base-400">star</span>
+                      <span class="text-base-500 dark:text-base-400 text-xs">{% trans "En İyi:" %}</span>
+                      <span class="font-medium text-base-800 dark:text-base-200 text-xs" x-text="modal.best_before"></span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              {# Allergens #}
+              <template x-if="modal.allergens && modal.allergens.length > 0">
+                <div>
+                  <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Alerjenler" %}</div>
+                  <div class="flex flex-wrap gap-1.5">
+                    <template x-for="a in modal.allergens" :key="a">
+                      <span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                            x-text="a"></span>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              {# Ingredients #}
+              <template x-if="modal.ingredients && modal.ingredients.length > 0">
+                <div>
+                  <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "İçindekiler" %}</div>
+                  <div class="flex flex-wrap gap-1.5">
+                    <template x-for="ing in modal.ingredients" :key="ing">
+                      <span class="px-2 py-0.5 rounded text-xs bg-base-100 dark:bg-base-800 text-base-600 dark:text-base-300"
+                            x-text="ing"></span>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              {# Recipe Snapshot #}
+              <template x-if="modal.recipe_snapshot">
+                <div>
+                  <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Tarif Snapshot" %}</div>
+                  <div class="rounded-lg bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 px-4 py-3 text-sm text-base-700 dark:text-base-300 whitespace-pre-wrap max-h-40 overflow-y-auto"
+                       x-text="modal.recipe_snapshot"></div>
+                </div>
+              </template>
+
+              {# Notes #}
+              <template x-if="modal.notes">
+                <div>
+                  <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Notlar" %}</div>
+                  <div class="rounded-lg bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 px-4 py-3 text-sm text-base-700 dark:text-base-300"
+                       x-text="modal.notes"></div>
+                </div>
+              </template>
+
+            </div>{# /body #}
+
+            {# Modal Footer #}
+            <div class="border-t border-base-200 dark:border-base-700 px-6 py-3 flex justify-end">
+              <button @click="modal = null"
+                      class="px-4 py-2 rounded-lg bg-base-100 dark:bg-base-800 text-sm font-medium text-base-700 dark:text-base-200 hover:bg-base-200 dark:hover:bg-base-700 transition-colors">
+                {% trans "Kapat" %}
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+
+  {# ── Foods Table ── #}
+  <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-900/50 text-xs font-semibold uppercase tracking-wide text-base-500">
+          <th class="w-8 px-3 py-3"></th>
+          <th class="px-4 py-3 text-left">{% trans "Yemek" %}</th>
+          <th class="px-4 py-3 text-left hidden sm:table-cell">{% trans "Kategori" %}</th>
+          <th class="px-4 py-3 text-right">{% trans "Fiyat" %}</th>
+          <th class="px-4 py-3 text-center hidden md:table-cell">{% trans "Puan" %}</th>
+          <th class="px-4 py-3 text-center">{% trans "Durum" %}</th>
+          <th class="px-4 py-3 text-center">{% trans "Lot" %}</th>
+          <th class="w-10 px-3 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for food in food_with_lots %}
+
+        {# ── Food Row ── #}
+        <tr class="border-b border-base-100 dark:border-base-700/50 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors cursor-pointer"
+            @click="toggle('{{ food.id }}')">
+
+          {# Chevron #}
+          <td class="px-3 py-3 w-8">
+            <span class="material-symbols-outlined text-base text-base-400 block transition-transform duration-200"
+                  :class="expanded === '{{ food.id }}' ? 'rotate-90' : ''">chevron_right</span>
+          </td>
+
+          {# Food name + seller #}
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-3">
+              {% if food.image_url %}
+                <img src="{{ food.image_url }}"
+                     class="w-10 h-10 rounded-lg object-cover bg-base-200 dark:bg-base-700 shrink-0"
+                     onerror="this.style.display='none'">
+              {% else %}
+                <div class="w-10 h-10 rounded-lg bg-base-200 dark:bg-base-700 flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-base text-base-400">restaurant</span>
+                </div>
+              {% endif %}
+              <div class="min-w-0">
+                <div class="font-medium text-base-900 dark:text-white truncate">{{ food.name }}</div>
+                <div class="text-xs text-base-400 truncate">{{ food.seller.display_name|default:"—" }}</div>
+              </div>
+            </div>
+          </td>
+
+          {# Category #}
+          <td class="px-4 py-3 text-base-500 dark:text-base-400 hidden sm:table-cell">
+            {{ food.category.name_tr|default:"—" }}
+          </td>
+
+          {# Price #}
+          <td class="px-4 py-3 text-right font-medium text-base-900 dark:text-white">
+            ₺{{ food.price }}
+          </td>
+
+          {# Rating #}
+          <td class="px-4 py-3 text-center text-base-500 dark:text-base-400 hidden md:table-cell">
+            {% if food.rating %}
+              <span class="text-amber-500">★</span> {{ food.rating }}
+            {% else %}
+              <span class="text-base-300">—</span>
+            {% endif %}
+          </td>
+
+          {# Status #}
+          <td class="px-4 py-3 text-center">
+            {% if food.is_active %}
+              <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">{% trans "Aktif" %}</span>
+            {% else %}
+              <span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">{% trans "Pasif" %}</span>
+            {% endif %}
+          </td>
+
+          {# Lot count #}
+          <td class="px-4 py-3 text-center">
+            {% if food._lots %}
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-bold">{{ food._lots|length }}</span>
+            {% else %}
+              <span class="text-base-300 dark:text-base-600 text-xs">0</span>
+            {% endif %}
+          </td>
+
+          {# Edit link #}
+          <td class="px-3 py-3 text-right">
+            <a href="{% url 'admin:menu_foods_change' food.id %}"
+               @click.stop
+               class="text-base-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+              <span class="material-symbols-outlined text-base leading-none">edit</span>
+            </a>
+          </td>
+        </tr>
+
+        {# ── Expanded Lots Row ── #}
+        <tr x-show="expanded === '{{ food.id }}'"
+            x-cloak
+            class="bg-base-50/80 dark:bg-base-900/60"
+            x-transition:enter="transition ease-out duration-150"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100">
+          <td colspan="8" class="px-6 pb-4 pt-2">
+            {% if food._lots %}
+              <div class="rounded-lg border border-base-200 dark:border-base-700 overflow-hidden">
+                <table class="w-full">
+                  <thead>
+                    <tr class="bg-base-100 dark:bg-base-800 text-xs font-semibold uppercase tracking-wide text-base-400">
+                      <th class="px-3 py-2 text-left">{% trans "Lot No" %}</th>
+                      <th class="px-3 py-2 text-center">{% trans "Durum" %}</th>
+                      <th class="px-3 py-2 text-center hidden sm:table-cell">{% trans "Stok" %}</th>
+                      <th class="px-3 py-2 text-left hidden md:table-cell">{% trans "Üretim" %}</th>
+                      <th class="px-3 py-2 text-left hidden lg:table-cell">{% trans "Satış Penceresi" %}</th>
+                      <th class="px-3 py-2 text-left hidden md:table-cell">{% trans "SKT" %}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for lot in food._lots %}
+                    <tr class="border-t border-base-200 dark:border-base-700 hover:bg-base-100/60 dark:hover:bg-base-700/30 transition-colors cursor-pointer text-xs"
+                        @click.stop="openModal(FOOD_LOTS['{{ food.id }}'][{{ forloop.counter0 }}])">
+                      <td class="px-3 py-2.5">
+                        <span class="font-mono font-medium text-base-800 dark:text-base-200">{{ lot.lot_number }}</span>
+                      </td>
+                      <td class="px-3 py-2.5 text-center">
+                        {% if lot.status == 'open' or lot.status == 'active' %}
+                          <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">{{ lot.status }}</span>
+                        {% elif lot.status == 'locked' %}
+                          <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">{{ lot.status }}</span>
+                        {% elif lot.status == 'discarded' or lot.status == 'expired' or lot.status == 'recalled' %}
+                          <span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">{{ lot.status }}</span>
+                        {% else %}
+                          <span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">{{ lot.status }}</span>
+                        {% endif %}
+                      </td>
+                      <td class="px-3 py-2.5 text-center hidden sm:table-cell">
+                        <span class="text-base-700 dark:text-base-300 font-medium">{{ lot.quantity_available }}</span>
+                        <span class="text-base-400">/{{ lot.quantity_produced }}</span>
+                      </td>
+                      <td class="px-3 py-2.5 text-base-500 dark:text-base-400 hidden md:table-cell">
+                        {% if lot.produced_at %}{{ lot.produced_at|date:"d.m.Y H:i" }}{% else %}—{% endif %}
+                      </td>
+                      <td class="px-3 py-2.5 text-base-500 dark:text-base-400 hidden lg:table-cell">
+                        {% if lot.sale_starts_at %}{{ lot.sale_starts_at|date:"d.m.Y H:i" }}{% endif %}
+                        {% if lot.sale_starts_at and lot.sale_ends_at %} → {% endif %}
+                        {% if lot.sale_ends_at %}{{ lot.sale_ends_at|date:"d.m.Y H:i" }}{% endif %}
+                        {% if not lot.sale_starts_at and not lot.sale_ends_at %}—{% endif %}
+                      </td>
+                      <td class="px-3 py-2.5 text-base-500 dark:text-base-400 hidden md:table-cell">
+                        {% if lot.use_by %}{{ lot.use_by|date:"d.m.Y H:i" }}{% else %}—{% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="flex items-center gap-2 py-3 text-xs text-base-400">
+                <span class="material-symbols-outlined text-base leading-none">inventory_2</span>
+                {% trans "Bu yemek için lot kaydı bulunamadı." %}
+              </div>
+            {% endif %}
+          </td>
+        </tr>
+
+        {% empty %}
+        <tr>
+          <td colspan="8" class="px-6 py-12 text-center">
+            <span class="material-symbols-outlined text-4xl text-base-300 block mb-2">restaurant_menu</span>
+            <p class="text-base-400">{% trans "Yemek bulunamadı." %}</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>{# /x-data #}
+
+<script>
+function foodsTable() {
+  return {
+    expanded: null,
+    modal: null,
+    toggle(id) {
+      this.expanded = this.expanded === id ? null : id;
+    },
+    openModal(lot) {
+      this.modal = lot;
+    },
+  };
+}
+</script>
+
+{% else %}
+  {{ block.super }}
+{% endif %}
+{% endblock %}
+
+{% block filters %}
+  {# Filters button — transparent style per design system #}
+  {% if cl.has_filters %}
+  <a class="w-full sm:w-auto sm:ml-auto border border-primary-500 dark:border-primary-500 text-primary-600 dark:text-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex font-medium gap-2 items-center justify-center px-3 py-2 rounded-default text-sm"
+     x-on:click="filterOpen = true" x-on:keydown.escape.window="filterOpen = false">
+    {% trans "Filtrele" %}
+    <span class="material-symbols-outlined md-18 ml-auto">filter_list</span>
+  </a>
+  {% endif %}
+{% endblock %}
