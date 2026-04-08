@@ -32,7 +32,7 @@ function parseImageUrls(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
     .map((item) => String(item ?? "").trim())
-    .filter((item) => /^https?:\/\//i.test(item) || /^data:/i.test(item))
+    .filter((item) => /^https?:\/\//i.test(item))
     .slice(0, 5);
 }
 
@@ -40,7 +40,7 @@ function resolvePrimaryFoodImage(imageUrlsValue: unknown, imageUrlFallback: unkn
   const imageUrls = parseImageUrls(imageUrlsValue);
   if (imageUrls.length > 0) return imageUrls[0] ?? null;
   const fallback = String(imageUrlFallback ?? "").trim();
-  return fallback.length > 0 ? fallback : null;
+  return /^https?:\/\//i.test(fallback) ? fallback : null;
 }
 
 function sellerDeliveryOptions(deliveryEnabledValue: unknown): { pickup: boolean; delivery: boolean } {

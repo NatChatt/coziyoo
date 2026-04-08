@@ -86,7 +86,7 @@ def _parse_image_urls(value):
     return [
         str(item).strip()
         for item in value
-        if str(item).strip().startswith(("http://", "https://", "data:"))
+        if str(item).strip().startswith(("http://", "https://"))
     ][:5]
 
 
@@ -95,7 +95,7 @@ def _resolve_primary_food_image(image_urls_value, image_url_fallback):
     if image_urls:
         return image_urls[0]
     fallback = str(image_url_fallback or "").strip()
-    return fallback or None
+    return fallback if fallback.startswith(("http://", "https://")) else None
 
 
 def _parse_menu_items(value, category_map):
