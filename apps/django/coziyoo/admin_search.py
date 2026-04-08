@@ -36,9 +36,9 @@ def admin_global_search(request):
             for r in users:
                 uid, name, email, utype = r
                 if utype == "seller":
-                    url = f"/admin/authentication/users/{uid}/seller-detail/"
+                    url = f"/admin/authentication/sellerusers/{uid}/seller-detail/"
                 else:
-                    url = f"/admin/authentication/users/{uid}/buyer-detail/"
+                    url = f"/admin/authentication/buyerusers/{uid}/buyer-detail/"
                 items.append({
                     "id": uid,
                     "label": name,
