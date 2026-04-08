@@ -10,6 +10,9 @@ class Categories(models.Model):
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
 
+    def __str__(self):
+        return self.name_tr or self.name_en or str(self.id)
+
     class Meta:
         managed = False
         db_table = 'categories'
@@ -56,6 +59,9 @@ class Foods(models.Model):
     menu_items_json = models.JSONField(blank=True, null=True)
     secondary_category_ids_json = models.JSONField(blank=True, null=True)
 
+    def __str__(self):
+        return self.name or str(self.id)
+
     class Meta:
         managed = False
         db_table = 'foods'
@@ -97,6 +103,9 @@ class ProductionLots(models.Model):
     recipe_snapshot = models.TextField(blank=True, null=True)
     ingredients_snapshot_json = models.JSONField(blank=True, null=True)
     allergens_snapshot_json = models.JSONField(blank=True, null=True)
+
+    def __str__(self):
+        return self.lot_number or str(self.id)
 
     class Meta:
         managed = False
