@@ -578,13 +578,18 @@ a {
   stroke-width: 2;
 }
 
+.shell.search-open > :not(.global-search-modal) {
+  filter: blur(4px);
+  transition: filter 0.2s ease;
+  pointer-events: none;
+  user-select: none;
+}
+
 .global-search-modal {
   position: fixed;
   inset: 0;
   z-index: 1800;
-  background: color-mix(in srgb, #0d1320 54%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: color-mix(in srgb, #0d1320 40%, transparent);
 }
 
 .global-search-modal-shell {

@@ -245,7 +245,7 @@ function AppShell({
   )}`;
 
   return (
-    <main className="shell">
+    <main className={`shell${isGlobalSearchModalOpen ? " search-open" : ""}`}>
       <header className="navbar">
         <div className="navbar-left">
           <div className="brand">
