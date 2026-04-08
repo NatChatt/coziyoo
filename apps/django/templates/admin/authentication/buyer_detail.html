@@ -78,10 +78,10 @@
       {% endfor %}
       </div>
       <div class="shrink-0 px-3 py-1.5" x-show="tab !== 'general' && tab !== 'raw'">
-        <div class="relative">
-          <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-base-400 dark:text-base-500">search</span>
+        <div class="bg-white border border-base-200 flex flex-row items-center px-3 rounded-default shadow-xs w-64 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary-600 dark:bg-base-900 dark:border-base-700">
+          <span class="material-symbols-outlined md-18 text-base-400 dark:text-base-500">search</span>
           <input x-model="search" type="text" placeholder="Ara…"
-            class="w-64 rounded-lg border border-base-200 dark:border-base-700 bg-transparent pl-9 pr-4 py-2 text-sm text-base-700 dark:text-base-200 focus:outline-none focus:border-primary-500 dark:focus:border-primary-400 placeholder:text-base-400">
+            class="grow font-medium min-w-0 overflow-hidden p-2 placeholder-font-subtle-light truncate focus:outline-hidden dark:bg-base-900 dark:placeholder-font-subtle-dark dark:text-font-default-dark">
         </div>
       </div>
     </div>
