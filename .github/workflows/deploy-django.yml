@@ -103,7 +103,14 @@ jobs:
                    "${USER}@${HOST}" \
                    "set -euo pipefail
                     cd '${REPO_PATH}'
-                    GIT_UPDATE=true \
+                    git fetch origin '${DEPLOY_BRANCH}'
+                    git checkout '${DEPLOY_BRANCH}'
+                    git pull --rebase --autostash origin '${DEPLOY_BRANCH}' || {
+                      git stash push -m 'deploy-autostash' -- .env installation/config.env 2>/dev/null || true
+                      git pull --ff-only origin '${DEPLOY_BRANCH}'
+                      git stash pop 2>/dev/null || true
+                    }
+                    GIT_UPDATE=false \
                     DEPLOY_BRANCH='${DEPLOY_BRANCH}' \
                     DEPLOY_ADMIN_EMAIL='${DEPLOY_ADMIN_EMAIL}' \
                     DEPLOY_ADMIN_PASSWORD='${DEPLOY_ADMIN_PASSWORD}' \
