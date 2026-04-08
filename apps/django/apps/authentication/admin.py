@@ -268,8 +268,76 @@ class BuyerUsersAdmin(ModelAdmin):
         urls = super().get_urls()
         custom = [
             path("<uuid:user_id>/buyer-detail/", self.admin_site.admin_view(self.buyer_detail_view), name="authentication_buyerusers_buyer_detail"),
+            path("order/<uuid:order_id>/detail/", self.admin_site.admin_view(self.order_detail_view), name="authentication_order_detail"),
         ]
         return custom + urls
+
+    def order_detail_view(self, request, order_id):
+        with connection.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    o.id, o.status, o.delivery_type, o.total_price, o.created_at,
+                    o.delivery_address_json, o.seller_delivery_note, o.payment_completed,
+                    b.display_name AS buyer_name, b.email AS buyer_email,
+                    s.display_name AS seller_name, s.email AS seller_email,
+                    (SELECT COALESCE(json_agg(t ORDER BY t.created_at), '[]'::json) FROM (
+                        SELECT oi.id, f.name AS food_name, oi.quantity,
+                               oi.unit_price, oi.line_total
+                        FROM order_items oi LEFT JOIN foods f ON f.id = oi.food_id
+                        WHERE oi.order_id = o.id
+                    ) t) AS items,
+                    (SELECT COALESCE(json_agg(t ORDER BY t.created_at DESC), '[]'::json) FROM (
+                        SELECT pa.provider, pa.status
+                        FROM payment_attempts pa WHERE pa.order_id = o.id LIMIT 1
+                    ) t) AS payments
+                FROM orders o
+                LEFT JOIN users b ON b.id = o.buyer_id
+                LEFT JOIN users s ON s.id = o.seller_id
+                WHERE o.id = %s
+            """, [str(order_id)])
+            row = cur.fetchone()
+
+        if not row:
+            return JsonResponse({"error": "Not found"}, status=404)
+
+        (oid, status, delivery_type, total_price, created_at,
+         addr_json, delivery_note, payment_completed,
+         buyer_name, buyer_email, seller_name, seller_email,
+         items_json, payments_json) = row
+
+        items = items_json or []
+        for item in items:
+            item["id"] = str(item["id"])
+            item["unit_price"] = str(item["unit_price"])
+            item["line_total"] = str(item["line_total"])
+
+        payment = (payments_json or [{}])[0]
+
+        addr = addr_json or {}
+        address_parts = [p for p in [
+            addr.get("street") or addr.get("address_line") or addr.get("line1"),
+            addr.get("district") or addr.get("neighborhood"),
+            addr.get("city"),
+        ] if p]
+
+        return JsonResponse({
+            "id": str(oid),
+            "status": status,
+            "status_tr": STATUS_TR.get(status, status),
+            "delivery_type": delivery_type,
+            "total_price": str(total_price),
+            "created_at": created_at.strftime("%d.%m.%Y %H:%M") if created_at else None,
+            "payment_completed": payment_completed,
+            "buyer_name": buyer_name,
+            "buyer_email": buyer_email,
+            "seller_name": seller_name,
+            "seller_email": seller_email,
+            "address": ", ".join(address_parts) if address_parts else None,
+            "delivery_note": delivery_note,
+            "payment_provider": payment.get("provider"),
+            "payment_status": payment.get("status"),
+            "items": items,
+        })
 
     def buyer_detail_view(self, request, user_id):
         user = get_object_or_404(Users, pk=user_id)
