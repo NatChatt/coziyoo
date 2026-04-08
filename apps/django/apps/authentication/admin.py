@@ -461,11 +461,14 @@ class SellerUsersAdmin(ModelAdmin):
             cur.execute(f"SELECT count(*)::int FROM users WHERE user_type IN ({ph}) AND is_active = TRUE", list(types))
             total = cur.fetchone()[0]
 
-            cur.execute(f"""
-                SELECT count(*)::int FROM users
-                WHERE user_type IN ({ph}) AND is_active = TRUE
-                  AND seller_profile_status = 'pending'
-            """, list(types))
+            cur.execute("""
+                SELECT count(DISTINCT scd.seller_id)::int
+                FROM seller_compliance_documents scd
+                JOIN users u ON u.id = scd.seller_id
+                WHERE scd.status = 'uploaded'
+                  AND u.user_type IN ('seller', 'both')
+                  AND u.is_active = TRUE
+            """)
             pending_approvals = cur.fetchone()[0]
 
             cur.execute(f"""
@@ -505,6 +508,7 @@ class SellerUsersAdmin(ModelAdmin):
             path("<uuid:user_id>/seller-detail/", self.admin_site.admin_view(self.seller_detail_view), name="authentication_sellerusers_seller_detail"),
             path("<uuid:seller_id>/compliance/presign/", self.admin_site.admin_view(self.compliance_presign_view), name="authentication_sellerusers_compliance_presign"),
             path("<uuid:seller_id>/compliance/confirm/", self.admin_site.admin_view(self.compliance_confirm_view), name="authentication_sellerusers_compliance_confirm"),
+            path("<uuid:seller_id>/compliance/review/", self.admin_site.admin_view(self.compliance_review_view), name="authentication_sellerusers_compliance_review"),
         ]
         return custom + urls
 
@@ -539,13 +543,14 @@ class SellerUsersAdmin(ModelAdmin):
             rrow = cur.fetchone()
 
             cur.execute("""
-                SELECT cdl.id::text, cdl.code, cdl.name,
-                       scd.id::text AS doc_id, scd.status, scd.uploaded_at, scd.file_url
+                SELECT cdl.id::text, cdl.code, cdl.name, cdl.is_required_default,
+                       scd.id::text AS doc_id, scd.status, scd.uploaded_at, scd.file_url,
+                       scd.rejection_reason
                 FROM compliance_documents_list cdl
                 LEFT JOIN seller_compliance_documents scd
                     ON scd.document_list_id = cdl.id AND scd.seller_id = %s
                 WHERE cdl.is_active = TRUE
-                ORDER BY cdl.name
+                ORDER BY cdl.is_required_default DESC, cdl.name
             """, [user_id])
             compliance_docs = []
             for r in cur.fetchall():
@@ -553,11 +558,13 @@ class SellerUsersAdmin(ModelAdmin):
                     "document_list_id": r[0],
                     "code": r[1],
                     "name": r[2],
-                    "doc_id": r[3],
-                    "status": r[4] or "not_uploaded",
-                    "status_tr": STATUS_TR.get(r[4], r[4]) if r[4] else "Yüklenmedi",
-                    "uploaded_at": r[5],
-                    "file_url": s3_utils.hydrate_file_url(r[6]) if r[6] else None,
+                    "is_required": r[3],
+                    "doc_id": r[4],
+                    "status": r[5] or "not_uploaded",
+                    "status_tr": STATUS_TR.get(r[5], r[5]) if r[5] else "Yüklenmedi",
+                    "uploaded_at": r[6],
+                    "file_url": s3_utils.hydrate_file_url(r[7]) if r[7] else None,
+                    "rejection_reason": r[8] or "",
                 })
 
             cur.execute("""
@@ -611,8 +618,8 @@ class SellerUsersAdmin(ModelAdmin):
         }
 
         compliance_summary = {
-            "total": len(compliance_docs),
-            "approved": sum(1 for d in compliance_docs if d["status"] == "approved"),
+            "total": sum(1 for d in compliance_docs if d["is_required"]),
+            "approved": sum(1 for d in compliance_docs if d["is_required"] and d["status"] == "approved"),
         }
 
         tabs = [
@@ -717,6 +724,44 @@ class SellerUsersAdmin(ModelAdmin):
         preview_url = s3_utils.hydrate_file_url(file_url) if s3_utils.is_configured() else None
 
         return JsonResponse({"id": str(row[0]), "status": "uploaded", "preview_url": preview_url})
+
+    def compliance_review_view(self, request, seller_id):
+        if request.method != "POST":
+            return JsonResponse({"error": "Method not allowed"}, status=405)
+        try:
+            data = json.loads(request.body)
+        except (ValueError, KeyError):
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        doc_id = data.get("doc_id")
+        action = data.get("action")
+        rejection_reason = data.get("rejection_reason", "") or ""
+
+        if not doc_id or action not in ("approved", "rejected"):
+            return JsonResponse({"error": "doc_id and action (approved/rejected) required"}, status=400)
+
+        if action == "rejected" and len(rejection_reason.strip()) < 3:
+            return JsonResponse({"error": "Rejection reason must be at least 3 characters"}, status=400)
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE seller_compliance_documents
+                SET status = %s,
+                    rejection_reason = %s,
+                    reviewed_at = now(),
+                    updated_at = now()
+                WHERE id = %s AND seller_id = %s
+                RETURNING id, status
+                """,
+                [action, rejection_reason.strip() if action == "rejected" else None, doc_id, str(seller_id)],
+            )
+            row = cur.fetchone()
+
+        if not row:
+            return JsonResponse({"error": "Document not found"}, status=404)
+
+        return JsonResponse({"id": str(row[0]), "status": row[1]})
 
     @display(description=_("Name"), ordering="display_name")
     def display_name_link(self, obj):

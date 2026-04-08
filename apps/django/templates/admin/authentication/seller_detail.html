@@ -232,12 +232,17 @@
 
       {% if compliance_docs %}
         <script>
-          function docRow(docListId, docCode, sellerId, initialPreviewUrl, initialStatus) {
+          function docRow(docListId, docCode, sellerId, initialPreviewUrl, initialStatus, initialDocId, initialRejectionReason) {
             return {
               docListId, docCode, sellerId,
               previewUrl: initialPreviewUrl,
               status: initialStatus,
+              docId: initialDocId || null,
+              rejectionReason: initialRejectionReason || '',
               uploading: false,
+              reviewing: false,
+              rejectMode: false,
+              rejectInput: '',
               error: '',
               get statusClass() {
                 return {
@@ -256,15 +261,14 @@
                 const map = {approved:'{% trans "Approved" %}', uploaded:'{% trans "Uploaded" %}', rejected:'{% trans "Rejected" %}', not_uploaded:'{% trans "Not Uploaded" %}', requested:'{% trans "Requested" %}'};
                 return map[this.status] || this.status;
               },
-              triggerUpload(input) { input.value = ''; input.click(); },
+              csrf() { return (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''; },
               async handleFile(file, input) {
                 if (!file) return;
                 this.uploading = true; this.error = '';
                 try {
-                  const csrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
                   const r1 = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/presign/`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': this.csrf()},
                     body: JSON.stringify({docType: this.docCode, fileName: file.name, contentType: file.type || 'application/octet-stream'})
                   });
                   if (!r1.ok) { const e = await r1.json(); throw new Error(e.error || 'Presign failed'); }
@@ -273,18 +277,58 @@
                   if (!r2.ok) throw new Error('{% trans "Storage upload failed" %}');
                   const r3 = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/confirm/`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': this.csrf()},
                     body: JSON.stringify({document_list_id: this.docListId, file_url})
                   });
                   if (!r3.ok) { const e = await r3.json(); throw new Error(e.error || 'Confirm failed'); }
                   const res = await r3.json();
+                  this.docId = res.id;
                   this.status = 'uploaded';
                   this.previewUrl = res.preview_url || null;
+                  this.rejectionReason = '';
                 } catch (e) {
                   this.error = e.message;
                 } finally {
                   this.uploading = false;
                   input.value = '';
+                }
+              },
+              async approve() {
+                if (!this.docId) return;
+                this.reviewing = true; this.error = '';
+                try {
+                  const r = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/review/`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': this.csrf()},
+                    body: JSON.stringify({doc_id: this.docId, action: 'approved'})
+                  });
+                  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Review failed'); }
+                  this.status = 'approved';
+                  this.rejectionReason = '';
+                } catch (e) {
+                  this.error = e.message;
+                } finally {
+                  this.reviewing = false;
+                }
+              },
+              async reject() {
+                if (!this.docId || this.rejectInput.trim().length < 3) return;
+                this.reviewing = true; this.error = '';
+                try {
+                  const r = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/review/`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': this.csrf()},
+                    body: JSON.stringify({doc_id: this.docId, action: 'rejected', rejection_reason: this.rejectInput.trim()})
+                  });
+                  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Review failed'); }
+                  this.status = 'rejected';
+                  this.rejectionReason = this.rejectInput.trim();
+                  this.rejectMode = false;
+                  this.rejectInput = '';
+                } catch (e) {
+                  this.error = e.message;
+                } finally {
+                  this.reviewing = false;
                 }
               }
             };
@@ -293,53 +337,100 @@
 
         <div class="space-y-2">
           {% for doc in compliance_docs %}
-          <div x-data="docRow('{{ doc.document_list_id }}', '{{ doc.code }}', '{{ user_obj.id }}', '{{ doc.file_url|default:''|escapejs }}', '{{ doc.status }}')"
-               class="flex items-center justify-between border border-base-200 dark:border-base-700 rounded-lg px-4 py-3 transition-colors hover:bg-base-50 dark:hover:bg-base-800/50">
+          <div x-data="docRow('{{ doc.document_list_id }}', '{{ doc.code }}', '{{ user_obj.id }}', '{{ doc.file_url|default:''|escapejs }}', '{{ doc.status }}', '{{ doc.doc_id|default:''|escapejs }}', '{{ doc.rejection_reason|escapejs }}')"
+               class="border border-base-200 dark:border-base-700 rounded-lg transition-colors">
 
-            {# Left: icon + name + status pill #}
-            <div class="flex items-center gap-3 min-w-0">
-              <span class="material-symbols-outlined text-base shrink-0"
-                    :class="statusIconClass"
-                    x-text="statusIcon"></span>
-              <span class="text-sm font-medium text-base-800 dark:text-base-200">{{ doc.name }}</span>
-              {% if doc.uploaded_at %}
-                <span class="text-xs text-base-400 shrink-0">{{ doc.uploaded_at|date:"d.m.Y" }}</span>
-              {% endif %}
-              <span class="px-2 py-0.5 rounded text-xs font-medium shrink-0"
-                    :class="statusClass"
-                    x-text="statusLabel"></span>
-              <span x-show="error" x-cloak x-text="error"
-                    class="text-xs text-rose-500 truncate max-w-[160px]"></span>
+            {# Main row #}
+            <div class="flex items-center justify-between px-4 py-3 hover:bg-base-50 dark:hover:bg-base-800/50 transition-colors">
+
+              {# Left: icon + name + date + status pill + rejection reason #}
+              <div class="flex items-center gap-3 min-w-0 flex-wrap">
+                <span class="material-symbols-outlined text-base shrink-0"
+                      :class="statusIconClass"
+                      x-text="statusIcon"></span>
+                <span class="text-sm font-medium text-base-800 dark:text-base-200">{{ doc.name }}</span>
+                {% if not doc.is_required %}
+                  <span class="text-xs text-base-400 shrink-0">{% trans "Optional" %}</span>
+                {% endif %}
+                {% if doc.uploaded_at %}
+                  <span class="text-xs text-base-400 shrink-0">{{ doc.uploaded_at|date:"d.m.Y" }}</span>
+                {% endif %}
+                <span class="px-2 py-0.5 rounded text-xs font-medium shrink-0"
+                      :class="statusClass"
+                      x-text="statusLabel"></span>
+                <span x-show="rejectionReason && status === 'rejected'" x-cloak
+                      class="text-xs text-rose-500 truncate max-w-[220px]"
+                      x-text="'&#8594; ' + rejectionReason"></span>
+                <span x-show="error" x-cloak x-text="error"
+                      class="text-xs text-rose-500 truncate max-w-[160px]"></span>
+              </div>
+
+              {# Right: Review + Upload + Preview #}
+              <div class="flex items-center gap-2 shrink-0 ml-3">
+
+                {# Approve button — only for uploaded docs #}
+                <button x-show="status === 'uploaded' && docId && !rejectMode" x-cloak
+                        @click="approve()"
+                        :disabled="reviewing"
+                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50">
+                  <span class="material-symbols-outlined text-xs leading-none">check</span>
+                  {% trans "Approve" %}
+                </button>
+
+                {# Reject toggle — only for uploaded docs #}
+                <button x-show="status === 'uploaded' && docId && !rejectMode" x-cloak
+                        @click="rejectMode = true"
+                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors">
+                  <span class="material-symbols-outlined text-xs leading-none">close</span>
+                  {% trans "Reject" %}
+                </button>
+
+                {# Upload — label wraps hidden file input #}
+                {% if s3_configured %}
+                <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 transition-colors"
+                       :class="(uploading || rejectMode) ? 'opacity-50 pointer-events-none' : 'cursor-pointer'">
+                  <span class="material-symbols-outlined text-sm leading-none"
+                        :class="uploading ? 'animate-spin' : ''"
+                        x-text="uploading ? 'progress_activity' : 'upload_file'"></span>
+                  <span x-text="uploading ? '{% trans "Uploading..." %}' : '{% trans "Upload" %}'"></span>
+                  <input type="file" accept="image/*,.pdf" class="hidden"
+                         @change="handleFile($event.target.files[0], $event.target)">
+                </label>
+                {% endif %}
+
+                {# Preview #}
+                <button @click="previewUrl && window.open(previewUrl, '_blank')"
+                        :disabled="!previewUrl"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                        :class="previewUrl
+                          ? 'border-base-300 dark:border-base-600 text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 cursor-pointer'
+                          : 'border-base-200 dark:border-base-700 text-base-300 dark:text-base-600 cursor-not-allowed'">
+                  <span class="material-symbols-outlined text-sm leading-none">visibility</span>
+                  {% trans "Preview" %}
+                </button>
+
+              </div>
             </div>
 
-            {# Right: Upload + Preview buttons #}
-            <div class="flex items-center gap-2 shrink-0">
-
-              {# Upload — label wraps hidden file input #}
-              {% if s3_configured %}
-              <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 transition-colors"
-                     :class="uploading ? 'opacity-50 pointer-events-none' : 'cursor-pointer'">
-                <span class="material-symbols-outlined text-sm leading-none"
-                      :class="uploading ? 'animate-spin' : ''"
-                      x-text="uploading ? 'progress_activity' : 'upload_file'"></span>
-                <span x-text="uploading ? '{% trans "Uploading..." %}' : '{% trans "Upload" %}'"></span>
-                <input type="file" accept="image/*,.pdf" class="hidden"
-                       @change="handleFile($event.target.files[0], $event.target)">
-              </label>
-              {% endif %}
-
-              {# Preview #}
-              <button @click="previewUrl && window.open(previewUrl, '_blank')"
-                      :disabled="!previewUrl"
-                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
-                      :class="previewUrl
-                        ? 'border-base-300 dark:border-base-600 text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 cursor-pointer'
-                        : 'border-base-200 dark:border-base-700 text-base-300 dark:text-base-600 cursor-not-allowed'">
-                <span class="material-symbols-outlined text-sm leading-none">visibility</span>
-                {% trans "Preview" %}
+            {# Inline reject form #}
+            <div x-show="rejectMode" x-cloak
+                 class="flex items-center gap-2 px-4 pb-3 border-t border-base-100 dark:border-base-800 pt-3">
+              <span class="material-symbols-outlined text-sm text-rose-500">cancel</span>
+              <input type="text" x-model="rejectInput"
+                     placeholder="{% trans "Rejection reason (min. 3 characters)..." %}"
+                     class="flex-1 px-3 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm bg-white dark:bg-base-800 text-base-800 dark:text-base-200 focus:outline-none focus:border-primary-500">
+              <button @click="reject()"
+                      :disabled="reviewing || rejectInput.trim().length < 3"
+                      class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors disabled:opacity-50">
+                <span class="material-symbols-outlined text-xs leading-none" x-text="reviewing ? 'progress_activity' : 'check'"></span>
+                {% trans "Confirm" %}
               </button>
-
+              <button @click="rejectMode = false; rejectInput = ''"
+                      class="inline-flex items-center px-3 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-xs font-medium text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                {% trans "Cancel" %}
+              </button>
             </div>
+
           </div>
           {% endfor %}
         </div>

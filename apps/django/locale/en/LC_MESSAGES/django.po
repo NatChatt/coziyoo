@@ -353,3 +353,18 @@ msgstr "Not Uploaded"
 
 msgid "Requested"
 msgstr "Requested"
+
+msgid "Optional"
+msgstr "Optional"
+
+msgid "Approve"
+msgstr "Approve"
+
+msgid "Reject"
+msgstr "Reject"
+
+msgid "Confirm"
+msgstr "Confirm"
+
+msgid "Rejection reason (min. 3 characters)..."
+msgstr "Rejection reason (min. 3 characters)..."
