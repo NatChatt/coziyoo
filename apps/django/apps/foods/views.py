@@ -9,6 +9,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+_COLUMN_EXISTS_CACHE = {}
+
 
 class IsAppRealm(IsAuthenticated):
     def has_permission(self, request, view):
@@ -38,6 +40,30 @@ def _coerce_json(value):
         except (TypeError, ValueError):
             return value
     return value
+
+
+def _has_public_column(table_name, column_name):
+    cache_key = (table_name, column_name)
+    if cache_key in _COLUMN_EXISTS_CACHE:
+        return _COLUMN_EXISTS_CACHE[cache_key]
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = %s
+                      AND column_name = %s
+                )
+            """,
+            [table_name, column_name],
+        )
+        exists = bool(cursor.fetchone()[0])
+
+    _COLUMN_EXISTS_CACHE[cache_key] = exists
+    return exists
 
 
 def _parse_text_list(value):
@@ -262,6 +288,11 @@ class FoodListView(APIView):
         seller_id = request.query_params.get("sellerId")
 
         category_name = request.query_params.get("category")
+        seller_home_card_image_sql = (
+            "u.home_card_image_url AS seller_home_card_image"
+            if _has_public_column("users", "home_card_image_url")
+            else "NULL::text AS seller_home_card_image"
+        )
 
         where_clauses = [
             "f.is_active = TRUE",
@@ -314,7 +345,7 @@ class FoodListView(APIView):
                 u.display_name AS seller_name,
                 u.username AS seller_username,
                 u.profile_image_url AS seller_image,
-                u.home_card_image_url AS seller_home_card_image,
+                {seller_home_card_image_sql},
                 {_stock_sql("f")} AS stock
             FROM foods f
             JOIN users u ON u.id = f.seller_id
@@ -400,7 +431,12 @@ class SellerFoodsView(APIView):
     permission_classes = [IsAppRealm]
 
     def get(self, request, seller_id):
-        sql = """
+        seller_home_card_image_sql = (
+            "u.home_card_image_url AS seller_home_card_image"
+            if _has_public_column("users", "home_card_image_url")
+            else "NULL::text AS seller_home_card_image"
+        )
+        sql = f"""
             SELECT
                 f.id,
                 f.name,
@@ -426,7 +462,7 @@ class SellerFoodsView(APIView):
                 u.display_name AS seller_name,
                 u.username AS seller_username,
                 u.profile_image_url AS seller_image,
-                u.home_card_image_url AS seller_home_card_image,
+                {seller_home_card_image_sql},
                 {_stock_sql("f")} AS stock
             FROM foods f
             JOIN users u ON u.id = f.seller_id
