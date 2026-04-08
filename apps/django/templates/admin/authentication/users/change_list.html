@@ -52,6 +52,46 @@
     </a>
   </div>
 </div>
+{% elif admin_stats %}
+<div class="mb-4">
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <div class="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 dark:border-blue-800 dark:bg-blue-950/40">
+      <span class="material-symbols-outlined text-blue-500 dark:text-blue-400">group</span>
+      <div>
+        <div class="text-xs font-medium text-blue-600 dark:text-blue-300 uppercase tracking-wide">{% trans "Total Admins" %}</div>
+        <div class="text-2xl font-bold text-blue-800 dark:text-blue-100">{{ admin_stats.total_admins }}</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 dark:border-emerald-800 dark:bg-emerald-950/40">
+      <span class="material-symbols-outlined text-emerald-500 dark:text-emerald-400">verified_user</span>
+      <div>
+        <div class="text-xs font-medium text-emerald-600 dark:text-emerald-300 uppercase tracking-wide">{% trans "Super Admins" %}</div>
+        <div class="text-2xl font-bold text-emerald-800 dark:text-emerald-100">{{ admin_stats.super_admin_count }}</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 dark:border-amber-800 dark:bg-amber-950/40">
+      <span class="material-symbols-outlined text-amber-500 dark:text-amber-400">manage_accounts</span>
+      <div>
+        <div class="text-xs font-medium text-amber-600 dark:text-amber-300 uppercase tracking-wide">{% trans "Admins" %}</div>
+        <div class="text-2xl font-bold text-amber-800 dark:text-amber-100">{{ admin_stats.admin_count }}</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 rounded-xl border border-base-200 bg-base-50 px-5 py-3 dark:border-base-700 dark:bg-base-800/40">
+      <span class="material-symbols-outlined text-base-500 dark:text-base-400">person</span>
+      <div>
+        <div class="text-xs font-medium text-base-600 dark:text-base-300 uppercase tracking-wide">{% trans "Users" %}</div>
+        <div class="text-2xl font-bold text-base-800 dark:text-base-100">{{ admin_stats.user_count }}</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 dark:border-rose-800 dark:bg-rose-950/40">
+      <span class="material-symbols-outlined text-rose-500 dark:text-rose-400">person_off</span>
+      <div>
+        <div class="text-xs font-medium text-rose-600 dark:text-rose-300 uppercase tracking-wide">{% trans "Inactive" %}</div>
+        <div class="text-2xl font-bold text-rose-800 dark:text-rose-100">{{ admin_stats.inactive_count }}</div>
+      </div>
+    </div>
+  </div>
+</div>
 {% elif buyer_stats %}
 <div class="mb-4 space-y-3">
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">

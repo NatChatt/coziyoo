@@ -1021,11 +1021,24 @@ admin.site.unregister(Group)
 
 @admin.register(User)
 class CoziyooUserAdmin(ModelAdmin):
+    change_list_template = "admin/authentication/users/change_list.html"
     list_display = ["username", "email", "first_name", "last_name", "display_role", "is_active", "last_login", "date_joined"]
     list_filter = ["is_active", "groups"]
     search_fields = ["username", "email", "first_name", "last_name"]
     ordering = ["-date_joined"]
     filter_horizontal = ["groups"]
+
+    def changelist_view(self, request, extra_context=None):
+        all_staff = list(User.objects.filter(is_staff=True).order_by("username"))
+        extra_context = extra_context or {}
+        extra_context["admin_stats"] = {
+            "total_admins": len(all_staff),
+            "super_admin_count": sum(1 for u in all_staff if _get_user_role(u) == "super_admin"),
+            "admin_count": sum(1 for u in all_staff if _get_user_role(u) == "admin"),
+            "user_count": sum(1 for u in all_staff if _get_user_role(u) == "user"),
+            "inactive_count": sum(1 for u in all_staff if not u.is_active),
+        }
+        return super().changelist_view(request, extra_context=extra_context)
 
     def get_fieldsets(self, request, obj=None):
         if obj is None:
