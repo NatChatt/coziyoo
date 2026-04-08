@@ -3,6 +3,8 @@ import json
 from collections import defaultdict
 
 from django.contrib import admin
+from django.http import JsonResponse
+from django.urls import path
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
@@ -94,6 +96,49 @@ class FoodsAdmin(ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+    def get_urls(self):
+        urls = super().get_urls()
+        extra = [
+            path(
+                "<uuid:food_id>/modal-detail/",
+                self.admin_site.admin_view(self.food_modal_detail),
+                name="menu_foods_modal_detail",
+            ),
+        ]
+        return extra + urls
+
+    def food_modal_detail(self, request, food_id):
+        try:
+            food = Foods.objects.select_related("seller", "category").get(pk=food_id)
+        except Foods.DoesNotExist:
+            return JsonResponse({"error": "not found"}, status=404)
+
+        lot_count = ProductionLots.objects.filter(food_id=food_id).count()
+
+        data = {
+            "id": str(food.id),
+            "name": food.name,
+            "seller": food.seller.display_name if food.seller else "—",
+            "category": food.category.name_tr if food.category else "—",
+            "price": str(food.price),
+            "rating": str(food.rating) if food.rating else None,
+            "review_count": food.review_count,
+            "favorite_count": food.favorite_count,
+            "is_active": food.is_active,
+            "image_url": food.image_url or "",
+            "card_summary": food.card_summary or "",
+            "description": food.description or "",
+            "recipe": food.recipe or "",
+            "ingredients": food.ingredients_json if isinstance(food.ingredients_json, list) else [],
+            "allergens": food.allergens_json if isinstance(food.allergens_json, list) else [],
+            "preparation_time_minutes": food.preparation_time_minutes,
+            "serving_size": food.serving_size or "",
+            "cuisine": food.cuisine or "",
+            "created_at": _fmt(food.created_at),
+            "lot_count": lot_count,
+        }
+        return JsonResponse(data)
 
     fieldsets = [
         ("Food", {"fields": ["id", "name", "seller", "category", "price", "is_active"]}),

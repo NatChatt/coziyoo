@@ -283,6 +283,220 @@ const FOOD_LOTS = {{ food_lots_json|safe }};
     </div>
   </template>
 
+  {# ── Food Detail Modal ── #}
+  <template x-teleport="body">
+    <div x-show="foodModal || foodModalLoading" x-cloak
+         class="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto p-4"
+         style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)"
+         @keydown.escape.window="foodModal = null; foodModalLoading = false"
+         @click.self="foodModal = null; foodModalLoading = false"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+
+      <div class="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-base-900 shadow-2xl border border-base-200 dark:border-base-700"
+           @click.stop
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+           x-transition:enter-end="opacity-100 scale-100 translate-y-0">
+
+        <div x-show="foodModalLoading" class="flex items-center justify-center py-16 px-10 gap-3 text-base-400 dark:text-base-500">
+          <span class="material-symbols-outlined text-2xl animate-spin leading-none">progress_activity</span>
+          <span class="text-sm">{% trans "Yükleniyor..." %}</span>
+        </div>
+
+        <template x-if="foodModal">
+          <div class="flex flex-col max-h-[88vh]">
+
+            {# ── Header ── #}
+            <div class="shrink-0 flex items-center justify-between gap-4 px-6 py-4 border-b border-base-200 dark:border-base-700">
+              <div class="min-w-0 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-base-100 dark:bg-base-800 flex items-center justify-center shrink-0 overflow-hidden">
+                  <template x-if="foodModal.image_url">
+                    <img :src="foodModal.image_url" class="w-9 h-9 object-cover" onerror="this.style.display='none'">
+                  </template>
+                  <template x-if="!foodModal.image_url">
+                    <span class="material-symbols-outlined text-lg text-base-500 dark:text-base-400 leading-none">restaurant</span>
+                  </template>
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-semibold text-base-900 dark:text-white text-sm leading-tight" x-text="foodModal.name"></span>
+                    <span x-text="foodModal.is_active ? 'Aktif' : 'Pasif'"
+                          :style="foodModal.is_active
+                            ? 'background:#dcfce7;color:#166534;padding:1px 8px;border-radius:999px;font-size:10px;font-weight:700'
+                            : 'background:#f1f5f9;color:#64748b;padding:1px 8px;border-radius:999px;font-size:10px;font-weight:700'"></span>
+                  </div>
+                  <div class="text-xs text-base-400 dark:text-base-500 mt-0.5 truncate" x-text="foodModal.seller"></div>
+                </div>
+              </div>
+              <button @click="foodModal = null"
+                      class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-base-400 dark:text-base-500 hover:bg-base-100 dark:hover:bg-base-800 hover:text-base-600 dark:hover:text-base-300 transition-colors">
+                <span class="material-symbols-outlined text-lg leading-none">close</span>
+              </button>
+            </div>
+
+            {# ── Body ── #}
+            <div class="overflow-y-auto flex-1 p-4">
+              <div class="grid grid-cols-2 gap-3 items-start">
+
+                {# LEFT #}
+                <div class="flex flex-col gap-3">
+
+                  {# Subcard: Genel Bilgi #}
+                  <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+                    <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                      <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">info</span>
+                      <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Genel" %}</span>
+                    </div>
+                    <div class="p-3.5 flex flex-col gap-2.5">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Fiyat" %}</span>
+                        <span class="text-sm font-bold text-base-900 dark:text-white" x-text="'₺' + foodModal.price"></span>
+                      </div>
+                      <template x-if="foodModal.rating">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Puan" %}</span>
+                          <span class="text-sm font-semibold text-amber-500" x-text="'★ ' + foodModal.rating + '  (' + foodModal.review_count + ')'"></span>
+                        </div>
+                      </template>
+                      <template x-if="foodModal.category">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Kategori" %}</span>
+                          <span class="text-xs text-base-700 dark:text-base-300" x-text="foodModal.category"></span>
+                        </div>
+                      </template>
+                      <template x-if="foodModal.cuisine">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Mutfak" %}</span>
+                          <span class="text-xs text-base-700 dark:text-base-300" x-text="foodModal.cuisine"></span>
+                        </div>
+                      </template>
+                      <template x-if="foodModal.preparation_time_minutes">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Hazırlık" %}</span>
+                          <span class="text-xs text-base-700 dark:text-base-300" x-text="foodModal.preparation_time_minutes + ' dk'"></span>
+                        </div>
+                      </template>
+                      <template x-if="foodModal.serving_size">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Porsiyon" %}</span>
+                          <span class="text-xs text-base-700 dark:text-base-300" x-text="foodModal.serving_size"></span>
+                        </div>
+                      </template>
+                      <div class="flex items-center justify-between">
+                        <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Lot" %}</span>
+                        <span class="text-xs text-base-700 dark:text-base-300" x-text="foodModal.lot_count"></span>
+                      </div>
+                      <template x-if="foodModal.favorite_count">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Favori" %}</span>
+                          <span class="text-xs text-base-700 dark:text-base-300" x-text="foodModal.favorite_count"></span>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+
+                  {# Subcard: Alerjenler #}
+                  <template x-if="foodModal.allergens && foodModal.allergens.length > 0">
+                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                        <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">warning</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Alerjenler" %}</span>
+                      </div>
+                      <div class="p-3.5 flex flex-wrap gap-1">
+                        <template x-for="a in foodModal.allergens" :key="a">
+                          <span class="px-2 py-0.5 rounded-full text-[11px] font-medium"
+                                style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d"
+                                x-text="a"></span>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+
+                </div>{# /left #}
+
+                {# RIGHT #}
+                <div class="flex flex-col gap-3">
+
+                  {# Subcard: Açıklama #}
+                  <template x-if="foodModal.card_summary || foodModal.description">
+                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                        <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">description</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Açıklama" %}</span>
+                      </div>
+                      <div class="p-3.5 flex flex-col gap-2">
+                        <template x-if="foodModal.card_summary">
+                          <p class="text-xs text-base-700 dark:text-base-200 font-medium leading-relaxed" x-text="foodModal.card_summary"></p>
+                        </template>
+                        <template x-if="foodModal.description && foodModal.description !== foodModal.card_summary">
+                          <p class="text-xs text-base-500 dark:text-base-400 leading-relaxed" x-text="foodModal.description"></p>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+
+                  {# Subcard: Malzemeler #}
+                  <template x-if="foodModal.ingredients && foodModal.ingredients.length > 0">
+                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                        <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">nutrition</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Malzemeler" %}</span>
+                      </div>
+                      <div class="p-3.5 flex flex-wrap gap-1">
+                        <template x-for="ing in foodModal.ingredients" :key="ing">
+                          <span class="px-2 py-0.5 rounded-full text-[11px] text-base-600 dark:text-base-300"
+                                style="background:#f8fafc;border:1px solid #e2e8f0"
+                                x-text="ing"></span>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+
+                  {# Subcard: Tarif #}
+                  <template x-if="foodModal.recipe">
+                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                        <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">menu_book</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Tarif" %}</span>
+                      </div>
+                      <div class="p-3.5 text-xs text-base-600 dark:text-base-300 whitespace-pre-wrap max-h-32 overflow-y-auto leading-relaxed"
+                           x-text="foodModal.recipe"></div>
+                    </div>
+                  </template>
+
+                </div>{# /right #}
+
+              </div>
+            </div>{# /body #}
+
+            {# ── Footer ── #}
+            <div class="shrink-0 flex items-center justify-between px-5 py-3 border-t border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50 rounded-b-2xl">
+              <span class="text-[10px] text-base-400 dark:text-base-500" x-text="'Eklendi: ' + (foodModal.created_at || '—')"></span>
+              <div class="flex items-center gap-2">
+                <button @click="foodModal = null"
+                        class="px-4 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-600 dark:text-base-300 hover:bg-base-100 dark:hover:bg-base-700 transition-colors">
+                  {% trans "Kapat" %}
+                </button>
+                <a :href="'/admin/menu/foods/' + foodModal.id + '/change/'"
+                   @click="foodModal = null"
+                   class="px-4 py-1.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm leading-none">edit</span>
+                  {% trans "Düzenle" %}
+                </a>
+              </div>
+            </div>
+
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+
   {# ── Foods Table ── #}
   <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
     <table class="w-full text-sm">
@@ -367,13 +581,12 @@ const FOOD_LOTS = {{ food_lots_json|safe }};
             {% endif %}
           </td>
 
-          {# Edit link #}
+          {# View detail #}
           <td class="px-3 py-3 text-right">
-            <a href="{% url 'admin:menu_foods_change' food.id %}"
-               @click.stop
-               class="text-base-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
-              <span class="material-symbols-outlined text-base leading-none">edit</span>
-            </a>
+            <button @click.stop="fetchFoodDetail('{{ food.id }}')"
+                    class="text-base-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+              <span class="material-symbols-outlined text-base leading-none">visibility</span>
+            </button>
           </td>
         </tr>
 
@@ -465,11 +678,25 @@ function foodsTable() {
   return {
     expanded: null,
     modal: null,
+    foodModal: null,
+    foodModalLoading: false,
     toggle(id) {
       this.expanded = this.expanded === id ? null : id;
     },
     openModal(lot) {
       this.modal = lot;
+    },
+    async fetchFoodDetail(foodId) {
+      this.foodModal = null;
+      this.foodModalLoading = true;
+      try {
+        const resp = await fetch(`/admin/menu/foods/${foodId}/modal-detail/`);
+        if (resp.ok) {
+          this.foodModal = await resp.json();
+        }
+      } finally {
+        this.foodModalLoading = false;
+      }
     },
   };
 }
