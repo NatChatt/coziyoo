@@ -680,6 +680,17 @@ function foodsTable() {
     modal: null,
     foodModal: null,
     foodModalLoading: false,
+    init() {
+      const params = new URLSearchParams(window.location.search);
+      const openFood = params.get('open_food');
+      if (openFood) {
+        this.fetchFoodDetail(openFood);
+        // Clean up URL without reloading
+        const url = new URL(window.location.href);
+        url.searchParams.delete('open_food');
+        window.history.replaceState({}, '', url);
+      }
+    },
     toggle(id) {
       this.expanded = this.expanded === id ? null : id;
     },
