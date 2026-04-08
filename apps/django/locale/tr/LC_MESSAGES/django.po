@@ -318,3 +318,9 @@ msgstr "Yorumlar"
 
 msgid "Şikayetler"
 msgstr "Şikayetler"
+
+msgid "General"
+msgstr "Genel"
+
+msgid "Raw Data"
+msgstr "Ham Veri"

@@ -596,9 +596,9 @@ class SellerUsersAdmin(ModelAdmin):
         }
 
         tabs = [
-            ("general", "Genel"), ("foods", "Yemekler"), ("orders", "Siparişler"),
-            ("compliance", "Uyumluluk"), ("reviews", "Yorumlar"),
-            ("complaints", "Şikayetler"), ("raw", "Ham Veri"),
+            ("general", _("General")), ("foods", _("Foods")), ("orders", _("Orders")),
+            ("compliance", _("Compliance")), ("reviews", _("Reviews")),
+            ("complaints", _("Complaints")), ("raw", _("Raw Data")),
         ]
 
         raw_data = {

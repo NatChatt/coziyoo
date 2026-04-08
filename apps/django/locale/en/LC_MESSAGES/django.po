@@ -317,3 +317,9 @@ msgstr "Reviews"
 
 msgid "Şikayetler"
 msgstr "Complaints"
+
+msgid "General"
+msgstr "General"
+
+msgid "Raw Data"
+msgstr "Raw Data"
