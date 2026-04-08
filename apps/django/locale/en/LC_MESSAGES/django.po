@@ -265,6 +265,24 @@ msgstr "No results"
 msgid "Total"
 msgstr "Total"
 
+msgid "Total Sellers"
+msgstr "Total Sellers"
+
+msgid "Total Buyers"
+msgstr "Total Buyers"
+
+msgid "Pending Approvals"
+msgstr "Pending Approvals"
+
+msgid "New Sellers Today"
+msgstr "New Sellers Today"
+
+msgid "Active Buyers"
+msgstr "Active Buyers"
+
+msgid "Risky Buyers"
+msgstr "Risky Buyers"
+
 msgid "Risky"
 msgstr "Risky"
 

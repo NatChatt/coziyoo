@@ -266,6 +266,24 @@ msgstr "Sonuç bulunamadı"
 msgid "Total"
 msgstr "Toplam"
 
+msgid "Total Sellers"
+msgstr "Toplam Satıcı"
+
+msgid "Total Buyers"
+msgstr "Toplam Alıcı"
+
+msgid "Pending Approvals"
+msgstr "Bekleyen Onay"
+
+msgid "New Sellers Today"
+msgstr "Bugün Yeni Satıcı"
+
+msgid "Active Buyers"
+msgstr "Aktif Alıcı"
+
+msgid "Risky Buyers"
+msgstr "Riskli Alıcı"
+
 msgid "Risky"
 msgstr "Riskli"
 
