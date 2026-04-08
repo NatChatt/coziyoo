@@ -103,16 +103,16 @@
             </td>
             <td class="px-4 py-3">
               {% if admin_user.role == 'super_admin' %}
-                <span style="background:#f3e8ff;color:#7e22ce;border:1px solid #d8b4fe;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600">Super Admin</span>
+                <span class="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2.5 py-0.5 text-[11px] font-semibold text-primary-700 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-300">Super Admin</span>
               {% else %}
-                <span style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600">Admin</span>
+                <span class="inline-flex rounded-full border border-base-300 bg-base-100 px-2.5 py-0.5 text-[11px] font-semibold text-base-600 dark:border-base-700 dark:bg-base-800 dark:text-base-300">Admin</span>
               {% endif %}
             </td>
             <td class="px-4 py-3">
               {% if admin_user.is_active %}
-                <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">{% trans "Active" %}</span>
+                <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">{% trans "Active" %}</span>
               {% else %}
-                <span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">{% trans "Inactive" %}</span>
+                <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400">{% trans "Inactive" %}</span>
               {% endif %}
             </td>
             <td class="px-4 py-3 text-xs text-base-500 dark:text-base-400">
@@ -160,8 +160,8 @@
       {# Column headers #}
       <div class="grid grid-cols-3 px-5 py-2 border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
         <div class="text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide col-span-1">{% trans "Feature" %}</div>
-        <div class="text-xs font-semibold text-center" style="color:#475569">Admin</div>
-        <div class="text-xs font-semibold text-center" style="color:#7e22ce">Super Admin</div>
+        <div class="text-xs font-semibold text-center text-base-600 dark:text-base-300">Admin</div>
+        <div class="text-xs font-semibold text-center text-primary-700 dark:text-primary-300">Super Admin</div>
       </div>
 
       <div class="divide-y divide-base-100 dark:divide-base-800">

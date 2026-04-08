@@ -403,7 +403,7 @@
                x-transition:leave-start="opacity-100"
                x-transition:leave-end="opacity-0"
                @keydown.escape.window="$store.compliancePreview.close()"
-               style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.82);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px">
+               class="fixed inset-0 z-[99999] flex items-center justify-center bg-base-900/80 p-6 backdrop-blur-md dark:bg-base-950/85">
 
             <div @click.stop
                  x-show="$store.compliancePreview.open"
@@ -491,10 +491,7 @@
                   </button>
                   <button @click="$store.compliancePreview.approve()"
                           :disabled="$store.compliancePreview.reviewing"
-                          class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition-colors"
-                          style="background-color:#16a34a"
-                          @mouseenter="$event.target.style.backgroundColor='#15803d'"
-                          @mouseleave="$event.target.style.backgroundColor='#16a34a'">
+                          class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50">
                     <span class="material-symbols-outlined text-sm leading-none"
                           :class="$store.compliancePreview.reviewing ? 'animate-spin' : ''"
                           x-text="$store.compliancePreview.reviewing ? 'progress_activity' : 'check'"></span>
