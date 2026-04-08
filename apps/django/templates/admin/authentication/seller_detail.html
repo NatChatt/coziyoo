@@ -2,7 +2,7 @@
 {% load i18n %}
 
 {% block content %}
-<div class="space-y-4" x-data="{ tab: 'general' }">
+<div class="space-y-4" x-data="{ tab: 'general', search: '' }">
 
   {# ── Header — flex-wrap: avatar | KPI cards | action ── #}
   <div class="flex flex-col gap-4 rounded-xl border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800 lg:flex-row lg:items-center lg:p-5">
@@ -65,9 +65,10 @@
 
   {# ── Tab Bar ── #}
   <div class="bg-white dark:bg-base-900 rounded-xl border border-base-200 dark:border-base-700 overflow-hidden">
-    <div class="flex items-center border-b border-base-200 dark:border-base-700 overflow-x-auto">
+    <div class="flex items-center border-b border-base-200 dark:border-base-700">
+      <div class="flex items-center overflow-x-auto flex-1">
       {% for t_id, t_label in tabs %}
-        <button @click="tab = '{{ t_id }}'"
+        <button @click="tab = '{{ t_id }}'; search = ''"
           class="px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors"
           :class="tab === '{{ t_id }}'
             ? 'border-primary-600 text-primary-600 dark:text-primary-400'
@@ -75,6 +76,17 @@
           {{ t_label }}
         </button>
       {% endfor %}
+      </div>
+      <div class="shrink-0 px-3 py-1.5" x-show="tab !== 'general' && tab !== 'compliance' && tab !== 'raw'">
+        <div class="bg-white border border-base-200 flex flex-row items-center px-3 rounded-default relative shadow-xs w-64 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary-600 dark:bg-base-900 dark:border-base-700">
+          <button type="button" class="flex items-center focus:outline-hidden">
+            <span class="material-symbols-outlined md-18 text-base-400 dark:text-base-500">search</span>
+          </button>
+          <input x-model="search" type="text" placeholder="Ara…"
+            class="grow font-medium min-w-0 overflow-hidden p-2 placeholder-font-subtle-light truncate focus:outline-hidden dark:bg-base-900 dark:placeholder-font-subtle-dark dark:text-font-default-dark">
+          <kbd class="bg-base-50 border border-base-200 font-sans text-xs text-font-subtle-light rounded-xs px-1 whitespace-nowrap dark:bg-white/[.04] dark:border-base-700 dark:text-font-subtle-dark">/</kbd>
+        </div>
+      </div>
     </div>
 
     {# ── General Tab — Read-only summary ── #}
@@ -153,7 +165,9 @@
             </thead>
             <tbody class="divide-y divide-base-100 dark:divide-base-800">
               {% for f in foods %}
-              <tr class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
+              <tr data-search="{{ f.name }} {{ f.category_name }} {{ f.price }}"
+                  x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
+                  class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
                 <td class="py-2 pr-4 font-medium">{{ f.name }}</td>
                 <td class="py-2 pr-4 text-base-400">{{ f.category_name|default:"—" }}</td>
                 <td class="py-2 pr-4">₺{{ f.price }}</td>
@@ -228,7 +242,9 @@
             </thead>
             <tbody class="divide-y divide-base-100 dark:divide-base-800">
               {% for o in orders %}
-              <tr class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
+              <tr data-search="{{ o.id }} {{ o.buyer_name }} {{ o.status_tr }}"
+                  x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
+                  class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
                 <td class="py-2 pr-4 font-mono text-xs">{{ o.id|slice:":8" }}…</td>
                 <td class="py-2 pr-4">{{ o.buyer_name|default:"—" }}</td>
                 <td class="py-2 pr-4 text-base-600 dark:text-base-300">
@@ -305,7 +321,9 @@
             </thead>
             <tbody class="divide-y divide-base-100 dark:divide-base-800">
               {% for adj in adjustments %}
-              <tr class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
+              <tr data-search="{{ adj.type }} {{ adj.reason }} {{ adj.amount }}"
+                  x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
+                  class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
                 <td class="py-2 pr-4">
                   <span class="px-2 py-0.5 rounded text-xs font-medium bg-base-100 text-base-600 dark:bg-base-800 dark:text-base-300">
                     {{ adj.type }}
@@ -628,7 +646,9 @@
       {% if reviews %}
         <div class="space-y-3">
           {% for r in reviews %}
-          <div class="border border-base-200 dark:border-base-700 rounded-lg p-4">
+          <div data-search="{{ r.food_name }} {{ r.buyer_name }} {{ r.comment }} {{ r.stars }}"
+               x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
+               class="border border-base-200 dark:border-base-700 rounded-lg p-4">
             <div class="flex items-center gap-2 mb-1">
               <span class="text-yellow-500">{{ r.stars }}</span>
               <span class="text-sm font-medium">{{ r.food_name|default:"—" }}</span>
@@ -652,7 +672,9 @@
       {% if complaints %}
         <div class="space-y-3">
           {% for c in complaints %}
-          <div class="border border-base-200 dark:border-base-700 rounded-lg p-4 hover:bg-base-50 dark:hover:bg-base-800/50 transition-colors">
+          <div data-search="{{ c.description }} {{ c.status_tr }}"
+               x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
+               class="border border-base-200 dark:border-base-700 rounded-lg p-4 hover:bg-base-50 dark:hover:bg-base-800/50 transition-colors">
             <div class="flex items-center justify-between mb-1">
               <span class="font-medium text-sm text-base-800 dark:text-base-100">{{ c.description|truncatechars:80|default:"Şikayet" }}</span>
               <span class="px-2 py-0.5 rounded text-xs font-medium
