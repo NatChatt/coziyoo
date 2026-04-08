@@ -246,8 +246,8 @@ const FOOD_LOTS = {{ food_lots_json|safe }};
 
           {# Lot count #}
           <td class="px-4 py-3 text-center">
-            {% if food._lots %}
-              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-bold">{{ food._lots|length }}</span>
+            {% if food.lots_data %}
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-bold">{{ food.lots_data|length }}</span>
             {% else %}
               <span class="text-base-300 dark:text-base-600 text-xs">0</span>
             {% endif %}
@@ -271,7 +271,7 @@ const FOOD_LOTS = {{ food_lots_json|safe }};
             x-transition:enter-start="opacity-0"
             x-transition:enter-end="opacity-100">
           <td colspan="8" class="px-6 pb-4 pt-2">
-            {% if food._lots %}
+            {% if food.lots_data %}
               <div class="rounded-lg border border-base-200 dark:border-base-700 overflow-hidden">
                 <table class="w-full">
                   <thead>
@@ -285,7 +285,7 @@ const FOOD_LOTS = {{ food_lots_json|safe }};
                     </tr>
                   </thead>
                   <tbody>
-                    {% for lot in food._lots %}
+                    {% for lot in food.lots_data %}
                     <tr class="border-t border-base-200 dark:border-base-700 hover:bg-base-100/60 dark:hover:bg-base-700/30 transition-colors cursor-pointer text-xs"
                         @click.stop="openModal(FOOD_LOTS['{{ food.id }}'][{{ forloop.counter0 }}])">
                       <td class="px-3 py-2.5">

@@ -83,7 +83,7 @@ class FoodsAdmin(ModelAdmin):
 
         # Attach _lots to each food for template use
         for food in result_foods:
-            food._lots = lots_by_food.get(food.id, [])
+            food.lots_data = lots_by_food.get(food.id, [])
 
         # Build JSON for Alpine.js modal (all details pre-serialised)
         food_lots_json = {}
@@ -107,7 +107,7 @@ class FoodsAdmin(ModelAdmin):
                     "allergens": lot.allergens_snapshot_json or [],
                     "notes": lot.notes or "",
                 }
-                for lot in food._lots
+                for lot in food.lots_data
             ]
 
         response.context_data["food_with_lots"] = result_foods
