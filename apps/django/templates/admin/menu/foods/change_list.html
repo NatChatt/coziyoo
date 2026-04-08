@@ -32,199 +32,250 @@ const FOOD_LOTS = {{ food_lots_json|safe }};
            x-transition:enter-end="opacity-100 scale-100">
 
         <template x-if="modal">
-          <div>
-            {# Modal Header #}
-            <div class="flex items-start justify-between border-b border-base-200 dark:border-base-700 px-6 py-4">
-              <div>
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="font-mono text-sm font-bold text-base-900 dark:text-white" x-text="modal.lot_number"></span>
-                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
-                        :style="modal.status_style + ';padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600'"
+          <div class="flex flex-col max-h-[90vh]">
+
+            {# ── Header ── #}
+            <div class="shrink-0 px-6 py-4 border-b border-base-200 dark:border-base-700 flex items-center justify-between gap-4">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="material-symbols-outlined text-base text-base-400 shrink-0">inventory_2</span>
+                  <span class="font-mono font-bold text-base-900 dark:text-white text-base" x-text="modal.lot_number"></span>
+                  <span :style="modal.status_style + ';padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600'"
                         x-text="modal.status"></span>
                 </div>
-                <div class="text-sm text-base-500 dark:text-base-400" x-text="modal.food_name"></div>
+                <div class="text-sm text-base-500 dark:text-base-400 mt-0.5 truncate" x-text="modal.food_name"></div>
               </div>
               <button @click="modal = null"
-                      class="ml-4 rounded-lg p-1.5 text-base-400 hover:bg-base-100 dark:hover:bg-base-800 transition-colors">
+                      class="shrink-0 rounded-lg p-1.5 text-base-400 hover:bg-base-100 dark:hover:bg-base-800 transition-colors">
                 <span class="material-symbols-outlined text-xl leading-none">close</span>
               </button>
             </div>
 
-            {# Modal Body #}
-            <div class="space-y-5 px-6 py-5">
+            {# ── Scrollable Body ── #}
+            <div class="overflow-y-auto flex-1 px-5 py-4 space-y-3">
 
-              {# Quantities #}
-              <div>
-                <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Miktarlar" %}</div>
-                <div class="grid grid-cols-2 gap-3">
-                  <div class="rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 px-4 py-3">
-                    <div class="text-xs text-blue-600 dark:text-blue-300 mb-0.5">{% trans "Üretilen" %}</div>
-                    <div class="text-xl font-bold text-blue-800 dark:text-blue-100" x-text="modal.qty_produced"></div>
+              {# ── Card 1: Stok ── #}
+              <div class="rounded-xl border border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50 overflow-hidden">
+                <div class="px-4 py-2.5 border-b border-base-200 dark:border-base-700 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-base text-base-400">inventory</span>
+                  <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Stok" %}</span>
+                </div>
+                <div class="px-4 py-3 grid grid-cols-3 gap-4 items-center">
+                  <div class="text-center">
+                    <div class="text-2xl font-bold text-base-900 dark:text-white" x-text="modal.qty_produced"></div>
+                    <div class="text-xs text-base-400 mt-0.5">{% trans "Üretilen" %}</div>
                   </div>
-                  <div class="rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-4 py-3">
-                    <div class="text-xs text-emerald-600 dark:text-emerald-300 mb-0.5">{% trans "Mevcut" %}</div>
-                    <div class="text-xl font-bold text-emerald-800 dark:text-emerald-100" x-text="modal.qty_available"></div>
+                  <div class="col-span-1 flex flex-col items-center gap-1">
+                    <div class="w-full h-2 bg-base-200 dark:bg-base-700 rounded-full overflow-hidden">
+                      <div class="h-2 rounded-full transition-all"
+                           :style="'width:' + (modal.qty_produced > 0 ? Math.round(modal.qty_available / modal.qty_produced * 100) : 0) + '%;background:#10b981'"></div>
+                    </div>
+                    <div class="text-[10px] text-base-400"
+                         x-text="modal.qty_produced > 0 ? Math.round(modal.qty_available / modal.qty_produced * 100) + '% mevcut' : ''"></div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400" x-text="modal.qty_available"></div>
+                    <div class="text-xs text-base-400 mt-0.5">{% trans "Mevcut" %}</div>
                   </div>
                 </div>
               </div>
 
-              {# Timeline #}
-              <div>
-                <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Zaman Çizelgesi" %}</div>
-                <div class="grid grid-cols-1 gap-1.5 text-sm sm:grid-cols-2">
+              {# ── Card 2: Zaman Çizelgesi ── #}
+              <div class="rounded-xl border border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50 overflow-hidden">
+                <div class="px-4 py-2.5 border-b border-base-200 dark:border-base-700 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-base text-base-400">calendar_clock</span>
+                  <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Zaman Çizelgesi" %}</span>
+                </div>
+                <div class="px-4 py-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <template x-if="modal.produced_at">
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-base text-base-400">factory</span>
-                      <span class="text-base-500 dark:text-base-400 text-xs">{% trans "Üretim:" %}</span>
-                      <span class="font-medium text-base-800 dark:text-base-200 text-xs" x-text="modal.produced_at"></span>
+                    <div class="flex items-center gap-2.5">
+                      <span class="material-symbols-outlined text-base text-base-400 shrink-0">factory</span>
+                      <div>
+                        <div class="text-[10px] text-base-400 uppercase tracking-wide">{% trans "Üretim" %}</div>
+                        <div class="text-xs font-semibold text-base-800 dark:text-base-200" x-text="modal.produced_at"></div>
+                      </div>
                     </div>
                   </template>
                   <template x-if="modal.sale_starts_at">
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-base text-emerald-500">play_circle</span>
-                      <span class="text-base-500 dark:text-base-400 text-xs">{% trans "Satış Başl.:" %}</span>
-                      <span class="font-medium text-base-800 dark:text-base-200 text-xs" x-text="modal.sale_starts_at"></span>
+                    <div class="flex items-center gap-2.5">
+                      <span class="material-symbols-outlined text-base text-emerald-500 shrink-0">play_circle</span>
+                      <div>
+                        <div class="text-[10px] text-base-400 uppercase tracking-wide">{% trans "Satış Başlangıç" %}</div>
+                        <div class="text-xs font-semibold text-base-800 dark:text-base-200" x-text="modal.sale_starts_at"></div>
+                      </div>
                     </div>
                   </template>
                   <template x-if="modal.sale_ends_at">
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-base text-rose-500">stop_circle</span>
-                      <span class="text-base-500 dark:text-base-400 text-xs">{% trans "Satış Bitiş:" %}</span>
-                      <span class="font-medium text-base-800 dark:text-base-200 text-xs" x-text="modal.sale_ends_at"></span>
+                    <div class="flex items-center gap-2.5">
+                      <span class="material-symbols-outlined text-base text-rose-500 shrink-0">stop_circle</span>
+                      <div>
+                        <div class="text-[10px] text-base-400 uppercase tracking-wide">{% trans "Satış Bitiş" %}</div>
+                        <div class="text-xs font-semibold text-base-800 dark:text-base-200" x-text="modal.sale_ends_at"></div>
+                      </div>
                     </div>
                   </template>
                   <template x-if="modal.use_by">
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-base text-amber-500">schedule</span>
-                      <span class="text-base-500 dark:text-base-400 text-xs">{% trans "SKT:" %}</span>
-                      <span class="font-medium text-base-800 dark:text-base-200 text-xs" x-text="modal.use_by"></span>
+                    <div class="flex items-center gap-2.5">
+                      <span class="material-symbols-outlined text-base text-amber-500 shrink-0">schedule</span>
+                      <div>
+                        <div class="text-[10px] text-base-400 uppercase tracking-wide">{% trans "Son Kullanma" %}</div>
+                        <div class="text-xs font-semibold text-base-800 dark:text-base-200" x-text="modal.use_by"></div>
+                      </div>
                     </div>
                   </template>
                   <template x-if="modal.best_before">
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-outlined text-base text-base-400">star</span>
-                      <span class="text-base-500 dark:text-base-400 text-xs">{% trans "En İyi:" %}</span>
-                      <span class="font-medium text-base-800 dark:text-base-200 text-xs" x-text="modal.best_before"></span>
+                    <div class="flex items-center gap-2.5">
+                      <span class="material-symbols-outlined text-base text-base-400 shrink-0">star</span>
+                      <div>
+                        <div class="text-[10px] text-base-400 uppercase tracking-wide">{% trans "En İyi Önce" %}</div>
+                        <div class="text-xs font-semibold text-base-800 dark:text-base-200" x-text="modal.best_before"></div>
+                      </div>
                     </div>
                   </template>
                 </div>
               </div>
 
-              {# Allergens #}
-              <template x-if="modal.allergens && modal.allergens.length > 0">
-                <div>
-                  <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Alerjenler" %}</div>
-                  <div class="flex flex-wrap gap-1.5">
-                    <template x-for="a in modal.allergens" :key="a">
-                      <span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
-                            x-text="a"></span>
+              {# ── Card 3: İçerik Değişiklikleri (only if diff exists) ── #}
+              <template x-if="(modal.ingredients_diff && modal.ingredients_diff.some(d => d.type !== 'same')) || (modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same'))">
+                <div class="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/20 overflow-hidden">
+                  <div class="px-4 py-2.5 border-b border-amber-200 dark:border-amber-700/60 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-base text-amber-500">difference</span>
+                      <span class="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">{% trans "İçerik Değişiklikleri" %}</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-[10px] text-amber-600 dark:text-amber-400">
+                      <span class="flex items-center gap-1">
+                        <span class="inline-block w-2 h-2 rounded-sm bg-emerald-500"></span>{% trans "Eklendi" %}
+                      </span>
+                      <span class="flex items-center gap-1">
+                        <span class="inline-block w-2 h-2 rounded-sm bg-rose-500"></span>{% trans "Çıkarıldı" %}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="px-4 py-3 space-y-4">
+
+                    {# Ingredients diff #}
+                    <template x-if="modal.ingredients_diff && modal.ingredients_diff.some(d => d.type !== 'same')">
+                      <div>
+                        <div class="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-2">{% trans "Malzemeler" %}</div>
+                        <div class="flex flex-wrap gap-1.5">
+                          <template x-for="(item, i) in modal.ingredients_diff" :key="i">
+                            <span x-text="item.text"
+                                  :class="{
+                                    'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-semibold': item.type === 'added',
+                                    'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 line-through opacity-70': item.type === 'removed',
+                                    'bg-white dark:bg-base-800 text-base-500 dark:text-base-400': item.type === 'same'
+                                  }"
+                                  class="px-2.5 py-1 rounded-full text-xs border border-transparent"
+                                  :style="item.type === 'added' ? 'border-color:#86efac' : item.type === 'removed' ? 'border-color:#fca5a5' : 'border-color:#e2e8f0'">
+                            </span>
+                          </template>
+                        </div>
+                      </div>
                     </template>
+
+                    {# Recipe diff #}
+                    <template x-if="modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same')">
+                      <div>
+                        <div class="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-2">{% trans "Tarif" %}</div>
+                        <div class="rounded-lg border border-amber-200 dark:border-amber-700/40 overflow-hidden text-xs font-mono max-h-48 overflow-y-auto">
+                          <template x-for="(item, i) in modal.recipe_diff" :key="i">
+                            <div :class="{
+                                   'bg-emerald-50 dark:bg-emerald-950/40': item.type === 'added',
+                                   'bg-rose-50 dark:bg-rose-950/40': item.type === 'removed',
+                                   'bg-white dark:bg-base-900': item.type === 'same'
+                                 }"
+                                 class="flex gap-2 px-3 py-1 border-b border-base-100 dark:border-base-800 last:border-0">
+                              <span class="shrink-0 w-3 font-bold"
+                                    :class="{
+                                      'text-emerald-600 dark:text-emerald-400': item.type === 'added',
+                                      'text-rose-500 dark:text-rose-400': item.type === 'removed',
+                                      'text-base-300 dark:text-base-600': item.type === 'same'
+                                    }"
+                                    x-text="item.type === 'added' ? '+' : item.type === 'removed' ? '−' : ' '"></span>
+                              <span :class="{
+                                      'text-emerald-800 dark:text-emerald-200': item.type === 'added',
+                                      'text-rose-700 dark:text-rose-300': item.type === 'removed',
+                                      'text-base-400 dark:text-base-500': item.type === 'same'
+                                    }"
+                                    x-text="item.line"></span>
+                            </div>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+
                   </div>
                 </div>
               </template>
 
-              {# Ingredients diff — only when something changed #}
-              <template x-if="modal.ingredients_diff && modal.ingredients_diff.some(d => d.type !== 'same')">
-                <div>
-                  <div class="flex items-center gap-2 mb-2">
-                    <div class="text-xs font-semibold uppercase tracking-wide text-base-400">{% trans "İçindekiler Farkı" %}</div>
-                    <span class="text-[10px] text-base-400">(lot ↔ orijinal yemek)</span>
+              {# ── Card 4: İçindekiler & Alerjenler ── #}
+              <template x-if="(modal.ingredients && modal.ingredients.length > 0) || (modal.allergens && modal.allergens.length > 0)">
+                <div class="rounded-xl border border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50 overflow-hidden">
+                  <div class="px-4 py-2.5 border-b border-base-200 dark:border-base-700 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-base text-base-400">nutrition</span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "İçindekiler & Alerjenler" %}</span>
                   </div>
-                  <div class="flex flex-wrap gap-1.5">
-                    <template x-for="(item, i) in modal.ingredients_diff" :key="i">
-                      <span x-text="item.text"
-                            :class="{
-                              'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300': item.type === 'added',
-                              'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 line-through': item.type === 'removed',
-                              'bg-base-100 dark:bg-base-800 text-base-500 dark:text-base-400': item.type === 'same'
-                            }"
-                            class="px-2 py-0.5 rounded text-xs font-medium"></span>
+                  <div class="px-4 py-3 space-y-3">
+                    <template x-if="modal.allergens && modal.allergens.length > 0">
+                      <div>
+                        <div class="text-[10px] uppercase tracking-wide text-base-400 mb-1.5">{% trans "Alerjenler" %}</div>
+                        <div class="flex flex-wrap gap-1.5">
+                          <template x-for="a in modal.allergens" :key="a">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                                  style="border:1px solid #fcd34d" x-text="a"></span>
+                          </template>
+                        </div>
+                      </div>
                     </template>
-                  </div>
-                  <div class="flex gap-3 mt-2 text-[10px] text-base-400">
-                    <span><span class="inline-block w-2 h-2 rounded-sm bg-emerald-400 mr-1"></span>{% trans "Lot'a eklenmiş" %}</span>
-                    <span><span class="inline-block w-2 h-2 rounded-sm bg-rose-400 mr-1"></span>{% trans "Lot'tan çıkarılmış" %}</span>
-                  </div>
-                </div>
-              </template>
-
-              {# Ingredients (unchanged — only show if no diff) #}
-              <template x-if="modal.ingredients && modal.ingredients.length > 0 && !(modal.ingredients_diff && modal.ingredients_diff.some(d => d.type !== 'same'))">
-                <div>
-                  <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "İçindekiler" %}</div>
-                  <div class="flex flex-wrap gap-1.5">
-                    <template x-for="ing in modal.ingredients" :key="ing">
-                      <span class="px-2 py-0.5 rounded text-xs bg-base-100 dark:bg-base-800 text-base-600 dark:text-base-300"
-                            x-text="ing"></span>
-                    </template>
-                  </div>
-                </div>
-              </template>
-
-              {# Recipe diff — only when something changed #}
-              <template x-if="modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same')">
-                <div>
-                  <div class="flex items-center gap-2 mb-2">
-                    <div class="text-xs font-semibold uppercase tracking-wide text-base-400">{% trans "Tarif Farkı" %}</div>
-                    <span class="text-[10px] text-base-400">(lot ↔ orijinal yemek)</span>
-                  </div>
-                  <div class="rounded-lg border border-base-200 dark:border-base-700 overflow-hidden text-xs font-mono max-h-52 overflow-y-auto">
-                    <template x-for="(item, i) in modal.recipe_diff" :key="i">
-                      <div :class="{
-                             'bg-emerald-50 dark:bg-emerald-950/30': item.type === 'added',
-                             'bg-rose-50 dark:bg-rose-950/30': item.type === 'removed',
-                             'bg-white dark:bg-base-900': item.type === 'same'
-                           }"
-                           class="flex gap-2 px-3 py-0.5 border-b border-base-100 dark:border-base-800 last:border-0">
-                        <span :class="{
-                                'text-emerald-600 dark:text-emerald-400 font-bold': item.type === 'added',
-                                'text-rose-500 dark:text-rose-400 font-bold': item.type === 'removed',
-                                'text-base-300 dark:text-base-600': item.type === 'same'
-                              }"
-                              x-text="item.type === 'added' ? '+' : item.type === 'removed' ? '−' : ' '"></span>
-                        <span :class="{
-                                'text-emerald-800 dark:text-emerald-200': item.type === 'added',
-                                'text-rose-700 dark:text-rose-300': item.type === 'removed',
-                                'text-base-500 dark:text-base-400': item.type === 'same'
-                              }"
-                              x-text="item.line"></span>
+                    <template x-if="modal.ingredients && modal.ingredients.length > 0">
+                      <div>
+                        <div class="text-[10px] uppercase tracking-wide text-base-400 mb-1.5">{% trans "Malzemeler" %}</div>
+                        <div class="flex flex-wrap gap-1.5">
+                          <template x-for="ing in modal.ingredients" :key="ing">
+                            <span class="px-2.5 py-1 rounded-full text-xs bg-white dark:bg-base-800 text-base-600 dark:text-base-300"
+                                  style="border:1px solid #e2e8f0" x-text="ing"></span>
+                          </template>
+                        </div>
                       </div>
                     </template>
                   </div>
-                  <div class="flex gap-3 mt-2 text-[10px] text-base-400">
-                    <span><span class="inline-block w-2 h-2 rounded-sm bg-emerald-400 mr-1"></span>{% trans "Lot'a eklenmiş" %}</span>
-                    <span><span class="inline-block w-2 h-2 rounded-sm bg-rose-400 mr-1"></span>{% trans "Lot'tan çıkarılmış" %}</span>
-                  </div>
                 </div>
               </template>
 
-              {# Recipe Snapshot (unchanged — only show if no diff) #}
+              {# ── Card 5: Tarif (unchanged only) ── #}
               <template x-if="modal.recipe_snapshot && !(modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same'))">
-                <div>
-                  <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Tarif" %}</div>
-                  <div class="rounded-lg bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 px-4 py-3 text-sm text-base-700 dark:text-base-300 whitespace-pre-wrap max-h-40 overflow-y-auto"
+                <div class="rounded-xl border border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50 overflow-hidden">
+                  <div class="px-4 py-2.5 border-b border-base-200 dark:border-base-700 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-base text-base-400">menu_book</span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Tarif" %}</span>
+                  </div>
+                  <div class="px-4 py-3 text-sm text-base-700 dark:text-base-300 whitespace-pre-wrap max-h-36 overflow-y-auto"
                        x-text="modal.recipe_snapshot"></div>
                 </div>
               </template>
 
-              {# Notes #}
+              {# ── Card 6: Notlar ── #}
               <template x-if="modal.notes">
-                <div>
-                  <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Notlar" %}</div>
-                  <div class="rounded-lg bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 px-4 py-3 text-sm text-base-700 dark:text-base-300"
-                       x-text="modal.notes"></div>
+                <div class="rounded-xl border border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50 overflow-hidden">
+                  <div class="px-4 py-2.5 border-b border-base-200 dark:border-base-700 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-base text-base-400">notes</span>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Notlar" %}</span>
+                  </div>
+                  <div class="px-4 py-3 text-sm text-base-700 dark:text-base-300" x-text="modal.notes"></div>
                 </div>
               </template>
 
-            </div>{# /body #}
+            </div>{# /scrollable body #}
 
-            {# Modal Footer #}
-            <div class="border-t border-base-200 dark:border-base-700 px-6 py-3 flex justify-end">
+            {# ── Footer ── #}
+            <div class="shrink-0 border-t border-base-200 dark:border-base-700 px-5 py-3 flex justify-end bg-white dark:bg-base-900 rounded-b-xl">
               <button @click="modal = null"
-                      class="px-4 py-2 rounded-lg bg-base-100 dark:bg-base-800 text-sm font-medium text-base-700 dark:text-base-200 hover:bg-base-200 dark:hover:bg-base-700 transition-colors">
+                      class="px-5 py-2 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-700 dark:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors">
                 {% trans "Kapat" %}
               </button>
             </div>
+
           </div>
         </template>
       </div>
