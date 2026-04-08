@@ -583,7 +583,7 @@ const FOOD_LOTS = {{ food_lots_json|safe }};
 
           {# View detail #}
           <td class="px-3 py-3 text-right">
-            <button @click.stop="fetchFoodDetail('{{ food.id }}')"
+            <button type="button" @click.stop="fetchFoodDetail('{{ food.id }}')"
                     class="text-base-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
               <span class="material-symbols-outlined text-base leading-none">visibility</span>
             </button>
