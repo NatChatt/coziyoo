@@ -24,9 +24,6 @@ class ComplaintCategoriesAdmin(ModelAdmin):
     search_fields = ["name", "code"]
     readonly_fields = ["id", "created_at"]
 
-    def has_add_permission(self, request):
-        return False
-
 
 @admin.register(Complaints)
 class ComplaintsAdmin(ModelAdmin):
