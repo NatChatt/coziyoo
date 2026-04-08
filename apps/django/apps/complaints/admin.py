@@ -76,3 +76,4 @@ class ComplaintsAdmin(ModelAdmin):
             '<span style="color:{};font-weight:600">{}</span>',
             color, obj.priority,
         )
+
