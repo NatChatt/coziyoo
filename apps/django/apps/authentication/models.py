@@ -138,6 +138,11 @@ class AdminUsers(models.Model):
         verbose_name = "Admin User"
         verbose_name_plural = "Admin Users"
 
+    def __str__(self):
+        if self.name and self.surname:
+            return f"{self.name} {self.surname}"
+        return self.email
+
 
 
 class AuthAudit(models.Model):
