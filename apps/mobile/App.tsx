@@ -786,8 +786,10 @@ export default function App() {
             keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
           >
             <TouchableOpacity style={styles.sheetBackdrop} activeOpacity={1} onPress={closeSheet} />
-            <Animated.View style={[styles.sheetCard, { transform: [{ translateY: sheetTranslateY }] }]} {...sheetPanResponder.panHandlers}>
-              <View style={styles.sheetGrabber} />
+            <Animated.View style={[styles.sheetCard, { transform: [{ translateY: sheetTranslateY }] }]}>
+              <View style={styles.sheetGrabberTouchArea} {...sheetPanResponder.panHandlers}>
+                <View style={styles.sheetGrabber} />
+              </View>
               <SellerOrderDetailScreen
                 auth={auth}
                 orderId={selectedOrderId}
@@ -842,13 +844,17 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 18,
     overflow: 'hidden',
   },
+  sheetGrabberTouchArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 8,
+    paddingBottom: 2,
+  },
   sheetGrabber: {
     width: 52,
     height: 5,
     borderRadius: 99,
     backgroundColor: '#D2C8BA',
     alignSelf: 'center',
-    marginTop: 8,
-    marginBottom: 2,
   },
 });
