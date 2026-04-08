@@ -134,18 +134,14 @@
          x-data="permissionsMatrix()">
       <div class="px-5 py-4 border-b border-base-200 dark:border-base-700">
         <h2 class="text-sm font-semibold text-base-900 dark:text-white">{% trans "Permissions Matrix" %}</h2>
-        <p class="text-xs text-base-500 dark:text-base-400 mt-0.5">{% trans "Click to toggle permissions. Super Admin always has full access." %}</p>
+        <p class="text-xs text-base-500 dark:text-base-400 mt-0.5">{% trans "Click to toggle permissions for Admin and User roles." %}</p>
       </div>
 
       {# Column headers #}
       <div class="overflow-x-auto">
         <div class="min-w-[480px]">
-          <div class="grid grid-cols-4 px-5 py-2 border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
+          <div class="grid grid-cols-3 px-5 py-2 border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
             <div class="col-span-1 text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Feature" %}</div>
-            <div class="text-center text-xs font-semibold text-primary-700 dark:text-primary-300">
-              <span class="material-symbols-outlined text-sm leading-none align-middle">shield</span>
-              Super Admin
-            </div>
             <div class="text-center text-xs font-semibold text-base-600 dark:text-base-300">
               <span class="material-symbols-outlined text-sm leading-none align-middle">manage_accounts</span>
               Admin
@@ -162,13 +158,8 @@
               <span class="text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{{ section_label }}</span>
             </div>
             {% for perm_label, perm_key, role_values in perms %}
-            <div class="grid grid-cols-4 px-5 py-2.5 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
+            <div class="grid grid-cols-3 px-5 py-2.5 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
               <div class="col-span-1 pr-2 text-xs text-base-700 dark:text-base-300 flex items-center">{{ perm_label }}</div>
-
-              {# Super Admin — always allowed, not clickable #}
-              <div class="text-center flex items-center justify-center">
-                <span class="material-symbols-outlined text-base leading-none text-emerald-500">check_circle</span>
-              </div>
 
               {# Admin — clickable toggle #}
               <div class="text-center flex items-center justify-center">
@@ -212,10 +203,6 @@
           <div class="flex items-center gap-1">
             <span class="material-symbols-outlined text-sm leading-none text-base-300 dark:text-base-600">cancel</span>
             {% trans "Denied" %}
-          </div>
-          <div class="flex items-center gap-1 ml-auto">
-            <span class="material-symbols-outlined text-sm leading-none text-primary-500">shield</span>
-            {% trans "Super Admin has all permissions" %}
           </div>
         </div>
       </div>
