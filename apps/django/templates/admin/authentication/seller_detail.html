@@ -491,7 +491,10 @@
                   </button>
                   <button @click="$store.compliancePreview.approve()"
                           :disabled="$store.compliancePreview.reviewing"
-                          class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                          class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-white text-sm font-semibold disabled:opacity-50 transition-colors"
+                          style="background-color:#16a34a"
+                          @mouseenter="$event.target.style.backgroundColor='#15803d'"
+                          @mouseleave="$event.target.style.backgroundColor='#16a34a'">
                     <span class="material-symbols-outlined text-sm leading-none"
                           :class="$store.compliancePreview.reviewing ? 'animate-spin' : ''"
                           x-text="$store.compliancePreview.reviewing ? 'progress_activity' : 'check'"></span>
