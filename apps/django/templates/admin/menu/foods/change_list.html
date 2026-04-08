@@ -123,8 +123,33 @@ const FOOD_LOTS = {{ food_lots_json|safe }};
                 </div>
               </template>
 
-              {# Ingredients #}
-              <template x-if="modal.ingredients && modal.ingredients.length > 0">
+              {# Ingredients diff — only when something changed #}
+              <template x-if="modal.ingredients_diff && modal.ingredients_diff.some(d => d.type !== 'same')">
+                <div>
+                  <div class="flex items-center gap-2 mb-2">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-base-400">{% trans "İçindekiler Farkı" %}</div>
+                    <span class="text-[10px] text-base-400">(lot ↔ orijinal yemek)</span>
+                  </div>
+                  <div class="flex flex-wrap gap-1.5">
+                    <template x-for="(item, i) in modal.ingredients_diff" :key="i">
+                      <span x-text="item.text"
+                            :class="{
+                              'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300': item.type === 'added',
+                              'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 line-through': item.type === 'removed',
+                              'bg-base-100 dark:bg-base-800 text-base-500 dark:text-base-400': item.type === 'same'
+                            }"
+                            class="px-2 py-0.5 rounded text-xs font-medium"></span>
+                    </template>
+                  </div>
+                  <div class="flex gap-3 mt-2 text-[10px] text-base-400">
+                    <span><span class="inline-block w-2 h-2 rounded-sm bg-emerald-400 mr-1"></span>{% trans "Lot'a eklenmiş" %}</span>
+                    <span><span class="inline-block w-2 h-2 rounded-sm bg-rose-400 mr-1"></span>{% trans "Lot'tan çıkarılmış" %}</span>
+                  </div>
+                </div>
+              </template>
+
+              {# Ingredients (unchanged — only show if no diff) #}
+              <template x-if="modal.ingredients && modal.ingredients.length > 0 && !(modal.ingredients_diff && modal.ingredients_diff.some(d => d.type !== 'same'))">
                 <div>
                   <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "İçindekiler" %}</div>
                   <div class="flex flex-wrap gap-1.5">
@@ -136,10 +161,47 @@ const FOOD_LOTS = {{ food_lots_json|safe }};
                 </div>
               </template>
 
-              {# Recipe Snapshot #}
-              <template x-if="modal.recipe_snapshot">
+              {# Recipe diff — only when something changed #}
+              <template x-if="modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same')">
                 <div>
-                  <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Tarif Snapshot" %}</div>
+                  <div class="flex items-center gap-2 mb-2">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-base-400">{% trans "Tarif Farkı" %}</div>
+                    <span class="text-[10px] text-base-400">(lot ↔ orijinal yemek)</span>
+                  </div>
+                  <div class="rounded-lg border border-base-200 dark:border-base-700 overflow-hidden text-xs font-mono max-h-52 overflow-y-auto">
+                    <template x-for="(item, i) in modal.recipe_diff" :key="i">
+                      <div :class="{
+                             'bg-emerald-50 dark:bg-emerald-950/30': item.type === 'added',
+                             'bg-rose-50 dark:bg-rose-950/30': item.type === 'removed',
+                             'bg-white dark:bg-base-900': item.type === 'same'
+                           }"
+                           class="flex gap-2 px-3 py-0.5 border-b border-base-100 dark:border-base-800 last:border-0">
+                        <span :class="{
+                                'text-emerald-600 dark:text-emerald-400 font-bold': item.type === 'added',
+                                'text-rose-500 dark:text-rose-400 font-bold': item.type === 'removed',
+                                'text-base-300 dark:text-base-600': item.type === 'same'
+                              }"
+                              x-text="item.type === 'added' ? '+' : item.type === 'removed' ? '−' : ' '"></span>
+                        <span :class="{
+                                'text-emerald-800 dark:text-emerald-200': item.type === 'added',
+                                'text-rose-700 dark:text-rose-300': item.type === 'removed',
+                                'text-base-500 dark:text-base-400': item.type === 'same'
+                              }"
+                              x-text="item.line"></span>
+                      </div>
+                    </template>
+                  </div>
+                  <div class="flex gap-3 mt-2 text-[10px] text-base-400">
+                    <span><span class="inline-block w-2 h-2 rounded-sm bg-emerald-400 mr-1"></span>{% trans "Lot'a eklenmiş" %}</span>
+                    <span><span class="inline-block w-2 h-2 rounded-sm bg-rose-400 mr-1"></span>{% trans "Lot'tan çıkarılmış" %}</span>
+                  </div>
+                </div>
+              </template>
+
+              {# Recipe Snapshot (unchanged — only show if no diff) #}
+              <template x-if="modal.recipe_snapshot && !(modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same'))">
+                <div>
+                  <div class="text-xs font-semibold uppercase tracking-wide text-base-400 mb-2">{% trans "Tarif" %}</div>
                   <div class="rounded-lg bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 px-4 py-3 text-sm text-base-700 dark:text-base-300 whitespace-pre-wrap max-h-40 overflow-y-auto"
                        x-text="modal.recipe_snapshot"></div>
                 </div>

@@ -1,3 +1,4 @@
+import difflib
 import json
 from collections import defaultdict
 
@@ -22,6 +23,48 @@ _LOT_STATUS_STYLE = {
 
 def _fmt(dt):
     return dt.strftime("%d.%m.%Y %H:%M") if dt else None
+
+
+def _ingredients_diff(original, snapshot):
+    """Return list of {text, type} where type is 'same'|'added'|'removed'."""
+    orig = [str(x).strip() for x in (original or [])]
+    snap = [str(x).strip() for x in (snapshot or [])]
+    orig_lower = {x.lower(): x for x in orig}
+    snap_lower = {x.lower(): x for x in snap}
+    seen = set()
+    result = []
+    for item in orig + snap:
+        key = item.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        in_orig = key in orig_lower
+        in_snap = key in snap_lower
+        if in_orig and in_snap:
+            result.append({"text": orig_lower[key], "type": "same"})
+        elif in_snap:
+            result.append({"text": snap_lower[key], "type": "added"})
+        else:
+            result.append({"text": orig_lower[key], "type": "removed"})
+    return result
+
+
+def _recipe_diff(original, snapshot):
+    """Return list of {line, type} where type is 'same'|'added'|'removed'."""
+    orig_lines = (original or "").splitlines()
+    snap_lines = (snapshot or "").splitlines()
+    if not orig_lines and not snap_lines:
+        return []
+    result = []
+    for entry in difflib.ndiff(orig_lines, snap_lines):
+        if entry.startswith("+ "):
+            result.append({"line": entry[2:], "type": "added"})
+        elif entry.startswith("- "):
+            result.append({"line": entry[2:], "type": "removed"})
+        elif entry.startswith("  "):
+            result.append({"line": entry[2:], "type": "same"})
+        # skip '? ' hint lines
+    return result
 
 
 @admin.register(Categories)
@@ -106,6 +149,12 @@ class FoodsAdmin(ModelAdmin):
                     "ingredients": lot.ingredients_snapshot_json or [],
                     "allergens": lot.allergens_snapshot_json or [],
                     "notes": lot.notes or "",
+                    "ingredients_diff": _ingredients_diff(
+                        food.ingredients_json, lot.ingredients_snapshot_json
+                    ),
+                    "recipe_diff": _recipe_diff(
+                        food.recipe, lot.recipe_snapshot
+                    ),
                 }
                 for lot in food.lots_data
             ]
