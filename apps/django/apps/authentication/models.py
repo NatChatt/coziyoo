@@ -278,6 +278,9 @@ class Users(models.Model):
     delivery_enabled = models.BooleanField()
     delivery_terms = models.TextField(blank=True, null=True)
 
+    def __str__(self):
+        return self.display_name or self.full_name or self.username or str(self.id)
+
     class Meta:
         managed = False
         db_table = 'users'
