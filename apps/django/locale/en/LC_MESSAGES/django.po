@@ -366,5 +366,11 @@ msgstr "Reject"
 msgid "Confirm"
 msgstr "Confirm"
 
+msgid "Confirm Reject"
+msgstr "Confirm Reject"
+
+msgid "Review failed"
+msgstr "Review failed"
+
 msgid "Rejection reason (min. 3 characters)..."
 msgstr "Rejection reason (min. 3 characters)..."

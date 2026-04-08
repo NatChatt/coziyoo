@@ -367,5 +367,11 @@ msgstr "Reddet"
 msgid "Confirm"
 msgstr "Onayla"
 
+msgid "Confirm Reject"
+msgstr "Reddi Onayla"
+
+msgid "Review failed"
+msgstr "İnceleme başarısız"
+
 msgid "Rejection reason (min. 3 characters)..."
 msgstr "Red sebebi (min. 3 karakter)..."

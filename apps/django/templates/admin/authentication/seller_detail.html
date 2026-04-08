@@ -232,79 +232,23 @@
 
       {% if compliance_docs %}
         <script>
-          function docRow(docListId, docCode, sellerId, initialPreviewUrl, initialStatus, initialDocId, initialRejectionReason) {
-            return {
-              docListId, docCode, sellerId,
-              previewUrl: initialPreviewUrl,
-              status: initialStatus,
-              docId: initialDocId || null,
-              rejectionReason: initialRejectionReason || '',
-              uploading: false,
-              reviewing: false,
-              rejectMode: false,
-              rejectInput: '',
-              error: '',
-              get statusClass() {
-                return {
-                  'approved': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-                  'uploaded':  'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-                  'rejected':  'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
-                }[this.status] || 'bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400';
-              },
-              get statusIcon() {
-                return {approved: 'check_circle', uploaded: 'schedule', rejected: 'cancel'}[this.status] || 'radio_button_unchecked';
-              },
-              get statusIconClass() {
-                return {approved: 'text-emerald-500', uploaded: 'text-amber-500', rejected: 'text-rose-500'}[this.status] || 'text-base-300 dark:text-base-600';
-              },
-              get statusLabel() {
-                const map = {approved:'{% trans "Approved" %}', uploaded:'{% trans "Uploaded" %}', rejected:'{% trans "Rejected" %}', not_uploaded:'{% trans "Not Uploaded" %}', requested:'{% trans "Requested" %}'};
-                return map[this.status] || this.status;
-              },
-              csrf() { return (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''; },
-              triggerUpload() {
-                if (this.uploading || this.rejectMode) return;
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*,.pdf';
-                input.addEventListener('change', async (e) => {
-                  const file = e.target.files[0];
-                  if (file) await this.handleFile(file);
+          document.addEventListener('alpine:init', () => {
+            Alpine.store('compliancePreview', {
+              open: false, url: '', name: '', docId: null, sellerId: '',
+              docStatus: '', rejectionReason: '', isPdf: false,
+              rejectMode: false, rejectInput: '', reviewing: false, error: '',
+              show(data) {
+                Object.assign(this, {
+                  open: true, rejectMode: false, rejectInput: '', error: '',
+                  url: data.url, name: data.name, docId: data.docId,
+                  sellerId: data.sellerId, docStatus: data.docStatus,
+                  rejectionReason: data.rejectionReason || '',
                 });
-                input.click();
+                this.isPdf = /\.pdf(\?|$)/i.test(data.url || '');
               },
-              async handleFile(file) {
-                if (!file) return;
-                this.uploading = true; this.error = '';
-                try {
-                  const r1 = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/presign/`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': this.csrf()},
-                    body: JSON.stringify({docType: this.docCode, fileName: file.name, contentType: file.type || 'application/octet-stream'})
-                  });
-                  if (!r1.ok) { const e = await r1.json(); throw new Error(e.error || 'Presign failed'); }
-                  const {upload_url, file_url} = await r1.json();
-                  const r2 = await fetch(upload_url, {method: 'PUT', body: file, headers: {'Content-Type': file.type || 'application/octet-stream'}});
-                  if (!r2.ok) throw new Error('{% trans "Storage upload failed" %}');
-                  const r3 = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/confirm/`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': this.csrf()},
-                    body: JSON.stringify({document_list_id: this.docListId, file_url})
-                  });
-                  if (!r3.ok) { const e = await r3.json(); throw new Error(e.error || 'Confirm failed'); }
-                  const res = await r3.json();
-                  this.docId = res.id;
-                  this.status = 'uploaded';
-                  this.previewUrl = res.preview_url || null;
-                  this.rejectionReason = '';
-                } catch (e) {
-                  this.error = e.message;
-                } finally {
-                  this.uploading = false;
-                }
-              },
+              close() { this.open = false; },
+              csrf() { return (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''; },
               async approve() {
-                if (!this.docId) return;
                 this.reviewing = true; this.error = '';
                 try {
                   const r = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/review/`, {
@@ -312,34 +256,88 @@
                     headers: {'Content-Type': 'application/json', 'X-CSRFToken': this.csrf()},
                     body: JSON.stringify({doc_id: this.docId, action: 'approved'})
                   });
-                  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Review failed'); }
-                  this.status = 'approved';
-                  this.rejectionReason = '';
-                } catch (e) {
-                  this.error = e.message;
-                } finally {
-                  this.reviewing = false;
-                }
+                  if (!r.ok) { const e = await r.json(); throw new Error(e.error || '{% trans "Review failed" %}'); }
+                  this.docStatus = 'approved';
+                  window.dispatchEvent(new CustomEvent('compliance-reviewed', {detail: {docId: this.docId, status: 'approved', rejectionReason: ''}}));
+                  this.close();
+                } catch(e) { this.error = e.message; } finally { this.reviewing = false; }
               },
               async reject() {
-                if (!this.docId || this.rejectInput.trim().length < 3) return;
+                const reason = this.rejectInput.trim();
+                if (reason.length < 3) return;
                 this.reviewing = true; this.error = '';
                 try {
                   const r = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/review/`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'X-CSRFToken': this.csrf()},
-                    body: JSON.stringify({doc_id: this.docId, action: 'rejected', rejection_reason: this.rejectInput.trim()})
+                    body: JSON.stringify({doc_id: this.docId, action: 'rejected', rejection_reason: reason})
                   });
-                  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Review failed'); }
-                  this.status = 'rejected';
-                  this.rejectionReason = this.rejectInput.trim();
-                  this.rejectMode = false;
-                  this.rejectInput = '';
-                } catch (e) {
-                  this.error = e.message;
-                } finally {
-                  this.reviewing = false;
-                }
+                  if (!r.ok) { const e = await r.json(); throw new Error(e.error || '{% trans "Review failed" %}'); }
+                  window.dispatchEvent(new CustomEvent('compliance-reviewed', {detail: {docId: this.docId, status: 'rejected', rejectionReason: reason}}));
+                  this.close();
+                } catch(e) { this.error = e.message; } finally { this.reviewing = false; }
+              }
+            });
+          });
+
+          function docRow(docListId, docCode, sellerId, initialPreviewUrl, initialStatus, initialDocId, initialRejectionReason, docName) {
+            return {
+              docListId, docCode, sellerId, docName,
+              previewUrl: initialPreviewUrl,
+              status: initialStatus,
+              docId: initialDocId || null,
+              rejectionReason: initialRejectionReason || '',
+              uploading: false,
+              error: '',
+              get statusClass() {
+                return {'approved':'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400','uploaded':'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400','rejected':'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}[this.status] || 'bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400';
+              },
+              get statusIcon() {
+                return {approved:'check_circle',uploaded:'schedule',rejected:'cancel'}[this.status] || 'radio_button_unchecked';
+              },
+              get statusIconClass() {
+                return {approved:'text-emerald-500',uploaded:'text-amber-500',rejected:'text-rose-500'}[this.status] || 'text-base-300 dark:text-base-600';
+              },
+              get statusLabel() {
+                const m = {approved:'{% trans "Approved" %}',uploaded:'{% trans "Uploaded" %}',rejected:'{% trans "Rejected" %}',not_uploaded:'{% trans "Not Uploaded" %}',requested:'{% trans "Requested" %}'};
+                return m[this.status] || this.status;
+              },
+              csrf() { return (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''; },
+              openPreview() {
+                if (!this.previewUrl) return;
+                this.$store.compliancePreview.show({
+                  url: this.previewUrl, name: this.docName, docId: this.docId,
+                  sellerId: this.sellerId, docStatus: this.status, rejectionReason: this.rejectionReason,
+                });
+              },
+              triggerUpload() {
+                if (this.uploading) return;
+                const input = document.createElement('input');
+                input.type = 'file'; input.accept = 'image/*,.pdf';
+                input.addEventListener('change', async (e) => { const f = e.target.files[0]; if (f) await this.handleFile(f); });
+                input.click();
+              },
+              async handleFile(file) {
+                if (!file) return;
+                this.uploading = true; this.error = '';
+                try {
+                  const r1 = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/presign/`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': this.csrf()},
+                    body: JSON.stringify({docType: this.docCode, fileName: file.name, contentType: file.type || 'application/octet-stream'})
+                  });
+                  if (!r1.ok) { const e = await r1.json(); throw new Error(e.error || 'Presign failed'); }
+                  const {upload_url, file_url} = await r1.json();
+                  const r2 = await fetch(upload_url, {method: 'PUT', body: file, headers: {'Content-Type': file.type || 'application/octet-stream'}});
+                  if (!r2.ok) throw new Error('{% trans "Storage upload failed" %}');
+                  const r3 = await fetch(`/admin/authentication/sellerusers/${this.sellerId}/compliance/confirm/`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': this.csrf()},
+                    body: JSON.stringify({document_list_id: this.docListId, file_url})
+                  });
+                  if (!r3.ok) { const e = await r3.json(); throw new Error(e.error || 'Confirm failed'); }
+                  const res = await r3.json();
+                  this.docId = res.id; this.status = 'uploaded';
+                  this.previewUrl = res.preview_url || null; this.rejectionReason = '';
+                } catch (e) { this.error = e.message; } finally { this.uploading = false; }
               }
             };
           }
@@ -347,102 +345,165 @@
 
         <div class="space-y-2">
           {% for doc in compliance_docs %}
-          <div x-data="docRow('{{ doc.document_list_id }}', '{{ doc.code }}', '{{ user_obj.id }}', '{{ doc.file_url|default:''|escapejs }}', '{{ doc.status }}', '{{ doc.doc_id|default:''|escapejs }}', '{{ doc.rejection_reason|escapejs }}')"
-               class="border border-base-200 dark:border-base-700 rounded-lg transition-colors">
+          <div x-data="docRow('{{ doc.document_list_id }}', '{{ doc.code }}', '{{ user_obj.id }}', '{{ doc.file_url|default:''|escapejs }}', '{{ doc.status }}', '{{ doc.doc_id|default:''|escapejs }}', '{{ doc.rejection_reason|escapejs }}', '{{ doc.name|escapejs }}')"
+               @compliance-reviewed.window="if ($event.detail.docId === docId) { status = $event.detail.status; rejectionReason = $event.detail.rejectionReason || ''; }"
+               class="flex items-center justify-between border border-base-200 dark:border-base-700 rounded-lg px-4 py-3 hover:bg-base-50 dark:hover:bg-base-800/50 transition-colors">
 
-            {# Main row #}
-            <div class="flex items-center justify-between px-4 py-3 hover:bg-base-50 dark:hover:bg-base-800/50 transition-colors">
-
-              {# Left: icon + name + date + status pill + rejection reason #}
-              <div class="flex items-center gap-3 min-w-0 flex-wrap">
-                <span class="material-symbols-outlined text-base shrink-0"
-                      :class="statusIconClass"
-                      x-text="statusIcon"></span>
-                <span class="text-sm font-medium text-base-800 dark:text-base-200">{{ doc.name }}</span>
-                {% if not doc.is_required %}
-                  <span class="text-xs text-base-400 shrink-0">{% trans "Optional" %}</span>
-                {% endif %}
-                {% if doc.uploaded_at %}
-                  <span class="text-xs text-base-400 shrink-0">{{ doc.uploaded_at|date:"d.m.Y" }}</span>
-                {% endif %}
-                <span class="px-2 py-0.5 rounded text-xs font-medium shrink-0"
-                      :class="statusClass"
-                      x-text="statusLabel"></span>
-                <span x-show="rejectionReason && status === 'rejected'" x-cloak
-                      class="text-xs text-rose-500 truncate max-w-[220px]"
-                      x-text="'&#8594; ' + rejectionReason"></span>
-                <span x-show="error" x-cloak x-text="error"
-                      class="text-xs text-rose-500 truncate max-w-[160px]"></span>
-              </div>
-
-              {# Right: Review + Upload + Preview #}
-              <div class="flex items-center gap-2 shrink-0 ml-3">
-
-                {# Approve button — only for uploaded docs #}
-                <button x-show="status === 'uploaded' && docId && !rejectMode" x-cloak
-                        @click="approve()"
-                        :disabled="reviewing"
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50">
-                  <span class="material-symbols-outlined text-xs leading-none">check</span>
-                  {% trans "Approve" %}
-                </button>
-
-                {# Reject toggle — only for uploaded docs #}
-                <button x-show="status === 'uploaded' && docId && !rejectMode" x-cloak
-                        @click="rejectMode = true"
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors">
-                  <span class="material-symbols-outlined text-xs leading-none">close</span>
-                  {% trans "Reject" %}
-                </button>
-
-                {# Upload — creates transient file input via JS (avoids Unfold JS conflicts) #}
-                {% if s3_configured %}
-                <button @click="triggerUpload()"
-                        :disabled="uploading || rejectMode"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                  <span class="material-symbols-outlined text-sm leading-none"
-                        :class="uploading ? 'animate-spin' : ''"
-                        x-text="uploading ? 'progress_activity' : 'upload_file'"></span>
-                  <span x-text="uploading ? '{% trans "Uploading..." %}' : '{% trans "Upload" %}'"></span>
-                </button>
-                {% endif %}
-
-                {# Preview #}
-                <button @click="previewUrl && window.open(previewUrl, '_blank')"
-                        :disabled="!previewUrl"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
-                        :class="previewUrl
-                          ? 'border-base-300 dark:border-base-600 text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 cursor-pointer'
-                          : 'border-base-200 dark:border-base-700 text-base-300 dark:text-base-600 cursor-not-allowed'">
-                  <span class="material-symbols-outlined text-sm leading-none">visibility</span>
-                  {% trans "Preview" %}
-                </button>
-
-              </div>
+            {# Left: icon + name + optional label + date + status pill + rejection reason #}
+            <div class="flex items-center gap-3 min-w-0 flex-wrap">
+              <span class="material-symbols-outlined text-base shrink-0"
+                    :class="statusIconClass" x-text="statusIcon"></span>
+              <span class="text-sm font-medium text-base-800 dark:text-base-200">{{ doc.name }}</span>
+              {% if not doc.is_required %}
+                <span class="text-xs text-base-400 shrink-0">{% trans "Optional" %}</span>
+              {% endif %}
+              {% if doc.uploaded_at %}
+                <span class="text-xs text-base-400 shrink-0">{{ doc.uploaded_at|date:"d.m.Y" }}</span>
+              {% endif %}
+              <span class="px-2 py-0.5 rounded text-xs font-medium shrink-0"
+                    :class="statusClass" x-text="statusLabel"></span>
+              <span x-show="rejectionReason && status === 'rejected'" x-cloak
+                    class="text-xs text-rose-500 truncate max-w-[220px]"
+                    x-text="'\u2192 ' + rejectionReason"></span>
+              <span x-show="error" x-cloak x-text="error"
+                    class="text-xs text-rose-500 truncate max-w-[160px]"></span>
             </div>
 
-            {# Inline reject form #}
-            <div x-show="rejectMode" x-cloak
-                 class="flex items-center gap-2 px-4 pb-3 border-t border-base-100 dark:border-base-800 pt-3">
-              <span class="material-symbols-outlined text-sm text-rose-500">cancel</span>
-              <input type="text" x-model="rejectInput"
-                     placeholder="{% trans "Rejection reason (min. 3 characters)..." %}"
-                     class="flex-1 px-3 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm bg-white dark:bg-base-800 text-base-800 dark:text-base-200 focus:outline-none focus:border-primary-500">
-              <button @click="reject()"
-                      :disabled="reviewing || rejectInput.trim().length < 3"
-                      class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors disabled:opacity-50">
-                <span class="material-symbols-outlined text-xs leading-none" x-text="reviewing ? 'progress_activity' : 'check'"></span>
-                {% trans "Confirm" %}
+            {# Right: Upload + Preview #}
+            <div class="flex items-center gap-2 shrink-0 ml-3">
+              {% if s3_configured %}
+              <button @click="triggerUpload()" :disabled="uploading"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <span class="material-symbols-outlined text-sm leading-none"
+                      :class="uploading ? 'animate-spin' : ''"
+                      x-text="uploading ? 'progress_activity' : 'upload_file'"></span>
+                <span x-text="uploading ? '{% trans "Uploading..." %}' : '{% trans "Upload" %}'"></span>
               </button>
-              <button @click="rejectMode = false; rejectInput = ''"
-                      class="inline-flex items-center px-3 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-xs font-medium text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
-                {% trans "Cancel" %}
+              {% endif %}
+              <button @click="openPreview()" :disabled="!previewUrl"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors"
+                      :class="previewUrl ? 'border-base-300 dark:border-base-600 text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 cursor-pointer' : 'border-base-200 dark:border-base-700 text-base-300 dark:text-base-600 cursor-not-allowed'">
+                <span class="material-symbols-outlined text-sm leading-none">visibility</span>
+                {% trans "Preview" %}
               </button>
             </div>
 
           </div>
           {% endfor %}
         </div>
+
+        {# ── Document Preview Modal ── #}
+        <template x-teleport="body">
+          <div x-data
+               x-show="$store.compliancePreview.open" x-cloak
+               x-transition:enter="transition ease-out duration-150"
+               x-transition:enter-start="opacity-0"
+               x-transition:enter-end="opacity-100"
+               x-transition:leave="transition ease-in duration-100"
+               x-transition:leave-start="opacity-100"
+               x-transition:leave-end="opacity-0"
+               @keydown.escape.window="$store.compliancePreview.close()"
+               style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.82);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px">
+
+            <div @click.stop
+                 x-show="$store.compliancePreview.open"
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 class="flex flex-col bg-white dark:bg-base-900 rounded-2xl overflow-hidden shadow-2xl w-full max-w-3xl"
+                 style="max-height:calc(100vh - 48px)">
+
+              {# Header #}
+              <div class="flex items-center justify-between px-5 py-4 border-b border-base-200 dark:border-base-700 shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="material-symbols-outlined text-xl text-base-400 shrink-0">description</span>
+                  <div class="min-w-0">
+                    <div class="text-sm font-semibold text-base-900 dark:text-white truncate"
+                         x-text="$store.compliancePreview.name"></div>
+                    <div class="flex items-center gap-2 mt-0.5">
+                      <span class="px-2 py-0.5 rounded text-xs font-medium"
+                            :class="{'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400':$store.compliancePreview.docStatus==='approved','bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400':$store.compliancePreview.docStatus==='uploaded','bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400':$store.compliancePreview.docStatus==='rejected','bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400':!['approved','uploaded','rejected'].includes($store.compliancePreview.docStatus)}"
+                            x-text="{'approved':'{% trans "Approved" %}','uploaded':'{% trans "Uploaded" %}','rejected':'{% trans "Rejected" %}'}[$store.compliancePreview.docStatus] || $store.compliancePreview.docStatus">
+                      </span>
+                      <span x-show="$store.compliancePreview.docStatus === 'rejected' && $store.compliancePreview.rejectionReason"
+                            x-cloak class="text-xs text-rose-500 truncate max-w-[240px]"
+                            x-text="'\u2192 ' + $store.compliancePreview.rejectionReason"></span>
+                    </div>
+                  </div>
+                </div>
+                <button @click="$store.compliancePreview.close()"
+                        class="ml-4 shrink-0 p-1.5 rounded-lg hover:bg-base-100 dark:hover:bg-base-800 transition-colors">
+                  <span class="material-symbols-outlined text-xl text-base-500">close</span>
+                </button>
+              </div>
+
+              {# Document viewer — flex-1 fills remaining space #}
+              <div class="flex-1 overflow-hidden bg-base-100 dark:bg-base-950 min-h-0">
+                <template x-if="$store.compliancePreview.isPdf">
+                  <iframe :src="$store.compliancePreview.url" class="w-full h-full border-0" style="min-height:420px"></iframe>
+                </template>
+                <template x-if="!$store.compliancePreview.isPdf && $store.compliancePreview.url">
+                  <div class="w-full h-full flex items-center justify-center p-6 overflow-auto" style="min-height:280px">
+                    <img :src="$store.compliancePreview.url"
+                         class="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                         style="max-height:55vh">
+                  </div>
+                </template>
+              </div>
+
+              {# Action footer — only when document is awaiting review #}
+              <div x-show="$store.compliancePreview.docStatus === 'uploaded' && $store.compliancePreview.docId"
+                   x-cloak
+                   class="shrink-0 border-t border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-5 py-4 space-y-3">
+
+                <p x-show="$store.compliancePreview.error" x-cloak
+                   x-text="$store.compliancePreview.error"
+                   class="text-xs text-rose-500"></p>
+
+                {# Rejection reason input #}
+                <div x-show="$store.compliancePreview.rejectMode" x-cloak
+                     class="flex items-center gap-2">
+                  <input type="text" x-model="$store.compliancePreview.rejectInput"
+                         placeholder="{% trans "Rejection reason (min. 3 characters)..." %}"
+                         @keydown.enter="$store.compliancePreview.reject()"
+                         class="flex-1 px-3 py-2 rounded-lg border border-base-300 dark:border-base-600 text-sm bg-white dark:bg-base-800 text-base-800 dark:text-base-200 focus:outline-none focus:border-primary-500">
+                  <button @click="$store.compliancePreview.reject()"
+                          :disabled="$store.compliancePreview.reviewing || $store.compliancePreview.rejectInput.trim().length < 3"
+                          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-50 transition-colors">
+                    <span class="material-symbols-outlined text-sm leading-none"
+                          :class="$store.compliancePreview.reviewing ? 'animate-spin' : ''"
+                          x-text="$store.compliancePreview.reviewing ? 'progress_activity' : 'check'"></span>
+                    {% trans "Confirm Reject" %}
+                  </button>
+                  <button @click="$store.compliancePreview.rejectMode = false; $store.compliancePreview.rejectInput = ''"
+                          class="inline-flex items-center px-4 py-2 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-600 dark:text-base-300 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                    {% trans "Cancel" %}
+                  </button>
+                </div>
+
+                {# Approve / Reject buttons #}
+                <div x-show="!$store.compliancePreview.rejectMode" x-cloak
+                     class="flex items-center justify-end gap-3">
+                  <button @click="$store.compliancePreview.rejectMode = true"
+                          class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg border border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 text-sm font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors">
+                    <span class="material-symbols-outlined text-sm leading-none">close</span>
+                    {% trans "Reject" %}
+                  </button>
+                  <button @click="$store.compliancePreview.approve()"
+                          :disabled="$store.compliancePreview.reviewing"
+                          class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                    <span class="material-symbols-outlined text-sm leading-none"
+                          :class="$store.compliancePreview.reviewing ? 'animate-spin' : ''"
+                          x-text="$store.compliancePreview.reviewing ? 'progress_activity' : 'check'"></span>
+                    {% trans "Approve" %}
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </template>
+        {# ── End Preview Modal ── #}
 
       {% else %}
         <div class="text-center py-8">
