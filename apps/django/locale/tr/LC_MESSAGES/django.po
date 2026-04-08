@@ -375,3 +375,42 @@ msgstr "İnceleme başarısız"
 
 msgid "Rejection reason (min. 3 characters)..."
 msgstr "Red sebebi (min. 3 karakter)..."
+
+msgid "Orders & Earnings"
+msgstr "Siparişler & Kazanç"
+
+msgid "Wallet & Transactions"
+msgstr "Cüzdan & İşlemler"
+
+msgid "Gross Revenue"
+msgstr "Brüt Gelir"
+
+msgid "Commission Paid"
+msgstr "Ödenen Komisyon"
+
+msgid "Net Earnings"
+msgstr "Net Kazanç"
+
+msgid "Total Orders"
+msgstr "Toplam Sipariş"
+
+msgid "Gross"
+msgstr "Brüt"
+
+msgid "Net"
+msgstr "Net"
+
+msgid "Total Credits"
+msgstr "Toplam Alacak"
+
+msgid "Total Debits"
+msgstr "Toplam Borç"
+
+msgid "Transactions"
+msgstr "İşlemler"
+
+msgid "Reason"
+msgstr "Sebep"
+
+msgid "No transactions found."
+msgstr "İşlem bulunamadı."

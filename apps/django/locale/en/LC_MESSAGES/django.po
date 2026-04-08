@@ -374,3 +374,42 @@ msgstr "Review failed"
 
 msgid "Rejection reason (min. 3 characters)..."
 msgstr "Rejection reason (min. 3 characters)..."
+
+msgid "Orders & Earnings"
+msgstr "Orders & Earnings"
+
+msgid "Wallet & Transactions"
+msgstr "Wallet & Transactions"
+
+msgid "Gross Revenue"
+msgstr "Gross Revenue"
+
+msgid "Commission Paid"
+msgstr "Commission Paid"
+
+msgid "Net Earnings"
+msgstr "Net Earnings"
+
+msgid "Total Orders"
+msgstr "Total Orders"
+
+msgid "Gross"
+msgstr "Gross"
+
+msgid "Net"
+msgstr "Net"
+
+msgid "Total Credits"
+msgstr "Total Credits"
+
+msgid "Total Debits"
+msgstr "Total Debits"
+
+msgid "Transactions"
+msgstr "Transactions"
+
+msgid "Reason"
+msgstr "Reason"
+
+msgid "No transactions found."
+msgstr "No transactions found."
