@@ -273,114 +273,118 @@ class BuyerUsersAdmin(ModelAdmin):
 
     def buyer_detail_view(self, request, user_id):
         user = get_object_or_404(Users, pk=user_id)
+        uid = str(user_id)
 
         with connection.cursor() as cur:
-            # Summary stats
+            # ── 1. All summary stats in one query ──
             cur.execute("""
                 SELECT
-                    count(*)::int AS total_orders,
-                    COALESCE(sum(CASE WHEN payment_completed THEN total_price ELSE 0 END), 0) AS total_spent,
-                    COALESCE(sum(CASE WHEN payment_completed AND created_at >= now() - interval '30 days' THEN total_price ELSE 0 END), 0) AS monthly_spent,
-                    max(created_at) AS last_order_at
-                FROM orders WHERE buyer_id = %s
-            """, [user_id])
-            orow = cur.fetchone()
+                    (SELECT row_to_json(t) FROM (
+                        SELECT count(*)::int AS total_orders,
+                               COALESCE(sum(CASE WHEN payment_completed THEN total_price ELSE 0 END), 0) AS total_spent,
+                               COALESCE(sum(CASE WHEN payment_completed AND created_at >= now() - interval '30 days' THEN total_price ELSE 0 END), 0) AS monthly_spent,
+                               max(created_at) AS last_order_at
+                        FROM orders WHERE buyer_id = %s
+                    ) t),
+                    (SELECT row_to_json(t) FROM (
+                        SELECT count(*)::int AS total,
+                               count(*) FILTER (WHERE status IN ('open','in_review'))::int AS unresolved,
+                               max(created_at) AS last_at
+                        FROM complaints
+                        WHERE COALESCE(complainant_user_id, complainant_buyer_id) = %s
+                    ) t),
+                    (SELECT count(*)::int FROM reviews WHERE buyer_id = %s),
+                    (SELECT count(*)::int FROM payment_attempts WHERE buyer_id = %s),
+                    (SELECT count(*)::int FROM buyer_notes WHERE buyer_id = %s),
+                    (SELECT count(*)::int FROM buyer_tags WHERE buyer_id = %s)
+            """, [uid, uid, uid, uid, uid, uid])
+            orow_json, crow_json, review_count, payment_count, notes_count, tags_count = cur.fetchone()
 
+            # ── 2. All list data in one query using json_agg ──
             cur.execute("""
                 SELECT
-                    count(*)::int AS total,
-                    count(*) FILTER (WHERE status IN ('open','in_review'))::int AS unresolved,
-                    max(created_at) AS last_at
-                FROM complaints
-                WHERE COALESCE(complainant_user_id, complainant_buyer_id) = %s
-            """, [user_id])
-            crow = cur.fetchone()
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT o.id, u.display_name AS seller_name, o.total_price, o.status, o.created_at
+                        FROM orders o LEFT JOIN users u ON u.id = o.seller_id
+                        WHERE o.buyer_id = %s ORDER BY o.created_at DESC LIMIT 20
+                    ) t),
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT id, description, status, created_at FROM complaints
+                        WHERE COALESCE(complainant_user_id, complainant_buyer_id) = %s
+                        ORDER BY created_at DESC LIMIT 20
+                    ) t),
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT r.id, f.name AS food_name, r.rating, r.comment, r.created_at
+                        FROM reviews r LEFT JOIN foods f ON f.id = r.food_id
+                        WHERE r.buyer_id = %s ORDER BY r.created_at DESC LIMIT 20
+                    ) t),
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT pa.id, pa.provider, pa.status, pa.created_at,
+                               o.total_price AS amount, o.id AS order_id
+                        FROM payment_attempts pa
+                        JOIN orders o ON o.id = pa.order_id
+                        WHERE pa.buyer_id = %s ORDER BY pa.created_at DESC LIMIT 20
+                    ) t),
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT bn.id, bn.note, au.email AS admin_email, bn.created_at
+                        FROM buyer_notes bn
+                        LEFT JOIN admin_users au ON au.id = bn.admin_id
+                        WHERE bn.buyer_id = %s ORDER BY bn.created_at DESC
+                    ) t),
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT tag, created_at FROM buyer_tags WHERE buyer_id = %s ORDER BY created_at DESC
+                    ) t)
+            """, [uid, uid, uid, uid, uid, uid])
+            orders_json, complaints_json, reviews_json, payments_json, notes_json, tags_json = cur.fetchone()
 
-            cur.execute("SELECT count(*)::int FROM reviews WHERE buyer_id = %s", [user_id])
-            review_count = cur.fetchone()[0]
-
-            cur.execute("SELECT count(*)::int FROM payment_attempts WHERE buyer_id = %s", [user_id])
-            payment_count = cur.fetchone()[0]
-
-            cur.execute("SELECT count(*)::int FROM buyer_notes WHERE buyer_id = %s", [user_id])
-            notes_count = cur.fetchone()[0]
-
-            cur.execute("SELECT count(*)::int FROM buyer_tags WHERE buyer_id = %s", [user_id])
-            tags_count = cur.fetchone()[0]
-
-            # Recent orders
+            # ── 3. Activity: sessions + presence merged ──
             cur.execute("""
-                SELECT o.id, u.display_name AS seller_name, o.total_price, o.status, o.created_at
-                FROM orders o LEFT JOIN users u ON u.id = o.seller_id
-                WHERE o.buyer_id = %s ORDER BY o.created_at DESC LIMIT 20
-            """, [user_id])
-            orders = [{"id": str(r[0]), "seller_name": r[1], "total_price": r[2], "status": r[3], "status_tr": STATUS_TR.get(r[3], r[3]), "created_at": r[4]} for r in cur.fetchall()]
+                SELECT event_type, ip, detail, happened_at FROM (
+                    SELECT 'login' AS event_type, ip, device_info AS detail, created_at AS happened_at
+                    FROM auth_sessions WHERE user_id = %s
+                    UNION ALL
+                    SELECT event_type, ip, user_agent AS detail, happened_at
+                    FROM user_presence_events
+                    WHERE subject_type = 'user' AND subject_id = %s
+                ) combined
+                ORDER BY happened_at DESC NULLS LAST LIMIT 30
+            """, [uid, uid])
+            activity = [{"event_type": r[0], "event_tr": "Giriş" if r[0] == "login" else r[0],
+                         "ip": r[1], "detail": r[2], "happened_at": r[3]} for r in cur.fetchall()]
 
-            # Recent complaints
-            cur.execute("""
-                SELECT id, description, status, created_at FROM complaints
-                WHERE COALESCE(complainant_user_id, complainant_buyer_id) = %s
-                ORDER BY created_at DESC LIMIT 20
-            """, [user_id])
-            complaints = [{"id": str(r[0]), "description": r[1], "status": r[2], "status_tr": STATUS_TR.get(r[2], r[2]), "created_at": r[3]} for r in cur.fetchall()]
+        # Parse JSON results
+        orders = [{"id": str(r["id"]), "seller_name": r["seller_name"], "total_price": r["total_price"],
+                   "status": r["status"], "status_tr": STATUS_TR.get(r["status"], r["status"]),
+                   "created_at": r["created_at"]} for r in (orders_json or [])]
 
-            # Recent reviews
-            cur.execute("""
-                SELECT r.id, f.name AS food_name, r.rating, r.comment, r.created_at
-                FROM reviews r LEFT JOIN foods f ON f.id = r.food_id
-                WHERE r.buyer_id = %s ORDER BY r.created_at DESC LIMIT 20
-            """, [user_id])
-            reviews = [{"id": str(r[0]), "food_name": r[1], "stars": "★" * int(r[2]) + "☆" * (5 - int(r[2])), "comment": r[3], "created_at": r[4]} for r in cur.fetchall()]
+        complaints = [{"id": str(r["id"]), "description": r["description"], "status": r["status"],
+                       "status_tr": STATUS_TR.get(r["status"], r["status"]),
+                       "created_at": r["created_at"]} for r in (complaints_json or [])]
 
-            # Payment attempts
-            cur.execute("""
-                SELECT pa.id, pa.provider, pa.status, pa.created_at,
-                       o.total_price, o.id AS order_id
-                FROM payment_attempts pa
-                JOIN orders o ON o.id = pa.order_id
-                WHERE pa.buyer_id = %s ORDER BY pa.created_at DESC LIMIT 20
-            """, [user_id])
-            payments = [{"id": str(r[0]), "provider": r[1], "status": r[2], "status_tr": STATUS_TR.get(r[2], r[2]), "created_at": r[3],
-                         "amount": r[4], "order_id": str(r[5])} for r in cur.fetchall()]
+        reviews = [{"id": str(r["id"]), "food_name": r["food_name"],
+                    "stars": "★" * int(r["rating"]) + "☆" * (5 - int(r["rating"])),
+                    "comment": r["comment"], "created_at": r["created_at"]} for r in (reviews_json or [])]
 
-            # Activity: auth sessions + presence events merged by time
-            cur.execute("""
-                SELECT 'login' AS event_type, ip, device_info AS detail, created_at
-                FROM auth_sessions WHERE user_id = %s
-                ORDER BY created_at DESC LIMIT 30
-            """, [user_id])
-            sessions = [{"event_type": r[0], "event_tr": "Giriş", "ip": r[1], "detail": r[2], "happened_at": r[3]} for r in cur.fetchall()]
+        payments = [{"id": str(r["id"]), "provider": r["provider"], "status": r["status"],
+                     "status_tr": STATUS_TR.get(r["status"], r["status"]),
+                     "created_at": r["created_at"], "amount": r["amount"],
+                     "order_id": str(r["order_id"])} for r in (payments_json or [])]
 
-            cur.execute("""
-                SELECT event_type, ip, user_agent AS detail, happened_at
-                FROM user_presence_events
-                WHERE subject_type = 'user' AND subject_id = %s
-                ORDER BY happened_at DESC LIMIT 30
-            """, [user_id])
-            presence = [{"event_type": r[0], "event_tr": r[0], "ip": r[1], "detail": r[2], "happened_at": r[3]} for r in cur.fetchall()]
+        notes = [{"id": str(r["id"]), "note": r["note"], "admin_email": r["admin_email"],
+                  "created_at": r["created_at"]} for r in (notes_json or [])]
 
-            activity = sorted(sessions + presence, key=lambda x: x["happened_at"] or "", reverse=True)[:30]
+        tags = [{"tag": r["tag"], "created_at": r["created_at"]} for r in (tags_json or [])]
 
-            # Notes & Tags
-            cur.execute("""
-                SELECT bn.id, bn.note, au.email AS admin_email, bn.created_at
-                FROM buyer_notes bn
-                LEFT JOIN admin_users au ON au.id = bn.admin_id
-                WHERE bn.buyer_id = %s ORDER BY bn.created_at DESC
-            """, [user_id])
-            notes = [{"id": str(r[0]), "note": r[1], "admin_email": r[2], "created_at": r[3]} for r in cur.fetchall()]
-
-            cur.execute("SELECT tag, created_at FROM buyer_tags WHERE buyer_id = %s ORDER BY created_at DESC", [user_id])
-            tags = [{"tag": r[0], "created_at": r[1]} for r in cur.fetchall()]
-
+        odata = orow_json or {}
+        cdata = crow_json or {}
         summary = {
-            "total_orders": orow[0] or 0,
-            "total_spent": orow[1] or 0,
-            "monthly_spent": orow[2] or 0,
-            "last_order_at": orow[3],
-            "complaint_total": crow[0] or 0,
-            "complaint_unresolved": crow[1] or 0,
-            "last_complaint_at": crow[2],
+            "total_orders": odata.get("total_orders", 0),
+            "total_spent": odata.get("total_spent", 0),
+            "monthly_spent": odata.get("monthly_spent", 0),
+            "last_order_at": odata.get("last_order_at"),
+            "complaint_total": cdata.get("total", 0),
+            "complaint_unresolved": cdata.get("unresolved", 0),
+            "last_complaint_at": cdata.get("last_at"),
             "review_count": review_count,
             "payment_count": payment_count,
             "notes_count": notes_count + tags_count,
@@ -500,34 +504,65 @@ class SellerUsersAdmin(ModelAdmin):
 
     def seller_detail_view(self, request, user_id):
         user = get_object_or_404(Users, pk=user_id)
+        uid = str(user_id)
 
         with connection.cursor() as cur:
-            # Order/earnings stats
+            # ── 1. All summary stats in one query ──
             cur.execute("""
                 SELECT
-                    count(*)::int AS total_orders,
-                    COALESCE(sum(CASE WHEN payment_completed THEN total_price ELSE 0 END), 0) AS total_earnings,
-                    COALESCE(sum(CASE WHEN payment_completed AND created_at >= now() - interval '30 days' THEN total_price ELSE 0 END), 0) AS monthly_earnings,
-                    max(created_at) AS last_order_at
-                FROM orders WHERE seller_id = %s
-            """, [user_id])
-            orow = cur.fetchone()
+                    (SELECT row_to_json(t) FROM (
+                        SELECT count(*)::int AS total_orders,
+                               COALESCE(sum(CASE WHEN payment_completed THEN total_price ELSE 0 END), 0) AS total_earnings,
+                               COALESCE(sum(CASE WHEN payment_completed AND created_at >= now() - interval '30 days' THEN total_price ELSE 0 END), 0) AS monthly_earnings,
+                               max(created_at) AS last_order_at
+                        FROM orders WHERE seller_id = %s
+                    ) t),
+                    (SELECT row_to_json(t) FROM (
+                        SELECT count(*)::int AS total,
+                               count(*) FILTER (WHERE c.status IN ('open','in_review'))::int AS unresolved
+                        FROM complaints c JOIN orders o ON o.id = c.order_id WHERE o.seller_id = %s
+                    ) t),
+                    (SELECT count(*)::int FROM foods WHERE seller_id = %s),
+                    (SELECT row_to_json(t) FROM (
+                        SELECT count(*)::int AS cnt, COALESCE(avg(r.rating), 0)::numeric(3,2) AS avg_rating
+                        FROM reviews r JOIN foods f ON f.id = r.food_id WHERE f.seller_id = %s
+                    ) t),
+                    (SELECT row_to_json(t) FROM (
+                        SELECT title, address_line AS line FROM user_addresses WHERE user_id = %s LIMIT 1
+                    ) t)
+            """, [uid, uid, uid, uid, uid])
+            orow_json, crow_json, foods_count, rrow_json, address = cur.fetchone()
 
+            # ── 2. All list data in one query using json_agg ──
             cur.execute("""
-                SELECT count(*)::int, count(*) FILTER (WHERE c.status IN ('open','in_review'))::int
-                FROM complaints c JOIN orders o ON o.id = c.order_id WHERE o.seller_id = %s
-            """, [user_id])
-            crow = cur.fetchone()
+                SELECT
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT o.id, u.display_name AS buyer_name, o.total_price, o.status, o.created_at
+                        FROM orders o LEFT JOIN users u ON u.id = o.buyer_id
+                        WHERE o.seller_id = %s ORDER BY o.created_at DESC LIMIT 10
+                    ) t),
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT r.id, f.name AS food_name, r.rating AS review_rating, r.comment, r.created_at,
+                               u.display_name AS buyer_name
+                        FROM reviews r
+                        JOIN foods f ON f.id = r.food_id
+                        LEFT JOIN users u ON u.id = r.buyer_id
+                        WHERE f.seller_id = %s ORDER BY r.created_at DESC LIMIT 10
+                    ) t),
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT c.id, c.description, c.status, c.created_at
+                        FROM complaints c JOIN orders o ON o.id = c.order_id
+                        WHERE o.seller_id = %s ORDER BY c.created_at DESC LIMIT 10
+                    ) t),
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT f.id, f.name, f.price, f.is_active, c.name_tr AS category_name
+                        FROM foods f LEFT JOIN categories c ON c.id = f.category_id
+                        WHERE f.seller_id = %s ORDER BY f.name LIMIT 20
+                    ) t)
+            """, [uid, uid, uid, uid])
+            orders_json, reviews_json, complaints_json, foods_json = cur.fetchone()
 
-            cur.execute("SELECT count(*)::int FROM foods WHERE seller_id = %s", [user_id])
-            foods_count = cur.fetchone()[0]
-
-            cur.execute("""
-                SELECT count(*)::int, COALESCE(avg(r.rating), 0)::numeric(3,2)
-                FROM reviews r JOIN foods f ON f.id = r.food_id WHERE f.seller_id = %s
-            """, [user_id])
-            rrow = cur.fetchone()
-
+            # ── 3. Compliance docs (kept separate — needs s3 URL hydration) ──
             cur.execute("""
                 SELECT cdl.id::text, cdl.code, cdl.name, cdl.is_required_default,
                        scd.id::text AS doc_id, scd.status, scd.uploaded_at, scd.file_url,
@@ -537,7 +572,7 @@ class SellerUsersAdmin(ModelAdmin):
                     ON scd.document_list_id = cdl.id AND scd.seller_id = %s
                 WHERE cdl.is_active = TRUE
                 ORDER BY cdl.is_required_default DESC, cdl.name
-            """, [user_id])
+            """, [uid])
             compliance_docs = []
             for r in cur.fetchall():
                 compliance_docs.append({
@@ -553,54 +588,36 @@ class SellerUsersAdmin(ModelAdmin):
                     "rejection_reason": r[8] or "",
                 })
 
-            cur.execute("""
-                SELECT o.id, u.display_name AS buyer_name, o.total_price, o.status, o.created_at
-                FROM orders o LEFT JOIN users u ON u.id = o.buyer_id
-                WHERE o.seller_id = %s ORDER BY o.created_at DESC LIMIT 10
-            """, [user_id])
-            orders = [{"id": str(r[0]), "buyer_name": r[1], "total_price": r[2], "status": r[3], "status_tr": STATUS_TR.get(r[3], r[3]), "created_at": r[4]} for r in cur.fetchall()]
+        # Parse JSON results
+        orders = [{"id": str(r["id"]), "buyer_name": r["buyer_name"], "total_price": r["total_price"],
+                   "status": r["status"], "status_tr": STATUS_TR.get(r["status"], r["status"]),
+                   "created_at": r["created_at"]} for r in (orders_json or [])]
 
-            cur.execute("""
-                SELECT r.id, f.name AS food_name, r.rating AS review_rating, r.comment, r.created_at,
-                       u.display_name AS buyer_name
-                FROM reviews r
-                JOIN foods f ON f.id = r.food_id
-                LEFT JOIN users u ON u.id = r.buyer_id
-                WHERE f.seller_id = %s ORDER BY r.created_at DESC LIMIT 10
-            """, [user_id])
-            reviews = [{"id": str(r[0]), "food_name": r[1], "stars": "★" * int(r[2]) + "☆" * (5 - int(r[2])),
-                        "comment": r[3], "created_at": r[4], "buyer_name": r[5]} for r in cur.fetchall()]
+        reviews = [{"id": str(r["id"]), "food_name": r["food_name"],
+                    "stars": "★" * int(r["review_rating"]) + "☆" * (5 - int(r["review_rating"])),
+                    "comment": r["comment"], "created_at": r["created_at"],
+                    "buyer_name": r["buyer_name"]} for r in (reviews_json or [])]
 
-            cur.execute("""
-                SELECT c.id, c.description, c.status, c.created_at
-                FROM complaints c JOIN orders o ON o.id = c.order_id
-                WHERE o.seller_id = %s ORDER BY c.created_at DESC LIMIT 10
-            """, [user_id])
-            complaints = [{"id": str(r[0]), "description": r[1], "status": r[2], "status_tr": STATUS_TR.get(r[2], r[2]), "created_at": r[3]} for r in cur.fetchall()]
+        complaints = [{"id": str(r["id"]), "description": r["description"], "status": r["status"],
+                       "status_tr": STATUS_TR.get(r["status"], r["status"]),
+                       "created_at": r["created_at"]} for r in (complaints_json or [])]
 
-            cur.execute("""
-                SELECT f.id, f.name, f.price, f.is_active, c.name_tr AS category_name
-                FROM foods f LEFT JOIN categories c ON c.id = f.category_id
-                WHERE f.seller_id = %s ORDER BY f.name LIMIT 20
-            """, [user_id])
-            foods = [{"id": str(r[0]), "name": r[1], "price": r[2], "is_active": r[3], "category_name": r[4]} for r in cur.fetchall()]
+        foods = [{"id": str(r["id"]), "name": r["name"], "price": r["price"],
+                  "is_active": r["is_active"], "category_name": r["category_name"]} for r in (foods_json or [])]
 
-            cur.execute("""
-                SELECT title, address_line FROM user_addresses WHERE user_id = %s LIMIT 1
-            """, [user_id])
-            addr_row = cur.fetchone()
-            address = {"title": addr_row[0], "line": addr_row[1]} if addr_row else None
-
+        odata = orow_json or {}
+        cdata = crow_json or {}
+        rdata = rrow_json or {}
         summary = {
-            "total_orders": orow[0] or 0,
-            "total_earnings": orow[1] or 0,
-            "monthly_earnings": orow[2] or 0,
-            "last_order_at": orow[3],
-            "complaint_total": crow[0] or 0,
-            "complaint_unresolved": crow[1] or 0,
+            "total_orders": odata.get("total_orders", 0),
+            "total_earnings": odata.get("total_earnings", 0),
+            "monthly_earnings": odata.get("monthly_earnings", 0),
+            "last_order_at": odata.get("last_order_at"),
+            "complaint_total": cdata.get("total", 0),
+            "complaint_unresolved": cdata.get("unresolved", 0),
             "foods_count": foods_count,
-            "review_count": rrow[0] or 0,
-            "avg_rating": float(rrow[1] or 0),
+            "review_count": rdata.get("cnt", 0),
+            "avg_rating": float(rdata.get("avg_rating", 0)),
         }
 
         compliance_summary = {
