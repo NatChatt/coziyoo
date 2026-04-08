@@ -1669,7 +1669,7 @@ adminUserManagementRouter.get("/search/global", requireAuth("admin"), async (req
       "sellers",
       `SELECT u.id::text, u.display_name, u.email, u.is_active
        FROM users u
-       WHERE u.user_type IN ('seller', 'both')
+       WHERE u.user_type = 'seller'
          AND (
            lower(u.display_name) LIKE $1
            OR lower(u.email) LIKE $1
@@ -1690,7 +1690,7 @@ adminUserManagementRouter.get("/search/global", requireAuth("admin"), async (req
       "buyers",
       `SELECT u.id::text, u.display_name, u.email, u.is_active
        FROM users u
-       WHERE u.user_type IN ('buyer', 'both')
+       WHERE u.user_type = 'buyer'
          AND (
            lower(u.display_name) LIKE $1
            OR lower(u.email) LIKE $1
@@ -1962,12 +1962,10 @@ adminUserManagementRouter.get("/users", requireAuth("admin"), async (req, res) =
     where.push(`u.user_type = $${params.length}`);
   } else if (input.audience === "buyer") {
     params.push("buyer");
-    params.push("both");
-    where.push(`u.user_type IN ($${params.length - 1}, $${params.length})`);
+    where.push(`u.user_type = $${params.length}`);
   } else if (input.audience === "seller") {
     params.push("seller");
-    params.push("both");
-    where.push(`u.user_type IN ($${params.length - 1}, $${params.length})`);
+    where.push(`u.user_type = $${params.length}`);
   }
 
   if (input.audience === "buyer" && input.smartFilter) {
@@ -2294,7 +2292,7 @@ adminUserManagementRouter.get("/users", requireAuth("admin"), async (req, res) =
 });
 
 adminUserManagementRouter.get("/buyers/smart-filter-counts", requireAuth("admin"), async (_req, res) => {
-  const buyerScopeSql = `u.user_type IN ('buyer', 'both')`;
+  const buyerScopeSql = `u.user_type = 'buyer'`;
   const dailyBuyerSql = buyerSmartFilterConditionSql("daily_buyer");
   const topRevenueSql = buyerSmartFilterConditionSql("top_revenue");
   const suspiciousLoginSql = buyerSmartFilterConditionSql("suspicious_login");
