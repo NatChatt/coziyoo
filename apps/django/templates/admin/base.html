@@ -19,6 +19,7 @@
                         page.style.filter = val ? 'blur(4px) brightness(0.3)' : '';
                         page.style.pointerEvents = val ? 'none' : '';
                         page.style.userSelect = val ? 'none' : '';
+                        document.body.style.overflow = val ? 'hidden' : '';
                     }
                 });
                 window.addEventListener('open-global-search', () => this.openModal());
