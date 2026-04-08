@@ -2,6 +2,7 @@ require File.join(File.dirname(`node --print "require.resolve('expo/package.json
 require File.join(File.dirname(`node --print "require.resolve('react-native/package.json')"`), "scripts/react_native_pods")
 
 require 'json'
+require 'fileutils'
 podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties.json'))) rescue {}
 
 ENV['RCT_NEW_ARCH_ENABLED'] = podfile_properties['newArchEnabled'] == 'true' ? '1' : '0'
@@ -51,6 +52,47 @@ target 'Coziyoo' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
+
+    # Xcode 17E192 / iPhoneOS26.4 can fail compiling fmt 11 with consteval enabled.
+    # Keep the workaround scoped to the fmt pod so React Native pod settings stay intact.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+
+      target.build_configurations.each do |config|
+        cpp_flags = config.build_settings['OTHER_CPLUSPLUSFLAGS'] || ['$(inherited)']
+        cpp_flags = Array(cpp_flags)
+        cpp_flags << '-DFMT_USE_CONSTEVAL=0' unless cpp_flags.include?('-DFMT_USE_CONSTEVAL=0')
+        config.build_settings['OTHER_CPLUSPLUSFLAGS'] = cpp_flags
+      end
+    end
+
+    Dir.glob(File.join(__dir__, 'Pods', 'Target Support Files', 'fmt', 'fmt.*.xcconfig')).each do |xcconfig_path|
+      xcconfig = File.read(xcconfig_path)
+      next if xcconfig.include?('FMT_USE_CONSTEVAL=0')
+
+      updated_xcconfig = xcconfig.gsub(
+        /^GCC_PREPROCESSOR_DEFINITIONS = (.*)$/,
+        'GCC_PREPROCESSOR_DEFINITIONS = \1 FMT_USE_CONSTEVAL=0'
+      )
+      File.write(xcconfig_path, updated_xcconfig)
+    end
+
+    fmt_base_header_path = File.join(__dir__, 'Pods', 'fmt', 'include', 'fmt', 'base.h')
+    if File.exist?(fmt_base_header_path)
+      fmt_base_header = File.read(fmt_base_header_path)
+      unless fmt_base_header.include?("#ifdef FMT_USE_CONSTEVAL\n// Use the provided definition.")
+        FileUtils.chmod('u+w', fmt_base_header_path)
+        updated_base_header = fmt_base_header.sub(
+          "#if !defined(__cpp_lib_is_constant_evaluated)",
+          "#ifdef FMT_USE_CONSTEVAL\n// Use the provided definition.\n#elif !defined(__cpp_lib_is_constant_evaluated)"
+        )
+        updated_base_header = updated_base_header.sub(
+          "// Detect consteval, C++20 constexpr extensions and std::is_constant_evaluated.\n#ifdef FMT_USE_CONSTEVAL\n// Use the provided definition.\n#elif !defined(__cpp_lib_is_constant_evaluated)",
+          "// Detect consteval, C++20 constexpr extensions and std::is_constant_evaluated.\n#ifdef FMT_USE_CONSTEVAL\n// Use the provided definition.\n#elif !defined(__cpp_lib_is_constant_evaluated)"
+        )
+        File.write(fmt_base_header_path, updated_base_header)
+      end
+    end
 
     # This is necessary for Xcode 14, because it signs resource bundles by default
     # when building for devices.

@@ -82,7 +82,7 @@
                             @input="onInput($event.target.value)"
                             @keydown.escape="close()"
                             type="text"
-                            placeholder="Search users, orders, foods, complaints…"
+                            placeholder="{% trans "Search users, orders, foods, complaints…" %}"
                             class="w-full rounded-2xl pl-12 pr-14 py-4 text-white text-base focus:outline-none"
                             style="background:#0d1117;border:2px solid #1d6ae5;box-shadow:0 0 0 4px rgba(29,106,229,0.15)"
                         >
@@ -135,19 +135,19 @@
                     {# ── No results ── #}
                     <div x-show="query.length >= 2 && !loading && !hasResults"
                          class="text-center text-sm py-2" style="color:#8b949e">
-                        No results for "<span x-text="query" class="text-white font-medium"></span>"
+                        "<span x-text="query" class="text-white font-medium"></span>" {% trans "No results" %}
                     </div>
 
                     {# ── Hint ── #}
                     <div x-show="query.length < 2"
                          class="flex items-center justify-center gap-3 text-xs py-1" style="color:#484f58">
-                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#2563eb"></span>Users</span>
+                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#2563eb"></span>{% trans "Users" %}</span>
                         <span style="color:#30363d">·</span>
-                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#7c3aed"></span>Orders</span>
+                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#7c3aed"></span>{% trans "Orders" %}</span>
                         <span style="color:#30363d">·</span>
-                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#d97706"></span>Foods</span>
+                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#d97706"></span>{% trans "Foods" %}</span>
                         <span style="color:#30363d">·</span>
-                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#dc2626"></span>Complaints</span>
+                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#dc2626"></span>{% trans "Complaints" %}</span>
                     </div>
 
                 </div>

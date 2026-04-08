@@ -1,0 +1,287 @@
+# Coziyoo Admin — English translations (source language fallback)
+# Copyright (C) 2024 Coziyoo
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# ── Navigation ─────────────────────────────────────────────────────────────
+
+msgid "Buyers"
+msgstr "Buyers"
+
+msgid "Buyer List"
+msgstr "Buyer List"
+
+msgid "Reviews"
+msgstr "Reviews"
+
+msgid "Sellers"
+msgstr "Sellers"
+
+msgid "Seller List"
+msgstr "Seller List"
+
+msgid "Compliance Docs"
+msgstr "Compliance Docs"
+
+msgid "Doc Types"
+msgstr "Doc Types"
+
+msgid "Complaints"
+msgstr "Complaints"
+
+msgid "Categories"
+msgstr "Categories"
+
+msgid "Foods"
+msgstr "Foods"
+
+msgid "Production Lots"
+msgstr "Production Lots"
+
+msgid "Management"
+msgstr "Management"
+
+msgid "All Users"
+msgstr "All Users"
+
+msgid "Orders"
+msgstr "Orders"
+
+msgid "Admin Users"
+msgstr "Admin Users"
+
+msgid "Commission"
+msgstr "Commission"
+
+msgid "API Tokens"
+msgstr "API Tokens"
+
+msgid "Audit Log"
+msgstr "Audit Log"
+
+msgid "Login Events"
+msgstr "Login Events"
+
+# ── User List ──────────────────────────────────────────────────────────────
+
+msgid "Apply"
+msgstr "Apply"
+
+msgid "Filters"
+msgstr "Filters"
+
+msgid "Display ID"
+msgstr "Display ID"
+
+msgid "Buyer"
+msgstr "Buyer"
+
+msgid "Risk"
+msgstr "Risk"
+
+msgid "Orders (1 Month)"
+msgstr "Orders (1 Month)"
+
+msgid "Spend (1 Month)"
+msgstr "Spend (1 Month)"
+
+msgid "Last Login"
+msgstr "Last Login"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "High"
+msgstr "High"
+
+msgid "Medium"
+msgstr "Medium"
+
+msgid "Low"
+msgstr "Low"
+
+msgid "No buyers found."
+msgstr "No buyers found."
+
+msgid "Export to Excel"
+msgstr "Export to Excel"
+
+# ── Buyer Detail ───────────────────────────────────────────────────────────
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "Düzenle"
+msgstr "Edit"
+
+msgid "Açık Şikayet"
+msgstr "Open Complaints"
+
+msgid "Son 30 Gün"
+msgstr "Last 30 Days"
+
+msgid "Toplam Sipariş"
+msgstr "Total Orders"
+
+msgid "Sekme"
+msgstr "Tab"
+
+msgid "Kayıt Özeti"
+msgstr "Record Summary"
+
+msgid "Son Hareket"
+msgstr "Last Activity"
+
+msgid "Detay"
+msgstr "Detail"
+
+msgid "Aç"
+msgstr "Open"
+
+msgid "Sipariş"
+msgstr "Order"
+
+msgid "Satıcı"
+msgstr "Seller"
+
+msgid "Tutar"
+msgstr "Amount"
+
+msgid "Durum"
+msgstr "Status"
+
+msgid "Tarih"
+msgstr "Date"
+
+msgid "Sağlayıcı"
+msgstr "Provider"
+
+msgid "Sipariş bulunamadı."
+msgstr "No orders found."
+
+msgid "Şikayet bulunamadı."
+msgstr "No complaints found."
+
+msgid "Yorum bulunamadı."
+msgstr "No reviews found."
+
+msgid "Ödeme bulunamadı."
+msgstr "No payments found."
+
+msgid "Aktivite bulunamadı."
+msgstr "No activity found."
+
+msgid "Etiketler"
+msgstr "Tags"
+
+msgid "Etiket bulunamadı."
+msgstr "No tags found."
+
+msgid "Notlar"
+msgstr "Notes"
+
+msgid "Not bulunamadı."
+msgstr "No notes found."
+
+# ── Seller Detail ──────────────────────────────────────────────────────────
+
+msgid "Total Earnings"
+msgstr "Total Earnings"
+
+msgid "Monthly Earnings"
+msgstr "Last 30 Days"
+
+msgid "Avg Rating"
+msgstr "Avg Rating"
+
+msgid "Open Complaints"
+msgstr "Open Complaints"
+
+msgid "Role"
+msgstr "Role"
+
+msgid "Created"
+msgstr "Created"
+
+msgid "City/District"
+msgstr "City/District"
+
+msgid "Profile Status"
+msgstr "Profile Status"
+
+msgid "Food"
+msgstr "Food"
+
+msgid "Category"
+msgstr "Category"
+
+msgid "Price"
+msgstr "Price"
+
+msgid "Order"
+msgstr "Order"
+
+msgid "Amount"
+msgstr "Amount"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Active"
+msgstr "Active"
+
+msgid "Inactive"
+msgstr "Inactive"
+
+msgid "No foods found."
+msgstr "No foods found."
+
+msgid "No orders found."
+msgstr "No orders found."
+
+msgid "No compliance docs found."
+msgstr "No compliance docs found."
+
+msgid "No reviews found."
+msgstr "No reviews found."
+
+msgid "No complaints found."
+msgstr "No complaints found."
+
+# ── Global Search ─────────────────────────────────────────────────────────
+
+msgid "Search users, orders, foods, complaints…"
+msgstr "Search users, orders, foods, complaints…"
+
+msgid "Users"
+msgstr "Users"
+
+msgid "No results"
+msgstr "No results"
+
+msgid "Total"
+msgstr "Total"
+
+msgid "Risky"
+msgstr "Risky"
+
+msgid "selected"
+msgstr "selected"
+
+msgid "Compliance"
+msgstr "Compliance"
+
+msgid "Toplam Harcama"
+msgstr "Total Spent"
+
+msgid "Son Aktivite"
+msgstr "Recent Activity"
+
+msgid "Yorumlar"
+msgstr "Reviews"
+
+msgid "Şikayetler"
+msgstr "Complaints"

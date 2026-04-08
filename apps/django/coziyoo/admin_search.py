@@ -1,6 +1,16 @@
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import connection
 from django.http import JsonResponse
+from django.utils.translation import gettext as _
+
+STATUS_TR = {
+    "pending": "Beklemede", "processing": "Hazırlanıyor", "accepted": "Kabul Edildi",
+    "delivered": "Teslim Edildi", "completed": "Tamamlandı", "cancelled": "İptal Edildi",
+    "rejected": "Reddedildi", "failed": "Başarısız",
+    "open": "Açık", "in_review": "İnceleniyor", "resolved": "Çözüldü", "closed": "Kapatıldı",
+}
+
+TYPE_TR = {"buyer": "Alıcı", "seller": "Satıcı", "both": "Her İkisi"}
 
 
 @staff_member_required
@@ -33,10 +43,10 @@ def admin_global_search(request):
                     "id": uid,
                     "label": name,
                     "sublabel": email,
-                    "badge": utype,
+                    "badge": TYPE_TR.get(utype, utype),
                     "url": url,
                 })
-            groups.append({"key": "users", "label": "Users", "color": "#2563eb", "items": items})
+            groups.append({"key": "users", "label": _("Users"), "color": "#2563eb", "items": items})
 
         # ── Orders ────────────────────────────────────────────────────────────
         cur.execute("""
@@ -56,11 +66,11 @@ def admin_global_search(request):
                 items.append({
                     "id": oid,
                     "label": f"#{oid[:8]}… — ₺{price}",
-                    "sublabel": f"{buyer or '?'} → {seller or '?'} · {status}",
-                    "badge": status,
+                    "sublabel": f"{buyer or '?'} → {seller or '?'} · {STATUS_TR.get(status, status)}",
+                    "badge": STATUS_TR.get(status, status),
                     "url": f"/admin/orders/orders/{oid}/change/",
                 })
-            groups.append({"key": "orders", "label": "Orders", "color": "#7c3aed", "items": items})
+            groups.append({"key": "orders", "label": _("Orders"), "color": "#7c3aed", "items": items})
 
         # ── Foods ─────────────────────────────────────────────────────────────
         cur.execute("""
@@ -81,7 +91,7 @@ def admin_global_search(request):
                     "badge": "food",
                     "url": f"/admin/foods/foods/{fid}/change/",
                 })
-            groups.append({"key": "foods", "label": "Foods", "color": "#d97706", "items": items})
+            groups.append({"key": "foods", "label": _("Foods"), "color": "#d97706", "items": items})
 
         # ── Complaints ────────────────────────────────────────────────────────
         cur.execute("""
@@ -98,11 +108,11 @@ def admin_global_search(request):
                 cid, status, desc, complainant = r
                 items.append({
                     "id": cid,
-                    "label": (desc or "")[:60] or f"Complaint #{cid[:8]}",
-                    "sublabel": f"{complainant or '?'} · {status}",
-                    "badge": status,
+                    "label": (desc or "")[:60] or f"Şikayet #{cid[:8]}",
+                    "sublabel": f"{complainant or '?'} · {STATUS_TR.get(status, status)}",
+                    "badge": STATUS_TR.get(status, status),
                     "url": f"/admin/complaints/complaints/{cid}/change/",
                 })
-            groups.append({"key": "complaints", "label": "Complaints", "color": "#dc2626", "items": items})
+            groups.append({"key": "complaints", "label": _("Complaints"), "color": "#dc2626", "items": items})
 
     return JsonResponse({"groups": groups})

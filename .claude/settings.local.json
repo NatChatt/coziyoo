@@ -62,7 +62,15 @@
       "Bash(find /Users/ismetkarakus/Work/coziyoo-v2/apps/mobile -name *.json -o -name *.js -o -name .env*)",
       "Bash(env)",
       "Bash(/Users/ismetkarakus/Work/coziyoo-v2/apps/mobile/node_modules/.bin/expo --version)",
-      "Read(//Users/ismetkarakus/**)"
+      "Read(//Users/ismetkarakus/**)",
+      "Bash(ls:*)",
+      "Bash(gh api:*)",
+      "Bash(curl -s https://raw.githubusercontent.com/obra/superpowers/main/README.md)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(pip3 --version)",
+      "Bash(python3.11 -m venv /Users/drascom/Documents/work/coziyoo-v2/apps/django/.venv)",
+      "Bash(.venv/bin/django-admin startproject:*)",
+      "Bash(ssh root@coziyoo.com \"cd /root/coziyoo-v2 && git pull && systemctl restart coziyoo-django && sleep 2 && systemctl is-active coziyoo-django\")"
     ],
     "additionalDirectories": [
       "/tmp",

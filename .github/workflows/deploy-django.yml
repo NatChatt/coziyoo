@@ -6,8 +6,8 @@ on:
       - main
     paths:
       - 'apps/django/**'
-      - 'installation/scripts/update_django.sh'
-      - 'installation/scripts/common.sh'
+      - 'scripts/deploy/update.sh'
+      - 'scripts/lib/common.sh'
       - '.github/workflows/deploy-django.yml'
 
 concurrency:
@@ -107,7 +107,7 @@ jobs:
                     DEPLOY_BRANCH='${DEPLOY_BRANCH}' \
                     DEPLOY_ADMIN_EMAIL='${DEPLOY_ADMIN_EMAIL}' \
                     DEPLOY_ADMIN_PASSWORD='${DEPLOY_ADMIN_PASSWORD}' \
-                    bash installation/scripts/update_django.sh"; then
+                    bash scripts/deploy/update.sh"; then
                 echo "Deploy succeeded for ${HOST}"
                 break
               fi

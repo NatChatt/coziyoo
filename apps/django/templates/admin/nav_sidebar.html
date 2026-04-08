@@ -183,9 +183,30 @@
             </div>
         </div>
 
+        {# ── Language Toggle ── #}
+        <form action="/i18n/setlang/" method="post" class="ml-auto shrink-0" x-data>
+            {% csrf_token %}
+            <input type="hidden" name="next" :value="window.location.pathname + window.location.search">
+            {% if LANGUAGE_CODE == 'tr' %}
+            <button type="submit" name="language" value="en"
+                class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors"
+                title="Switch to English">
+                <span class="material-symbols-outlined text-base leading-none">translate</span>
+                EN
+            </button>
+            {% else %}
+            <button type="submit" name="language" value="tr"
+                class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors"
+                title="Türkçe'ye geç">
+                <span class="material-symbols-outlined text-base leading-none">translate</span>
+                TR
+            </button>
+            {% endif %}
+        </form>
+
         {# ── Global Search button ── #}
         <button @click="$dispatch('open-global-search')"
-            class="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors shrink-0"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors shrink-0"
             title="Global Search (/)">
             <span class="material-symbols-outlined text-xl leading-none">search</span>
         </button>

@@ -13,6 +13,16 @@ from .models import (
     AdminAuditLogs, SecurityLoginEvents, AdminApiTokens,
 )
 
+STATUS_TR = {
+    "pending": "Beklemede", "processing": "Hazırlanıyor", "accepted": "Kabul Edildi",
+    "delivered": "Teslim Edildi", "completed": "Tamamlandı", "cancelled": "İptal Edildi",
+    "rejected": "Reddedildi", "failed": "Başarısız",
+    "open": "Açık", "in_review": "İnceleniyor", "resolved": "Çözüldü", "closed": "Kapatıldı",
+    "approved": "Onaylandı", "uploaded": "Yüklendi",
+}
+
+TYPE_TR = {"buyer": "Alıcı", "seller": "Satıcı", "both": "Her İkisi"}
+
 
 class BuyerFilter(admin.SimpleListFilter):
     title = "role"
@@ -99,8 +109,10 @@ class UsersAdmin(ModelAdmin):
             risky = cur.fetchone()[0]
 
         extra_context = extra_context or {}
+        label_tr = "Alıcı" if role != "seller" else "Satıcı"
         extra_context["buyer_stats"] = {
             "label": label,
+            "label_tr": label_tr,
             "total": total,
             "active": active,
             "open_complaints": open_complaints,
@@ -298,7 +310,7 @@ class UsersAdmin(ModelAdmin):
                 FROM orders o LEFT JOIN users u ON u.id = o.seller_id
                 WHERE o.buyer_id = %s ORDER BY o.created_at DESC LIMIT 20
             """, [user_id])
-            orders = [{"id": str(r[0]), "seller_name": r[1], "total_price": r[2], "status": r[3], "created_at": r[4]} for r in cur.fetchall()]
+            orders = [{"id": str(r[0]), "seller_name": r[1], "total_price": r[2], "status": r[3], "status_tr": STATUS_TR.get(r[3], r[3]), "created_at": r[4]} for r in cur.fetchall()]
 
             # Recent complaints
             cur.execute("""
@@ -306,7 +318,7 @@ class UsersAdmin(ModelAdmin):
                 WHERE COALESCE(complainant_user_id, complainant_buyer_id) = %s
                 ORDER BY created_at DESC LIMIT 20
             """, [user_id])
-            complaints = [{"id": str(r[0]), "description": r[1], "status": r[2], "created_at": r[3]} for r in cur.fetchall()]
+            complaints = [{"id": str(r[0]), "description": r[1], "status": r[2], "status_tr": STATUS_TR.get(r[2], r[2]), "created_at": r[3]} for r in cur.fetchall()]
 
             # Recent reviews
             cur.execute("""
@@ -324,7 +336,7 @@ class UsersAdmin(ModelAdmin):
                 JOIN orders o ON o.id = pa.order_id
                 WHERE pa.buyer_id = %s ORDER BY pa.created_at DESC LIMIT 20
             """, [user_id])
-            payments = [{"id": str(r[0]), "provider": r[1], "status": r[2], "created_at": r[3],
+            payments = [{"id": str(r[0]), "provider": r[1], "status": r[2], "status_tr": STATUS_TR.get(r[2], r[2]), "created_at": r[3],
                          "amount": r[4], "order_id": str(r[5])} for r in cur.fetchall()]
 
             # Activity: auth sessions + presence events merged by time
@@ -333,7 +345,7 @@ class UsersAdmin(ModelAdmin):
                 FROM auth_sessions WHERE user_id = %s
                 ORDER BY created_at DESC LIMIT 30
             """, [user_id])
-            sessions = [{"event_type": r[0], "ip": r[1], "detail": r[2], "happened_at": r[3]} for r in cur.fetchall()]
+            sessions = [{"event_type": r[0], "event_tr": "Giriş", "ip": r[1], "detail": r[2], "happened_at": r[3]} for r in cur.fetchall()]
 
             cur.execute("""
                 SELECT event_type, ip, user_agent AS detail, happened_at
@@ -341,7 +353,7 @@ class UsersAdmin(ModelAdmin):
                 WHERE subject_type = 'user' AND subject_id = %s
                 ORDER BY happened_at DESC LIMIT 30
             """, [user_id])
-            presence = [{"event_type": r[0], "ip": r[1], "detail": r[2], "happened_at": r[3]} for r in cur.fetchall()]
+            presence = [{"event_type": r[0], "event_tr": r[0], "ip": r[1], "detail": r[2], "happened_at": r[3]} for r in cur.fetchall()]
 
             activity = sorted(sessions + presence, key=lambda x: x["happened_at"] or "", reverse=True)[:30]
 
@@ -370,16 +382,6 @@ class UsersAdmin(ModelAdmin):
             "notes_count": notes_count + tags_count,
         }
 
-        overview_rows = [
-            {"label": "Siparişler", "tab_id": "orders", "count": summary["total_orders"], "last_activity": summary["last_order_at"].strftime("%d.%m.%Y") if summary["last_order_at"] else None},
-            {"label": "Ödemeler", "tab_id": "payments", "count": summary["payment_count"], "last_activity": None},
-            {"label": "Şikayetler", "tab_id": "complaints", "count": summary["complaint_total"], "last_activity": summary["last_complaint_at"].strftime("%d.%m.%Y") if summary["last_complaint_at"] else None},
-            {"label": "Yorumlar & Puanlar", "tab_id": "reviews", "count": summary["review_count"], "last_activity": None},
-            {"label": "Aktivite Logu", "tab_id": "activity", "count": len(activity), "last_activity": None},
-            {"label": "Notlar & Etiketler", "tab_id": "notes", "count": summary["notes_count"], "last_activity": None},
-            {"label": "Ham Veri", "tab_id": "raw", "count": None, "last_activity": None},
-        ]
-
         tabs = [
             ("general", "Genel"), ("orders", "Siparişler"), ("payments", "Ödemeler"),
             ("complaints", "Şikayetler"), ("reviews", "Yorumlar & Puanlar"),
@@ -397,7 +399,6 @@ class UsersAdmin(ModelAdmin):
             "title": f"Alıcı Detayı — {user.display_name}",
             "user": user,
             "summary": summary,
-            "overview_rows": overview_rows,
             "tabs": tabs,
             "orders": orders,
             "complaints": complaints,
@@ -451,7 +452,7 @@ class UsersAdmin(ModelAdmin):
                 JOIN compliance_documents_list cdl ON cdl.id = scd.document_list_id
                 WHERE scd.seller_id = %s ORDER BY cdl.name
             """, [user_id])
-            compliance_docs = [{"name": r[0], "status": r[1], "uploaded_at": r[2]} for r in cur.fetchall()]
+            compliance_docs = [{"name": r[0], "status": r[1], "status_tr": STATUS_TR.get(r[1], r[1]), "uploaded_at": r[2]} for r in cur.fetchall()]
 
             # Recent orders
             cur.execute("""
@@ -459,7 +460,7 @@ class UsersAdmin(ModelAdmin):
                 FROM orders o LEFT JOIN users u ON u.id = o.buyer_id
                 WHERE o.seller_id = %s ORDER BY o.created_at DESC LIMIT 10
             """, [user_id])
-            orders = [{"id": str(r[0]), "buyer_name": r[1], "total_price": r[2], "status": r[3], "created_at": r[4]} for r in cur.fetchall()]
+            orders = [{"id": str(r[0]), "buyer_name": r[1], "total_price": r[2], "status": r[3], "status_tr": STATUS_TR.get(r[3], r[3]), "created_at": r[4]} for r in cur.fetchall()]
 
             # Recent reviews
             cur.execute("""
@@ -479,7 +480,7 @@ class UsersAdmin(ModelAdmin):
                 FROM complaints c JOIN orders o ON o.id = c.order_id
                 WHERE o.seller_id = %s ORDER BY c.created_at DESC LIMIT 10
             """, [user_id])
-            complaints = [{"id": str(r[0]), "description": r[1], "status": r[2], "created_at": r[3]} for r in cur.fetchall()]
+            complaints = [{"id": str(r[0]), "description": r[1], "status": r[2], "status_tr": STATUS_TR.get(r[2], r[2]), "created_at": r[3]} for r in cur.fetchall()]
 
             # Foods list
             cur.execute("""
@@ -508,11 +509,15 @@ class UsersAdmin(ModelAdmin):
             "avg_rating": float(rrow[1] or 0),
         }
 
+        compliance_summary = {
+            "total": len(compliance_docs),
+            "approved": sum(1 for d in compliance_docs if d["status"] == "approved"),
+        }
+
         tabs = [
-            ("general", "General"), ("foods", "Foods"), ("orders", "Orders & Earnings"),
-            ("wallet", "Wallet & Transactions"), ("compliance", "Compliance"),
-            ("location", "Location & Security"), ("reviews", "Reviews"),
-            ("complaints", "Complaints"), ("notes", "Notes & Tags"), ("raw", "Raw Data"),
+            ("general", "Genel"), ("foods", "Yemekler"), ("orders", "Siparişler"),
+            ("compliance", "Uyumluluk"), ("reviews", "Yorumlar"),
+            ("complaints", "Şikayetler"), ("raw", "Ham Veri"),
         ]
 
         raw_data = {
@@ -537,6 +542,7 @@ class UsersAdmin(ModelAdmin):
             "complaints": complaints,
             "foods": foods,
             "compliance_docs": compliance_docs,
+            "compliance_summary": compliance_summary,
             "address": address,
             "raw_json": json.dumps(raw_data, indent=2, default=str),
             "opts": self.model._meta,

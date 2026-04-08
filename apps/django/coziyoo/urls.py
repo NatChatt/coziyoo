@@ -10,6 +10,7 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
     path("admin/global-search/", admin_global_search, name="admin_global_search"),
     path("admin/", admin.site.urls),
+    path("i18n/", include("django.conf.urls.i18n")),
 
     # REST API v1
     path("v1/auth/", include("apps.authentication.urls.app")),

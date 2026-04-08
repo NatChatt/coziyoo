@@ -1,0 +1,288 @@
+# Coziyoo Admin — Turkish translations
+# Copyright (C) 2024 Coziyoo
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: tr\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+# ── Navigation (nav_sidebar.html) ──────────────────────────────────────────
+
+msgid "Buyers"
+msgstr "Alıcılar"
+
+msgid "Buyer List"
+msgstr "Alıcı Listesi"
+
+msgid "Reviews"
+msgstr "Yorumlar"
+
+msgid "Sellers"
+msgstr "Satıcılar"
+
+msgid "Seller List"
+msgstr "Satıcı Listesi"
+
+msgid "Compliance Docs"
+msgstr "Uyumluluk Belgeleri"
+
+msgid "Doc Types"
+msgstr "Belge Türleri"
+
+msgid "Complaints"
+msgstr "Şikayetler"
+
+msgid "Categories"
+msgstr "Kategoriler"
+
+msgid "Foods"
+msgstr "Yemekler"
+
+msgid "Production Lots"
+msgstr "Üretim Lotları"
+
+msgid "Management"
+msgstr "Yönetim"
+
+msgid "All Users"
+msgstr "Tüm Kullanıcılar"
+
+msgid "Orders"
+msgstr "Siparişler"
+
+msgid "Admin Users"
+msgstr "Admin Kullanıcılar"
+
+msgid "Commission"
+msgstr "Komisyon"
+
+msgid "API Tokens"
+msgstr "API Anahtarları"
+
+msgid "Audit Log"
+msgstr "Denetim Logu"
+
+msgid "Login Events"
+msgstr "Giriş Olayları"
+
+# ── User List (change_list.html) ───────────────────────────────────────────
+
+msgid "Apply"
+msgstr "Uygula"
+
+msgid "Filters"
+msgstr "Filtreler"
+
+msgid "Display ID"
+msgstr "Kimlik"
+
+msgid "Buyer"
+msgstr "Alıcı"
+
+msgid "Risk"
+msgstr "Risk"
+
+msgid "Orders (1 Month)"
+msgstr "Sipariş (1 Ay)"
+
+msgid "Spend (1 Month)"
+msgstr "Harcama (1 Ay)"
+
+msgid "Last Login"
+msgstr "Son Giriş"
+
+msgid "Status"
+msgstr "Durum"
+
+msgid "High"
+msgstr "Yüksek"
+
+msgid "Medium"
+msgstr "Orta"
+
+msgid "Low"
+msgstr "Düşük"
+
+msgid "No buyers found."
+msgstr "Alıcı bulunamadı."
+
+msgid "Export to Excel"
+msgstr "Excel'e Aktar"
+
+# ── Buyer Detail (buyer_detail.html) ───────────────────────────────────────
+
+msgid "Edit"
+msgstr "Düzenle"
+
+# Already Turkish source strings — identity mappings for completeness
+msgid "Düzenle"
+msgstr "Düzenle"
+
+msgid "Açık Şikayet"
+msgstr "Açık Şikayet"
+
+msgid "Son 30 Gün"
+msgstr "Son 30 Gün"
+
+msgid "Toplam Sipariş"
+msgstr "Toplam Sipariş"
+
+msgid "Sekme"
+msgstr "Sekme"
+
+msgid "Kayıt Özeti"
+msgstr "Kayıt Özeti"
+
+msgid "Son Hareket"
+msgstr "Son Hareket"
+
+msgid "Detay"
+msgstr "Detay"
+
+msgid "Aç"
+msgstr "Aç"
+
+msgid "Sipariş"
+msgstr "Sipariş"
+
+msgid "Satıcı"
+msgstr "Satıcı"
+
+msgid "Tutar"
+msgstr "Tutar"
+
+msgid "Durum"
+msgstr "Durum"
+
+msgid "Tarih"
+msgstr "Tarih"
+
+msgid "Sağlayıcı"
+msgstr "Sağlayıcı"
+
+msgid "Sipariş bulunamadı."
+msgstr "Sipariş bulunamadı."
+
+msgid "Şikayet bulunamadı."
+msgstr "Şikayet bulunamadı."
+
+msgid "Yorum bulunamadı."
+msgstr "Yorum bulunamadı."
+
+msgid "Ödeme bulunamadı."
+msgstr "Ödeme bulunamadı."
+
+msgid "Aktivite bulunamadı."
+msgstr "Aktivite bulunamadı."
+
+msgid "Etiketler"
+msgstr "Etiketler"
+
+msgid "Etiket bulunamadı."
+msgstr "Etiket bulunamadı."
+
+msgid "Notlar"
+msgstr "Notlar"
+
+msgid "Not bulunamadı."
+msgstr "Not bulunamadı."
+
+# ── Seller Detail ──────────────────────────────────────────────────────────
+
+msgid "Total Earnings"
+msgstr "Toplam Kazanç"
+
+msgid "Monthly Earnings"
+msgstr "Son 30 Gün"
+
+msgid "Avg Rating"
+msgstr "Ortalama Puan"
+
+msgid "Open Complaints"
+msgstr "Açık Şikayetler"
+
+msgid "Role"
+msgstr "Rol"
+
+msgid "Created"
+msgstr "Kayıt Tarihi"
+
+msgid "City/District"
+msgstr "Şehir / İlçe"
+
+msgid "Profile Status"
+msgstr "Profil Durumu"
+
+msgid "Food"
+msgstr "Yemek"
+
+msgid "Category"
+msgstr "Kategori"
+
+msgid "Price"
+msgstr "Fiyat"
+
+msgid "Order"
+msgstr "Sipariş"
+
+msgid "Amount"
+msgstr "Tutar"
+
+msgid "Date"
+msgstr "Tarih"
+
+msgid "Active"
+msgstr "Aktif"
+
+msgid "Inactive"
+msgstr "Pasif"
+
+msgid "No foods found."
+msgstr "Yemek bulunamadı."
+
+msgid "No orders found."
+msgstr "Sipariş bulunamadı."
+
+msgid "No compliance docs found."
+msgstr "Uyumluluk belgesi bulunamadı."
+
+msgid "No reviews found."
+msgstr "Yorum bulunamadı."
+
+msgid "No complaints found."
+msgstr "Şikayet bulunamadı."
+
+# ── Global Search (base.html) ─────────────────────────────────────────────
+
+msgid "Search users, orders, foods, complaints…"
+msgstr "Kullanıcı, sipariş, yemek, şikayet ara…"
+
+msgid "Users"
+msgstr "Kullanıcılar"
+
+msgid "No results"
+msgstr "Sonuç bulunamadı"
+
+msgid "Total"
+msgstr "Toplam"
+
+msgid "Risky"
+msgstr "Riskli"
+
+msgid "selected"
+msgstr "seçili"
+
+msgid "Compliance"
+msgstr "Uyumluluk"
+
+msgid "Toplam Harcama"
+msgstr "Toplam Harcama"
+
+msgid "Son Aktivite"
+msgstr "Son Aktivite"
+
+msgid "Yorumlar"
+msgstr "Yorumlar"
+
+msgid "Şikayetler"
+msgstr "Şikayetler"

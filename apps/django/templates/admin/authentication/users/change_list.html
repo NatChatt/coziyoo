@@ -7,39 +7,39 @@
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
 
     {# Total — blue tone #}
-    <div class="rounded-xl p-4 flex items-center justify-between bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
-      <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-2xl text-blue-500 dark:text-blue-400">group</span>
-        <span class="text-sm font-medium text-blue-700 dark:text-blue-300">Total {{ buyer_stats.label }}s</span>
+    <div class="rounded-xl py-2 px-3 flex items-center justify-between bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-base text-blue-500 dark:text-blue-400">group</span>
+        <span class="text-xs font-medium text-blue-700 dark:text-blue-300">{% trans "Total" %} {{ buyer_stats.label_tr }}</span>
       </div>
-      <span class="text-3xl font-bold text-blue-800 dark:text-blue-100">{{ buyer_stats.total }}</span>
+      <span class="text-xl font-bold text-blue-800 dark:text-blue-100">{{ buyer_stats.total }}</span>
     </div>
 
     {# Active — green tone #}
-    <div class="rounded-xl p-4 flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-      <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-2xl text-emerald-500 dark:text-emerald-400">check_circle</span>
-        <span class="text-sm font-medium text-emerald-700 dark:text-emerald-300">Active {{ buyer_stats.label }}s</span>
+    <div class="rounded-xl py-2 px-3 flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-base text-emerald-500 dark:text-emerald-400">check_circle</span>
+        <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">{% trans "Active" %} {{ buyer_stats.label_tr }}</span>
       </div>
-      <span class="text-3xl font-bold text-emerald-800 dark:text-emerald-100">{{ buyer_stats.active }}</span>
+      <span class="text-xl font-bold text-emerald-800 dark:text-emerald-100">{{ buyer_stats.active }}</span>
     </div>
 
     {# Open Complaints — amber tone #}
-    <div class="rounded-xl p-4 flex items-center justify-between bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
-      <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-2xl text-amber-500 dark:text-amber-400">report_problem</span>
-        <span class="text-sm font-medium text-amber-700 dark:text-amber-300">Open Complaints</span>
+    <div class="rounded-xl py-2 px-3 flex items-center justify-between bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-base text-amber-500 dark:text-amber-400">report_problem</span>
+        <span class="text-xs font-medium text-amber-700 dark:text-amber-300">{% trans "Open Complaints" %}</span>
       </div>
-      <span class="text-3xl font-bold text-amber-800 dark:text-amber-100">{{ buyer_stats.open_complaints }}</span>
+      <span class="text-xl font-bold text-amber-800 dark:text-amber-100">{{ buyer_stats.open_complaints }}</span>
     </div>
 
     {# Risky — rose tone #}
-    <div class="rounded-xl p-4 flex items-center justify-between bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
-      <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-2xl text-rose-500 dark:text-rose-400">shield_with_heart</span>
-        <span class="text-sm font-medium text-rose-700 dark:text-rose-300">Risky {{ buyer_stats.label }}s</span>
+    <div class="rounded-xl py-2 px-3 flex items-center justify-between bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-base text-rose-500 dark:text-rose-400">shield_with_heart</span>
+        <span class="text-xs font-medium text-rose-700 dark:text-rose-300">{% trans "Risky" %} {{ buyer_stats.label_tr }}</span>
       </div>
-      <span class="text-3xl font-bold text-rose-800 dark:text-rose-100">{{ buyer_stats.risky }}</span>
+      <span class="text-xl font-bold text-rose-800 dark:text-rose-100">{{ buyer_stats.risky }}</span>
     </div>
 
   </div>
@@ -48,7 +48,7 @@
     <a href="?{{ request.GET.urlencode }}&export=xlsx"
        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors">
       <span class="material-symbols-outlined text-base leading-none">download</span>
-      Export to Excel
+      {% trans "Export to Excel" %}
     </a>
   </div>
 </div>
@@ -67,7 +67,7 @@
        x-transition:enter-end="opacity-100 translate-y-0"
        class="flex items-center gap-2 shrink-0">
     <span class="text-xs text-base-500 dark:text-base-400 whitespace-nowrap"
-          x-text="$store.buyerSel.count + ' selected'"></span>
+          x-text="$store.buyerSel.count + ' {% trans "selected" %}'"></span>
     <select form="changelist-form" name="action" id="action-select-inline"
             class="rounded-default border border-base-300 dark:border-base-600 bg-white dark:bg-base-800 text-sm text-base-700 dark:text-base-200 py-2 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-[160px]">
       {% for choice in action_form.action.field.choices %}
@@ -188,15 +188,18 @@
           </td>
           <td class="py-3 px-4">
             {% if row.is_active %}
-              <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">Active</span>
+              <span class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">{% trans "Active" %}</span>
             {% else %}
-              <span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">Inactive</span>
+              <span class="px-2 py-0.5 rounded text-xs font-medium bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400">{% trans "Inactive" %}</span>
             {% endif %}
           </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="9" class="py-12 text-center text-base-400">{% trans "No buyers found." %}</td>
+          <td colspan="9" class="py-12 text-center">
+            <span class="material-symbols-outlined text-3xl text-base-300 block mb-2">search_off</span>
+            <p class="text-base-400">{% trans "No buyers found." %}</p>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
