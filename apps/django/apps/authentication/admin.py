@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
 
@@ -588,7 +589,7 @@ class UsersAdmin(ModelAdmin):
         }
         return TemplateResponse(request, "admin/authentication/seller_detail.html", context)
 
-    @display(description="Name", ordering="display_name")
+    @display(description=_("Name"), ordering="display_name")
     def display_name_link(self, obj):
         from django.urls import reverse
         if obj.user_type == "seller":
@@ -599,7 +600,7 @@ class UsersAdmin(ModelAdmin):
             return obj.display_name
         return format_html('<a href="{}" class="text-primary-600 hover:underline font-medium">{}</a>', url, obj.display_name)
 
-    @display(description="Type", ordering="user_type")
+    @display(description=_("Type"), ordering="user_type")
     def user_type_badge(self, obj):
         colors = {"buyer": "#2563eb", "seller": "#16a34a", "both": "#7c3aed"}
         color = colors.get(obj.user_type, "#6b7280")
@@ -608,7 +609,7 @@ class UsersAdmin(ModelAdmin):
             color, obj.user_type,
         )
 
-    @display(description="Seller Status", ordering="seller_profile_status")
+    @display(description=_("Seller Status"), ordering="seller_profile_status")
     def seller_status_badge(self, obj):
         if obj.user_type not in ("seller", "both"):
             return "—"
@@ -638,7 +639,7 @@ class AllUsersAdmin(ModelAdmin):
     ordering = ["-created_at"]
     list_per_page = 50
 
-    @display(description="Name", ordering="display_name")
+    @display(description=_("Name"), ordering="display_name")
     def display_name_link(self, obj):
         from django.urls import reverse
         if obj.user_type == "seller":
@@ -649,7 +650,7 @@ class AllUsersAdmin(ModelAdmin):
             return obj.display_name
         return format_html('<a href="{}" class="text-primary-600 hover:underline font-medium">{}</a>', url, obj.display_name)
 
-    @display(description="Type", ordering="user_type")
+    @display(description=_("Type"), ordering="user_type")
     def user_type_badge(self, obj):
         colors = {"buyer": "#2563eb", "seller": "#16a34a", "both": "#7c3aed"}
         color = colors.get(obj.user_type, "#6b7280")
@@ -658,7 +659,7 @@ class AllUsersAdmin(ModelAdmin):
             color, obj.user_type,
         )
 
-    @display(description="Seller Status", ordering="seller_profile_status")
+    @display(description=_("Seller Status"), ordering="seller_profile_status")
     def seller_status_badge(self, obj):
         if obj.user_type not in ("seller", "both"):
             return "—"

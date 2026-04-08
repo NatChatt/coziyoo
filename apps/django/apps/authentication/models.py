@@ -1,5 +1,6 @@
 # Auto-generated from inspectdb — managed=False, do not run migrations against these.
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 class AbuseRiskEvents(models.Model):
     id = models.UUIDField(primary_key=True)
@@ -276,10 +277,10 @@ class Users(models.Model):
     display_name_normalized = models.TextField()
     full_name = models.TextField(blank=True, null=True)
     user_type = models.TextField()
-    is_active = models.BooleanField()
+    is_active = models.BooleanField(verbose_name=_("Active"))
     country_code = models.TextField(blank=True, null=True)
     language = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(verbose_name=_("Created At"))
     updated_at = models.DateTimeField()
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)

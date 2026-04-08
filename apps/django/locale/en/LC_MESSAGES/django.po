@@ -65,6 +65,20 @@ msgstr "Audit Log"
 msgid "Login Events"
 msgstr "Login Events"
 
+# ── Admin Table Columns ───────────────────────────────────────────────────
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Seller Status"
+msgstr "Seller Status"
+
+msgid "Created At"
+msgstr "Created At"
+
 # ── User List ──────────────────────────────────────────────────────────────
 
 msgid "Apply"

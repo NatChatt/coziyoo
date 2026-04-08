@@ -65,6 +65,20 @@ msgstr "Denetim Logu"
 msgid "Login Events"
 msgstr "Giriş Olayları"
 
+# ── Admin Table Columns ───────────────────────────────────────────────────
+
+msgid "Name"
+msgstr "İsim"
+
+msgid "Type"
+msgstr "Tür"
+
+msgid "Seller Status"
+msgstr "Satıcı Durumu"
+
+msgid "Created At"
+msgstr "Kayıt Tarihi"
+
 # ── User List (change_list.html) ───────────────────────────────────────────
 
 msgid "Apply"
