@@ -89,7 +89,7 @@ def admin_global_search(request):
                     "label": name,
                     "sublabel": f"₺{price} · {seller or '?'}",
                     "badge": "food",
-                    "url": f"/admin/foods/foods/{fid}/change/",
+                    "url": f"/admin/menu/foods/{fid}/change/",
                 })
             groups.append({"key": "foods", "label": _("Foods"), "color": "#d97706", "items": items})
 
