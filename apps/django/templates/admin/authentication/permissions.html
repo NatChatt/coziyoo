@@ -76,78 +76,80 @@
         </a>
       </div>
 
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
-            <th class="px-5 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Email" %}</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Current Role" %}</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Status" %}</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Last Login" %}</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Change Role" %}</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-base-100 dark:divide-base-800">
-          {% for admin_user in admin_users %}
-          <tr class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
-            <td class="px-5 py-3">
-              <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0
-                  {% if admin_user.role == 'super_admin' %}bg-primary-100 dark:bg-primary-900/30{% else %}bg-base-200 dark:bg-base-700{% endif %}">
-                  <span class="material-symbols-outlined text-base leading-none
-                    {% if admin_user.role == 'super_admin' %}text-primary-600 dark:text-primary-400{% else %}text-base-500 dark:text-base-400{% endif %}">
-                    {% if admin_user.role == 'super_admin' %}shield{% else %}manage_accounts{% endif %}
-                  </span>
-                </div>
-                <span class="text-base-900 dark:text-base-100 font-medium">{{ admin_user.email }}</span>
-              </div>
-            </td>
-            <td class="px-4 py-3">
-              {% if admin_user.role == 'super_admin' %}
-                <span class="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2.5 py-0.5 text-[11px] font-semibold text-primary-700 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-300">Super Admin</span>
-              {% else %}
-                <span class="inline-flex rounded-full border border-base-300 bg-base-100 px-2.5 py-0.5 text-[11px] font-semibold text-base-600 dark:border-base-700 dark:bg-base-800 dark:text-base-300">Admin</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-3">
-              {% if admin_user.is_active %}
-                <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">{% trans "Active" %}</span>
-              {% else %}
-                <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400">{% trans "Inactive" %}</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-3 text-xs text-base-500 dark:text-base-400">
-              {% if admin_user.last_login_at %}
-                {{ admin_user.last_login_at|date:"d M Y H:i" }}
-              {% else %}
-                <span class="text-base-400">—</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-3">
-              <form method="post" action="{% url 'admin:authentication_permissions_change_role' %}">
-                {% csrf_token %}
-                <input type="hidden" name="admin_id" value="{{ admin_user.id }}">
+      <div class="overflow-x-auto">
+        <table class="min-w-[720px] w-full text-sm">
+          <thead>
+            <tr class="border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
+              <th class="px-5 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Email" %}</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Current Role" %}</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Status" %}</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Last Login" %}</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{% trans "Change Role" %}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-base-100 dark:divide-base-800">
+            {% for admin_user in admin_users %}
+            <tr class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
+              <td class="px-5 py-3">
                 <div class="flex items-center gap-2">
-                  <select name="new_role"
-                    class="text-xs border border-base-300 dark:border-base-600 rounded-lg px-2 py-1.5 bg-white dark:bg-base-800 text-base-700 dark:text-base-300 focus:outline-none focus:ring-1 focus:ring-primary-500">
-                    <option value="admin" {% if admin_user.role == 'admin' %}selected{% endif %}>Admin</option>
-                    <option value="super_admin" {% if admin_user.role == 'super_admin' %}selected{% endif %}>Super Admin</option>
-                  </select>
-                  <button type="submit"
-                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-primary-500 text-primary-600 dark:text-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
-                    <span class="material-symbols-outlined text-sm leading-none">save</span>
-                    {% trans "Save" %}
-                  </button>
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0
+                    {% if admin_user.role == 'super_admin' %}bg-primary-100 dark:bg-primary-900/30{% else %}bg-base-200 dark:bg-base-700{% endif %}">
+                    <span class="material-symbols-outlined text-base leading-none
+                      {% if admin_user.role == 'super_admin' %}text-primary-600 dark:text-primary-400{% else %}text-base-500 dark:text-base-400{% endif %}">
+                      {% if admin_user.role == 'super_admin' %}shield{% else %}manage_accounts{% endif %}
+                    </span>
+                  </div>
+                  <span class="text-base-900 dark:text-base-100 font-medium">{{ admin_user.email }}</span>
                 </div>
-              </form>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="5" class="px-5 py-8 text-center text-sm text-base-400">{% trans "No admin users found." %}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+              </td>
+              <td class="px-4 py-3">
+                {% if admin_user.role == 'super_admin' %}
+                  <span class="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2.5 py-0.5 text-[11px] font-semibold text-primary-700 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-300">Super Admin</span>
+                {% else %}
+                  <span class="inline-flex rounded-full border border-base-300 bg-base-100 px-2.5 py-0.5 text-[11px] font-semibold text-base-600 dark:border-base-700 dark:bg-base-800 dark:text-base-300">Admin</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3">
+                {% if admin_user.is_active %}
+                  <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">{% trans "Active" %}</span>
+                {% else %}
+                  <span class="inline-flex rounded px-2 py-0.5 text-[11px] font-medium bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400">{% trans "Inactive" %}</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3 text-xs text-base-500 dark:text-base-400">
+                {% if admin_user.last_login_at %}
+                  {{ admin_user.last_login_at|date:"d M Y H:i" }}
+                {% else %}
+                  <span class="text-base-400">—</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3">
+                <form method="post" action="{% url 'admin:authentication_permissions_change_role' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="admin_id" value="{{ admin_user.id }}">
+                  <div class="flex items-center gap-2">
+                    <select name="new_role"
+                      class="text-xs border border-base-300 dark:border-base-600 rounded-lg px-2 py-1.5 bg-white dark:bg-base-800 text-base-700 dark:text-base-300 focus:outline-none focus:ring-1 focus:ring-primary-500">
+                      <option value="admin" {% if admin_user.role == 'admin' %}selected{% endif %}>Admin</option>
+                      <option value="super_admin" {% if admin_user.role == 'super_admin' %}selected{% endif %}>Super Admin</option>
+                    </select>
+                    <button type="submit"
+                      class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-primary-500 text-primary-600 dark:text-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors">
+                      <span class="material-symbols-outlined text-sm leading-none">save</span>
+                      {% trans "Save" %}
+                    </button>
+                  </div>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="px-5 py-8 text-center text-sm text-base-400">{% trans "No admin users found." %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
 
     {# ── Permissions Matrix (1/3 width) ── #}
@@ -158,38 +160,41 @@
       </div>
 
       {# Column headers #}
-      <div class="grid grid-cols-3 px-5 py-2 border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
-        <div class="text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide col-span-1">{% trans "Feature" %}</div>
-        <div class="text-xs font-semibold text-center text-base-600 dark:text-base-300">Admin</div>
-        <div class="text-xs font-semibold text-center text-primary-700 dark:text-primary-300">Super Admin</div>
-      </div>
+      <div class="overflow-x-auto">
+        <div class="min-w-[360px]">
+          <div class="grid grid-cols-3 px-5 py-2 border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
+            <div class="col-span-1 text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Feature" %}</div>
+            <div class="text-center text-xs font-semibold text-base-600 dark:text-base-300">Admin</div>
+            <div class="text-center text-xs font-semibold text-primary-700 dark:text-primary-300">Super Admin</div>
+          </div>
 
-      <div class="divide-y divide-base-100 dark:divide-base-800">
-        {% for section_label, perms in permissions_matrix %}
-        {# Section header #}
-        <div class="px-5 py-2 bg-base-50/50 dark:bg-base-800/20">
-          <span class="text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{{ section_label }}</span>
-        </div>
-        {% for perm_label, admin_has, super_has in perms %}
-        <div class="grid grid-cols-3 px-5 py-2.5 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
-          <div class="text-xs text-base-700 dark:text-base-300 col-span-1 pr-2">{{ perm_label }}</div>
-          <div class="text-center">
-            {% if admin_has %}
-              <span class="material-symbols-outlined text-base leading-none text-emerald-500">check_circle</span>
-            {% else %}
-              <span class="material-symbols-outlined text-base leading-none text-base-300 dark:text-base-600">cancel</span>
-            {% endif %}
+          <div class="divide-y divide-base-100 dark:divide-base-800">
+            {% for section_label, perms in permissions_matrix %}
+            <div class="px-5 py-2 bg-base-50/50 dark:bg-base-800/20">
+              <span class="text-xs font-semibold text-base-500 dark:text-base-400 uppercase tracking-wide">{{ section_label }}</span>
+            </div>
+            {% for perm_label, admin_has, super_has in perms %}
+            <div class="grid grid-cols-3 px-5 py-2.5 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
+              <div class="col-span-1 pr-2 text-xs text-base-700 dark:text-base-300">{{ perm_label }}</div>
+              <div class="text-center">
+                {% if admin_has %}
+                  <span class="material-symbols-outlined text-base leading-none text-emerald-500">check_circle</span>
+                {% else %}
+                  <span class="material-symbols-outlined text-base leading-none text-base-300 dark:text-base-600">cancel</span>
+                {% endif %}
+              </div>
+              <div class="text-center">
+                {% if super_has %}
+                  <span class="material-symbols-outlined text-base leading-none text-emerald-500">check_circle</span>
+                {% else %}
+                  <span class="material-symbols-outlined text-base leading-none text-base-300 dark:text-base-600">cancel</span>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+            {% endfor %}
           </div>
-          <div class="text-center">
-            {% if super_has %}
-              <span class="material-symbols-outlined text-base leading-none text-emerald-500">check_circle</span>
-            {% else %}
-              <span class="material-symbols-outlined text-base leading-none text-base-300 dark:text-base-600">cancel</span>
-            {% endif %}
-          </div>
         </div>
-        {% endfor %}
-        {% endfor %}
       </div>
 
       {# Legend #}

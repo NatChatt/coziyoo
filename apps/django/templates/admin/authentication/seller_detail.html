@@ -410,8 +410,7 @@
                  x-transition:enter="transition ease-out duration-150"
                  x-transition:enter-start="opacity-0 scale-95"
                  x-transition:enter-end="opacity-100 scale-100"
-                 class="flex flex-col bg-white dark:bg-base-900 rounded-2xl overflow-hidden shadow-2xl w-full max-w-3xl"
-                 style="max-height:calc(100vh - 48px)">
+                 class="flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-base-900 md:max-h-[calc(100vh-48px)]">
 
               {# Header #}
               <div class="flex items-center justify-between px-5 py-4 border-b border-base-200 dark:border-base-700 shrink-0">
@@ -440,13 +439,12 @@
               {# Document viewer — flex-1 fills remaining space #}
               <div class="flex-1 overflow-hidden bg-base-100 dark:bg-base-950 min-h-0">
                 <template x-if="$store.compliancePreview.isPdf">
-                  <iframe :src="$store.compliancePreview.url" class="w-full h-full border-0" style="min-height:420px"></iframe>
+                  <iframe :src="$store.compliancePreview.url" class="h-full min-h-[320px] w-full border-0 md:min-h-[420px]"></iframe>
                 </template>
                 <template x-if="!$store.compliancePreview.isPdf && $store.compliancePreview.url">
-                  <div class="w-full h-full flex items-center justify-center p-6 overflow-auto" style="min-height:280px">
+                  <div class="flex h-full min-h-[220px] w-full items-center justify-center overflow-auto p-4 md:min-h-[280px] md:p-6">
                     <img :src="$store.compliancePreview.url"
-                         class="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                         style="max-height:55vh">
+                         class="max-h-[45vh] max-w-full object-contain rounded-lg shadow-lg md:max-h-[55vh]">
                   </div>
                 </template>
               </div>
@@ -462,7 +460,7 @@
 
                 {# Rejection reason input #}
                 <div x-show="$store.compliancePreview.rejectMode" x-cloak
-                     class="flex items-center gap-2">
+                     class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
                   <input type="text" x-model="$store.compliancePreview.rejectInput"
                          placeholder="{% trans "Rejection reason (min. 3 characters)..." %}"
                          @keydown.enter="$store.compliancePreview.reject()"
@@ -483,7 +481,7 @@
 
                 {# Approve / Reject buttons #}
                 <div x-show="!$store.compliancePreview.rejectMode" x-cloak
-                     class="flex items-center justify-end gap-3">
+                     class="flex flex-col items-stretch justify-end gap-3 sm:flex-row sm:items-center">
                   <button @click="$store.compliancePreview.rejectMode = true"
                           class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg border border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 text-sm font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors">
                     <span class="material-symbols-outlined text-sm leading-none">close</span>
