@@ -7,6 +7,7 @@ import type { AuthSession } from "../utils/auth";
 import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
 import { getCurrentLanguage, loadSettings } from "../utils/settings";
+import { clearSellerFoodsCache } from "../utils/sellerFoodsCache";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
@@ -622,6 +623,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         userId: currentAuth.userId,
       });
       setFoods(rows);
+      clearSellerFoodsCache();
       void loadCategories(baseUrl);
     } catch (e) {
       Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.foods.load'));

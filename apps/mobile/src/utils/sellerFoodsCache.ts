@@ -10,3 +10,7 @@ export function setSellerFoodsCache(items: SellerFoodCacheItem[] | null): void {
   sellerFoodsCache = Array.isArray(items) ? items : null;
 }
 
+export function clearSellerFoodsCache(): void {
+  sellerFoodsCache = null;
+}
+
