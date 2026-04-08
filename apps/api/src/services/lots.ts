@@ -1,12 +1,29 @@
 import type { PoolClient } from "pg";
 
+let cachedActiveLotStatus: "active" | "open" | null = null;
+
+export async function resolveActiveLotStatusTx(client: PoolClient): Promise<"active" | "open"> {
+  if (cachedActiveLotStatus) return cachedActiveLotStatus;
+
+  const result = await client.query<{ def: string | null }>(
+    `SELECT pg_get_constraintdef(oid) AS def
+     FROM pg_constraint
+     WHERE conrelid = 'production_lots'::regclass
+       AND conname = 'production_lots_status_check'
+     LIMIT 1`
+  );
+  const definition = String(result.rows[0]?.def ?? "");
+  cachedActiveLotStatus = definition.includes("'active'") ? "active" : "open";
+  return cachedActiveLotStatus;
+}
+
 async function markExpiredLotsForFoodTx(client: PoolClient, foodId: string): Promise<void> {
   await client.query(
     `UPDATE production_lots
      SET status = 'expired',
          updated_at = now()
      WHERE food_id = $1
-       AND status = 'open'
+       AND status IN ('open', 'active')
        AND sale_ends_at < now()`,
     [foodId]
   );
@@ -52,7 +69,7 @@ export async function allocateLotsFefoTx(params: {
     }
     const selectedLot = lot.rows[0];
     if (
-      selectedLot.status !== "open" ||
+      !["open", "active"].includes(selectedLot.status) ||
       new Date(selectedLot.sale_starts_at).getTime() > Date.now() ||
       new Date(selectedLot.sale_ends_at).getTime() < Date.now() ||
       Number(selectedLot.quantity_available) < Number(item.quantity)

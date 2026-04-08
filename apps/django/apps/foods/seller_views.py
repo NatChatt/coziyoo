@@ -13,6 +13,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
+_LOT_ACTIVE_STATUS_CACHE = None
+
 
 class IsAppRealm(IsAuthenticated):
     def has_permission(self, request, view):
@@ -38,6 +40,28 @@ def _stringify_uuids(obj, fields):
         if obj.get(f) is not None:
             obj[f] = str(obj[f])
     return obj
+
+
+def _resolve_lot_active_status():
+    global _LOT_ACTIVE_STATUS_CACHE
+    if _LOT_ACTIVE_STATUS_CACHE is not None:
+        return _LOT_ACTIVE_STATUS_CACHE
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+                SELECT pg_get_constraintdef(oid)
+                FROM pg_constraint
+                WHERE conrelid = 'production_lots'::regclass
+                  AND conname = 'production_lots_status_check'
+                LIMIT 1
+            """
+        )
+        row = cursor.fetchone()
+
+    definition = str(row[0] if row else "")
+    _LOT_ACTIVE_STATUS_CACHE = "active" if "'active'" in definition else "open"
+    return _LOT_ACTIVE_STATUS_CACHE
 
 
 class SellerProfileView(APIView):
@@ -546,6 +570,7 @@ class SellerLotListView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        active_lot_status = _resolve_lot_active_status()
         lot_id = str(uuid.uuid4())
         lot_number = f"CZ-{str(food_id)[:8].upper()}-{produced_dt.strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
         with connection.cursor() as cursor:
@@ -557,7 +582,7 @@ class SellerLotListView(APIView):
                             use_by, best_before, recipe_snapshot, ingredients_snapshot_json, allergens_snapshot_json,
                             quantity_produced, quantity_available, status, notes, created_at, updated_at
                         )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'open', %s, now(), now())
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now())
                 """,
                 [
                     lot_id,
@@ -574,6 +599,7 @@ class SellerLotListView(APIView):
                     json.dumps(food.get("allergens_json")),
                     quantity_produced,
                     quantity_available,
+                    active_lot_status,
                     notes,
                 ],
             )
@@ -608,6 +634,7 @@ class SellerLotAdjustView(APIView):
     def post(self, request, lot_id):
         delta = request.data.get("delta")
         reason = request.data.get("reason", "")
+        active_lot_status = _resolve_lot_active_status()
 
         if delta is None:
             return Response(
@@ -623,21 +650,55 @@ class SellerLotAdjustView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        sql = """
-            UPDATE production_lots
-            SET quantity_available = quantity_available + %s,
-                updated_at = now()
-            WHERE id = %s AND seller_id = %s
-            RETURNING id, quantity_remaining
-        """
         with connection.cursor() as cursor:
-            cursor.execute(sql, [delta, str(lot_id), request.user.id])
-            row = cursor.fetchone()
+            cursor.execute(
+                """
+                    SELECT id, quantity_available, quantity_produced, status
+                    FROM production_lots
+                    WHERE id = %s AND seller_id = %s
+                """,
+                [str(lot_id), request.user.id],
+            )
+            current = _row_as_dict(cursor)
 
-        if row is None:
+        if current is None:
             return Response(
                 {"error": {"code": "NOT_FOUND", "message": "Lot not found or does not belong to seller"}},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        next_quantity = int(current.get("quantity_available") or 0) + delta
+        quantity_produced = int(current.get("quantity_produced") or 0)
+        if next_quantity < 0 or next_quantity > quantity_produced:
+            return Response(
+                {"error": {"code": "LOT_INVALID_QUANTITY", "message": "Available cannot be negative or exceed produced"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        sql = """
+            UPDATE production_lots
+            SET quantity_available = %s,
+                status = CASE
+                    WHEN %s = 0 THEN 'depleted'
+                    WHEN status IN ('depleted', 'expired', 'passive') AND %s > 0 THEN %s
+                    ELSE status
+                END,
+                updated_at = now()
+            WHERE id = %s AND seller_id = %s
+            RETURNING id, quantity_available
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(sql, [next_quantity, next_quantity, next_quantity, active_lot_status, str(lot_id), request.user.id])
+            row = cursor.fetchone()
+
+        event_payload = {"delta": delta, "reason": reason, "quantityAvailable": row[1]}
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    INSERT INTO lot_events (lot_id, event_type, event_payload_json, created_by, created_at)
+                    VALUES (%s, 'adjusted', %s, %s, now())
+                """,
+                [str(lot_id), json.dumps(event_payload), request.user.id],
             )
 
         return Response({"data": {"id": str(row[0]), "quantityRemaining": row[1]}})

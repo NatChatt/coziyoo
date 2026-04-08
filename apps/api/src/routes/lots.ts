@@ -3,7 +3,7 @@ import { z } from "zod";
 import { pool } from "../db/client.js";
 import { resolveActorRole } from "../middleware/app-role.js";
 import { requireAuth } from "../middleware/auth.js";
-import { recalculateFoodStockTx } from "../services/lots.js";
+import { recalculateFoodStockTx, resolveActiveLotStatusTx } from "../services/lots.js";
 import { enqueueOutboxEvent } from "../services/outbox.js";
 const CreateLotSchema = z.object({
   foodId: z.string().uuid(),
@@ -54,6 +54,7 @@ sellerLotsRouter.post("/", requireAuth("app"), async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    const activeLotStatus = await resolveActiveLotStatusTx(client);
     const food = await client.query<{ id: string; recipe: string | null; ingredients_json: unknown; allergens_json: unknown }>(
       `SELECT id, recipe, ingredients_json, allergens_json
        FROM foods
@@ -93,7 +94,7 @@ sellerLotsRouter.post("/", requireAuth("app"), async (req, res) => {
     const created = await client.query<{ id: string; lot_number: string }>(
       `INSERT INTO production_lots
         (seller_id, food_id, lot_number, produced_at, sale_starts_at, sale_ends_at, use_by, best_before, recipe_snapshot, ingredients_snapshot_json, allergens_snapshot_json, quantity_produced, quantity_available, status, notes, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'open', $14, now(), now())
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now(), now())
        RETURNING id, lot_number`,
       [
         req.auth!.userId,
@@ -109,6 +110,7 @@ sellerLotsRouter.post("/", requireAuth("app"), async (req, res) => {
         JSON.stringify(allergensSnapshot),
         input.quantityProduced,
         qtyAvailable,
+        activeLotStatus,
         input.notes ?? null,
       ]
     );
@@ -202,6 +204,7 @@ sellerLotsRouter.post("/:lotId/adjust", requireAuth("app"), async (req, res) => 
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    const activeLotStatus = await resolveActiveLotStatusTx(client);
     const lot = await client.query<{
       food_id: string;
       seller_id: string;
@@ -243,13 +246,13 @@ sellerLotsRouter.post("/:lotId/adjust", requireAuth("app"), async (req, res) => 
            status = CASE
              WHEN $2 = 0 THEN 'depleted'
              WHEN coalesce($3::timestamptz, sale_ends_at) < now() THEN 'expired'
-             WHEN status IN ('depleted', 'expired') AND $2 > 0 THEN 'open'
+             WHEN status IN ('depleted', 'expired', 'passive') AND $2 > 0 THEN $5
              ELSE status
            END,
            notes = coalesce($4, notes),
            updated_at = now()
        WHERE id = $1`,
-      [lotId, parsed.data.quantityAvailable, parsed.data.saleEndsAt ?? null, parsed.data.notes ?? null]
+      [lotId, parsed.data.quantityAvailable, parsed.data.saleEndsAt ?? null, parsed.data.notes ?? null, activeLotStatus]
     );
     await client.query(
       `INSERT INTO lot_events (lot_id, event_type, event_payload_json, created_by, created_at)
