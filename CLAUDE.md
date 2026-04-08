@@ -2,10 +2,6 @@
 
 Coziyoo v2 — ev yemeklerini komşulara bağlayan bir sipariş marketplace'i.
 
-> **Eski kod:** `apps/api/` (Node.js/Express) ve `apps/admin/` (React) devre dışı. Dokunma.
-
----
-
 ## Aktif Servisler
 
 | Servis | Stack | Port | Açıklama |

@@ -4,9 +4,8 @@
 
 Production deployment uses:
 - **Nginx Proxy Manager** (Docker) for external ingress (TLS, routing)
-- **Systemd services** for applications (API, Admin, PostgreSQL)
-- **Node `serve`** for serving admin static files (SPA routing support)
-- **Node.js/Express** for API
+- **Gunicorn + systemd** for Django application
+- **Supabase** (external) for PostgreSQL + Realtime
 
 ## Service Architecture
 
@@ -14,88 +13,51 @@ Production deployment uses:
 Internet
     ↓
 Nginx Proxy Manager (Docker: 80/443)
-    ├──→ API (systemd: 127.0.0.1:3000)
-    └──→ Admin (systemd: 127.0.0.1:8000) [Node Serve]
-    
-PostgreSQL (systemd: 127.0.0.1:5432)
+    ├──→ api.coziyoo.com  → Django/Gunicorn (systemd: 127.0.0.1:9000)
+    └──→ admin.coziyoo.com → Django/Gunicorn (systemd: 127.0.0.1:9000)
 ```
 
 ## Services
 
-### 1. API (`coziyoo-api`)
+### 1. Django (`coziyoo-django`)
 - **Type:** Systemd service
-- **Runtime:** Node.js/Express
-- **Port:** 127.0.0.1:3000
-- **Working Dir:** `/opt/coziyoo/apps/api`
-- **Start:** `node dist/src/server.js`
+- **Runtime:** Python/Gunicorn
+- **Port:** 127.0.0.1:9000
+- **Working Dir:** `/opt/coziyoo/apps/django`
 
-### 2. Admin Panel (`coziyoo-admin`)
-- **Type:** Systemd service  
-- **Runtime:** Node Serve (`npx serve`)
-- **Port:** 127.0.0.1:8000
-- **Working Dir:** /var/www/coziyoo-admin
-- **Start:** `npx serve -s . -l 8000`
-
-### 3. PostgreSQL
-- **Type:** Systemd service
-- **Port:** 127.0.0.1:5432
-
-### 4. Nginx Proxy Manager
+### 2. Nginx Proxy Manager
 - **Type:** Docker container
 - **Ports:** 80, 443 (public), 81 (admin UI)
 - **Config:** `/opt/nginx-proxy-manager/docker-compose.yml`
 
 ## Install Flow
 
-1. **install_prereqs.sh** - Install git, node, python, postgres
-2. **install_npm_proxy_manager.sh** - Start NPM Docker container
-3. **install_postgres.sh** - Configure PostgreSQL
-4. **install_api_service.sh**:
-   - npm ci
-   - npm run build
-   - Run SQL migrations
-   - Create systemd service
-   - Start service
-   - Wait for API health
-   - Seed admin user
-   - Optionally seed sample data
-5. **install_admin_panel.sh**:
-   - npm ci
-   - npm run build
-   - Copy to `/var/www/coziyoo-admin`
-   - Create Node Serve systemd service
-   - Start service
+1. **install.sh** - Install prereqs, set up systemd service, start Django
+2. **update.sh** - Pull latest code, restart service
 
 ## Configuration Files
 
-### Root `.env` (Application config)
+### `apps/django/.env` (Application config)
 ```
-API_PORT=3000
-PGHOST=127.0.0.1
-PGUSER=coziyoo
-...
+DATABASE_URL=postgresql://...
+APP_JWT_SECRET=...
+ADMIN_JWT_SECRET=...
+DJANGO_SECRET_KEY=...
 ```
 
 ### `installation/config.env` (Install config)
 ```
 REPO_ROOT=/opt/coziyoo
-API_DIR=apps/api
-ADMIN_DIR=apps/admin
-SEED_SAMPLE_DATA=false
-...
+DEPLOY_BRANCH=main
+ADMIN_DOMAIN=admin.coziyoo.com
+API_DOMAIN=api.coziyoo.com
 ```
 
 ## Security
 
 - All services bind to localhost (127.0.0.1) except NPM
 - NPM handles SSL termination
-- PostgreSQL uses pgcrypto for password hashing
-- No local nginx (removed in favor of NPM + Node Serve)
 
-## Data Seeding
+## Default Credentials
 
-**During install only:**
 - Admin user: `admin@coziyoo.com` / `Admin12345`
-- Sample data: buyers, sellers, foods, orders (if `SEED_SAMPLE_DATA=true`)
-
-**Not during updates** - database remains untouched on deploy.

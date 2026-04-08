@@ -4,7 +4,7 @@ This document summarizes the current project state and defines working boundarie
 
 ## 1) Monorepo State
 - Structure: npm workspaces (`apps/*`, `packages/*`).
-- Main active apps: `apps/api`, `apps/admin`, `apps/mobile`.
+- Main active apps: `apps/django` (backend + admin), `apps/mobile`.
 - Shared packages: `packages/shared-types`, `packages/shared-utils`.
 - Deployment/operations center: `installation/scripts/*`.
 - CI/CD workflow: `.github/workflows/deploy-on-push.yml`.

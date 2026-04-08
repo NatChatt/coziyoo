@@ -2,29 +2,12 @@
   "name": "coziyoo",
   "version": "2.0.0",
   "private": true,
-  "workspaces": [
-    "apps/api",
-    "apps/admin",
-    "packages/*"
-  ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "dev:api": "npm run dev --workspace=apps/api",
-    "dev:admin": "npm run dev --workspace=apps/admin",
     "dev:mobile": "npm --prefix apps/mobile run start",
-    "build:api": "npm run build --workspace=apps/api",
-    "build:admin": "npm run build --workspace=apps/admin",
-    "build:mobile": "echo \"Standalone mobile app: run from apps/mobile (npm run ios|android)\"",
-    "install:all": "bash installation/scripts/install_all.sh",
-    "update:all": "bash installation/scripts/update_all.sh",
-    "test": "npm run test --workspaces --if-present",
-    "test:api": "npm run test --workspace=apps/api",
     "android": "npm --prefix apps/mobile run android",
-    "ios": "npm --prefix apps/mobile run ios"
-  },
-  "devDependencies": {
-    "@types/react": "~18.2.45",
-    "typescript": "^5.0.0"
+    "ios": "npm --prefix apps/mobile run ios",
+    "install:all": "bash installation/scripts/install_all.sh",
+    "update:all": "bash installation/scripts/update_all.sh"
   },
   "engines": {
     "node": ">=20.0.0"
