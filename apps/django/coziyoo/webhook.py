@@ -27,8 +27,14 @@ def verify_signature(payload_body, signature):
 
 def run_deploy():
     try:
+        # Use systemd-run to execute the deploy script in a transient scope,
+        # detached from the coziyoo-django service cgroup. This prevents
+        # systemctl restart (inside update.sh) from killing the deploy process.
         result = subprocess.run(
-            ["bash", DEPLOY_SCRIPT],
+            [
+                "systemd-run", "--scope", "--quiet",
+                "bash", DEPLOY_SCRIPT,
+            ],
             cwd="/opt/coziyoo",
             env={
                 "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
