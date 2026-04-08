@@ -5,6 +5,7 @@ import { pool } from "../db/client.js";
 import { resolveActorRole } from "../middleware/app-role.js";
 import { requireAuth } from "../middleware/auth.js";
 import { getSellerOperateGate } from "../services/seller-operability.js";
+import { recalculateFoodStockTx, resolveActiveLotStatusTx } from "../services/lots.js";
 import { normalizeDeliveryType } from "../utils/delivery-type.js";
 const WorkingHourSchema = z.object({
   day: z.string().min(2).max(20),
@@ -107,6 +108,33 @@ function ensureSellerRole(req: Request, res: Response): boolean {
     return false;
   }
   return true;
+}
+
+async function createDefaultLot(sellerId: string, foodId: string): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const activeLotStatus = await resolveActiveLotStatusTx(client);
+
+    const lotNumber = `CZ-${foodId.slice(0, 8).toUpperCase()}-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    const now = new Date();
+    const saleEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    await client.query(
+      `INSERT INTO production_lots
+        (seller_id, food_id, lot_number, produced_at, sale_starts_at, sale_ends_at, recipe_snapshot, ingredients_snapshot_json, allergens_snapshot_json, quantity_produced, quantity_available, status, created_at, updated_at)
+       SELECT $1, $2, $3, $4, $5, $6, f.recipe, f.ingredients_json, f.allergens_json, 100, 100, $7, now(), now()
+       FROM foods f WHERE f.id = $2`,
+      [sellerId, foodId, lotNumber, now.toISOString(), now.toISOString(), saleEnd.toISOString(), activeLotStatus]
+    );
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("[seller] auto-create lot failed:", err);
+  } finally {
+    client.release();
+  }
 }
 
 function normalizeImageUrls(input: unknown): string[] {
@@ -1007,7 +1035,10 @@ sellerRouter.post("/foods", async (req, res) => {
             input.isActive ?? true,
           ],
         );
-      return res.status(201).json({ data: { foodId: created.rows[0].id } });
+        const foodId = created.rows[0].id;
+        await createDefaultLot(req.auth!.userId, foodId);
+
+        return res.status(201).json({ data: { foodId } });
     } catch (error) {
       console.error("[seller] food create error:", error);
       return res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to create food" } });
