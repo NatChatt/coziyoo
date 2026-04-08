@@ -182,7 +182,7 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
 }
 
-function parseDisplayDateToIso(value: string): string | null {
+function parseDisplayDateToIso(value: string, boundary: "start" | "end" = "start"): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
   const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -191,7 +191,9 @@ function parseDisplayDateToIso(value: string): string | null {
   const day = Number(dd);
   const month = Number(mm);
   const year = Number(yyyy);
-  const date = new Date(year, month - 1, day, 0, 0, 0, 0);
+  const date = boundary === "end"
+    ? new Date(year, month - 1, day, 23, 59, 59, 999)
+    : new Date(year, month - 1, day, 0, 0, 0, 0);
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
     return null;
   }
@@ -856,8 +858,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         .split(",")
         .map((x) => x.trim())
         .filter(Boolean);
-      const startIsoRequired = parseDisplayDateToIso(startDate);
-      const endIsoRequired = parseDisplayDateToIso(endDate);
+      const startIsoRequired = parseDisplayDateToIso(startDate, "start");
+      const endIsoRequired = parseDisplayDateToIso(endDate, "end");
 
       if (!name.trim()) {
         navigateToRequiredField("name", { focusRef: nameInputRef });
