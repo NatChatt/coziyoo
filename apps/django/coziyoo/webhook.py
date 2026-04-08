@@ -27,14 +27,11 @@ def verify_signature(payload_body, signature):
 
 def run_deploy():
     try:
-        # Use systemd-run to execute the deploy script in a transient scope,
-        # detached from the coziyoo-django service cgroup. This prevents
-        # systemctl restart (inside update.sh) from killing the deploy process.
+        # Use sudo + setsid to run the deploy in a new session, detached from
+        # Gunicorn's process group. This prevents systemctl restart (inside
+        # update.sh) from killing the deploy process via the service cgroup.
         result = subprocess.run(
-            [
-                "systemd-run", "--scope", "--quiet",
-                "bash", DEPLOY_SCRIPT,
-            ],
+            ["sudo", "setsid", "bash", DEPLOY_SCRIPT],
             cwd="/opt/coziyoo",
             env={
                 "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",

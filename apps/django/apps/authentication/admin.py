@@ -988,12 +988,19 @@ class AdminUsersAdmin(ModelAdmin):
         return ["id", "password_hash", "is_active", "last_login_at", "created_at", "updated_at"]
 
     def save_model(self, request, obj, form, change):
+        import uuid
+        from django.utils import timezone
         from .security import hash_password as _hash_password
         password = form.cleaned_data.get("password")
         if password:
             obj.password_hash = _hash_password(password)
         if not change:
+            obj.id = uuid.uuid4()
             obj.is_active = True
+            obj.created_at = timezone.now()
+            obj.updated_at = timezone.now()
+        else:
+            obj.updated_at = timezone.now()
         super().save_model(request, obj, form, change)
 
     def get_urls(self):
