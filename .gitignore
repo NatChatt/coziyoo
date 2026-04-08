@@ -88,6 +88,9 @@ apps/voice-agent/.venv/
 # Deployment
 .deploy-lock
 
+# Django collectstatic output
+apps/django/staticfiles/
+
 # Expo
 .expo
 .expo-shared
