@@ -1,4 +1,5 @@
 import json
+from django import forms
 from django.conf import settings
 from django.contrib import admin
 from django.contrib import messages
@@ -916,13 +917,69 @@ def _cascade_delete_users(conn, user_ids):
         cur.execute(f"DELETE FROM users WHERE id IN ({ph})", ids)
 
 
+class AdminUserForm(forms.ModelForm):
+    email = forms.CharField(
+        widget=forms.TextInput(),
+        label=_("Email"),
+    )
+    role = forms.ChoiceField(
+        choices=[("admin", "Admin"), ("super_admin", "Super Admin")],
+        label=_("Role"),
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(render_value=False),
+        required=False,
+        label=_("Password"),
+        help_text=_("Required when creating. Leave blank to keep the existing password."),
+    )
+
+    class Meta:
+        model = AdminUsers
+        fields = ["email", "role"]
+
+    def clean_password(self):
+        password = self.cleaned_data.get("password")
+        if not self.instance.pk and not password:
+            raise forms.ValidationError(_("Password is required when creating a new admin user."))
+        return password
+
+
 @admin.register(AdminUsers)
 class AdminUsersAdmin(ModelAdmin):
+    form = AdminUserForm
     list_display = ["email", "role", "is_active", "last_login_at", "created_at"]
     list_filter = ["role", "is_active"]
     search_fields = ["email"]
-    readonly_fields = ["id", "password_hash", "created_at", "updated_at"]
     ordering = ["-created_at"]
+
+    def get_fieldsets(self, request, obj=None):
+        if obj is None:
+            # Add: only the fields that need input
+            return [
+                (None, {"fields": ["email", "role", "password"]}),
+            ]
+        # Change: editable fields + system info (readonly)
+        return [
+            (None, {"fields": ["email", "role", "password"]}),
+            (_("System Info"), {
+                "fields": ["id", "password_hash", "is_active", "last_login_at", "created_at", "updated_at"],
+                "classes": ["collapse"],
+            }),
+        ]
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj is None:
+            return []
+        return ["id", "password_hash", "is_active", "last_login_at", "created_at", "updated_at"]
+
+    def save_model(self, request, obj, form, change):
+        from .security import hash_password as _hash_password
+        password = form.cleaned_data.get("password")
+        if password:
+            obj.password_hash = _hash_password(password)
+        if not change:
+            obj.is_active = True
+        super().save_model(request, obj, form, change)
 
     def get_urls(self):
         urls = super().get_urls()
