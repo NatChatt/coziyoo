@@ -280,15 +280,17 @@ class BuyerUsersAdmin(ModelAdmin):
                     o.delivery_address_json, o.seller_delivery_note, o.payment_completed,
                     b.display_name AS buyer_name, b.email AS buyer_email,
                     s.display_name AS seller_name, s.email AS seller_email,
-                    (SELECT COALESCE(json_agg(t ORDER BY t.created_at), '[]'::json) FROM (
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
                         SELECT oi.id, f.name AS food_name, oi.quantity,
                                oi.unit_price, oi.line_total
                         FROM order_items oi LEFT JOIN foods f ON f.id = oi.food_id
                         WHERE oi.order_id = o.id
+                        ORDER BY oi.created_at
                     ) t) AS items,
-                    (SELECT COALESCE(json_agg(t ORDER BY t.created_at DESC), '[]'::json) FROM (
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
                         SELECT pa.provider, pa.status
-                        FROM payment_attempts pa WHERE pa.order_id = o.id LIMIT 1
+                        FROM payment_attempts pa WHERE pa.order_id = o.id
+                        ORDER BY pa.created_at DESC LIMIT 1
                     ) t) AS payments
                 FROM orders o
                 LEFT JOIN users b ON b.id = o.buyer_id
