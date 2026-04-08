@@ -189,81 +189,80 @@
             </div>
         </div>
 
-        {# ── Theme Toggle ── #}
-        <div class="ml-auto relative shrink-0" x-data="{ openTheme: false }" @click.outside="openTheme = false">
-            <button
-                @click="openTheme = !openTheme"
-                class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors"
-                :title="adminTheme == 'dark' ? 'Dark mode' : (adminTheme == 'light' ? 'Light mode' : 'System theme')"
-                :aria-label="adminTheme == 'dark' ? 'Dark mode' : (adminTheme == 'light' ? 'Light mode' : 'System theme')"
-            >
-                <span class="material-symbols-outlined text-base leading-none" x-text="adminTheme == 'dark' ? 'dark_mode' : (adminTheme == 'light' ? 'light_mode' : 'computer')"></span>
-                <span x-text="adminTheme == 'dark' ? '{% trans "Dark" %}' : (adminTheme == 'light' ? '{% trans "Light" %}' : '{% trans "System" %}')"></span>
-                <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" :class="{ 'rotate-180': openTheme }">expand_more</span>
-            </button>
-
-            <div
-                x-show="openTheme"
-                x-cloak
-                x-transition:enter="transition ease-out duration-100"
-                x-transition:enter-start="opacity-0 -translate-y-1"
-                x-transition:enter-end="opacity-100 translate-y-0"
-                class="absolute top-full right-0 mt-1 w-40 bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-lg shadow-lg py-1 z-50"
-            >
-                <button
-                    @click="switchTheme('light'); openTheme = false"
-                    class="w-full flex items-center gap-2 px-4 py-2 text-sm text-left text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors"
-                    :class="{ 'text-primary-600 dark:text-primary-400': adminTheme == 'light' }"
-                >
-                    <span class="material-symbols-outlined text-base leading-none">light_mode</span>
-                    {% trans "Light" %}
-                </button>
-                <button
-                    @click="switchTheme('dark'); openTheme = false"
-                    class="w-full flex items-center gap-2 px-4 py-2 text-sm text-left text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors"
-                    :class="{ 'text-primary-600 dark:text-primary-400': adminTheme == 'dark' }"
-                >
-                    <span class="material-symbols-outlined text-base leading-none">dark_mode</span>
-                    {% trans "Dark" %}
-                </button>
-                <button
-                    @click="switchTheme('auto'); openTheme = false"
-                    class="w-full flex items-center gap-2 px-4 py-2 text-sm text-left text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors"
-                    :class="{ 'text-primary-600 dark:text-primary-400': adminTheme == 'auto' }"
-                >
-                    <span class="material-symbols-outlined text-base leading-none">computer</span>
-                    {% trans "System" %}
-                </button>
-            </div>
-        </div>
-
-        {# ── Language Toggle ── #}
-        <form action="/i18n/setlang/" method="post" class="shrink-0" x-data>
-            {% csrf_token %}
-            <input type="hidden" name="next" :value="window.location.pathname + window.location.search">
-            {% if LANGUAGE_CODE == 'tr' %}
-            <button type="submit" name="language" value="en"
-                class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors"
-                title="Switch to English">
-                <span class="material-symbols-outlined text-base leading-none">translate</span>
-                EN
-            </button>
-            {% else %}
-            <button type="submit" name="language" value="tr"
-                class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors"
-                title="Türkçe'ye geç">
-                <span class="material-symbols-outlined text-base leading-none">translate</span>
-                TR
-            </button>
-            {% endif %}
-        </form>
-
         {# ── Global Search button ── #}
         <button @click="$dispatch('open-global-search')"
-            class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors shrink-0"
+            class="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors shrink-0"
             title="Global Search (/)">
             <span class="material-symbols-outlined text-xl leading-none">search</span>
         </button>
+
+        {# ── Avatar Dropdown ── #}
+        <div class="relative shrink-0" x-data="{ openProfile: false }" @click.outside="openProfile = false">
+            <button @click="openProfile = !openProfile"
+                class="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center hover:ring-2 hover:ring-primary-300 dark:hover:ring-primary-700 transition-all"
+                title="{% trans 'Account' %}">
+                <span class="material-symbols-outlined text-xl text-primary-600 dark:text-primary-400">account_circle</span>
+            </button>
+
+            <div x-show="openProfile" x-cloak
+                x-transition:enter="transition ease-out duration-100"
+                x-transition:enter-start="opacity-0 -translate-y-1"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                class="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-lg shadow-lg py-1 z-50">
+
+                {# ── Theme submenu ── #}
+                <div class="px-3 py-2">
+                    <div class="text-[11px] font-semibold text-base-400 dark:text-base-500 uppercase tracking-wide mb-1.5">{% trans "Theme" %}</div>
+                    <div class="flex items-center gap-1">
+                        <button @click="switchTheme('light')"
+                            class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors"
+                            :class="adminTheme == 'light' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' : 'text-base-500 hover:bg-base-100 dark:text-base-400 dark:hover:bg-base-800'">
+                            <span class="material-symbols-outlined text-sm leading-none">light_mode</span>
+                        </button>
+                        <button @click="switchTheme('dark')"
+                            class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors"
+                            :class="adminTheme == 'dark' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' : 'text-base-500 hover:bg-base-100 dark:text-base-400 dark:hover:bg-base-800'">
+                            <span class="material-symbols-outlined text-sm leading-none">dark_mode</span>
+                        </button>
+                        <button @click="switchTheme('auto')"
+                            class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors"
+                            :class="adminTheme == 'auto' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' : 'text-base-500 hover:bg-base-100 dark:text-base-400 dark:hover:bg-base-800'">
+                            <span class="material-symbols-outlined text-sm leading-none">computer</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="border-t border-base-100 dark:border-base-800 my-1"></div>
+
+                {# ── Language ── #}
+                <form action="/i18n/setlang/" method="post" x-data>
+                    {% csrf_token %}
+                    <input type="hidden" name="next" :value="window.location.pathname + window.location.search">
+                    {% if LANGUAGE_CODE == 'tr' %}
+                    <button type="submit" name="language" value="en"
+                        class="w-full flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">translate</span>
+                        English
+                    </button>
+                    {% else %}
+                    <button type="submit" name="language" value="tr"
+                        class="w-full flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">translate</span>
+                        Türkçe
+                    </button>
+                    {% endif %}
+                </form>
+
+                <div class="border-t border-base-100 dark:border-base-800 my-1"></div>
+
+                {# ── Logout ── #}
+                <a href="/admin/logout/"
+                    class="w-full flex items-center gap-2 px-4 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                    <span class="material-symbols-outlined text-base leading-none">logout</span>
+                    {% trans "Logout" %}
+                </a>
+            </div>
+        </div>
 
     </div>
 </nav>
