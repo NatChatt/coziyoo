@@ -307,6 +307,22 @@ class Users(models.Model):
         verbose_name_plural = "Users"
 
 
+class BuyerUsers(Users):
+    """Proxy model for the buyer-only admin view."""
+    class Meta:
+        proxy = True
+        verbose_name = "Buyer"
+        verbose_name_plural = "Buyers"
+
+
+class SellerUsers(Users):
+    """Proxy model for the seller-only admin view."""
+    class Meta:
+        proxy = True
+        verbose_name = "Seller"
+        verbose_name_plural = "Sellers"
+
+
 class AllUsers(Users):
     """Proxy model for viewing all users including inactive ones."""
     class Meta:

@@ -192,9 +192,15 @@ UNFOLD = {
                 "separator": True,
                 "items": [
                     {
-                        "title": "Users",
-                        "icon": "people",
-                        "link": "/admin/authentication/users/",
+                        "title": "Buyers",
+                        "icon": "person",
+                        "link": "/admin/authentication/buyerusers/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Sellers",
+                        "icon": "store",
+                        "link": "/admin/authentication/sellerusers/",
                         "permission": lambda request: request.user.is_staff,
                     },
                     {
