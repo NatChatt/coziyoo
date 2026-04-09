@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import ScreenHeader from '../components/ScreenHeader';
 import { apiRequest } from '../utils/api';
-import { t } from '../copy/brandCopy';
+import { t, formatCopy } from '../copy/brandCopy';
 import { theme } from '../theme/colors';
 
 type AuthSession = {
@@ -318,7 +318,7 @@ export default function SellerLotCreateScreen({
     return (
       <View style={styles.stepIndicator}>
         <Text style={styles.stepIndicatorText}>
-          {`Adım ${step} / 4 — ${stepTitles[step]}`}
+          {`${formatCopy('label.seller.lotCreate.stepIndicator', { step })} — ${stepTitles[step]}`}
         </Text>
         <View style={styles.stepDots}>
           {([1, 2, 3, 4] as Step[]).map((s) => (
@@ -368,7 +368,7 @@ export default function SellerLotCreateScreen({
                           food.is_active ? styles.badgeActiveText : styles.badgePassiveText,
                         ]}
                       >
-                        {food.is_active ? 'Aktif' : 'Pasif'}
+                        {food.is_active ? t('status.seller.foodsManager.active') : t('status.seller.foodsManager.passive')}
                       </Text>
                     </View>
                   </View>
@@ -421,7 +421,7 @@ export default function SellerLotCreateScreen({
         {/* Recipe */}
         <View style={styles.specsSection}>
           <View style={styles.specsSectionHeader}>
-            <Text style={styles.specsSectionTitle}>Tarif</Text>
+            <Text style={styles.specsSectionTitle}>{t('label.seller.lotCreate.recipe')}</Text>
             <TouchableOpacity
               style={[styles.editToggleBtn, editRecipe && styles.editToggleBtnActive]}
               onPress={() => setEditRecipe((v) => !v)}
@@ -452,7 +452,7 @@ export default function SellerLotCreateScreen({
         {/* Ingredients */}
         <View style={styles.specsSection}>
           <View style={styles.specsSectionHeader}>
-            <Text style={styles.specsSectionTitle}>Malzemeler</Text>
+            <Text style={styles.specsSectionTitle}>{t('label.seller.lotCreate.ingredients')}</Text>
             <TouchableOpacity
               style={[styles.editToggleBtn, editIngredients && styles.editToggleBtnActive]}
               onPress={() => setEditIngredients((v) => !v)}
@@ -473,7 +473,7 @@ export default function SellerLotCreateScreen({
               value={editedIngredients}
               onChangeText={setEditedIngredients}
               multiline
-              placeholder="Virgülle ayır..."
+              placeholder={t('placeholder.seller.lotCreate.commaDelimited')}
               placeholderTextColor={theme.textSecondary}
             />
           ) : (
@@ -486,7 +486,7 @@ export default function SellerLotCreateScreen({
         {/* Allergens */}
         <View style={styles.specsSection}>
           <View style={styles.specsSectionHeader}>
-            <Text style={styles.specsSectionTitle}>Alerjenler</Text>
+            <Text style={styles.specsSectionTitle}>{t('label.seller.lotCreate.allergens')}</Text>
             <TouchableOpacity
               style={[styles.editToggleBtn, editAllergens && styles.editToggleBtnActive]}
               onPress={() => setEditAllergens((v) => !v)}
@@ -507,7 +507,7 @@ export default function SellerLotCreateScreen({
               value={editedAllergens}
               onChangeText={setEditedAllergens}
               multiline
-              placeholder="Virgülle ayır..."
+              placeholder={t('placeholder.seller.lotCreate.commaDelimited')}
               placeholderTextColor={theme.textSecondary}
             />
           ) : (
@@ -623,7 +623,7 @@ export default function SellerLotCreateScreen({
           </View>
 
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Satış penceresi</Text>
+            <Text style={styles.summaryLabel}>{t('label.seller.lotCreate.saleWindow')}</Text>
             <Text style={styles.summaryValue}>
               {`${form.saleStartsAt}\n→ ${form.saleEndsAt}`}
             </Text>
