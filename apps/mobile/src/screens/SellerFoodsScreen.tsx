@@ -275,7 +275,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const prepTimeInputRef = useRef<TextInput | null>(null);
   const currentLanguage = getCurrentLanguage();
   const locale = currentLanguage === "en" ? "en-GB" : "tr-TR";
-  const [apiUrl, setApiUrl] = useState("http://localhost:3000");
+  const [apiUrl, setApiUrl] = useState("");
   const [currentAuth, setCurrentAuth] = useState(auth);
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(false);
@@ -335,10 +335,16 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   useEffect(() => {
     setPendingInitialEditId(initialEditFood ? null : (initialEditFoodId ?? null));
   }, [initialEditFoodId, initialEditFood]);
+  // Load correct apiUrl from settings on mount so library effects fire with the right URL.
   useEffect(() => {
+    void loadSettings().then((s) => setApiUrl(s.apiUrl));
+  }, []);
+  useEffect(() => {
+    if (!apiUrl) return;
     void loadIngredientLibrary(apiUrl, currentAuth).then(setIngredientLibrary);
   }, [apiUrl, currentAuth]);
   useEffect(() => {
+    if (!apiUrl) return;
     void loadAddonLibrary(apiUrl, currentAuth).then(setAddonLibrary);
   }, [apiUrl, currentAuth]);
 
