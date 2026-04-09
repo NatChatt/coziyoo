@@ -76,7 +76,6 @@ type SellerFoodDraft = {
   prepTime?: string;
   cuisine?: string;
   categoryId?: string;
-  dailyStock?: string;
   freeAddonNameInput?: string;
   freeAddonKindInput?: AddonKind;
   paidAddonNameInput?: string;
@@ -95,7 +94,6 @@ type SellerFoodsFieldKey =
   | "addons"
   | "allergens"
   | "price"
-  | "dailyStock"
   | "prepTime";
 
 function toBool(value: unknown): boolean {
@@ -286,7 +284,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const recipeInputRef = useRef<TextInput | null>(null);
   const allergensInputRef = useRef<TextInput | null>(null);
   const priceInputRef = useRef<TextInput | null>(null);
-  const dailyStockInputRef = useRef<TextInput | null>(null);
   const prepTimeInputRef = useRef<TextInput | null>(null);
   const currentLanguage = getCurrentLanguage();
   const locale = currentLanguage === "en" ? "en-GB" : "tr-TR";
@@ -317,7 +314,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   // UI parity fields (opsiyonlar)
   const [cuisine, setCuisine] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [dailyStock, setDailyStock] = useState("");
   const [menuItems, setMenuItems] = useState<SellerMenuAddon[]>([]);
   const [freeAddonNameInput, setFreeAddonNameInput] = useState("");
   const [freeAddonKindInput, setFreeAddonKindInput] = useState<AddonKind>("extra");
@@ -376,7 +372,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
           setPrepTime(typeof parsed.prepTime === "string" ? parsed.prepTime : "");
           setCuisine(typeof parsed.cuisine === "string" ? parsed.cuisine : "");
           setCategoryId(typeof parsed.categoryId === "string" ? parsed.categoryId : "");
-          setDailyStock(typeof parsed.dailyStock === "string" ? parsed.dailyStock : "");
           setFreeAddonNameInput(typeof parsed.freeAddonNameInput === "string" ? parsed.freeAddonNameInput : "");
           setFreeAddonKindInput(
             parsed.freeAddonKindInput === "sauce" || parsed.freeAddonKindInput === "appetizer"
@@ -426,7 +421,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       prepTime,
       cuisine,
       categoryId,
-      dailyStock,
       freeAddonNameInput,
       freeAddonKindInput,
       paidAddonNameInput,
@@ -455,7 +449,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     prepTime,
     cuisine,
     categoryId,
-    dailyStock,
     freeAddonNameInput,
     freeAddonKindInput,
     paidAddonNameInput,
@@ -690,7 +683,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setPrepTime("");
     setCuisine("");
     setCategoryId("");
-    setDailyStock("");
     setMenuItems([]);
     setFreeAddonNameInput("");
     setFreeAddonKindInput("extra");
@@ -716,7 +708,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setPrepTime(food.preparationTimeMinutes ? String(food.preparationTimeMinutes) : "");
     setCuisine(food.cuisine ?? "");
     setCategoryId(food.categoryId ?? "");
-    setDailyStock(food.stock > 0 ? String(food.stock) : "");
     const normalizedMenuItems = Array.isArray(food.menuItems)
       ? food.menuItems
         .map((item) => ({
@@ -814,7 +805,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       const workingMenuItems: SellerMenuAddon[] = [...paidOnlyItems, ...freeItems];
       const parsedPrice = parseLocalizedDecimal(price);
       const parsedPrepTime = prepTime.trim() ? Number.parseInt(prepTime.trim(), 10) : Number.NaN;
-      const parsedDailyStock = dailyStock.trim() ? Number.parseInt(dailyStock.trim(), 10) : Number.NaN;
       const parsedAllergens = allergens
         .split(",")
         .map((x) => x.trim())
@@ -852,11 +842,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
         navigateToRequiredField("price", { focusRef: priceInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.priceRequired'));
-        return;
-      }
-      if (!Number.isFinite(parsedDailyStock) || parsedDailyStock <= 0) {
-        navigateToRequiredField("dailyStock", { focusRef: dailyStockInputRef });
-        Alert.alert(t('headline.common.error'), t('error.seller.foods.stockRequired'));
         return;
       }
       if (!Number.isFinite(parsedPrepTime) || parsedPrepTime <= 0) {
@@ -935,7 +920,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         fallbackEnd.setUTCDate(fallbackEnd.getUTCDate() + 30);
         const saleEndsAt = fallbackEnd.toISOString();
         const producedAt = saleStartsAt;
-        const quantityProduced = Math.max(1, parsedDailyStock || 1);
+        const quantityProduced = 1;
         const statusRes = await authedFetch(`/v1/seller/foods/${foodId}/status`, {
           method: "PATCH",
           body: JSON.stringify({ isActive: true }),
@@ -976,15 +961,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
             return false;
           });
 
-          if (hasVisibleLot && existingLotId && parsedDailyStock && parsedDailyStock > 0) {
-            const adjustRes = await authedFetch(`/v1/seller/lots/${existingLotId}/adjust`, {
-              method: "POST",
-              body: JSON.stringify({ quantityAvailable: parsedDailyStock }),
-            });
-            if (!adjustRes.ok) {
-              console.warn("[seller-foods] lot adjust failed", { status: adjustRes.status, lotId: existingLotId });
-            }
-          }
         }
 
         if (!hasVisibleLot) {
@@ -1109,11 +1085,6 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
   const previewImage = imageUrls.map((x) => x.trim()).find(Boolean) || "";
   const selectedCategoryName = categories.find((item) => item.id === categoryId)?.name ?? "";
   const previewTitle = name.trim() || t('headline.seller.foods.previewNameFallback');
-  const previewStockLine = (() => {
-    const stock = Number.parseInt(dailyStock.trim() || "0", 10);
-    if (Number.isFinite(stock) && stock > 0) return formatCopy('status.seller.foods.stockRemaining', { count: stock });
-    return t('status.seller.foods.stockMissing');
-  })();
   const parsedPreviewPrice = parseLocalizedDecimal(price);
   const previewPrice = Number.isFinite(parsedPreviewPrice) && parsedPreviewPrice > 0 ? `${parsedPreviewPrice.toFixed(2)} ₺` : "-- ₺";
   const previewSellerHandle = useMemo(() => {
@@ -1402,40 +1373,22 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             />
           </View>
 
-          <View style={styles.row2}>
-            <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("price", event)}>
-              <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("price") && styles.sectionTitleError]}>{t('headline.seller.foods.price')}</Text>
-              <TextInput
-                ref={priceInputRef}
-                style={[styles.input, isRequiredFieldHighlighted("price") && styles.inputError]}
-                value={price}
-                onChangeText={(value) => {
-                  setPrice(value);
-                  if (Number.isFinite(parseLocalizedDecimal(value)) && parseLocalizedDecimal(value) > 0) {
-                    clearRequiredFieldHighlight("price");
-                  }
-                }}
-                placeholder="25"
-                placeholderTextColor={PLACEHOLDER_COLOR}
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("dailyStock", event)}>
-              <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("dailyStock") && styles.sectionTitleError]}>{t('headline.seller.foods.dailyStock')}</Text>
-              <TextInput
-                ref={dailyStockInputRef}
-                style={[styles.input, isRequiredFieldHighlighted("dailyStock") && styles.inputError]}
-                value={dailyStock}
-                onChangeText={(value) => {
-                  setDailyStock(value);
-                  const parsedValue = Number.parseInt(value.trim() || "0", 10);
-                  if (Number.isFinite(parsedValue) && parsedValue > 0) clearRequiredFieldHighlight("dailyStock");
-                }}
-                placeholder={t('helper.seller.foods.dailyStockPlaceholder')}
-                placeholderTextColor={PLACEHOLDER_COLOR}
-                keyboardType="number-pad"
-              />
-            </View>
+          <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("price", event)}>
+            <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("price") && styles.sectionTitleError]}>{t('headline.seller.foods.price')}</Text>
+            <TextInput
+              ref={priceInputRef}
+              style={[styles.input, isRequiredFieldHighlighted("price") && styles.inputError]}
+              value={price}
+              onChangeText={(value) => {
+                setPrice(value);
+                if (Number.isFinite(parseLocalizedDecimal(value)) && parseLocalizedDecimal(value) > 0) {
+                  clearRequiredFieldHighlight("price");
+                }
+              }}
+              placeholder="25"
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              keyboardType="decimal-pad"
+            />
           </View>
 
           <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("prepTime", event)}>
@@ -1509,7 +1462,6 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                 <View style={styles.previewTopRow}>
                   <View style={styles.previewTopRowLeft}>
                     <Text style={styles.previewFoodTitle} numberOfLines={1}>{previewTitle}</Text>
-                    <Text style={styles.previewFoodSummary} numberOfLines={1}>{previewStockLine}</Text>
                   </View>
                   <View style={styles.previewTopRowRight}>
                     <Text style={styles.previewSeller}>{previewSellerHandle} ›</Text>
