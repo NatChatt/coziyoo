@@ -14,6 +14,7 @@ type Props = {
   auth: AuthSession;
   onBack: () => void;
   onOpenFoodsForm: (mode: "add" | "edit", foodId?: string, food?: SellerFood) => void;
+  onOpenLotCreate?: (foodId: string) => void;
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
@@ -38,7 +39,7 @@ function toBool(value: unknown): boolean {
   return false;
 }
 
-export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm, onAuthRefresh }: Props) {
+export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm, onOpenLotCreate, onAuthRefresh }: Props) {
   const initialCache = getSellerFoodsCache() as SellerFood[] | null;
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
@@ -174,7 +175,18 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
                   : t('status.seller.foodsManager.stockLotMissing')}
               </Text>
             </View>
-            <Text style={styles.editHint}>{t('cta.seller.foodsManager.editFood')}</Text>
+            <View style={styles.cardFooter}>
+              <Text style={styles.editHint}>{t('cta.seller.foodsManager.editFood')}</Text>
+              {onOpenLotCreate ? (
+                <TouchableOpacity
+                  style={styles.lotCreateBtn}
+                  activeOpacity={0.8}
+                  onPress={(e) => { e.stopPropagation?.(); onOpenLotCreate(item.id); }}
+                >
+                  <Text style={styles.lotCreateBtnText}>{t('cta.seller.foodsManager.createLot')}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
@@ -252,7 +264,10 @@ const styles = StyleSheet.create({
   rowBottom: { flexDirection: "row", justifyContent: "space-between", marginTop: 2 },
   price: { color: "#2E241C", fontWeight: "800" },
   stock: { color: "#6C6055", fontWeight: "600" },
-  editHint: { color: "#6C6055", fontSize: 12, fontWeight: "700", marginTop: 6 },
+  editHint: { color: "#6C6055", fontSize: 12, fontWeight: "700" },
+  cardFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
+  lotCreateBtn: { backgroundColor: "#EAF4ED", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: "#79BA94" },
+  lotCreateBtnText: { color: "#1D5634", fontWeight: "700", fontSize: 13 },
   emptyCard: { backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#E5DDCF", padding: 14 },
   emptyTitle: { color: "#2E241C", fontSize: 16, fontWeight: "800" },
   emptySub: { color: "#6C6055", marginTop: 4 },
