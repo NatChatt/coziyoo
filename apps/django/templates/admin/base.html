@@ -83,7 +83,8 @@
                             @input="onInput($event.target.value)"
                             @keydown.escape="close()"
                             type="text"
-                            placeholder="{% trans "Search users, orders, foods, complaints…" %}"
+                            placeholder="{% trans "Search users, orders, foods, complaints… (/)" %}"
+                            title="{% trans "Press / to open search" %}"
                             class="w-full rounded-2xl border-2 border-primary-600 bg-white pl-12 pr-14 py-4 text-base text-base-900 shadow-[0_0_0_4px_rgba(147,51,234,0.12)] focus:outline-none dark:border-primary-500 dark:bg-base-900 dark:text-base-100 dark:shadow-[0_0_0_4px_rgba(147,51,234,0.18)]"
                         >
                         <template x-if="loading">
