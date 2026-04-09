@@ -37,6 +37,7 @@ import SellerProfileScreen from './src/screens/SellerProfileScreen';
 import SellerFoodsScreen from './src/screens/SellerFoodsScreen';
 import SellerFoodsManagerScreen from './src/screens/SellerFoodsManagerScreen';
 import SellerLotsScreen from './src/screens/SellerLotsScreen';
+import SellerLotCreateScreen from './src/screens/SellerLotCreateScreen';
 import SellerOrdersScreen from './src/screens/SellerOrdersScreen';
 import SellerOrderDetailScreen from './src/screens/SellerOrderDetailScreen';
 import SellerComplianceScreen from './src/screens/SellerComplianceScreen';
@@ -159,7 +160,7 @@ type Screen =
   | 'allergenDisclosure' | 'deliveryPin'
   | 'review' | 'complaint'
   | 'favorites'
-  | 'sellerProfileDetail' | 'sellerProfile' | 'sellerFoods' | 'sellerFoodsManager' | 'sellerLots' | 'sellerOrders' | 'sellerOrderDetail' | 'sellerCompliance' | 'sellerFinance' | 'sellerReviews'
+  | 'sellerProfileDetail' | 'sellerProfile' | 'sellerFoods' | 'sellerFoodsManager' | 'sellerLots' | 'sellerLotCreate' | 'sellerOrders' | 'sellerOrderDetail' | 'sellerCompliance' | 'sellerFinance' | 'sellerReviews'
   | 'chatList' | 'chat';
 
 type TabKey = 'home' | 'messages' | 'cart' | 'notifications' | 'profile';
@@ -229,6 +230,7 @@ export default function App() {
   const [sellerFoodsInitialEditId, setSellerFoodsInitialEditId] = useState<string | null>(null);
   const [sellerFoodsInitialEditFood, setSellerFoodsInitialEditFood] = useState<any | null>(null);
   const [sellerFoodsFromManager, setSellerFoodsFromManager] = useState(false);
+  const [sellerLotCreatePreselectedFoodId, setSellerLotCreatePreselectedFoodId] = useState<string | undefined>(undefined);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -686,6 +688,10 @@ export default function App() {
           setSellerFoodsInitialEditFood(mode === 'edit' ? (food ?? null) : null);
           setScreen('sellerFoods');
         }}
+        onOpenLotCreate={(foodId) => {
+          setSellerLotCreatePreselectedFoodId(foodId);
+          setScreen('sellerLotCreate');
+        }}
         onAuthRefresh={setAuth}
       />
     );
@@ -696,6 +702,21 @@ export default function App() {
       <SellerLotsScreen
         auth={auth}
         onBack={() => setScreen('home')}
+        onOpenLotCreate={() => {
+          setSellerLotCreatePreselectedFoodId(undefined);
+          setScreen('sellerLotCreate');
+        }}
+        onAuthRefresh={setAuth}
+      />
+    );
+  }
+
+  if (screen === 'sellerLotCreate') {
+    return (
+      <SellerLotCreateScreen
+        auth={auth}
+        onBack={() => setScreen('sellerLots')}
+        preselectedFoodId={sellerLotCreatePreselectedFoodId}
         onAuthRefresh={setAuth}
       />
     );
@@ -761,6 +782,7 @@ export default function App() {
           auth={auth}
           onOpenProfile={() => setScreen('sellerProfileDetail')}
           onOpenFinance={() => setScreen('sellerFinance')}
+          onOpenLots={() => setScreen('sellerLots')}
           onOpenFoodsManager={(foodId) => {
             if (foodId) {
               setSellerFoodsFromManager(false);
