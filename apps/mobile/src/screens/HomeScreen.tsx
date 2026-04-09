@@ -3639,7 +3639,7 @@ export default function HomeScreen({
         {mealsLoading ? (
           <View style={styles.topSoldLoadingChip}>
             <ActivityIndicator size="small" color="#4A7C59" />
-            <Text style={styles.topSoldLoadingText}>Yemekler yukleniyor...</Text>
+            <Text style={styles.topSoldLoadingText}>{t('status.home.mealsLoading')}</Text>
           </View>
         ) : mealsError ? (
           <View style={styles.topSoldLoadingChip}>
@@ -3647,7 +3647,7 @@ export default function HomeScreen({
           </View>
         ) : visibleMeals.length === 0 ? (
           <View style={styles.topSoldLoadingChip}>
-            <Text style={styles.topSoldLoadingText}>Su an gosterebilecegimiz aktif yemek yok.</Text>
+            <Text style={styles.topSoldLoadingText}>{t('helper.home.noActiveMeals')}</Text>
           </View>
         ) : (
           visibleMeals.map((meal) => {

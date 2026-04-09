@@ -72,7 +72,7 @@ export default function TicketListScreen({ auth, onBack, onOpenTicket, onCreateT
     if (result.ok) {
       setTickets(normalizeTickets(result.data));
     } else {
-      setError(result.message ?? 'Ticketlar yüklenemedi.');
+      setError(result.message ?? t('error.ticket.load'));
     }
     if (showRefresh) setRefreshing(false);
     else setLoading(false);

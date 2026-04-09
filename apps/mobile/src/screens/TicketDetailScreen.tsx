@@ -5,6 +5,8 @@ import { type AuthSession } from '../utils/auth';
 import { apiRequest } from '../utils/api';
 import ScreenHeader from '../components/ScreenHeader';
 import ActionButton from '../components/ActionButton';
+import { formatCopy, t } from '../copy/brandCopy';
+import { getCurrentLanguage } from '../utils/settings';
 
 type TicketMessage = {
   id: string;
@@ -37,10 +39,17 @@ type Props = {
 };
 
 function statusLabel(status: TicketDetail['status']) {
-  if (status === 'open') return 'Açık';
-  if (status === 'in_review') return 'İnceleniyor';
-  if (status === 'resolved') return 'Çözüldü';
-  return 'Kapandı';
+  if (status === 'open') return t('status.ticket.state.open');
+  if (status === 'in_review') return t('status.ticket.state.in_review');
+  if (status === 'resolved') return t('status.ticket.state.resolved');
+  return t('status.ticket.state.closed');
+}
+
+function priorityLabel(priority: TicketDetail['priority']) {
+  if (priority === 'low') return t('status.ticket.priority.low');
+  if (priority === 'high') return t('status.ticket.priority.high');
+  if (priority === 'urgent') return t('status.ticket.priority.urgent');
+  return t('status.ticket.priority.medium');
 }
 
 function normalizeTicketDetail(data: TicketDetail): TicketDetail {
@@ -72,7 +81,7 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
     if (result.ok) {
       setTicket(normalizeTicketDetail(result.data));
     } else {
-      setError(result.message ?? 'Ticket detayı yüklenemedi.');
+      setError(result.message ?? t('error.ticket.detailLoad'));
     }
     if (showRefresh) setRefreshing(false);
     else setLoading(false);
@@ -84,7 +93,7 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
 
   async function handleSendMessage() {
     if (message.trim().length < 2) {
-      Alert.alert('Mesaj kısa', 'En az 2 karakter yazmalısın.');
+      Alert.alert(t('error.ticket.messageTooShortTitle'), t('error.ticket.messageTooShortBody'));
       return;
     }
     setSending(true);
@@ -96,7 +105,7 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
     );
     setSending(false);
     if (!result.ok) {
-      Alert.alert('Hata', result.message ?? 'Mesaj gönderilemedi.');
+      Alert.alert(t('headline.common.error'), result.message ?? t('error.ticket.messageSend'));
       return;
     }
     setMessage('');
@@ -108,54 +117,54 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <ScreenHeader title={ticket ? `Ticket #${ticket.ticketNo}` : 'Ticket'} onBack={onBack} />
+      <ScreenHeader title={ticket ? `#${ticket.ticketNo}` : t('headline.ticket.detailFallback')} onBack={onBack} />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadData(true)} />}
       >
-        {loading ? <Text style={styles.meta}>Yükleniyor...</Text> : null}
+        {loading ? <Text style={styles.meta}>{t('status.ticket.loading')}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {ticket ? (
           <>
             <View style={styles.card}>
-              <Text style={styles.title}>{ticket.categoryName ?? 'Destek Talebi'}</Text>
-              <Text style={styles.meta}>Durum: {statusLabel(ticket.status)}</Text>
-              <Text style={styles.meta}>Öncelik: {ticket.priority}</Text>
-              {ticket.orderId ? <Text style={styles.meta}>Sipariş: #{ticket.orderId.slice(0, 8).toUpperCase()}</Text> : null}
-              {ticket.lastActivityAt ? <Text style={styles.meta}>Son hareket: {new Date(ticket.lastActivityAt).toLocaleString('tr-TR')}</Text> : null}
+              <Text style={styles.title}>{ticket.categoryName ?? t('headline.ticket.detailFallback')}</Text>
+              <Text style={styles.meta}>{formatCopy('label.ticket.status', { value: statusLabel(ticket.status) })}</Text>
+              <Text style={styles.meta}>{formatCopy('label.ticket.priority', { value: priorityLabel(ticket.priority) })}</Text>
+              {ticket.orderId ? <Text style={styles.meta}>{formatCopy('status.ticket.orderLabel', { id: ticket.orderId.slice(0, 8).toUpperCase() })}</Text> : null}
+              {ticket.lastActivityAt ? <Text style={styles.meta}>{formatCopy('status.ticket.lastActivity', { date: new Date(ticket.lastActivityAt).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR') })}</Text> : null}
               {ticket.description ? <Text style={styles.description}>{ticket.description}</Text> : null}
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Mesajlar</Text>
+              <Text style={styles.sectionTitle}>{t('label.ticket.messages')}</Text>
               {ticket.messages?.length === 0 ? (
-                <Text style={styles.meta}>Henüz mesaj yok.</Text>
+                <Text style={styles.meta}>{t('helper.ticket.noMessages')}</Text>
               ) : (
                 ticket.messages?.map((item) => (
                   <View key={item.id} style={[styles.messageBubble, item.senderRole === 'buyer' ? styles.messageMine : styles.messageSupport]}>
-                    <Text style={styles.messageAuthor}>{item.senderRole === 'buyer' ? 'Sen' : item.senderName || 'Destek'}</Text>
+                    <Text style={styles.messageAuthor}>{item.senderRole === 'buyer' ? t('status.ticket.authorBuyer') : item.senderName || t('status.ticket.authorSupport')}</Text>
                     <Text style={styles.messageText}>{item.message}</Text>
-                    <Text style={styles.messageTime}>{new Date(item.createdAt).toLocaleString('tr-TR')}</Text>
+                    <Text style={styles.messageTime}>{new Date(item.createdAt).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR')}</Text>
                   </View>
                 ))
               )}
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Destek Mesajı</Text>
+              <Text style={styles.sectionTitle}>{t('label.ticket.supportMessage')}</Text>
               <TextInput
                 value={message}
                 onChangeText={setMessage}
-                placeholder={closed ? 'Bu ticket kapandığı için mesaj kapalı.' : 'Kısa bir güncelleme yaz...'}
+                placeholder={closed ? t('helper.ticket.closedMessagePlaceholder') : t('helper.ticket.messagePlaceholder')}
                 editable={!closed}
                 multiline
                 style={[styles.input, closed && styles.inputDisabled]}
               />
               <ActionButton
-                label="Mesajı Gönder"
+                label={t('cta.ticket.sendMessage')}
                 onPress={() => void handleSendMessage()}
                 disabled={closed || message.trim().length < 2}
                 loading={sending}

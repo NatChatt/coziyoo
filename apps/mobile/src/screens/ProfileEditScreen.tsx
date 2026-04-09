@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/colors';
 import { loadSettings } from '../utils/settings';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
-import { t } from '../copy/brandCopy';
+import { formatCopy, t } from '../copy/brandCopy';
 
 type UserProfile = {
   id: string;
@@ -157,7 +157,7 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
       const res = await authedFetch(`${apiUrl}/v1/auth/me`);
       const json = await readJsonSafe<{ data?: UserProfile; error?: { message?: string } }>(res);
       if (!res.ok || json.error) {
-        throw new Error(json.error?.message ?? `Hata (${res.status})`);
+        throw new Error(json.error?.message ?? formatCopy('error.profileEdit.statusCode', { status: res.status }));
       }
       const data = (json.data ?? null) as UserProfile | null;
       applyProfileState(data);
@@ -217,7 +217,7 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
       });
       const json = await readJsonSafe<{ data?: UserProfile; error?: { message?: string } }>(res);
       if (!res.ok || json.error) {
-        throw new Error(json.error?.message ?? `Hata (${res.status})`);
+        throw new Error(json.error?.message ?? formatCopy('error.profileEdit.statusCode', { status: res.status }));
       }
       const data = (json.data ?? null) as UserProfile | null;
       applyProfileState(data);
