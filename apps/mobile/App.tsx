@@ -231,6 +231,8 @@ export default function App() {
   const [sellerFoodsInitialEditFood, setSellerFoodsInitialEditFood] = useState<any | null>(null);
   const [sellerFoodsFromManager, setSellerFoodsFromManager] = useState(false);
   const [sellerLotCreatePreselectedFoodId, setSellerLotCreatePreselectedFoodId] = useState<string | undefined>(undefined);
+  const [sellerLotsFoodFilter, setSellerLotsFoodFilter] = useState<string | undefined>(undefined);
+  const [sellerLotsBackScreen, setSellerLotsBackScreen] = useState<'home' | 'sellerFoodsManager'>('home');
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -692,6 +694,11 @@ export default function App() {
           setSellerLotCreatePreselectedFoodId(foodId);
           setScreen('sellerLotCreate');
         }}
+        onOpenLots={(foodId) => {
+          setSellerLotsFoodFilter(foodId);
+          setSellerLotsBackScreen('sellerFoodsManager');
+          setScreen('sellerLots');
+        }}
         onAuthRefresh={setAuth}
       />
     );
@@ -701,9 +708,10 @@ export default function App() {
     return (
       <SellerLotsScreen
         auth={auth}
-        onBack={() => setScreen('home')}
+        onBack={() => setScreen(sellerLotsBackScreen)}
+        filterFoodId={sellerLotsFoodFilter}
         onOpenLotCreate={() => {
-          setSellerLotCreatePreselectedFoodId(undefined);
+          setSellerLotCreatePreselectedFoodId(sellerLotsFoodFilter);
           setScreen('sellerLotCreate');
         }}
         onAuthRefresh={setAuth}
@@ -782,7 +790,6 @@ export default function App() {
           auth={auth}
           onOpenProfile={() => setScreen('sellerProfileDetail')}
           onOpenFinance={() => setScreen('sellerFinance')}
-          onOpenLots={() => setScreen('sellerLots')}
           onOpenFoodsManager={(foodId) => {
             if (foodId) {
               setSellerFoodsFromManager(false);

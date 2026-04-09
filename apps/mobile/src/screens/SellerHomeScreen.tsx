@@ -17,7 +17,6 @@ type Props = {
   onAuthRefresh?: (session: AuthSession) => void;
   onOpenProfile: () => void;
   onOpenFinance: () => void;
-  onOpenLots: () => void;
   onOpenFoodsManager: (foodId?: string) => void;
   onOpenOrder: (orderId: string) => void;
   onSwitchToBuyer?: () => void;
@@ -282,7 +281,6 @@ export default function SellerHomeScreen({
   onAuthRefresh,
   onOpenProfile,
   onOpenFinance,
-  onOpenLots,
   onOpenFoodsManager,
   onOpenOrder,
   onSwitchToBuyer,
@@ -732,9 +730,6 @@ export default function SellerHomeScreen({
         <View style={styles.quickButtonsRow}>
           <TouchableOpacity style={styles.quickButton} activeOpacity={0.85} onPress={() => onOpenFoodsManager()}>
             <Text style={styles.quickButtonText}>{t('cta.seller.home.foodsManager')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickButton} activeOpacity={0.85} onPress={onOpenLots}>
-            <Text style={styles.quickButtonText}>{t('cta.seller.home.lots')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickLpiPill} activeOpacity={0.85} onPress={onOpenFinance}>
             <Text style={[styles.quickButtonText, styles.quickWalletButtonText]}>{t('cta.seller.home.wallet')}</Text>

@@ -15,6 +15,7 @@ type Props = {
   onBack: () => void;
   onOpenFoodsForm: (mode: "add" | "edit", foodId?: string, food?: SellerFood) => void;
   onOpenLotCreate?: (foodId: string) => void;
+  onOpenLots?: (foodId: string) => void;
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
@@ -39,7 +40,7 @@ function toBool(value: unknown): boolean {
   return false;
 }
 
-export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm, onOpenLotCreate, onAuthRefresh }: Props) {
+export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm, onOpenLotCreate, onOpenLots, onAuthRefresh }: Props) {
   const initialCache = getSellerFoodsCache() as SellerFood[] | null;
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
@@ -159,7 +160,7 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
           ) : null
         }
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} activeOpacity={0.82} onPress={() => onOpenFoodsForm("edit", item.id, item)}>
+          <TouchableOpacity style={styles.card} activeOpacity={0.82} onPress={() => onOpenLots?.(item.id)}>
             <View style={styles.rowTop}>
               <Text style={styles.name}>{item.name}</Text>
               <Text style={[styles.badge, item.isActive ? styles.badgeActive : styles.badgePassive]}>
@@ -176,7 +177,13 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
               </Text>
             </View>
             <View style={styles.cardFooter}>
-              <Text style={styles.editHint}>{t('cta.seller.foodsManager.editFood')}</Text>
+              <TouchableOpacity
+                style={styles.editChip}
+                activeOpacity={0.8}
+                onPress={(e) => { e.stopPropagation?.(); onOpenFoodsForm("edit", item.id, item); }}
+              >
+                <Text style={styles.editChipText}>{t('cta.seller.foodsManager.editFood')}</Text>
+              </TouchableOpacity>
               {onOpenLotCreate ? (
                 <TouchableOpacity
                   style={styles.lotCreateBtn}
@@ -264,7 +271,8 @@ const styles = StyleSheet.create({
   rowBottom: { flexDirection: "row", justifyContent: "space-between", marginTop: 2 },
   price: { color: "#2E241C", fontWeight: "800" },
   stock: { color: "#6C6055", fontWeight: "600" },
-  editHint: { color: "#6C6055", fontSize: 12, fontWeight: "700" },
+  editChip: { backgroundColor: "#F3ECE5", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: "#D9C8B4" },
+  editChipText: { color: "#6C6055", fontWeight: "700", fontSize: 13 },
   cardFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
   lotCreateBtn: { backgroundColor: "#EAF4ED", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: "#79BA94" },
   lotCreateBtnText: { color: "#1D5634", fontWeight: "700", fontSize: 13 },

@@ -12,6 +12,7 @@ type Props = {
   auth: AuthSession;
   onBack: () => void;
   onOpenLotCreate?: () => void;
+  filterFoodId?: string;
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
@@ -26,7 +27,7 @@ type SellerLot = {
   lifecycle_status: string;
 };
 
-export default function SellerLotsScreen({ auth, onBack, onOpenLotCreate, onAuthRefresh }: Props) {
+export default function SellerLotsScreen({ auth, onBack, onOpenLotCreate, filterFoodId, onAuthRefresh }: Props) {
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
   const [loading, setLoading] = useState(true);
@@ -72,7 +73,7 @@ export default function SellerLotsScreen({ auth, onBack, onOpenLotCreate, onAuth
       setApiUrl(baseUrl);
       const [foodsRes, lotsRes] = await Promise.all([
         authedFetch("/v1/seller/foods", undefined, baseUrl),
-        authedFetch("/v1/seller/lots", undefined, baseUrl),
+        authedFetch(`/v1/seller/lots${filterFoodId ? `?foodId=${encodeURIComponent(filterFoodId)}` : ''}`, undefined, baseUrl),
       ]);
       const foodsJson = await foodsRes.json();
       const lotsJson = await lotsRes.json();
