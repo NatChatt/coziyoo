@@ -13,4 +13,5 @@ urlpatterns = [
     path("lots/<uuid:lot_id>/adjust", seller_views.SellerLotAdjustView.as_view()),
     path("lots/<uuid:lot_id>/recall", seller_views.SellerLotRecallView.as_view()),
     path("addon-templates", seller_views.SellerAddonTemplatesView.as_view()),
+    path("ingredient-templates", seller_views.SellerIngredientTemplatesView.as_view()),
 ]

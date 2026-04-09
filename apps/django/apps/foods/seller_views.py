@@ -794,6 +794,25 @@ class SellerLotRecallView(APIView):
         return Response({"data": updated_lot})
 
 
+class SellerIngredientTemplatesView(APIView):
+    permission_classes = [IsAppRealm]
+
+    def get(self, request):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, name
+                FROM ingredient_templates
+                WHERE is_active = true
+                ORDER BY sort_order, name
+                """
+            )
+            rows = _rows_as_dicts(cursor)
+
+        data = [{"id": str(row["id"]), "name": row["name"]} for row in rows]
+        return Response({"data": data})
+
+
 class SellerAddonTemplatesView(APIView):
     permission_classes = [IsAppRealm]
 

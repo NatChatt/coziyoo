@@ -9,7 +9,7 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
 
-from .models import AddonTemplates, Foods, Categories, ProductionLots
+from .models import AddonTemplates, Foods, Categories, IngredientTemplates, ProductionLots
 
 _LOT_STATUS_STYLE = {
     "open":      "background:#dcfce7;color:#166534;border:1px solid #86efac",
@@ -67,6 +67,20 @@ def _recipe_diff(original, snapshot):
             result.append({"line": entry[2:], "type": "same"})
         # skip '? ' hint lines
     return result
+
+
+@admin.register(IngredientTemplates)
+class IngredientTemplatesAdmin(ModelAdmin):
+    list_display = ["name", "sort_order", "is_active"]
+    list_filter = ["is_active"]
+    search_fields = ["name"]
+    list_editable = ["sort_order", "is_active"]
+    ordering = ["sort_order", "name"]
+    readonly_fields = ["id", "created_at", "updated_at"]
+    fieldsets = [
+        (None, {"fields": ["name", "sort_order", "is_active"]}),
+        ("Meta", {"fields": ["id", "created_at", "updated_at"]}),
+    ]
 
 
 @admin.register(AddonTemplates)

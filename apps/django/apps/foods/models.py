@@ -2,6 +2,25 @@
 from django.db import models
 
 
+class IngredientTemplates(models.Model):
+    id = models.UUIDField(primary_key=True)
+    name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        managed = False
+        db_table = "ingredient_templates"
+        verbose_name = "Ingredient Template"
+        verbose_name_plural = "Ingredient Templates"
+        ordering = ["sort_order", "name"]
+
+
 class AddonTemplates(models.Model):
     id = models.UUIDField(primary_key=True)
     name = models.CharField(max_length=100)

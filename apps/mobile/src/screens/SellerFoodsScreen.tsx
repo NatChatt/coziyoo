@@ -336,8 +336,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setPendingInitialEditId(initialEditFood ? null : (initialEditFoodId ?? null));
   }, [initialEditFoodId, initialEditFood]);
   useEffect(() => {
-    void loadIngredientLibrary().then(setIngredientLibrary);
-  }, []);
+    void loadIngredientLibrary(apiUrl, currentAuth).then(setIngredientLibrary);
+  }, [apiUrl, currentAuth]);
   useEffect(() => {
     void loadAddonLibrary(apiUrl, currentAuth).then(setAddonLibrary);
   }, [apiUrl, currentAuth]);
@@ -1552,7 +1552,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                   const trimmed = newIngredientInput.trim();
                   if (!trimmed) return;
                   await addIngredientToLibrary(trimmed);
-                  const updated = await loadIngredientLibrary();
+                  const updated = await loadIngredientLibrary(apiUrl, currentAuth);
                   setIngredientLibrary(updated);
                   setSelectedIngredients((prev) => [...new Set([...prev, trimmed])]);
                   setNewIngredientInput("");
