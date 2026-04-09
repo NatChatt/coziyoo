@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, type LayoutChangeEvent } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, type LayoutChangeEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,6 +8,7 @@ import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
 import { getCurrentLanguage, loadSettings } from "../utils/settings";
 import { clearSellerFoodsCache } from "../utils/sellerFoodsCache";
+import { addIngredientToLibrary, loadIngredientLibrary } from "../utils/ingredientsLibrary";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
@@ -70,7 +71,7 @@ type SellerFoodDraft = {
   cardSummary?: string;
   description?: string;
   recipe?: string;
-  ingredients?: string;
+  ingredients?: string[];
   allergens?: string;
   imageUrls?: string[];
   prepTime?: string;
@@ -178,19 +179,6 @@ function isUuid(value: string): boolean {
 }
 
 
-function normalizeIngredientTyping(prev: string, next: string): string {
-  if (
-    next.length > prev.length &&
-    next.endsWith(" ") &&
-    !next.endsWith(", ")
-  ) {
-    const trimmed = next.trimEnd();
-    if (!trimmed) return "";
-    if (trimmed.endsWith(",")) return `${trimmed} `;
-    return `${trimmed}, `;
-  }
-  return next;
-}
 
 function parseLocalizedDecimal(value: string): number {
   const trimmed = value.trim();
@@ -280,7 +268,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const nameInputRef = useRef<TextInput | null>(null);
   const cuisineInputRef = useRef<TextInput | null>(null);
   const sideItemsInputRef = useRef<TextInput | null>(null);
-  const ingredientsInputRef = useRef<TextInput | null>(null);
   const recipeInputRef = useRef<TextInput | null>(null);
   const allergensInputRef = useRef<TextInput | null>(null);
   const priceInputRef = useRef<TextInput | null>(null);
@@ -303,7 +290,11 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const [cardSummary, setCardSummary] = useState("");
   const [description, setDescription] = useState("");
   const [recipe, setRecipe] = useState("");
-  const [ingredients, setIngredients] = useState("");
+  const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
+  const [ingredientLibrary, setIngredientLibrary] = useState<string[]>([]);
+  const [ingredientsPickerVisible, setIngredientsPickerVisible] = useState(false);
+  const [ingredientSearch, setIngredientSearch] = useState("");
+  const [newIngredientInput, setNewIngredientInput] = useState("");
   const [allergens, setAllergens] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>(["", "", "", "", ""]);
   const [movingImageIndex, setMovingImageIndex] = useState<number | null>(null);
@@ -339,6 +330,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   useEffect(() => {
     setPendingInitialEditId(initialEditFood ? null : (initialEditFoodId ?? null));
   }, [initialEditFoodId, initialEditFood]);
+  useEffect(() => {
+    void loadIngredientLibrary().then(setIngredientLibrary);
+  }, []);
 
   useEffect(() => () => {
     if (requiredFieldHighlightTimeoutRef.current) {
@@ -362,8 +356,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
           setCardSummary(typeof parsed.cardSummary === "string" ? parsed.cardSummary : "");
           setDescription(typeof parsed.description === "string" ? parsed.description : "");
           setRecipe(typeof parsed.recipe === "string" ? parsed.recipe : "");
-          setIngredients(typeof parsed.ingredients === "string" ? parsed.ingredients : "");
           setAllergens(typeof parsed.allergens === "string" ? parsed.allergens : "");
+          setSelectedIngredients(Array.isArray(parsed.ingredients) ? parsed.ingredients.filter((x) => typeof x === "string") : []);
           const hydratedImageUrls = Array.isArray(parsed.imageUrls)
             ? parsed.imageUrls.map((item) => String(item ?? "").trim()).slice(0, 5)
             : [];
@@ -415,7 +409,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       cardSummary,
       description,
       recipe,
-      ingredients,
+      ingredients: selectedIngredients,
       allergens,
       imageUrls,
       prepTime,
@@ -443,7 +437,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     cardSummary,
     description,
     recipe,
-    ingredients,
+    selectedIngredients,
     allergens,
     imageUrls,
     prepTime,
@@ -490,6 +484,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     options?: {
       focusRef?: React.RefObject<TextInput | null>;
       openCategoryModal?: boolean;
+      openIngredientsPicker?: boolean;
     },
   ) {
     markRequiredField(field);
@@ -502,6 +497,10 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         }
         setCategoryModalVisible(true);
       }, 220);
+      return;
+    }
+    if (options?.openIngredientsPicker) {
+      setTimeout(() => setIngredientsPickerVisible(true), 220);
       return;
     }
     if (options?.focusRef?.current) {
@@ -676,7 +675,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setCardSummary("");
     setDescription("");
     setRecipe("");
-    setIngredients("");
+    setSelectedIngredients([]);
     setAllergens("");
     setImageUrls(["", "", "", "", ""]);
     setMovingImageIndex(null);
@@ -699,7 +698,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setCardSummary(food.cardSummary ?? "");
     setDescription(food.description ?? "");
     setRecipe(food.recipe ?? "");
-    setIngredients(Array.isArray(food.ingredients) ? food.ingredients.join(", ") : "");
+    setSelectedIngredients(Array.isArray(food.ingredients) ? food.ingredients : []);
     setAllergens(Array.isArray(food.allergens) ? food.allergens.join(", ") : "");
     const seededImageUrls = (food.imageUrls?.length ? food.imageUrls : [food.imageUrl ?? ""]).slice(0, 5);
     while (seededImageUrls.length < 5) seededImageUrls.push("");
@@ -824,8 +823,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         Alert.alert(t('headline.common.error'), t('error.seller.foods.cuisineRequired'));
         return;
       }
-      if (!description.trim()) {
-        navigateToRequiredField("ingredients", { focusRef: ingredientsInputRef });
+      if (selectedIngredients.length === 0) {
+        navigateToRequiredField("ingredients", { openIngredientsPicker: true });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.ingredientsRequired'));
         return;
       }
@@ -858,17 +857,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       setSaving(true);
 
       const primaryImageUrl = imageUrls.map((x) => x.trim()).find(Boolean) || undefined;
-      const ingredientItemsFromDescription = description
-        .split(/[,;\n]/g)
-        .map((x) => x.trim())
-        .filter(Boolean);
-      const ingredientItemsFromInput = ingredients
-        .split(/[,;\n]/g)
-        .map((x) => x.trim())
-        .filter(Boolean);
-      const normalizedIngredients = ingredientItemsFromInput.length > 0
-        ? ingredientItemsFromInput
-        : ingredientItemsFromDescription;
       const normalizedAddons = workingMenuItems.map((item) => ({
         name: item.name.trim(),
         kind: item.kind,
@@ -891,7 +879,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         imageUrl: primaryImageUrl,
         imageUrls: imageUrls.map((x) => x.trim()).filter(Boolean).slice(0, 5),
         cuisine: cuisine.trim() || undefined,
-        ingredients: normalizedIngredients,
+        ingredients: selectedIngredients,
         allergens: parsedAllergens,
         preparationTimeMinutes: parsedPrepTime,
         menuItems: normalizedAddons,
@@ -1085,6 +1073,12 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
   const previewImage = imageUrls.map((x) => x.trim()).find(Boolean) || "";
   const selectedCategoryName = categories.find((item) => item.id === categoryId)?.name ?? "";
   const previewTitle = name.trim() || t('headline.seller.foods.previewNameFallback');
+  const filteredIngredients = useMemo(() => {
+    const q = ingredientSearch.trim().toLocaleLowerCase("tr-TR");
+    if (!q) return ingredientLibrary;
+    return ingredientLibrary.filter((x) => x.toLocaleLowerCase("tr-TR").includes(q));
+  }, [ingredientLibrary, ingredientSearch]);
+
   const parsedPreviewPrice = parseLocalizedDecimal(price);
   const previewPrice = Number.isFinite(parsedPreviewPrice) && parsedPreviewPrice > 0 ? `${parsedPreviewPrice.toFixed(2)} ₺` : "-- ₺";
   const previewSellerHandle = useMemo(() => {
@@ -1271,18 +1265,30 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
 
           <View onLayout={(event) => handleFieldLayout("ingredients", event)}>
             <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("ingredients") && styles.sectionTitleError]}>{t('headline.seller.foods.ingredients')}</Text>
-            <TextInput
-              ref={ingredientsInputRef}
-              style={[styles.input, styles.textArea, isRequiredFieldHighlighted("ingredients") && styles.inputError]}
-              value={description}
-              onChangeText={(value) => {
-                setDescription((prev) => normalizeIngredientTyping(prev, value));
-                if (value.trim()) clearRequiredFieldHighlight("ingredients");
-              }}
-              placeholder={t('helper.seller.foods.ingredientsPlaceholder')}
-              placeholderTextColor={PLACEHOLDER_COLOR}
-              multiline
-            />
+            {selectedIngredients.length === 0 ? (
+              <TouchableOpacity
+                style={[styles.input, styles.ingredientsPickerBtn, isRequiredFieldHighlighted("ingredients") && styles.inputError]}
+                onPress={() => { setIngredientsPickerVisible(true); clearRequiredFieldHighlight("ingredients"); }}
+              >
+                <Text style={styles.ingredientsPickerPlaceholder}>{t('helper.seller.foods.ingredientsPickerPlaceholder')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.ingredientChipsWrap}>
+                {selectedIngredients.map((ing) => (
+                  <TouchableOpacity
+                    key={ing}
+                    style={styles.ingredientChip}
+                    onPress={() => setSelectedIngredients((prev) => prev.filter((x) => x !== ing))}
+                  >
+                    <Text style={styles.ingredientChipText}>{ing}</Text>
+                    <Ionicons name="close-circle" size={13} color="#6C5F54" style={{ marginLeft: 3 }} />
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity style={styles.ingredientAddChip} onPress={() => setIngredientsPickerVisible(true)}>
+                  <Text style={styles.ingredientAddChipText}>+ {t('cta.seller.foods.editIngredients')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <View onLayout={(event) => handleFieldLayout("recipe", event)}>
@@ -1480,6 +1486,90 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             </View>
             <TouchableOpacity style={styles.previewCloseBtn} onPress={() => setPreviewVisible(false)}>
               <Text style={styles.previewCloseBtnText}>{t('cta.seller.foods.keepEditing')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={ingredientsPickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setIngredientsPickerVisible(false); setIngredientSearch(""); setNewIngredientInput(""); }}
+      >
+        <View style={styles.previewOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => { setIngredientsPickerVisible(false); setIngredientSearch(""); setNewIngredientInput(""); }}
+          />
+          <View style={styles.ingredientsModalCard}>
+            <Text style={styles.categoryModalTitle}>{t('headline.seller.foods.ingredientsPicker')}</Text>
+            <TextInput
+              style={styles.ingredientSearchInput}
+              value={ingredientSearch}
+              onChangeText={setIngredientSearch}
+              placeholder={t('helper.seller.foods.ingredientsSearch')}
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              autoCorrect={false}
+            />
+            <FlatList
+              data={filteredIngredients}
+              keyExtractor={(item) => item}
+              style={styles.categoryList}
+              contentContainerStyle={styles.categoryListContent}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => {
+                const selected = selectedIngredients.includes(item);
+                return (
+                  <TouchableOpacity
+                    style={[styles.categoryOption, selected && styles.categoryOptionActive]}
+                    onPress={() => {
+                      setSelectedIngredients((prev) =>
+                        selected ? prev.filter((x) => x !== item) : [...prev, item],
+                      );
+                    }}
+                  >
+                    <Text style={[styles.categoryOptionText, selected && styles.categoryOptionTextActive]}>{item}</Text>
+                    {selected ? <Ionicons name="checkmark" size={16} color="#2E6B44" /> : null}
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                <View style={styles.categoryEmptyWrap}>
+                  <Text style={styles.categoryEmptyText}>{t('helper.seller.foods.ingredientsNoMatch')}</Text>
+                </View>
+              }
+            />
+            <View style={styles.newIngredientRow}>
+              <TextInput
+                style={styles.newIngredientInput}
+                value={newIngredientInput}
+                onChangeText={setNewIngredientInput}
+                placeholder={t('helper.seller.foods.newIngredientPlaceholder')}
+                placeholderTextColor={PLACEHOLDER_COLOR}
+              />
+              <TouchableOpacity
+                style={[styles.newIngredientAddBtn, !newIngredientInput.trim() && styles.btnDisabled]}
+                disabled={!newIngredientInput.trim()}
+                onPress={async () => {
+                  const trimmed = newIngredientInput.trim();
+                  if (!trimmed) return;
+                  await addIngredientToLibrary(trimmed);
+                  const updated = await loadIngredientLibrary();
+                  setIngredientLibrary(updated);
+                  setSelectedIngredients((prev) => [...new Set([...prev, trimmed])]);
+                  setNewIngredientInput("");
+                  setIngredientSearch("");
+                }}
+              >
+                <Text style={styles.newIngredientAddBtnText}>{t('cta.seller.foods.addIngredient')}</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={() => { setIngredientsPickerVisible(false); setIngredientSearch(""); setNewIngredientInput(""); }}
+            >
+              <Text style={styles.saveText}>{t('cta.seller.foods.doneIngredients')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1900,4 +1990,77 @@ const styles = StyleSheet.create({
   },
   categoryOptionText: { color: "#2E241C" },
   categoryOptionTextActive: { color: "#2E6B44", fontWeight: "700" },
+  ingredientsPickerBtn: {
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  ingredientsPickerPlaceholder: { color: "#8A7A6A" },
+  ingredientChipsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    paddingVertical: 8,
+  },
+  ingredientChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EAF4EE",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "#79BA94",
+  },
+  ingredientChipText: { color: "#1D5634", fontWeight: "600", fontSize: 13 },
+  ingredientAddChip: {
+    backgroundColor: "#F3ECE5",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "#D9C8B4",
+  },
+  ingredientAddChipText: { color: "#6C5F54", fontWeight: "700", fontSize: 13 },
+  ingredientsModalCard: {
+    maxHeight: "80%",
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E5DDCF",
+    gap: 10,
+  },
+  ingredientSearchInput: {
+    backgroundColor: "#F7F4EF",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5DDCF",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: "#2E241C",
+  },
+  newIngredientRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+  },
+  newIngredientInput: {
+    flex: 1,
+    backgroundColor: "#F7F4EF",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5DDCF",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: "#2E241C",
+  },
+  newIngredientAddBtn: {
+    backgroundColor: "#3F855C",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  newIngredientAddBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
 });
