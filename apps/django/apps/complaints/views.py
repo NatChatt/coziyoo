@@ -21,7 +21,7 @@ class ComplaintListCreateView(APIView):
         with connection.cursor() as cur:
             cur.execute(
                 """
-                SELECT c.id, c.status, c.priority, c.description, c.created_at, c.ticket_no,
+                SELECT c.id, c.order_id, c.status, c.priority, c.description, c.created_at, c.ticket_no,
                        cc.name AS category_name
                 FROM complaints c
                 LEFT JOIN complaint_categories cc ON cc.id = c.category_id
@@ -30,12 +30,14 @@ class ComplaintListCreateView(APIView):
                 """,
                 [user_id],
             )
-            cols = ["id", "status", "priority", "description", "createdAt", "ticketNo", "categoryName"]
+            cols = ["id", "orderId", "status", "priority", "description", "createdAt", "ticketNo", "categoryName"]
             items = []
             for row in cur.fetchall():
                 item = dict(zip(cols, row))
                 item["id"] = str(item["id"])
+                item["orderId"] = str(item["orderId"]) if item["orderId"] else None
                 item["createdAt"] = item["createdAt"].isoformat() if item["createdAt"] else None
+                item["lastActivityAt"] = item["createdAt"]
                 items.append(item)
 
         return Response({"data": {"items": items}})
@@ -96,7 +98,7 @@ class ComplaintDetailView(APIView):
         with connection.cursor() as cur:
             cur.execute(
                 """
-                SELECT c.id, c.status, c.priority, c.description, c.created_at,
+                SELECT c.id, c.order_id, c.status, c.priority, c.description, c.created_at,
                        c.ticket_no, cc.name AS category_name, c.resolution_note
                 FROM complaints c
                 LEFT JOIN complaint_categories cc ON cc.id = c.category_id
@@ -112,11 +114,14 @@ class ComplaintDetailView(APIView):
                 status=404,
             )
 
-        cols = ["id", "status", "priority", "description", "createdAt",
+        cols = ["id", "orderId", "status", "priority", "description", "createdAt",
                 "ticketNo", "categoryName", "resolutionNotes"]
         item = dict(zip(cols, row))
         item["id"] = str(item["id"])
+        item["orderId"] = str(item["orderId"]) if item["orderId"] else None
         item["createdAt"] = item["createdAt"].isoformat() if item["createdAt"] else None
+        item["lastActivityAt"] = item["createdAt"]
+        item["messages"] = []
 
         return Response({"data": item})
 
@@ -128,7 +133,7 @@ class ComplaintMessagesView(APIView):
 
     def post(self, request, complaint_id):
         user_id = request.user.id
-        body = request.data.get("body")
+        body = request.data.get("body") or request.data.get("message")
 
         if not body:
             return Response(

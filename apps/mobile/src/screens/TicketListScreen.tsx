@@ -12,13 +12,17 @@ import ActionButton from '../components/ActionButton';
 type TicketSummary = {
   id: string;
   ticketNo: number;
-  orderId: string;
+  orderId?: string | null;
   category?: string | null;
   categoryName?: string | null;
   status: 'open' | 'in_review' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   createdAt: string;
   lastActivityAt: string;
+};
+
+type TicketListResponse = {
+  items?: TicketSummary[];
 };
 
 type Props = {
@@ -43,6 +47,12 @@ function statusColor(status: TicketSummary['status']) {
   return '#6C6258';
 }
 
+function normalizeTickets(data: TicketListResponse | TicketSummary[]): TicketSummary[] {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
+}
+
 export default function TicketListScreen({ auth, onBack, onOpenTicket, onCreateTicket, onAuthRefresh }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -53,14 +63,14 @@ export default function TicketListScreen({ auth, onBack, onOpenTicket, onCreateT
     if (showRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
-    const result = await apiRequest<TicketSummary[]>(
+    const result = await apiRequest<TicketListResponse | TicketSummary[]>(
       '/v1/tickets',
       auth,
       { method: 'GET', actorRole: 'buyer' },
       onAuthRefresh,
     );
     if (result.ok) {
-      setTickets(result.data);
+      setTickets(normalizeTickets(result.data));
     } else {
       setError(result.message ?? 'Ticketlar yüklenemedi.');
     }
@@ -106,9 +116,11 @@ export default function TicketListScreen({ auth, onBack, onOpenTicket, onCreateT
               </View>
             </View>
             <Text style={styles.ticketCategory}>{item.categoryName ?? t('status.ticket.categoryFallback')}</Text>
-            <Text style={styles.ticketMeta}>
-              {formatCopy('status.ticket.orderLabel', { id: item.orderId.slice(0, 8).toUpperCase() })}
-            </Text>
+            {item.orderId ? (
+              <Text style={styles.ticketMeta}>
+                {formatCopy('status.ticket.orderLabel', { id: item.orderId.slice(0, 8).toUpperCase() })}
+              </Text>
+            ) : null}
             <Text style={styles.ticketMeta}>
               {formatCopy('status.ticket.lastActivity', {
                 date: new Date(item.lastActivityAt).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR'),

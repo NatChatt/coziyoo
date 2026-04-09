@@ -18,15 +18,15 @@ type TicketMessage = {
 type TicketDetail = {
   id: string;
   ticketNo: number;
-  orderId: string;
+  orderId?: string | null;
   status: 'open' | 'in_review' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category?: string | null;
   categoryName?: string | null;
   description?: string | null;
   createdAt: string;
-  lastActivityAt: string;
-  messages: TicketMessage[];
+  lastActivityAt?: string | null;
+  messages?: TicketMessage[];
 };
 
 type Props = {
@@ -41,6 +41,14 @@ function statusLabel(status: TicketDetail['status']) {
   if (status === 'in_review') return 'İnceleniyor';
   if (status === 'resolved') return 'Çözüldü';
   return 'Kapandı';
+}
+
+function normalizeTicketDetail(data: TicketDetail): TicketDetail {
+  return {
+    ...data,
+    lastActivityAt: data.lastActivityAt ?? data.createdAt,
+    messages: Array.isArray(data.messages) ? data.messages : [],
+  };
 }
 
 export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefresh }: Props) {
@@ -62,7 +70,7 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
       onAuthRefresh,
     );
     if (result.ok) {
-      setTicket(result.data);
+      setTicket(normalizeTicketDetail(result.data));
     } else {
       setError(result.message ?? 'Ticket detayı yüklenemedi.');
     }
@@ -116,17 +124,17 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
               <Text style={styles.title}>{ticket.categoryName ?? 'Destek Talebi'}</Text>
               <Text style={styles.meta}>Durum: {statusLabel(ticket.status)}</Text>
               <Text style={styles.meta}>Öncelik: {ticket.priority}</Text>
-              <Text style={styles.meta}>Sipariş: #{ticket.orderId.slice(0, 8).toUpperCase()}</Text>
-              <Text style={styles.meta}>Son hareket: {new Date(ticket.lastActivityAt).toLocaleString('tr-TR')}</Text>
+              {ticket.orderId ? <Text style={styles.meta}>Sipariş: #{ticket.orderId.slice(0, 8).toUpperCase()}</Text> : null}
+              {ticket.lastActivityAt ? <Text style={styles.meta}>Son hareket: {new Date(ticket.lastActivityAt).toLocaleString('tr-TR')}</Text> : null}
               {ticket.description ? <Text style={styles.description}>{ticket.description}</Text> : null}
             </View>
 
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Mesajlar</Text>
-              {ticket.messages.length === 0 ? (
+              {ticket.messages?.length === 0 ? (
                 <Text style={styles.meta}>Henüz mesaj yok.</Text>
               ) : (
-                ticket.messages.map((item) => (
+                ticket.messages?.map((item) => (
                   <View key={item.id} style={[styles.messageBubble, item.senderRole === 'buyer' ? styles.messageMine : styles.messageSupport]}>
                     <Text style={styles.messageAuthor}>{item.senderRole === 'buyer' ? 'Sen' : item.senderName || 'Destek'}</Text>
                     <Text style={styles.messageText}>{item.message}</Text>
