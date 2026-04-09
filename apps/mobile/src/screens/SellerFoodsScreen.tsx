@@ -9,6 +9,7 @@ import { actorRoleHeader } from "../utils/actorRole";
 import { getCurrentLanguage, loadSettings } from "../utils/settings";
 import { clearSellerFoodsCache } from "../utils/sellerFoodsCache";
 import { addIngredientToLibrary, loadIngredientLibrary } from "../utils/ingredientsLibrary";
+import { type AddonTemplate, addCustomAddon, loadAddonLibrary } from "../utils/addonLibrary";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
@@ -314,6 +315,10 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const [addonLibraryVisible, setAddonLibraryVisible] = useState(false);
   const [addonLibraryKind, setAddonLibraryKind] = useState<AddonKind>("extra");
   const [addonLibraryPricing, setAddonLibraryPricing] = useState<AddonPricing>("free");
+  const [addonLibrary, setAddonLibrary] = useState<AddonTemplate[]>([]);
+  const [addonSearch, setAddonSearch] = useState("");
+  const [newAddonNameInput, setNewAddonNameInput] = useState("");
+  const [newAddonPriceInput, setNewAddonPriceInput] = useState("");
   const [persistentFieldsHydrated, setPersistentFieldsHydrated] = useState(false);
   const suppressNextDraftPersistRef = useRef(false);
   const [pendingInitialEditId, setPendingInitialEditId] = useState<string | null>(
@@ -333,6 +338,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   useEffect(() => {
     void loadIngredientLibrary().then(setIngredientLibrary);
   }, []);
+  useEffect(() => {
+    void loadAddonLibrary(apiUrl, currentAuth).then(setAddonLibrary);
+  }, [apiUrl, currentAuth]);
 
   useEffect(() => () => {
     if (requiredFieldHighlightTimeoutRef.current) {
@@ -1042,8 +1050,14 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
     setAddonLibraryVisible(true);
   }
 
-  function addAddonFromLibrary(item: SellerMenuAddon) {
-    const normalizedKey = `${item.name.toLocaleLowerCase("tr-TR")}|${item.kind}|${item.pricing}|${Number(item.price ?? 0)}`;
+  function addAddonFromLibrary(item: AddonTemplate) {
+    const menuItem: SellerMenuAddon = {
+      name: item.name,
+      kind: item.kind,
+      pricing: item.pricing,
+      ...(item.pricing === "paid" && item.defaultPrice ? { price: item.defaultPrice } : {}),
+    };
+    const normalizedKey = `${menuItem.name.toLocaleLowerCase("tr-TR")}|${menuItem.kind}|${menuItem.pricing}|${Number(menuItem.price ?? 0)}`;
     const exists = menuItems.some(
       (entry) => `${entry.name.toLocaleLowerCase("tr-TR")}|${entry.kind}|${entry.pricing}|${Number(entry.price ?? 0)}` === normalizedKey,
     );
@@ -1051,8 +1065,9 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
       Alert.alert(t('status.seller.foods.addonExistsTitle'), t('status.seller.foods.addonExistsBody'));
       return;
     }
-    setMenuItems((prev) => [...prev, item]);
+    setMenuItems((prev) => [...prev, menuItem]);
     setAddonLibraryVisible(false);
+    setAddonSearch("");
   }
 
   async function toggleStatus(food: SellerFood) {
@@ -1102,33 +1117,15 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
     .join(", ");
   const paidMenuItems = menuItems.filter((item) => item.pricing === "paid");
   const addonLibraryItems = useMemo(() => {
-    const merged: SellerMenuAddon[] = [];
-    const pushItem = (raw: SellerMenuAddon) => {
-      const key = `${raw.name.toLocaleLowerCase("tr-TR")}|${raw.kind}|${raw.pricing}|${Number(raw.price ?? 0)}`;
-      const exists = merged.some(
-        (item) => `${item.name.toLocaleLowerCase("tr-TR")}|${item.kind}|${item.pricing}|${Number(item.price ?? 0)}` === key,
-      );
-      if (!exists) merged.push(raw);
-    };
-    for (const food of foods) {
-      for (const raw of food.menuItems ?? []) {
-        const name = String(raw?.name ?? "").trim();
-        if (!name) continue;
-        const kind: AddonKind = raw?.kind === "sauce" || raw?.kind === "appetizer" ? raw.kind : "extra";
-        const pricing: AddonPricing = raw?.pricing === "paid" ? "paid" : "free";
-        const price = Number(raw?.price);
-        if (pricing === "paid") {
-          if (!Number.isFinite(price) || price <= 0) continue;
-          pushItem({ name, kind, pricing, price: Number(price.toFixed(2)) });
-        } else {
-          pushItem({ name, kind, pricing: "free" });
-        }
-      }
-    }
-    return merged
-      .filter((item) => item.pricing === addonLibraryPricing && (addonLibraryPricing === "free" || item.kind === addonLibraryKind))
-      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
-  }, [foods, addonLibraryKind, addonLibraryPricing]);
+    const q = addonSearch.trim().toLocaleLowerCase("tr-TR");
+    return addonLibrary
+      .filter((item) => {
+        if (item.pricing !== addonLibraryPricing) return false;
+        if (addonLibraryPricing === "paid" && item.kind !== addonLibraryKind) return false;
+        if (q && !item.name.toLocaleLowerCase("tr-TR").includes(q)) return false;
+        return true;
+      });
+  }, [addonLibrary, addonLibraryPricing, addonLibraryKind, addonSearch]);
   const screenTitle = editingFood || pendingInitialEditId ? t('headline.seller.foods.titleEdit') : t('headline.seller.foods.titleAdd');
 
   return (
@@ -1575,49 +1572,105 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
         </View>
       </Modal>
 
-      <Modal visible={addonLibraryVisible} transparent animationType="fade" onRequestClose={() => setAddonLibraryVisible(false)}>
+      <Modal
+        visible={addonLibraryVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setAddonLibraryVisible(false); setAddonSearch(""); setNewAddonNameInput(""); setNewAddonPriceInput(""); }}
+      >
         <View style={styles.previewOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => setAddonLibraryVisible(false)} />
-          <View style={styles.categoryModalCard}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => { setAddonLibraryVisible(false); setAddonSearch(""); setNewAddonNameInput(""); setNewAddonPriceInput(""); }}
+          />
+          <View style={styles.ingredientsModalCard}>
             <Text style={styles.categoryModalTitle}>
               {addonLibraryPricing === "free"
                 ? t('headline.seller.foods.freeAddons')
                 : formatCopy('headline.seller.foods.paidAddonGroup', { group: t((ADDON_KIND_OPTIONS.find((item) => item.value === addonLibraryKind)?.label ?? "label.seller.foods.kindExtra") as any) })}
             </Text>
-            {addonLibraryItems.length === 0 ? (
-              <View style={styles.categoryEmptyWrap}>
-                <Text style={styles.categoryEmptyText}>{t('helper.seller.foods.emptyAddonGroup')}</Text>
+            <TextInput
+              style={styles.ingredientSearchInput}
+              value={addonSearch}
+              onChangeText={setAddonSearch}
+              placeholder={t('helper.seller.foods.addonSearch')}
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              autoCorrect={false}
+            />
+            <FlatList
+              data={addonLibraryItems}
+              keyExtractor={(item) => item.id}
+              style={styles.categoryList}
+              contentContainerStyle={styles.categoryListContent}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.categoryRetryBtn}
-                  onPress={() => {
-                    setAddonLibraryVisible(false);
-                    if (addonLibraryPricing === "free") {
-                      setFreeAddonKindInput(addonLibraryKind);
-                    } else {
-                      setPaidAddonKindInput(addonLibraryKind);
-                    }
-                  }}
+                  style={styles.categoryOption}
+                  onPress={() => addAddonFromLibrary(item)}
                 >
-                  <Text style={styles.categoryRetryBtnText}>{t('cta.seller.foods.addNewAddon')}</Text>
+                  <Text style={styles.categoryOptionText}>
+                    {item.name}
+                    {item.isCustom ? <Text style={{ color: "#9CA3AF" }}> ✎</Text> : null}
+                    {item.pricing === "paid" && item.defaultPrice
+                      ? ` · ${item.defaultPrice.toFixed(2)} ₺`
+                      : ""}
+                  </Text>
+                  <Ionicons name="add-circle-outline" size={18} color="#2E6B44" />
                 </TouchableOpacity>
-              </View>
-            ) : (
-              <ScrollView style={styles.categoryList} contentContainerStyle={styles.categoryListContent}>
-                {addonLibraryItems.map((item, index) => (
-                  <TouchableOpacity
-                    key={`${item.name}-${index}`}
-                    style={styles.categoryOption}
-                    onPress={() => addAddonFromLibrary(item)}
-                  >
-                    <Text style={styles.categoryOptionText}>
-                      {item.name}
-                      {item.pricing === "paid" ? ` · ${Number(item.price ?? 0).toFixed(2)} ₺` : ""}
-                    </Text>
-                    <Ionicons name="add-circle-outline" size={18} color="#2E6B44" />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
+              )}
+              ListEmptyComponent={
+                <View style={styles.categoryEmptyWrap}>
+                  <Text style={styles.categoryEmptyText}>{t('helper.seller.foods.emptyAddonGroup')}</Text>
+                </View>
+              }
+            />
+            <View style={styles.newIngredientRow}>
+              <TextInput
+                style={[styles.newIngredientInput, { flex: addonLibraryPricing === "paid" ? 2 : 1 }]}
+                value={newAddonNameInput}
+                onChangeText={setNewAddonNameInput}
+                placeholder={t('helper.seller.foods.newAddonNamePlaceholder')}
+                placeholderTextColor={PLACEHOLDER_COLOR}
+              />
+              {addonLibraryPricing === "paid" ? (
+                <TextInput
+                  style={[styles.newIngredientInput, { flex: 1 }]}
+                  value={newAddonPriceInput}
+                  onChangeText={setNewAddonPriceInput}
+                  placeholder="₺"
+                  placeholderTextColor={PLACEHOLDER_COLOR}
+                  keyboardType="decimal-pad"
+                />
+              ) : null}
+              <TouchableOpacity
+                style={[styles.newIngredientAddBtn, !newAddonNameInput.trim() && styles.btnDisabled]}
+                disabled={!newAddonNameInput.trim()}
+                onPress={async () => {
+                  const trimmed = newAddonNameInput.trim();
+                  if (!trimmed) return;
+                  const price = addonLibraryPricing === "paid"
+                    ? parseFloat(newAddonPriceInput.replace(",", "."))
+                    : undefined;
+                  const template: AddonTemplate = {
+                    id: `custom_${Date.now()}`,
+                    name: trimmed,
+                    kind: addonLibraryKind,
+                    pricing: addonLibraryPricing,
+                    ...(addonLibraryPricing === "paid" && price && Number.isFinite(price) ? { defaultPrice: price } : {}),
+                    isCustom: true,
+                  };
+                  await addCustomAddon(template);
+                  const updated = await loadAddonLibrary(apiUrl, currentAuth);
+                  setAddonLibrary(updated);
+                  addAddonFromLibrary(template);
+                  setNewAddonNameInput("");
+                  setNewAddonPriceInput("");
+                  setAddonSearch("");
+                }}
+              >
+                <Text style={styles.newIngredientAddBtnText}>{t('cta.seller.foods.addIngredient')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

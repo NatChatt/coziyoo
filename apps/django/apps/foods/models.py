@@ -1,6 +1,29 @@
 # Auto-generated from inspectdb — managed=False, do not run migrations against these.
 from django.db import models
 
+
+class AddonTemplates(models.Model):
+    id = models.UUIDField(primary_key=True)
+    name = models.CharField(max_length=100)
+    kind = models.CharField(max_length=20)       # sauce | extra | appetizer
+    pricing = models.CharField(max_length=10)    # free | paid
+    default_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.kind}/{self.pricing})"
+
+    class Meta:
+        managed = False
+        db_table = "addon_templates"
+        verbose_name = "Addon Template"
+        verbose_name_plural = "Addon Templates"
+        ordering = ["sort_order", "name"]
+
+
 class Categories(models.Model):
     id = models.UUIDField(primary_key=True)
     name_tr = models.CharField(max_length=255)
