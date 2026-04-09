@@ -1,0 +1,436 @@
+{% load i18n %}
+
+<nav x-data="{ mobileOpen: false }" @click.outside="mobileOpen = false"
+     class="bg-base-50 border-b border-base-200 dark:bg-base-900 dark:border-base-800 sticky top-0 z-50 shadow-sm">
+    <div class="px-4 flex items-center gap-2 py-3 min-h-20">
+
+        {# Brand #}
+        <a href="/admin/" class="mr-4 shrink-0 flex items-center gap-2 text-lg font-bold text-primary-600">
+            <span class="material-symbols-outlined text-2xl">restaurant</span>
+            Coziyoo
+        </a>
+
+        {# ── Desktop menu items (hidden on mobile) ── #}
+        <div class="hidden md:flex items-center gap-2 flex-wrap">
+
+            {# ── Buyers ── #}
+            <div x-data="{ open: false }" @click.outside="open = false" class="relative">
+                <button @click="open = !open"
+                    class="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-base font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
+                    :class="{ 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400': open }">
+                    <span class="material-symbols-outlined text-xl leading-none">person</span>
+                    {% trans "Buyers" %}
+                    <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
+                </button>
+                <div x-show="open"
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 -translate-y-1"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    class="absolute top-full left-0 mt-1 w-52 bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-lg shadow-lg py-1 z-50">
+                    <a href="/admin/authentication/buyerusers/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">people</span>
+                        {% trans "Buyer List" %}
+                    </a>
+                    <a href="/admin/orders/reviews/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">star</span>
+                        {% trans "Reviews" %}
+                    </a>
+                </div>
+            </div>
+
+            {# ── Sellers ── #}
+            <div x-data="{ open: false }" @click.outside="open = false" class="relative">
+                <button @click="open = !open"
+                    class="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-base font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
+                    :class="{ 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400': open }">
+                    <span class="material-symbols-outlined text-xl leading-none">storefront</span>
+                    {% trans "Sellers" %}
+                    <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
+                </button>
+                <div x-show="open"
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 -translate-y-1"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    class="absolute top-full left-0 mt-1 w-56 bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-lg shadow-lg py-1 z-50">
+                    <a href="/admin/authentication/sellerusers/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">store</span>
+                        {% trans "Seller List" %}
+                    </a>
+                    <div class="border-t border-base-100 dark:border-base-800 my-1"></div>
+                    <a href="/admin/compliance/sellercompliancedocuments/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">verified</span>
+                        {% trans "Compliance Docs" %}
+                    </a>
+                    <a href="/admin/compliance/compliancedocumentslist/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">description</span>
+                        {% trans "Doc Types" %}
+                    </a>
+                </div>
+            </div>
+
+            {# ── Complaints ── #}
+            <div x-data="{ open: false }" @click.outside="open = false" class="relative">
+                <button @click="open = !open"
+                    class="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-base font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
+                    :class="{ 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400': open }">
+                    <span class="material-symbols-outlined text-xl leading-none">report</span>
+                    {% trans "Complaints" %}
+                    <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
+                </button>
+                <div x-show="open"
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 -translate-y-1"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    class="absolute top-full left-0 mt-1 w-52 bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-lg shadow-lg py-1 z-50">
+                    <a href="/admin/complaints/complaints/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">report_problem</span>
+                        {% trans "Complaints" %}
+                    </a>
+                    <a href="/admin/complaints/complaintcategories/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">label</span>
+                        {% trans "Categories" %}
+                    </a>
+                </div>
+            </div>
+
+            {# ── Foods ── #}
+            <div x-data="{ open: false }" @click.outside="open = false" class="relative">
+                <button @click="open = !open"
+                    class="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-base font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
+                    :class="{ 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400': open }">
+                    <span class="material-symbols-outlined text-xl leading-none">restaurant_menu</span>
+                    {% trans "Foods" %}
+                    <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
+                </button>
+                <div x-show="open"
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 -translate-y-1"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    class="absolute top-full left-0 mt-1 w-52 bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-lg shadow-lg py-1 z-50">
+                    <a href="/admin/menu/foods/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">fastfood</span>
+                        {% trans "Foods" %}
+                    </a>
+                    <a href="/admin/menu/categories/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">category</span>
+                        {% trans "Categories" %}
+                    </a>
+                </div>
+            </div>
+
+            {# ── Management ── #}
+            <div x-data="{ open: false }" @click.outside="open = false" class="relative">
+                <button @click="open = !open"
+                    class="flex items-center gap-1.5 px-4 py-2.5 rounded-md text-base font-medium text-base-600 hover:bg-base-100 dark:text-base-300 dark:hover:bg-base-800 transition-colors whitespace-nowrap"
+                    :class="{ 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400': open }">
+                    <span class="material-symbols-outlined text-xl leading-none">admin_panel_settings</span>
+                    {% trans "Management" %}
+                    <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
+                </button>
+                <div x-show="open"
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 -translate-y-1"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    class="absolute top-full left-0 mt-1 w-56 bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-lg shadow-lg py-1 z-50">
+                    <a href="/admin/authentication/allusers/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">group</span>
+                        {% trans "All Users" %}
+                    </a>
+                    <div class="border-t border-base-100 dark:border-base-800 my-1"></div>
+                    <a href="/admin/orders/orders/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">shopping_bag</span>
+                        {% trans "Orders" %}
+                    </a>
+                    <div class="border-t border-base-100 dark:border-base-800 my-1"></div>
+                    <a href="/admin/auth/user/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">manage_accounts</span>
+                        {% trans "Admin Users" %}
+                    </a>
+                    <a href="/admin/authentication/adminsalescommissionsettings/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">percent</span>
+                        {% trans "Commission" %}
+                    </a>
+                    <a href="/admin/authentication/adminapitokens/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">key</span>
+                        {% trans "API Tokens" %}
+                    </a>
+                    <div class="border-t border-base-100 dark:border-base-800 my-1"></div>
+                    <a href="/admin/authentication/adminauditlogs/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">history</span>
+                        {% trans "Audit Log" %}
+                    </a>
+                    <a href="/admin/authentication/securityloginevents/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">lock</span>
+                        {% trans "Login Events" %}
+                    </a>
+                    <div class="border-t border-base-100 dark:border-base-800 my-1"></div>
+                    <a href="/admin/auth/user/permissions/"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none text-base-400">shield_person</span>
+                        {% trans "Permissions" %}
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+        {# ── Right side: search + avatar + hamburger ── #}
+        <div class="ml-auto flex items-center gap-1 shrink-0">
+
+            {# Global Search button #}
+            <button @click="$dispatch('open-global-search')"
+                class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors"
+                title="Global Search (/)">
+                <span class="material-symbols-outlined text-xl leading-none">search</span>
+            </button>
+
+            {# Avatar Dropdown #}
+            <div class="relative" x-data="{ openProfile: false }" @click.outside="openProfile = false">
+                <button @click="openProfile = !openProfile"
+                    class="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center hover:ring-2 hover:ring-primary-300 dark:hover:ring-primary-700 transition-all"
+                    title="{% trans 'Account' %}">
+                    <span class="material-symbols-outlined text-xl text-primary-600 dark:text-primary-400">account_circle</span>
+                </button>
+
+                <div x-show="openProfile" x-cloak
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 -translate-y-1"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    class="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-lg shadow-lg py-1 z-50">
+
+                    {# Theme submenu #}
+                    <div class="px-3 py-2">
+                        <div class="text-[11px] font-semibold text-base-400 dark:text-base-500 uppercase tracking-wide mb-1.5">{% trans "Theme" %}</div>
+                        <div class="flex items-center gap-1">
+                            <button @click="switchTheme('light')"
+                                class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors"
+                                :class="adminTheme == 'light' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' : 'text-base-500 hover:bg-base-100 dark:text-base-400 dark:hover:bg-base-800'">
+                                <span class="material-symbols-outlined text-sm leading-none">light_mode</span>
+                            </button>
+                            <button @click="switchTheme('dark')"
+                                class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors"
+                                :class="adminTheme == 'dark' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' : 'text-base-500 hover:bg-base-100 dark:text-base-400 dark:hover:bg-base-800'">
+                                <span class="material-symbols-outlined text-sm leading-none">dark_mode</span>
+                            </button>
+                            <button @click="switchTheme('auto')"
+                                class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors"
+                                :class="adminTheme == 'auto' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' : 'text-base-500 hover:bg-base-100 dark:text-base-400 dark:hover:bg-base-800'">
+                                <span class="material-symbols-outlined text-sm leading-none">computer</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-base-100 dark:border-base-800 my-1"></div>
+
+                    {# Language #}
+                    <form action="/i18n/setlang/" method="post" x-data>
+                        {% csrf_token %}
+                        <input type="hidden" name="next" :value="window.location.pathname + window.location.search">
+                        {% if LANGUAGE_CODE == 'tr' %}
+                        <button type="submit" name="language" value="en"
+                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                            <span class="material-symbols-outlined text-base leading-none text-base-400">translate</span>
+                            English
+                        </button>
+                        {% else %}
+                        <button type="submit" name="language" value="tr"
+                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800 transition-colors">
+                            <span class="material-symbols-outlined text-base leading-none text-base-400">translate</span>
+                            Türkçe
+                        </button>
+                        {% endif %}
+                    </form>
+
+                    <div class="border-t border-base-100 dark:border-base-800 my-1"></div>
+
+                    {# Logout #}
+                    <a href="/admin/logout/"
+                        class="w-full flex items-center gap-2 px-4 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                        <span class="material-symbols-outlined text-base leading-none">logout</span>
+                        {% trans "Logout" %}
+                    </a>
+                </div>
+            </div>
+
+            {# Hamburger button — mobile only #}
+            <button @click="mobileOpen = !mobileOpen"
+                class="md:hidden flex items-center justify-center w-9 h-9 rounded-md text-base-500 hover:text-base-700 dark:text-base-400 dark:hover:text-base-200 hover:bg-base-100 dark:hover:bg-base-800 transition-colors">
+                <span class="material-symbols-outlined text-xl leading-none" x-text="mobileOpen ? 'close' : 'menu'">menu</span>
+            </button>
+
+        </div>
+    </div>
+
+    {# ── Mobile menu panel ── #}
+    <div x-show="mobileOpen" x-cloak
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0 -translate-y-2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-100"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-2"
+        class="md:hidden border-t border-base-200 dark:border-base-800 bg-base-50 dark:bg-base-900 px-4 pb-4">
+
+        {# ── Buyers ── #}
+        <div x-data="{ open: false }">
+            <button @click="open = !open"
+                class="w-full flex items-center gap-2 px-2 py-3 text-sm font-medium text-base-600 dark:text-base-300 border-b border-base-200 dark:border-base-800">
+                <span class="material-symbols-outlined text-lg leading-none">person</span>
+                {% trans "Buyers" %}
+                <span class="material-symbols-outlined text-sm leading-none ml-auto transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
+            </button>
+            <div x-show="open" class="pl-8 pb-1">
+                <a href="/admin/authentication/buyerusers/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">people</span>
+                    {% trans "Buyer List" %}
+                </a>
+                <a href="/admin/orders/reviews/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">star</span>
+                    {% trans "Reviews" %}
+                </a>
+            </div>
+        </div>
+
+        {# ── Sellers ── #}
+        <div x-data="{ open: false }">
+            <button @click="open = !open"
+                class="w-full flex items-center gap-2 px-2 py-3 text-sm font-medium text-base-600 dark:text-base-300 border-b border-base-200 dark:border-base-800">
+                <span class="material-symbols-outlined text-lg leading-none">storefront</span>
+                {% trans "Sellers" %}
+                <span class="material-symbols-outlined text-sm leading-none ml-auto transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
+            </button>
+            <div x-show="open" class="pl-8 pb-1">
+                <a href="/admin/authentication/sellerusers/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">store</span>
+                    {% trans "Seller List" %}
+                </a>
+                <a href="/admin/compliance/sellercompliancedocuments/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">verified</span>
+                    {% trans "Compliance Docs" %}
+                </a>
+                <a href="/admin/compliance/compliancedocumentslist/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">description</span>
+                    {% trans "Doc Types" %}
+                </a>
+            </div>
+        </div>
+
+        {# ── Complaints ── #}
+        <div x-data="{ open: false }">
+            <button @click="open = !open"
+                class="w-full flex items-center gap-2 px-2 py-3 text-sm font-medium text-base-600 dark:text-base-300 border-b border-base-200 dark:border-base-800">
+                <span class="material-symbols-outlined text-lg leading-none">report</span>
+                {% trans "Complaints" %}
+                <span class="material-symbols-outlined text-sm leading-none ml-auto transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
+            </button>
+            <div x-show="open" class="pl-8 pb-1">
+                <a href="/admin/complaints/complaints/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">report_problem</span>
+                    {% trans "Complaints" %}
+                </a>
+                <a href="/admin/complaints/complaintcategories/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">label</span>
+                    {% trans "Categories" %}
+                </a>
+            </div>
+        </div>
+
+        {# ── Foods ── #}
+        <div x-data="{ open: false }">
+            <button @click="open = !open"
+                class="w-full flex items-center gap-2 px-2 py-3 text-sm font-medium text-base-600 dark:text-base-300 border-b border-base-200 dark:border-base-800">
+                <span class="material-symbols-outlined text-lg leading-none">restaurant_menu</span>
+                {% trans "Foods" %}
+                <span class="material-symbols-outlined text-sm leading-none ml-auto transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
+            </button>
+            <div x-show="open" class="pl-8 pb-1">
+                <a href="/admin/menu/foods/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">fastfood</span>
+                    {% trans "Foods" %}
+                </a>
+                <a href="/admin/menu/categories/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">category</span>
+                    {% trans "Categories" %}
+                </a>
+            </div>
+        </div>
+
+        {# ── Management ── #}
+        <div x-data="{ open: false }">
+            <button @click="open = !open"
+                class="w-full flex items-center gap-2 px-2 py-3 text-sm font-medium text-base-600 dark:text-base-300 border-b border-base-200 dark:border-base-800">
+                <span class="material-symbols-outlined text-lg leading-none">admin_panel_settings</span>
+                {% trans "Management" %}
+                <span class="material-symbols-outlined text-sm leading-none ml-auto transition-transform duration-200" :class="{ 'rotate-180': open }">expand_more</span>
+            </button>
+            <div x-show="open" class="pl-8 pb-1">
+                <a href="/admin/authentication/allusers/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">group</span>
+                    {% trans "All Users" %}
+                </a>
+                <a href="/admin/orders/orders/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">shopping_bag</span>
+                    {% trans "Orders" %}
+                </a>
+                <a href="/admin/auth/user/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">manage_accounts</span>
+                    {% trans "Admin Users" %}
+                </a>
+                <a href="/admin/authentication/adminsalescommissionsettings/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">percent</span>
+                    {% trans "Commission" %}
+                </a>
+                <a href="/admin/authentication/adminapitokens/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">key</span>
+                    {% trans "API Tokens" %}
+                </a>
+                <a href="/admin/authentication/adminauditlogs/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">history</span>
+                    {% trans "Audit Log" %}
+                </a>
+                <a href="/admin/authentication/securityloginevents/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">lock</span>
+                    {% trans "Login Events" %}
+                </a>
+                <a href="/admin/auth/user/permissions/" @click="mobileOpen = false"
+                    class="flex items-center gap-2 py-2.5 text-sm text-base-700 dark:text-base-200">
+                    <span class="material-symbols-outlined text-base leading-none text-base-400">shield_person</span>
+                    {% trans "Permissions" %}
+                </a>
+            </div>
+        </div>
+
+    </div>
+</nav>
