@@ -777,4 +777,18 @@ class SellerLotRecallView(APIView):
                 [str(lot_id), json.dumps({"reason": reason}), request.user.id],
             )
 
-        return Response({"data": {"lotId": str(lot_id), "status": "recalled"}})
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    SELECT id, food_id, lot_number, quantity_produced, quantity_available,
+                           status AS lifecycle_status, produced_at, sale_starts_at, sale_ends_at,
+                           use_by, best_before, notes, created_at, updated_at
+                    FROM production_lots
+                    WHERE id = %s
+                """,
+                [str(lot_id)],
+            )
+            updated_lot = _row_as_dict(cursor)
+
+        _stringify_uuids(updated_lot, ["id", "food_id"])
+        return Response({"data": updated_lot})
