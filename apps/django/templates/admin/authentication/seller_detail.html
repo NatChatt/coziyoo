@@ -106,7 +106,7 @@
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div>
           <div class="text-xs text-base-400 mb-1">{% trans "Role" %}</div>
-          <div class="text-sm font-medium text-base-800 dark:text-base-200">{{ user_obj.user_type|default:"—" }}</div>
+          <div class="text-sm font-medium text-base-800 dark:text-base-200">{{ role_badge|default:"—" }}</div>
         </div>
         <div>
           <div class="text-xs text-base-400 mb-1">{% trans "Created" %}</div>

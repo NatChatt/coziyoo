@@ -37,11 +37,12 @@ TYPE_TR = {"buyer": "Alıcı", "seller": "Satıcı", "both": "Her İkisi"}
 
 
 def _user_type_badge(obj):
-    colors = {"buyer": "#2563eb", "seller": "#16a34a", "both": "#7c3aed"}
+    colors = {"buyer": "#2563eb", "seller": "#16a34a", "both": "#9333ea"}
     color = colors.get(obj.user_type, "#6b7280")
+    label = TYPE_TR.get(obj.user_type, obj.user_type)
     return format_html(
         '<span style="background:{};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">{}</span>',
-        color, obj.user_type,
+        color, label,
     )
 
 
@@ -242,11 +243,12 @@ class BuyerUsersAdmin(ModelAdmin):
                                 "last_login": None, "order_trend": "flat",
                                 "spend_trend": "flat", "risk_level": "low", "risk_score": 0,
                             })
-                            buyer_rows.append({
+                        buyer_rows.append({
                                 "id": uid_str,
                                 "display_name": u.display_name or u.email,
                                 "email": u.email,
                                 "user_type": u.user_type,
+                                "user_type_tr": TYPE_TR.get(u.user_type, u.user_type),
                                 "is_active": u.is_active,
                                 **data,
                             })
@@ -481,6 +483,7 @@ class BuyerUsersAdmin(ModelAdmin):
             **self.admin_site.each_context(request),
             "title": f"Alıcı Detayı — {user.display_name}",
             "user": user,
+            "role_badge": _user_type_badge(user),
             "summary": summary,
             "tabs": tabs,
             "orders": orders,
@@ -509,7 +512,7 @@ class BuyerUsersAdmin(ModelAdmin):
 @admin.register(SellerUsers)
 class SellerUsersAdmin(ModelAdmin):
     list_display = [
-        "display_name_link", "email", "seller_status_badge", "is_active", "created_at",
+        "display_name_link", "email", "user_type_badge", "seller_status_badge", "is_active", "created_at",
     ]
     list_display_links = None
     list_filter = ["is_active", "seller_profile_status"]
@@ -769,6 +772,7 @@ class SellerUsersAdmin(ModelAdmin):
             **self.admin_site.each_context(request),
             "title": f"Satıcı Detayı — {user.display_name}",
             "user_obj": user,
+            "role_badge": _user_type_badge(user),
             "summary": summary,
             "earnings_summary": earnings_summary,
             "wallet_summary": wallet_summary,

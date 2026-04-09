@@ -92,9 +92,20 @@
           </td>
           <td class="py-3 px-4 font-mono text-xs text-base-400">{{ row.id|slice:":8" }}…</td>
           <td class="py-3 px-4">
-            <a href="{% url 'admin:authentication_buyerusers_buyer_detail' row.id %}"
-               class="font-medium text-primary-600 dark:text-primary-400 hover:underline"
-               onclick="event.stopPropagation()">{{ row.display_name }}</a>
+            <div class="flex items-center gap-2">
+              <a href="{% url 'admin:authentication_buyerusers_buyer_detail' row.id %}"
+                 class="font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                 onclick="event.stopPropagation()">{{ row.display_name }}</a>
+              {% if row.user_type == "both" %}
+                <span class="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] font-semibold text-violet-700 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300">
+                  {{ row.user_type_tr }}
+                </span>
+              {% else %}
+                <span class="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
+                  {{ row.user_type_tr }}
+                </span>
+              {% endif %}
+            </div>
             <div class="text-xs text-base-400 mt-0.5">{{ row.email }}</div>
           </td>
           <td class="py-3 px-4">
