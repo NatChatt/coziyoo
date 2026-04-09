@@ -287,7 +287,7 @@ export default function SellerLotCreateScreen({
     setSubmitting(false);
 
     if (result.ok) {
-      Alert.alert(t('headline.common.error').replace('Hata', 'Tamam'), t('status.seller.lotCreate.success'), [
+      Alert.alert(t('headline.common.success'), t('status.seller.lotCreate.success'), [
         { text: 'Tamam', onPress: onBack },
       ]);
     } else {
@@ -439,7 +439,7 @@ export default function SellerLotCreateScreen({
               value={editedRecipe}
               onChangeText={setEditedRecipe}
               multiline
-              placeholder="Tarif..."
+              placeholder={t('placeholder.seller.lotCreate.recipe')}
               placeholderTextColor={theme.textSecondary}
             />
           ) : (
@@ -552,13 +552,13 @@ export default function SellerLotCreateScreen({
           label={t('helper.seller.lotCreate.useBy')}
           value={form.useBy}
           onChangeText={(v) => updateForm('useBy', v)}
-          placeholder="ISO 8601 (opsiyonel)"
+          placeholder={t('placeholder.seller.lotCreate.isoOptional')}
         />
         <FormField
           label={t('helper.seller.lotCreate.bestBefore')}
           value={form.bestBefore}
           onChangeText={(v) => updateForm('bestBefore', v)}
-          placeholder="ISO 8601 (opsiyonel)"
+          placeholder={t('placeholder.seller.lotCreate.isoOptional')}
         />
         <FormField
           label={t('helper.seller.lotCreate.quantity')}
@@ -580,7 +580,7 @@ export default function SellerLotCreateScreen({
           label={t('helper.seller.lotCreate.notes')}
           value={form.notes}
           onChangeText={(v) => updateForm('notes', v)}
-          placeholder="(opsiyonel)"
+          placeholder={t('placeholder.seller.lotCreate.isoOptional')}
           multiline
         />
 
@@ -597,12 +597,12 @@ export default function SellerLotCreateScreen({
       <View style={styles.stepContent}>
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Yemek</Text>
+            <Text style={styles.summaryLabel}>{t('label.seller.lotCreate.food')}</Text>
             <Text style={styles.summaryValue}>{food?.name ?? '—'}</Text>
           </View>
 
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Özellikler</Text>
+            <Text style={styles.summaryLabel}>{t('label.seller.lotCreate.specs')}</Text>
             <View
               style={[
                 styles.specsBadge,
