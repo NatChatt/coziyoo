@@ -75,11 +75,24 @@ class PaymentInitView(APIView):
 
             db_order_id, status, total_price, buyer_id = order
 
-            if status not in ("pending",):
+            if status not in ("pending", "preparing"):
                 return Response(
                     {"error": {"code": "INVALID_ORDER_STATUS", "message": f"Order status '{status}' does not allow payment"}},
                     status=409,
                 )
+
+            if status == "preparing":
+                with connection.cursor() as cur:
+                    cur.execute(
+                        "SELECT seller_decision_state FROM orders WHERE id = %s",
+                        [db_order_id],
+                    )
+                    row = cur.fetchone()
+                    if row and row[0] != "approved":
+                        return Response(
+                            {"error": {"code": "SELLER_NOT_APPROVED", "message": "Satıcı onayı bekleniyor"}},
+                            status=409,
+                        )
 
             attempt_id = str(uuid.uuid4())
             provider_session_id = str(uuid.uuid4())
@@ -147,7 +160,7 @@ class MockProcessView(APIView):
                         [attempt_id],
                     )
                     cur.execute(
-                        "UPDATE orders SET status = 'preparing' WHERE id = %s AND status = 'pending'",
+                        "UPDATE orders SET status = 'preparing' WHERE id = %s AND status IN ('pending', 'preparing')",
                         [order_id],
                     )
                 else:
