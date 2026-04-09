@@ -4,13 +4,13 @@ from django.utils.translation import gettext_lazy as _
 
 class AbuseRiskEvents(models.Model):
     id = models.UUIDField(primary_key=True)
-    subject_type = models.TextField()
-    subject_id = models.TextField()
-    flow = models.TextField()
+    subject_type = models.CharField(max_length=50)
+    subject_id = models.CharField(max_length=255)
+    flow = models.CharField(max_length=50)
     risk_score = models.DecimalField(max_digits=5, decimal_places=2)
-    decision = models.TextField()
+    decision = models.CharField(max_length=30)
     reason_codes_json = models.JSONField(blank=True, null=True)
-    request_fingerprint = models.TextField(blank=True, null=True)
+    request_fingerprint = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField()
 
     class Meta:
@@ -21,11 +21,11 @@ class AbuseRiskEvents(models.Model):
 
 class AdminApiTokens(models.Model):
     id = models.UUIDField(primary_key=True)
-    session_id = models.TextField(unique=True)
-    label = models.TextField()
-    role = models.TextField()
-    token_hash = models.TextField()
-    token_preview = models.TextField()
+    session_id = models.CharField(max_length=255, unique=True)
+    label = models.CharField(max_length=255)
+    role = models.CharField(max_length=50)
+    token_hash = models.CharField(max_length=255)
+    token_preview = models.CharField(max_length=50)
     claims_json = models.JSONField(blank=True, null=True)
     created_by_admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
     revoked_at = models.DateTimeField(blank=True, null=True)
@@ -42,11 +42,11 @@ class AdminApiTokens(models.Model):
 class AdminAuditLogs(models.Model):
     id = models.UUIDField(primary_key=True)
     actor_admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
-    actor_email = models.TextField()
-    actor_role = models.TextField()
-    action = models.TextField()
-    entity_type = models.TextField()
-    entity_id = models.TextField(blank=True, null=True)
+    actor_email = models.CharField(max_length=255)
+    actor_role = models.CharField(max_length=50)
+    action = models.CharField(max_length=100)
+    entity_type = models.CharField(max_length=50)
+    entity_id = models.CharField(max_length=255, blank=True, null=True)
     before_json = models.JSONField(blank=True, null=True)
     after_json = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField()
@@ -75,13 +75,13 @@ class AdminSalesCommissionSettings(models.Model):
 
 class AdminUsers(models.Model):
     id = models.UUIDField(primary_key=True)
-    email = models.TextField(unique=True)
-    password_hash = models.TextField()
-    role = models.TextField()
+    email = models.CharField(max_length=255, unique=True)
+    password_hash = models.CharField(max_length=255)
+    role = models.CharField(max_length=50)
     is_active = models.BooleanField()
-    username = models.TextField(blank=True, null=True)
-    name = models.TextField(blank=True, null=True)
-    surname = models.TextField(blank=True, null=True)
+    username = models.CharField(max_length=100, blank=True, null=True)
+    name = models.CharField(max_length=100, blank=True, null=True)
+    surname = models.CharField(max_length=100, blank=True, null=True)
     last_login_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
@@ -100,8 +100,8 @@ class AdminUsers(models.Model):
 
 class RolePermissions(models.Model):
     id = models.UUIDField(primary_key=True)
-    role = models.TextField()
-    permission_key = models.TextField()
+    role = models.CharField(max_length=50)
+    permission_key = models.CharField(max_length=100)
     is_allowed = models.BooleanField(default=False)
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
@@ -118,8 +118,8 @@ class RolePermissions(models.Model):
 class AuthAudit(models.Model):
     id = models.UUIDField(primary_key=True)
     user = models.ForeignKey('authentication.Users', models.DO_NOTHING, blank=True, null=True)
-    event_type = models.TextField()
-    ip = models.TextField(blank=True, null=True)
+    event_type = models.CharField(max_length=50)
+    ip = models.CharField(max_length=45, blank=True, null=True)
     user_agent = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField()
 
@@ -132,11 +132,11 @@ class AuthAudit(models.Model):
 class AuthSessions(models.Model):
     id = models.UUIDField(primary_key=True)
     user = models.ForeignKey('authentication.Users', models.DO_NOTHING)
-    refresh_token_hash = models.TextField()
+    refresh_token_hash = models.CharField(max_length=255)
     expires_at = models.DateTimeField()
     revoked_at = models.DateTimeField(blank=True, null=True)
-    device_info = models.TextField(blank=True, null=True)
-    ip = models.TextField(blank=True, null=True)
+    device_info = models.CharField(max_length=255, blank=True, null=True)
+    ip = models.CharField(max_length=45, blank=True, null=True)
     created_at = models.DateTimeField()
     last_used_at = models.DateTimeField(blank=True, null=True)
 
@@ -148,14 +148,14 @@ class AuthSessions(models.Model):
 
 class SecurityLoginEvents(models.Model):
     id = models.UUIDField(primary_key=True)
-    realm = models.TextField()
+    realm = models.CharField(max_length=20)
     actor_user_id = models.UUIDField(blank=True, null=True)
-    identifier = models.TextField()
+    identifier = models.CharField(max_length=255)
     success = models.BooleanField()
-    failure_reason = models.TextField(blank=True, null=True)
-    device_id = models.TextField(blank=True, null=True)
-    device_name = models.TextField(blank=True, null=True)
-    ip = models.TextField(blank=True, null=True)
+    failure_reason = models.CharField(max_length=100, blank=True, null=True)
+    device_id = models.CharField(max_length=255, blank=True, null=True)
+    device_name = models.CharField(max_length=255, blank=True, null=True)
+    ip = models.CharField(max_length=45, blank=True, null=True)
     user_agent = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField()
 
@@ -168,17 +168,17 @@ class SecurityLoginEvents(models.Model):
 
 
 class SecurityLoginState(models.Model):
-    realm = models.TextField(primary_key=True)  # The composite primary key (realm, identifier) found, that is not supported. The first column is selected.
-    identifier = models.TextField()
+    realm = models.CharField(max_length=20, primary_key=True)  # The composite primary key (realm, identifier) found, that is not supported. The first column is selected.
+    identifier = models.CharField(max_length=255)
     consecutive_failed_count = models.IntegerField()
     last_failed_at = models.DateTimeField(blank=True, null=True)
     last_success_at = models.DateTimeField(blank=True, null=True)
-    last_device_id = models.TextField(blank=True, null=True)
-    last_device_name = models.TextField(blank=True, null=True)
-    last_ip = models.TextField(blank=True, null=True)
+    last_device_id = models.CharField(max_length=255, blank=True, null=True)
+    last_device_name = models.CharField(max_length=255, blank=True, null=True)
+    last_ip = models.CharField(max_length=45, blank=True, null=True)
     soft_locked = models.BooleanField()
     soft_locked_at = models.DateTimeField(blank=True, null=True)
-    unlock_token = models.TextField(blank=True, null=True)
+    unlock_token = models.CharField(max_length=255, blank=True, null=True)
     unlock_token_expires_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
@@ -189,7 +189,7 @@ class SecurityLoginState(models.Model):
 
 
 class SchemaMigrations(models.Model):
-    filename = models.TextField(primary_key=True)
+    filename = models.CharField(max_length=255, primary_key=True)
     applied_at = models.DateTimeField()
 
     class Meta:
@@ -201,7 +201,7 @@ class SchemaMigrations(models.Model):
 class UserAddresses(models.Model):
     id = models.UUIDField(primary_key=True)
     user = models.OneToOneField('Users', models.DO_NOTHING)
-    title = models.TextField()
+    title = models.CharField(max_length=100)
     address_line = models.TextField()
     is_default = models.BooleanField()
     created_at = models.DateTimeField()
@@ -220,8 +220,8 @@ class UserLoginLocations(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)
     accuracy_m = models.IntegerField(blank=True, null=True)
-    source = models.TextField()
-    ip = models.TextField(blank=True, null=True)
+    source = models.CharField(max_length=30)
+    ip = models.CharField(max_length=45, blank=True, null=True)
     user_agent = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField()
 
@@ -233,11 +233,11 @@ class UserLoginLocations(models.Model):
 
 class UserPresenceEvents(models.Model):
     id = models.UUIDField(primary_key=True)
-    subject_type = models.TextField()
+    subject_type = models.CharField(max_length=50)
     subject_id = models.UUIDField()
     session_id = models.UUIDField(blank=True, null=True)
-    event_type = models.TextField()
-    ip = models.TextField(blank=True, null=True)
+    event_type = models.CharField(max_length=50)
+    ip = models.CharField(max_length=45, blank=True, null=True)
     user_agent = models.TextField(blank=True, null=True)
     happened_at = models.DateTimeField()
 
@@ -249,32 +249,32 @@ class UserPresenceEvents(models.Model):
 
 class Users(models.Model):
     id = models.UUIDField(primary_key=True)
-    email = models.TextField(unique=True)
-    password_hash = models.TextField()
-    display_name = models.TextField()
-    display_name_normalized = models.TextField()
-    full_name = models.TextField(blank=True, null=True)
-    user_type = models.TextField()
+    email = models.CharField(max_length=255, unique=True)
+    password_hash = models.CharField(max_length=255)
+    display_name = models.CharField(max_length=255)
+    display_name_normalized = models.CharField(max_length=255)
+    full_name = models.CharField(max_length=255, blank=True, null=True)
+    user_type = models.CharField(max_length=20)
     is_active = models.BooleanField(verbose_name=_("Active"))
-    country_code = models.TextField(blank=True, null=True)
-    language = models.TextField(blank=True, null=True)
+    country_code = models.CharField(max_length=10, blank=True, null=True)
+    language = models.CharField(max_length=10, blank=True, null=True)
     created_at = models.DateTimeField(verbose_name=_("Created At"))
     updated_at = models.DateTimeField()
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
-    profile_image_url = models.TextField(blank=True, null=True)
-    phone = models.TextField(blank=True, null=True)
+    profile_image_url = models.URLField(max_length=2048, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
     dob = models.DateField(blank=True, null=True)
     legal_hold_state = models.BooleanField()
-    kitchen_title = models.TextField(blank=True, null=True)
+    kitchen_title = models.CharField(max_length=255, blank=True, null=True)
     kitchen_description = models.TextField(blank=True, null=True)
     delivery_radius_km = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
     working_hours_json = models.JSONField(blank=True, null=True)
-    seller_profile_status = models.TextField()
+    seller_profile_status = models.CharField(max_length=30)
     kitchen_specialties = models.JSONField(blank=True, null=True)
-    username = models.TextField(unique=True)
-    username_normalized = models.TextField(unique=True)
-    national_id = models.TextField(blank=True, null=True)
+    username = models.CharField(max_length=100, unique=True)
+    username_normalized = models.CharField(max_length=100, unique=True)
+    national_id = models.CharField(max_length=50, blank=True, null=True)
     delivery_enabled = models.BooleanField()
     delivery_terms = models.TextField(blank=True, null=True)
 
@@ -317,7 +317,7 @@ class SmsLogs(models.Model):
     buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
     message = models.TextField()
-    status = models.TextField()
+    status = models.CharField(max_length=30)
     created_at = models.DateTimeField()
 
     class Meta:
@@ -328,9 +328,9 @@ class SmsLogs(models.Model):
 
 class IdempotencyKeys(models.Model):
     id = models.UUIDField(primary_key=True)
-    scope = models.TextField()
-    key_hash = models.TextField()
-    request_hash = models.TextField()
+    scope = models.CharField(max_length=50)
+    key_hash = models.CharField(max_length=255)
+    request_hash = models.CharField(max_length=255)
     response_status = models.IntegerField(blank=True, null=True)
     response_body_json = models.JSONField(blank=True, null=True)
     expires_at = models.DateTimeField()
@@ -346,15 +346,15 @@ class IdempotencyKeys(models.Model):
 class MediaAssets(models.Model):
     id = models.UUIDField(primary_key=True)
     owner_user = models.ForeignKey('authentication.Users', models.DO_NOTHING)
-    provider = models.TextField()
-    object_key = models.TextField()
-    public_url = models.TextField(blank=True, null=True)
-    content_type = models.TextField(blank=True, null=True)
+    provider = models.CharField(max_length=50)
+    object_key = models.CharField(max_length=500)
+    public_url = models.URLField(max_length=2048, blank=True, null=True)
+    content_type = models.CharField(max_length=100, blank=True, null=True)
     size_bytes = models.BigIntegerField(blank=True, null=True)
-    checksum = models.TextField(blank=True, null=True)
-    related_entity_type = models.TextField(blank=True, null=True)
+    checksum = models.CharField(max_length=255, blank=True, null=True)
+    related_entity_type = models.CharField(max_length=50, blank=True, null=True)
     related_entity_id = models.UUIDField(blank=True, null=True)
-    status = models.TextField()
+    status = models.CharField(max_length=30)
     metadata_json = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
@@ -381,7 +381,7 @@ class BuyerNotes(models.Model):
 class BuyerTags(models.Model):
     id = models.UUIDField(primary_key=True)
     buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING)
-    tag = models.TextField()
+    tag = models.CharField(max_length=100)
     created_at = models.DateTimeField()
 
     class Meta:
@@ -407,7 +407,7 @@ class SellerNotes(models.Model):
 class SellerTags(models.Model):
     id = models.UUIDField(primary_key=True)
     seller = models.ForeignKey('authentication.Users', models.DO_NOTHING)
-    tag = models.TextField()
+    tag = models.CharField(max_length=100)
     created_at = models.DateTimeField()
 
     class Meta:

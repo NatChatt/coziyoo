@@ -16,8 +16,8 @@ class ComplaintAdminNotes(models.Model):
 
 class ComplaintCategories(models.Model):
     id = models.UUIDField(primary_key=True)
-    code = models.TextField(unique=True)
-    name = models.TextField()
+    code = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=255)
     is_active = models.BooleanField()
     created_at = models.DateTimeField()
 
@@ -36,15 +36,15 @@ class Complaints(models.Model):
     id = models.UUIDField(primary_key=True)
     order = models.ForeignKey('orders.Orders', models.DO_NOTHING)
     complainant_buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING, blank=True, null=True)
-    status = models.TextField()
+    status = models.CharField(max_length=30)
     created_at = models.DateTimeField()
     description = models.TextField(blank=True, null=True)
     category = models.ForeignKey('complaints.ComplaintCategories', models.DO_NOTHING, blank=True, null=True)
-    priority = models.TextField()
+    priority = models.CharField(max_length=20)
     resolved_at = models.DateTimeField(blank=True, null=True)
     resolution_note = models.TextField(blank=True, null=True)
     assigned_admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING, blank=True, null=True)
-    complainant_type = models.TextField()
+    complainant_type = models.CharField(max_length=20)
     complainant_user = models.ForeignKey('authentication.Users', models.DO_NOTHING, related_name='complaints_complainant_user_set')
     ticket_no = models.IntegerField()
 
