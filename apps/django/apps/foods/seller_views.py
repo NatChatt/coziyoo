@@ -492,6 +492,14 @@ class SellerLotListView(APIView):
         use_by = data.get("useBy")
         best_before = data.get("bestBefore")
         notes = data.get("notes")
+        recipe_snapshot_override = data.get("recipeSnapshot")
+        ingredients_snapshot_override = data.get("ingredientsSnapshot")
+        allergens_snapshot_override = data.get("allergensSnapshot")
+        has_all_snapshot_overrides = (
+            recipe_snapshot_override is not None
+            and ingredients_snapshot_override is not None
+            and allergens_snapshot_override is not None
+        )
 
         missing = [
             field_name
@@ -563,24 +571,29 @@ class SellerLotListView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        missing_fields = []
-        if not food.get("recipe"):
-            missing_fields.append("recipe")
-        if food.get("ingredients_json") is None:
-            missing_fields.append("ingredients_json")
-        if food.get("allergens_json") is None:
-            missing_fields.append("allergens_json")
-        if missing_fields:
-            return Response(
-                {
-                    "error": {
-                        "code": "LOT_SNAPSHOT_REQUIRED",
-                        "message": "Recipe, ingredients, and allergens must be defined on food before creating a lot",
-                        "details": {"missingFields": missing_fields},
-                    }
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        if not has_all_snapshot_overrides:
+            missing_fields = []
+            if not food.get("recipe"):
+                missing_fields.append("recipe")
+            if food.get("ingredients_json") is None:
+                missing_fields.append("ingredients_json")
+            if food.get("allergens_json") is None:
+                missing_fields.append("allergens_json")
+            if missing_fields:
+                return Response(
+                    {
+                        "error": {
+                            "code": "LOT_SNAPSHOT_REQUIRED",
+                            "message": "Recipe, ingredients, and allergens must be defined on food before creating a lot",
+                            "details": {"missingFields": missing_fields},
+                        }
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        final_recipe = recipe_snapshot_override if has_all_snapshot_overrides else food.get("recipe")
+        final_ingredients = ingredients_snapshot_override if has_all_snapshot_overrides else food.get("ingredients_json")
+        final_allergens = allergens_snapshot_override if has_all_snapshot_overrides else food.get("allergens_json")
 
         active_lot_status = _resolve_lot_active_status()
         lot_id = str(uuid.uuid4())
@@ -606,9 +619,9 @@ class SellerLotListView(APIView):
                     sale_ends_at,
                     use_by_dt.isoformat() if use_by_dt else None,
                     best_before_dt.isoformat() if best_before_dt else None,
-                    food.get("recipe"),
-                    json.dumps(food.get("ingredients_json")),
-                    json.dumps(food.get("allergens_json")),
+                    final_recipe,
+                    json.dumps(final_ingredients),
+                    json.dumps(final_allergens),
                     quantity_produced,
                     quantity_available,
                     active_lot_status,
