@@ -930,48 +930,10 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         ?? (typeof responseData?.id === "string" ? responseData.id : null);
 
       if (options?.publishAfterSave && foodId) {
-        const nowTs = Date.now();
-        let saleStartsAt = new Date(nowTs).toISOString();
-        let saleEndsAt: string | null = null;
-        let hadInvalidDateWindow = false;
-        if (!saleEndsAt) {
-          const fallback = new Date(saleStartsAt);
-          fallback.setUTCDate(fallback.getUTCDate() + 30);
-          saleEndsAt = fallback.toISOString();
-        }
-        if (new Date(saleStartsAt).getTime() > nowTs) {
-          hadInvalidDateWindow = true;
-          // "Yayınla" aksiyonunda ürünün hemen görünmesi beklenir.
-          saleStartsAt = new Date(nowTs).toISOString();
-          if (new Date(saleEndsAt).getTime() <= new Date(saleStartsAt).getTime()) {
-            const fallback = new Date(saleStartsAt);
-            fallback.setUTCDate(fallback.getUTCDate() + 30);
-            saleEndsAt = fallback.toISOString();
-          }
-        }
-        if (new Date(saleEndsAt).getTime() <= nowTs) {
-          hadInvalidDateWindow = true;
-          // Prevent creating immediately expired lots; keep publish visible on home feed.
-          if (new Date(saleStartsAt).getTime() < nowTs) {
-            saleStartsAt = new Date(nowTs).toISOString();
-          }
-          const fallback = new Date(saleStartsAt);
-          fallback.setUTCDate(fallback.getUTCDate() + 30);
-          saleEndsAt = fallback.toISOString();
-        }
-        if (new Date(saleEndsAt).getTime() <= new Date(saleStartsAt).getTime()) {
-          hadInvalidDateWindow = true;
-          const fallback = new Date(saleStartsAt);
-          fallback.setUTCDate(fallback.getUTCDate() + 1);
-          saleEndsAt = fallback.toISOString();
-        }
-        if (hadInvalidDateWindow) {
-          Alert.alert(
-            t('status.seller.foods.publishDateFixedTitle'),
-            t('status.seller.foods.publishDateFixedBody'),
-          );
-        }
-
+        const saleStartsAt = new Date().toISOString();
+        const fallbackEnd = new Date(saleStartsAt);
+        fallbackEnd.setUTCDate(fallbackEnd.getUTCDate() + 30);
+        const saleEndsAt = fallbackEnd.toISOString();
         const producedAt = saleStartsAt;
         const quantityProduced = Math.max(1, parsedDailyStock || 1);
         const statusRes = await authedFetch(`/v1/seller/foods/${foodId}/status`, {
