@@ -1,9 +1,9 @@
 import difflib
 import json
-from collections import defaultdict
 
 from django.contrib import admin
-from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.template.response import TemplateResponse
 from django.urls import path
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
@@ -81,7 +81,7 @@ class CategoriesAdmin(ModelAdmin):
 @admin.register(Foods)
 class FoodsAdmin(ModelAdmin):
     list_display = [
-        "name", "seller", "category", "price", "is_active",
+        "food_name_link", "seller", "category", "price", "is_active",
         "image_count", "menu_item_count", "rating", "review_count", "created_at",
     ]
     list_select_related = ["seller", "category"]
@@ -101,44 +101,56 @@ class FoodsAdmin(ModelAdmin):
         urls = super().get_urls()
         extra = [
             path(
-                "<uuid:food_id>/modal-detail/",
-                self.admin_site.admin_view(self.food_modal_detail),
-                name="menu_foods_modal_detail",
+                "<uuid:food_id>/detail/",
+                self.admin_site.admin_view(self.food_detail_view),
+                name="menu_foods_food_detail",
             ),
         ]
         return extra + urls
 
-    def food_modal_detail(self, request, food_id):
-        try:
-            food = Foods.objects.select_related("seller", "category").get(pk=food_id)
-        except Foods.DoesNotExist:
-            return JsonResponse({"error": "not found"}, status=404)
+    def food_detail_view(self, request, food_id):
+        food = get_object_or_404(
+            Foods.objects.select_related("seller", "category"), pk=food_id
+        )
+        lots = list(ProductionLots.objects.filter(food_id=food_id).order_by("-produced_at"))
 
-        lot_count = ProductionLots.objects.filter(food_id=food_id).count()
+        lots_json = json.dumps([
+            {
+                "id": str(lot.id),
+                "lot_number": lot.lot_number,
+                "food_name": food.name,
+                "status": lot.status,
+                "status_style": _LOT_STATUS_STYLE.get(lot.status, "background:#f1f5f9;color:#64748b"),
+                "qty_produced": lot.quantity_produced,
+                "qty_available": lot.quantity_available,
+                "produced_at": _fmt(lot.produced_at),
+                "sale_starts_at": _fmt(lot.sale_starts_at),
+                "sale_ends_at": _fmt(lot.sale_ends_at),
+                "use_by": _fmt(lot.use_by),
+                "best_before": _fmt(lot.best_before),
+                "recipe_snapshot": lot.recipe_snapshot or "",
+                "ingredients": lot.ingredients_snapshot_json or [],
+                "allergens": lot.allergens_snapshot_json or [],
+                "notes": lot.notes or "",
+                "ingredients_diff": _ingredients_diff(
+                    food.ingredients_json, lot.ingredients_snapshot_json
+                ),
+                "recipe_diff": _recipe_diff(
+                    food.recipe, lot.recipe_snapshot
+                ),
+            }
+            for lot in lots
+        ], ensure_ascii=False)
 
-        data = {
-            "id": str(food.id),
-            "name": food.name,
-            "seller": food.seller.display_name if food.seller else "—",
-            "category": food.category.name_tr if food.category else "—",
-            "price": str(food.price),
-            "rating": str(food.rating) if food.rating else None,
-            "review_count": food.review_count,
-            "favorite_count": food.favorite_count,
-            "is_active": food.is_active,
-            "image_url": food.image_url or "",
-            "card_summary": food.card_summary or "",
-            "description": food.description or "",
-            "recipe": food.recipe or "",
-            "ingredients": food.ingredients_json if isinstance(food.ingredients_json, list) else [],
-            "allergens": food.allergens_json if isinstance(food.allergens_json, list) else [],
-            "preparation_time_minutes": food.preparation_time_minutes,
-            "serving_size": food.serving_size or "",
-            "cuisine": food.cuisine or "",
-            "created_at": _fmt(food.created_at),
-            "lot_count": lot_count,
+        context = {
+            **self.admin_site.each_context(request),
+            "food": food,
+            "lots": lots,
+            "lots_json": lots_json,
+            "page_title": food.name,
+            "title": food.name,
         }
-        return JsonResponse(data)
+        return TemplateResponse(request, "admin/menu/foods/food_detail.html", context)
 
     fieldsets = [
         ("Food", {"fields": ["id", "name", "seller", "category", "price", "is_active"]}),
@@ -150,78 +162,13 @@ class FoodsAdmin(ModelAdmin):
         ("Meta", {"fields": ["created_at", "updated_at"]}),
     ]
 
-    def changelist_view(self, request, extra_context=None):
-        # `open_food` is a custom param from global search — strip it before
-        # Django's ChangeList sees it, otherwise it throws IncorrectLookupParameters
-        # and redirects to ?e=1 (ERROR_FLAG).
-        open_food_id = request.GET.get("open_food")
-        if open_food_id:
-            request.GET = request.GET.copy()
-            del request.GET["open_food"]
-        if extra_context is None:
-            extra_context = {}
-        if open_food_id:
-            extra_context["open_food_id"] = open_food_id
-
-        response = super().changelist_view(request, extra_context=extra_context)
-        if not hasattr(response, "context_data"):
-            return response
-        cl = response.context_data.get("cl")
-        if cl is None:
-            return response
-
-        try:
-            result_foods = list(cl.result_list)
-        except Exception:
-            return response
-
-        food_ids = [food.id for food in result_foods]
-        lots_qs = ProductionLots.objects.filter(
-            food_id__in=food_ids
-        ).order_by("-produced_at")
-
-        lots_by_food = defaultdict(list)
-        for lot in lots_qs:
-            lots_by_food[lot.food_id].append(lot)
-
-        # Attach _lots to each food for template use
-        for food in result_foods:
-            food.lots_data = lots_by_food.get(food.id, [])
-
-        # Build JSON for Alpine.js modal (all details pre-serialised)
-        food_lots_json = {}
-        for food in result_foods:
-            food_lots_json[str(food.id)] = [
-                {
-                    "id": str(lot.id),
-                    "lot_number": lot.lot_number,
-                    "food_name": food.name,
-                    "status": lot.status,
-                    "status_style": _LOT_STATUS_STYLE.get(lot.status, "background:#f1f5f9;color:#64748b"),
-                    "qty_produced": lot.quantity_produced,
-                    "qty_available": lot.quantity_available,
-                    "produced_at": _fmt(lot.produced_at),
-                    "sale_starts_at": _fmt(lot.sale_starts_at),
-                    "sale_ends_at": _fmt(lot.sale_ends_at),
-                    "use_by": _fmt(lot.use_by),
-                    "best_before": _fmt(lot.best_before),
-                    "recipe_snapshot": lot.recipe_snapshot or "",
-                    "ingredients": lot.ingredients_snapshot_json or [],
-                    "allergens": lot.allergens_snapshot_json or [],
-                    "notes": lot.notes or "",
-                    "ingredients_diff": _ingredients_diff(
-                        food.ingredients_json, lot.ingredients_snapshot_json
-                    ),
-                    "recipe_diff": _recipe_diff(
-                        food.recipe, lot.recipe_snapshot
-                    ),
-                }
-                for lot in food.lots_data
-            ]
-
-        response.context_data["food_with_lots"] = result_foods
-        response.context_data["food_lots_json"] = json.dumps(food_lots_json, ensure_ascii=False)
-        return response
+    @display(description="Ad")
+    def food_name_link(self, obj):
+        return format_html(
+            '<a href="/admin/menu/foods/{}/detail/" class="font-medium text-primary-600 hover:underline">{}</a>',
+            obj.id,
+            obj.name,
+        )
 
     @display(description="Images")
     def image_count(self, obj):

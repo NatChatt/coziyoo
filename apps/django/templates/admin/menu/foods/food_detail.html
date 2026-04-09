@@ -1,0 +1,541 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ food.name }} — {% trans "Yemek Detay" %}{% endblock %}
+
+{% block content %}
+<div class="space-y-4" x-data="foodDetail()" x-cloak>
+
+  {# ── Lot Detail Modal ── #}
+  <template x-teleport="body">
+    <div x-show="modal" x-cloak
+         class="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto p-4"
+         style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)"
+         @keydown.escape.window="modal = null"
+         @click.self="modal = null"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+
+      <div class="relative w-full max-w-3xl rounded-2xl bg-white dark:bg-base-900 shadow-2xl border border-base-200 dark:border-base-700"
+           @click.stop
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+           x-transition:enter-end="opacity-100 scale-100 translate-y-0">
+
+        <template x-if="modal">
+          <div class="flex flex-col max-h-[88vh]">
+
+            {# ── Header ── #}
+            <div class="shrink-0 flex items-center justify-between gap-4 px-6 py-4 border-b border-base-200 dark:border-base-700">
+              <div class="min-w-0 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-base-100 dark:bg-base-800 flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-lg text-base-500 dark:text-base-400 leading-none">inventory_2</span>
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-mono font-bold text-base-900 dark:text-white text-sm leading-tight" x-text="modal.lot_number"></span>
+                    <span :style="modal.status_style + ';padding:1px 8px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:0.03em'"
+                          x-text="modal.status"></span>
+                  </div>
+                  <div class="text-xs text-base-400 dark:text-base-500 mt-0.5 truncate" x-text="modal.food_name"></div>
+                </div>
+              </div>
+              <button @click="modal = null"
+                      class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-base-400 dark:text-base-500 hover:bg-base-100 dark:hover:bg-base-800 hover:text-base-600 dark:hover:text-base-300 transition-colors">
+                <span class="material-symbols-outlined text-lg leading-none">close</span>
+              </button>
+            </div>
+
+            {# ── Body — scrollable ── #}
+            <div class="overflow-y-auto flex-1 p-4">
+              <div class="grid grid-cols-2 gap-3 items-start">
+
+                {# ══ LEFT COLUMN ══ #}
+                <div class="flex flex-col gap-3">
+
+                  {# Stok #}
+                  <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+                    <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                      <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">inventory</span>
+                      <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Stok" %}</span>
+                    </div>
+                    <div class="p-4">
+                      <div class="flex items-end justify-between mb-3">
+                        <div>
+                          <div class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide mb-0.5">{% trans "Üretilen" %}</div>
+                          <div class="text-3xl font-bold text-base-800 dark:text-base-100 leading-none" x-text="modal.qty_produced"></div>
+                        </div>
+                        <div class="text-right">
+                          <div class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide mb-0.5">{% trans "Mevcut" %}</div>
+                          <div class="text-3xl font-bold text-emerald-500 dark:text-emerald-400 leading-none" x-text="modal.qty_available"></div>
+                        </div>
+                      </div>
+                      <div class="h-1.5 w-full rounded-full bg-base-100 dark:bg-base-700 overflow-hidden">
+                        <div class="h-full rounded-full bg-emerald-500 dark:bg-emerald-400 transition-all"
+                             :style="'width:' + (modal.qty_produced > 0 ? Math.round(modal.qty_available / modal.qty_produced * 100) : 0) + '%'"></div>
+                      </div>
+                      <div class="text-[10px] text-base-400 dark:text-base-500 mt-1 text-right"
+                           x-text="modal.qty_produced > 0 ? Math.round(modal.qty_available / modal.qty_produced * 100) + '% kaldı' : ''"></div>
+                    </div>
+                  </div>
+
+                  {# Tarihler #}
+                  <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+                    <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                      <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">calendar_clock</span>
+                      <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Tarihler" %}</span>
+                    </div>
+                    <div class="p-3.5 flex flex-col gap-2.5">
+                      <template x-if="modal.produced_at">
+                        <div class="flex items-center gap-2.5">
+                          <span class="material-symbols-outlined text-base leading-none text-base-300 dark:text-base-600 shrink-0">factory</span>
+                          <div class="min-w-0">
+                            <div class="text-[10px] text-base-400 dark:text-base-500 leading-tight">{% trans "Üretim" %}</div>
+                            <div class="text-xs font-semibold text-base-700 dark:text-base-200 leading-tight" x-text="modal.produced_at"></div>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="modal.sale_starts_at">
+                        <div class="flex items-center gap-2.5">
+                          <span class="material-symbols-outlined text-base leading-none text-emerald-400 dark:text-emerald-500 shrink-0">play_circle</span>
+                          <div class="min-w-0">
+                            <div class="text-[10px] text-base-400 dark:text-base-500 leading-tight">{% trans "Satış Başlangıç" %}</div>
+                            <div class="text-xs font-semibold text-base-700 dark:text-base-200 leading-tight" x-text="modal.sale_starts_at"></div>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="modal.sale_ends_at">
+                        <div class="flex items-center gap-2.5">
+                          <span class="material-symbols-outlined text-base leading-none text-rose-400 dark:text-rose-500 shrink-0">stop_circle</span>
+                          <div class="min-w-0">
+                            <div class="text-[10px] text-base-400 dark:text-base-500 leading-tight">{% trans "Satış Bitiş" %}</div>
+                            <div class="text-xs font-semibold text-base-700 dark:text-base-200 leading-tight" x-text="modal.sale_ends_at"></div>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="modal.use_by">
+                        <div class="flex items-center gap-2.5">
+                          <span class="material-symbols-outlined text-base leading-none text-amber-400 dark:text-amber-500 shrink-0">schedule</span>
+                          <div class="min-w-0">
+                            <div class="text-[10px] text-base-400 dark:text-base-500 leading-tight">{% trans "Son Kullanma" %}</div>
+                            <div class="text-xs font-semibold text-base-700 dark:text-base-200 leading-tight" x-text="modal.use_by"></div>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="modal.best_before">
+                        <div class="flex items-center gap-2.5">
+                          <span class="material-symbols-outlined text-base leading-none text-base-300 dark:text-base-600 shrink-0">star</span>
+                          <div class="min-w-0">
+                            <div class="text-[10px] text-base-400 dark:text-base-500 leading-tight">{% trans "En İyi Önce" %}</div>
+                            <div class="text-xs font-semibold text-base-700 dark:text-base-200 leading-tight" x-text="modal.best_before"></div>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+
+                </div>{# /left column #}
+
+                {# ══ RIGHT COLUMN ══ #}
+                <div class="flex flex-col gap-3">
+
+                  {# Değişiklikler (only if diff exists) #}
+                  <template x-if="(modal.ingredients_diff && modal.ingredients_diff.some(d => d.type !== 'same')) || (modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same'))">
+                    <div class="rounded-xl border border-amber-200 dark:border-amber-700/60 overflow-hidden bg-white dark:bg-base-800">
+                      <div class="px-3.5 py-2 flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700/60">
+                        <div class="flex items-center gap-1.5">
+                          <span class="material-symbols-outlined text-sm text-amber-500 leading-none">difference</span>
+                          <span class="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">{% trans "Değişiklikler" %}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-[10px] text-base-400 dark:text-base-500">
+                          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>{% trans "Eklendi" %}</span>
+                          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block"></span>{% trans "Çıkarıldı" %}</span>
+                        </div>
+                      </div>
+                      <div class="p-3.5 space-y-3">
+                        <template x-if="modal.ingredients_diff && modal.ingredients_diff.some(d => d.type !== 'same')">
+                          <div>
+                            <div class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide mb-1.5">{% trans "Malzemeler" %}</div>
+                            <div class="flex flex-wrap gap-1">
+                              <template x-for="(item, i) in modal.ingredients_diff" :key="i">
+                                <span x-text="item.text" class="px-2 py-0.5 rounded-full text-[11px] font-medium"
+                                      :style="item.type === 'added'   ? 'background:#dcfce7;color:#166534;border:1px solid #86efac'
+                                            : item.type === 'removed' ? 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;text-decoration:line-through;opacity:0.8'
+                                            :                           'background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0'"></span>
+                              </template>
+                            </div>
+                          </div>
+                        </template>
+                        <template x-if="modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same')">
+                          <div>
+                            <div class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide mb-1.5">{% trans "Tarif" %}</div>
+                            <div class="rounded-lg overflow-hidden text-[11px] font-mono max-h-40 overflow-y-auto border border-base-100 dark:border-base-700">
+                              <template x-for="(item, i) in modal.recipe_diff" :key="i">
+                                <div class="flex gap-1.5 px-2.5 py-0.5 border-b border-base-50 dark:border-base-800 last:border-0"
+                                     :style="item.type === 'added'   ? 'background:#f0fdf4'
+                                           : item.type === 'removed' ? 'background:#fff1f2'
+                                           :                           'background:transparent'">
+                                  <span class="shrink-0 font-bold select-none"
+                                        :style="item.type === 'added'   ? 'color:#16a34a'
+                                              : item.type === 'removed' ? 'color:#dc2626'
+                                              :                           'color:#cbd5e1'"
+                                        x-text="item.type === 'added' ? '+' : item.type === 'removed' ? '−' : ' '"></span>
+                                  <span :style="item.type === 'added'   ? 'color:#166534'
+                                              : item.type === 'removed' ? 'color:#991b1b'
+                                              :                           'color:#94a3b8'"
+                                        x-text="item.line"></span>
+                                </div>
+                              </template>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+
+                  {# İçindekiler & Alerjenler #}
+                  <template x-if="(modal.allergens && modal.allergens.length > 0) || (modal.ingredients && modal.ingredients.length > 0)">
+                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                        <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">nutrition</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "İçindekiler" %}</span>
+                      </div>
+                      <div class="p-3.5 space-y-3">
+                        <template x-if="modal.allergens && modal.allergens.length > 0">
+                          <div>
+                            <div class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide mb-1.5">{% trans "Alerjenler" %}</div>
+                            <div class="flex flex-wrap gap-1">
+                              <template x-for="a in modal.allergens" :key="a">
+                                <span class="px-2 py-0.5 rounded-full text-[11px] font-medium"
+                                      style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d"
+                                      x-text="a"></span>
+                              </template>
+                            </div>
+                          </div>
+                        </template>
+                        <template x-if="modal.ingredients && modal.ingredients.length > 0">
+                          <div>
+                            <div class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide mb-1.5">{% trans "Malzemeler" %}</div>
+                            <div class="flex flex-wrap gap-1">
+                              <template x-for="ing in modal.ingredients" :key="ing">
+                                <span class="px-2 py-0.5 rounded-full text-[11px] text-base-600 dark:text-base-300"
+                                      style="background:#f8fafc;border:1px solid #e2e8f0"
+                                      x-text="ing"></span>
+                              </template>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+
+                  {# Tarif (only when no diff) #}
+                  <template x-if="modal.recipe_snapshot && !(modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same'))">
+                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                        <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">menu_book</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Tarif" %}</span>
+                      </div>
+                      <div class="p-3.5 text-xs text-base-600 dark:text-base-300 whitespace-pre-wrap max-h-32 overflow-y-auto leading-relaxed"
+                           x-text="modal.recipe_snapshot"></div>
+                    </div>
+                  </template>
+
+                  {# Notlar #}
+                  <template x-if="modal.notes">
+                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                        <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">notes</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Notlar" %}</span>
+                      </div>
+                      <div class="p-3.5 text-xs text-base-600 dark:text-base-300" x-text="modal.notes"></div>
+                    </div>
+                  </template>
+
+                </div>{# /right column #}
+              </div>{# /2-col grid #}
+            </div>{# /body #}
+
+            {# ── Footer ── #}
+            <div class="shrink-0 flex items-center justify-end px-5 py-3 border-t border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50 rounded-b-2xl">
+              <button @click="modal = null"
+                      class="px-4 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-600 dark:text-base-300 hover:bg-base-100 dark:hover:bg-base-700 transition-colors">
+                {% trans "Kapat" %}
+              </button>
+            </div>
+
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+
+  {# ── Header Card ── #}
+  <div class="flex flex-col gap-4 rounded-xl border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800 lg:flex-row lg:items-center lg:p-5">
+
+    {# Image + Name #}
+    <div class="flex items-center gap-4 shrink-0">
+      {% if food.image_url %}
+        <img src="{{ food.image_url }}"
+             class="w-16 h-16 rounded-xl object-cover bg-base-200 dark:bg-base-700 shrink-0"
+             onerror="this.style.display='none'">
+      {% else %}
+        <div class="w-16 h-16 rounded-xl bg-base-200 dark:bg-base-700 flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-3xl text-base-400">restaurant</span>
+        </div>
+      {% endif %}
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h1 class="text-xl font-bold text-base-900 dark:text-white">{{ food.name }}</h1>
+          {% if food.is_active %}
+            <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">{% trans "Aktif" %}</span>
+          {% else %}
+            <span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">{% trans "Pasif" %}</span>
+          {% endif %}
+        </div>
+        <p class="text-base-500 dark:text-base-400 text-sm">{{ food.seller.display_name|default:"—" }}</p>
+        <p class="text-base-400 dark:text-base-500 text-xs">{{ food.category.name_tr|default:"—" }}</p>
+      </div>
+    </div>
+
+    {# KPI Cards #}
+    <div class="flex flex-wrap gap-3 grow">
+      <div class="rounded-xl py-2 px-3 flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 min-w-[120px] grow">
+        <span class="material-symbols-outlined text-base text-blue-500 dark:text-blue-400">inventory_2</span>
+        <div>
+          <div class="text-xs font-medium text-blue-600 dark:text-blue-300 uppercase tracking-wide">{% trans "Toplam Lot" %}</div>
+          <div class="text-2xl font-bold text-blue-800 dark:text-blue-100">{{ lots|length }}</div>
+        </div>
+      </div>
+      <div class="rounded-xl py-2 px-3 flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 min-w-[120px] grow">
+        <span class="material-symbols-outlined text-base text-emerald-500 dark:text-emerald-400">star</span>
+        <div>
+          <div class="text-xs font-medium text-emerald-600 dark:text-emerald-300 uppercase tracking-wide">{% trans "Rating" %}</div>
+          <div class="text-2xl font-bold text-emerald-800 dark:text-emerald-100">{{ food.rating|default:"—" }}</div>
+        </div>
+      </div>
+      <div class="rounded-xl py-2 px-3 flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 min-w-[120px] grow">
+        <span class="material-symbols-outlined text-base text-amber-500 dark:text-amber-400">chat</span>
+        <div>
+          <div class="text-xs font-medium text-amber-600 dark:text-amber-300 uppercase tracking-wide">{% trans "Yorumlar" %}</div>
+          <div class="text-2xl font-bold text-amber-800 dark:text-amber-100">{{ food.review_count }}</div>
+        </div>
+      </div>
+    </div>
+
+    {# Edit Button #}
+    <div class="shrink-0">
+      <a href="/admin/menu/foods/{{ food.id }}/change/"
+         class="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-colors">
+        <span class="material-symbols-outlined text-sm leading-none">edit</span>
+        {% trans "Düzenle" %}
+      </a>
+    </div>
+  </div>
+
+  {# ── Body: 2-column grid ── #}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+
+    {# ══ LEFT COLUMN ══ #}
+    <div class="flex flex-col gap-4">
+
+      {# Temel Bilgiler #}
+      <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+        <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+          <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">info</span>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Temel Bilgiler" %}</span>
+        </div>
+        <div class="p-3.5 flex flex-col gap-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Fiyat" %}</span>
+            <span class="text-sm font-semibold text-base-900 dark:text-white">₺{{ food.price }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Mutfak" %}</span>
+            <span class="text-xs text-base-700 dark:text-base-300">{{ food.cuisine|default:"—" }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Hazırlama Süresi" %}</span>
+            <span class="text-xs text-base-700 dark:text-base-300">{% if food.preparation_time_minutes %}{{ food.preparation_time_minutes }} dk{% else %}—{% endif %}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Porsiyon" %}</span>
+            <span class="text-xs text-base-700 dark:text-base-300">{{ food.serving_size|default:"—" }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Favori" %}</span>
+            <span class="text-xs text-base-700 dark:text-base-300">{{ food.favorite_count }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide">{% trans "Oluşturulma" %}</span>
+            <span class="text-xs text-base-700 dark:text-base-300">{{ food.created_at|date:"d.m.Y H:i" }}</span>
+          </div>
+        </div>
+      </div>
+
+      {# Malzemeler #}
+      {% if food.ingredients_json %}
+      <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+        <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+          <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">nutrition</span>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Malzemeler" %}</span>
+        </div>
+        <div class="p-3.5">
+          <div class="flex flex-wrap gap-1">
+            {% for ing in food.ingredients_json %}
+              <span class="px-2 py-0.5 rounded-full text-[11px] text-base-600 dark:text-base-300"
+                    style="background:#f8fafc;border:1px solid #e2e8f0">{{ ing }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {# Alerjenler #}
+      {% if food.allergens_json %}
+      <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+        <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+          <span class="material-symbols-outlined text-sm text-amber-500 leading-none">warning</span>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Alerjenler" %}</span>
+        </div>
+        <div class="p-3.5">
+          <div class="flex flex-wrap gap-1">
+            {% for a in food.allergens_json %}
+              <span class="px-2 py-0.5 rounded-full text-[11px] font-medium"
+                    style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">{{ a }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>{# /left column #}
+
+    {# ══ RIGHT COLUMN ══ #}
+    <div class="flex flex-col gap-4">
+
+      {# Açıklama #}
+      {% if food.description %}
+      <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+        <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+          <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">description</span>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Açıklama" %}</span>
+        </div>
+        <div class="p-3.5 text-sm text-base-600 dark:text-base-300 leading-relaxed">{{ food.description }}</div>
+      </div>
+      {% endif %}
+
+      {# Kısa Açıklama #}
+      {% if food.card_summary %}
+      <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+        <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+          <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">short_text</span>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Kısa Açıklama" %}</span>
+        </div>
+        <div class="p-3.5 text-sm text-base-600 dark:text-base-300">{{ food.card_summary }}</div>
+      </div>
+      {% endif %}
+
+      {# Tarif #}
+      {% if food.recipe %}
+      <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+        <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+          <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">menu_book</span>
+          <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Tarif" %}</span>
+        </div>
+        <div class="p-3.5 text-xs text-base-600 dark:text-base-300 whitespace-pre-wrap leading-relaxed">{{ food.recipe }}</div>
+      </div>
+      {% endif %}
+
+    </div>{# /right column #}
+  </div>{# /body grid #}
+
+  {# ── Lots Section ── #}
+  <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+    <div class="px-5 py-3 flex items-center gap-3 border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-900/50">
+      <span class="material-symbols-outlined text-base text-base-500 dark:text-base-400">inventory_2</span>
+      <span class="font-semibold text-base-900 dark:text-white text-sm">{% trans "Lotlar" %}</span>
+      <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-bold">{{ lots|length }}</span>
+    </div>
+
+    {% if lots %}
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-900/50 text-xs font-semibold uppercase tracking-wide text-base-500">
+          <th class="px-4 py-3 text-left">{% trans "Lot No" %}</th>
+          <th class="px-4 py-3 text-center">{% trans "Durum" %}</th>
+          <th class="px-4 py-3 text-center">{% trans "Stok" %}</th>
+          <th class="px-4 py-3 text-left hidden md:table-cell">{% trans "Üretim" %}</th>
+          <th class="px-4 py-3 text-left hidden lg:table-cell">{% trans "Satış Penceresi" %}</th>
+          <th class="px-4 py-3 text-left hidden md:table-cell">{% trans "SKT" %}</th>
+          <th class="w-10 px-3 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lot in lots %}
+        <tr class="border-b border-base-100 dark:border-base-700/50 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors">
+          <td class="px-4 py-3 font-mono font-medium text-base-800 dark:text-base-200">{{ lot.lot_number }}</td>
+          <td class="px-4 py-3 text-center">
+            {% if lot.status == 'open' or lot.status == 'active' %}
+              <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">{{ lot.status }}</span>
+            {% elif lot.status == 'locked' %}
+              <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">{{ lot.status }}</span>
+            {% elif lot.status == 'discarded' or lot.status == 'expired' or lot.status == 'recalled' %}
+              <span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">{{ lot.status }}</span>
+            {% else %}
+              <span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">{{ lot.status }}</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-center">
+            <span class="font-medium text-base-700 dark:text-base-300">{{ lot.quantity_available }}</span>
+            <span class="text-base-400">/{{ lot.quantity_produced }}</span>
+          </td>
+          <td class="px-4 py-3 text-base-500 dark:text-base-400 hidden md:table-cell text-xs">
+            {% if lot.produced_at %}{{ lot.produced_at|date:"d.m.Y H:i" }}{% else %}—{% endif %}
+          </td>
+          <td class="px-4 py-3 text-base-500 dark:text-base-400 hidden lg:table-cell text-xs">
+            {% if lot.sale_starts_at %}{{ lot.sale_starts_at|date:"d.m.Y H:i" }}{% endif %}
+            {% if lot.sale_starts_at and lot.sale_ends_at %} → {% endif %}
+            {% if lot.sale_ends_at %}{{ lot.sale_ends_at|date:"d.m.Y H:i" }}{% endif %}
+            {% if not lot.sale_starts_at and not lot.sale_ends_at %}—{% endif %}
+          </td>
+          <td class="px-4 py-3 text-base-500 dark:text-base-400 hidden md:table-cell text-xs">
+            {% if lot.use_by %}{{ lot.use_by|date:"d.m.Y H:i" }}{% else %}—{% endif %}
+          </td>
+          <td class="px-3 py-3 text-right">
+            <button type="button" @click.stop="openLot('{{ lot.id }}')"
+                    class="text-base-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+              <span class="material-symbols-outlined text-base leading-none">visibility</span>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="flex items-center gap-2 px-6 py-8 text-sm text-base-400">
+      <span class="material-symbols-outlined text-xl leading-none">inventory_2</span>
+      {% trans "Bu yemek için lot kaydı bulunamadı." %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>{# /x-data #}
+
+<script>
+const LOTS_JSON = {{ lots_json|safe }};
+
+function foodDetail() {
+  return {
+    modal: null,
+    openLot(id) {
+      this.modal = LOTS_JSON.find(l => l.id === id) || null;
+    },
+  };
+}
+</script>
+{% endblock %}
