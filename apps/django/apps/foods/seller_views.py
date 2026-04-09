@@ -727,3 +727,54 @@ class SellerLotAdjustView(APIView):
             )
 
         return Response({"data": {"id": str(row[0]), "quantityRemaining": row[1]}})
+
+
+class SellerLotRecallView(APIView):
+    """POST /v1/seller/lots/:lot_id/recall — Recall a production lot."""
+
+    permission_classes = [IsAppRealm]
+
+    def post(self, request, lot_id):
+        reason = request.data.get("reason", "")
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    SELECT id, status
+                    FROM production_lots
+                    WHERE id = %s AND seller_id = %s
+                """,
+                [str(lot_id), request.user.id],
+            )
+            lot = _row_as_dict(cursor)
+
+        if lot is None:
+            return Response(
+                {"error": {"code": "LOT_NOT_FOUND", "message": "Lot not found in seller scope"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if lot.get("status") == "recalled":
+            return Response(
+                {"error": {"code": "LOT_ALREADY_RECALLED", "message": "Lot is already recalled"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    UPDATE production_lots
+                    SET status = 'recalled', updated_at = now()
+                    WHERE id = %s AND seller_id = %s
+                """,
+                [str(lot_id), request.user.id],
+            )
+            cursor.execute(
+                """
+                    INSERT INTO lot_events (lot_id, event_type, event_payload_json, created_by, created_at)
+                    VALUES (%s, 'recalled', %s, %s, now())
+                """,
+                [str(lot_id), json.dumps({"reason": reason}), request.user.id],
+            )
+
+        return Response({"data": {"lotId": str(lot_id), "status": "recalled"}})
