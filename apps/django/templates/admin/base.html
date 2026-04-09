@@ -196,22 +196,4 @@
             {% block footer %}{% endblock %}
         </div>
     </div>
-
-    {# Null-safety patch for Django's actions.js — custom changelists that render
-       .action-select rows without the standard #action-toggle (e.g. when block.super
-       is used for empty-state fallback) would cause an uncaught TypeError at line 118.
-       This patch wraps window.Actions so it silently skips pages where #action-toggle
-       is absent, preserving normal behaviour everywhere else. #}
-    <script>
-    (function () {
-        var _orig = window.Actions;
-        if (typeof _orig === 'function') {
-            window.Actions = function (actionCheckboxes) {
-                if (document.getElementById('action-toggle')) {
-                    return _orig.apply(this, arguments);
-                }
-            };
-        }
-    })();
-    </script>
 {% endblock %}
