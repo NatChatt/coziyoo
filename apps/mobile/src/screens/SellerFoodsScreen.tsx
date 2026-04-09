@@ -77,8 +77,6 @@ type SellerFoodDraft = {
   cuisine?: string;
   categoryId?: string;
   dailyStock?: string;
-  startDate?: string;
-  endDate?: string;
   freeAddonNameInput?: string;
   freeAddonKindInput?: AddonKind;
   paidAddonNameInput?: string;
@@ -98,9 +96,7 @@ type SellerFoodsFieldKey =
   | "allergens"
   | "price"
   | "dailyStock"
-  | "prepTime"
-  | "startDate"
-  | "endDate";
+  | "prepTime";
 
 function toBool(value: unknown): boolean {
   if (typeof value === "boolean") return value;
@@ -183,23 +179,6 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
 }
 
-function parseDisplayDateToIso(value: string, boundary: "start" | "end" = "start"): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!match) return null;
-  const [, dd, mm, yyyy] = match;
-  const day = Number(dd);
-  const month = Number(mm);
-  const year = Number(yyyy);
-  const date = boundary === "end"
-    ? new Date(year, month - 1, day, 23, 59, 59, 999)
-    : new Date(year, month - 1, day, 0, 0, 0, 0);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-    return null;
-  }
-  return date.toISOString();
-}
 
 function normalizeIngredientTyping(prev: string, next: string): string {
   if (
@@ -339,13 +318,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const [cuisine, setCuisine] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [dailyStock, setDailyStock] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [datePickerVisible, setDatePickerVisible] = useState<null | "start" | "end">(null);
-  const [pickerMonth, setPickerMonth] = useState<Date>(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
   const [menuItems, setMenuItems] = useState<SellerMenuAddon[]>([]);
   const [freeAddonNameInput, setFreeAddonNameInput] = useState("");
   const [freeAddonKindInput, setFreeAddonKindInput] = useState<AddonKind>("extra");
@@ -405,8 +377,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
           setCuisine(typeof parsed.cuisine === "string" ? parsed.cuisine : "");
           setCategoryId(typeof parsed.categoryId === "string" ? parsed.categoryId : "");
           setDailyStock(typeof parsed.dailyStock === "string" ? parsed.dailyStock : "");
-          setStartDate(typeof parsed.startDate === "string" ? parsed.startDate : "");
-          setEndDate(typeof parsed.endDate === "string" ? parsed.endDate : "");
           setFreeAddonNameInput(typeof parsed.freeAddonNameInput === "string" ? parsed.freeAddonNameInput : "");
           setFreeAddonKindInput(
             parsed.freeAddonKindInput === "sauce" || parsed.freeAddonKindInput === "appetizer"
@@ -457,8 +427,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       cuisine,
       categoryId,
       dailyStock,
-      startDate: startDate.trim(),
-      endDate: endDate.trim(),
       freeAddonNameInput,
       freeAddonKindInput,
       paidAddonNameInput,
@@ -488,8 +456,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     cuisine,
     categoryId,
     dailyStock,
-    startDate,
-    endDate,
     freeAddonNameInput,
     freeAddonKindInput,
     paidAddonNameInput,
@@ -531,7 +497,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     options?: {
       focusRef?: React.RefObject<TextInput | null>;
       openCategoryModal?: boolean;
-      openDatePicker?: "start" | "end";
     },
   ) {
     markRequiredField(field);
@@ -544,10 +509,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         }
         setCategoryModalVisible(true);
       }, 220);
-      return;
-    }
-    if (options?.openDatePicker) {
-      setTimeout(() => openDatePicker(options.openDatePicker!), 220);
       return;
     }
     if (options?.focusRef?.current) {
@@ -730,8 +691,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setCuisine("");
     setCategoryId("");
     setDailyStock("");
-    setStartDate("");
-    setEndDate("");
     setMenuItems([]);
     setFreeAddonNameInput("");
     setFreeAddonKindInput("extra");
@@ -860,9 +819,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         .split(",")
         .map((x) => x.trim())
         .filter(Boolean);
-      const startIsoRequired = parseDisplayDateToIso(startDate, "start");
-      const endIsoRequired = parseDisplayDateToIso(endDate, "end");
-
       if (!name.trim()) {
         navigateToRequiredField("name", { focusRef: nameInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.nameRequired'));
@@ -906,18 +862,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       if (!Number.isFinite(parsedPrepTime) || parsedPrepTime <= 0) {
         navigateToRequiredField("prepTime", { focusRef: prepTimeInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.prepRequired'));
-        return;
-      }
-      if (!startIsoRequired || !endIsoRequired) {
-        navigateToRequiredField(!startIsoRequired ? "startDate" : "endDate", {
-          openDatePicker: !startIsoRequired ? "start" : "end",
-        });
-        Alert.alert(t('headline.common.error'), t('error.seller.foods.datesRequired'));
-        return;
-      }
-      if (new Date(endIsoRequired).getTime() <= new Date(startIsoRequired).getTime()) {
-        navigateToRequiredField("endDate", { openDatePicker: "end" });
-        Alert.alert(t('headline.common.error'), t('error.seller.foods.endDateInvalid'));
         return;
       }
       if (workingMenuItems.length < 1) {
@@ -986,11 +930,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         ?? (typeof responseData?.id === "string" ? responseData.id : null);
 
       if (options?.publishAfterSave && foodId) {
-        const startIso = startIsoRequired;
-        const endIso = endIsoRequired;
         const nowTs = Date.now();
-        let saleStartsAt = startIso ?? new Date(nowTs).toISOString();
-        let saleEndsAt = endIso;
+        let saleStartsAt = new Date(nowTs).toISOString();
+        let saleEndsAt: string | null = null;
         let hadInvalidDateWindow = false;
         if (!saleEndsAt) {
           const fallback = new Date(saleStartsAt);
@@ -1201,85 +1143,6 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
     }
   }
 
-  function toDisplayDate(date: Date): string {
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = String(date.getFullYear());
-    return `${dd}/${mm}/${yyyy}`;
-  }
-
-  const pickerMonthLabel = useMemo(() => (
-    new Intl.DateTimeFormat(locale, {
-      month: "long",
-      year: "numeric",
-    }).format(pickerMonth)
-  ), [locale, pickerMonth]);
-
-  const pickerWeekdays = useMemo(() => {
-    const monday = new Date(Date.UTC(2024, 0, 1));
-    return Array.from({ length: 7 }, (_, index) =>
-      new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(
-        new Date(monday.getTime() + index * 24 * 60 * 60 * 1000),
-      ),
-    );
-  }, [locale]);
-
-  const pickerDays = useMemo(() => {
-    const year = pickerMonth.getFullYear();
-    const month = pickerMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const mondayBasedOffset = (firstDay.getDay() + 6) % 7;
-    const cells: Array<{ key: string; value?: number }> = [];
-    for (let i = 0; i < mondayBasedOffset; i += 1) {
-      cells.push({ key: `empty-${i}` });
-    }
-    for (let day = 1; day <= daysInMonth; day += 1) {
-      cells.push({ key: `day-${day}`, value: day });
-    }
-    return cells;
-  }, [pickerMonth]);
-
-  const todayDayInPickerMonth = useMemo(() => {
-    const now = new Date();
-    if (
-      now.getFullYear() !== pickerMonth.getFullYear() ||
-      now.getMonth() !== pickerMonth.getMonth()
-    ) {
-      return null;
-    }
-    return now.getDate();
-  }, [pickerMonth]);
-
-  function openDatePicker(target: "start" | "end") {
-    const now = new Date();
-    const currentValue = target === "start" ? startDate : endDate;
-    let baseDate = now;
-    if (currentValue.trim()) {
-      const parsedIso = parseDisplayDateToIso(currentValue);
-      if (parsedIso) baseDate = new Date(parsedIso);
-    } else {
-      const todayDisplay = toDisplayDate(now);
-      if (target === "start") setStartDate(todayDisplay);
-      if (target === "end") setEndDate(todayDisplay);
-    }
-    setPickerMonth(new Date(baseDate.getFullYear(), baseDate.getMonth(), 1));
-    setDatePickerVisible(target);
-  }
-
-  function selectDate(day: number) {
-    const selected = new Date(pickerMonth.getFullYear(), pickerMonth.getMonth(), day);
-    const value = toDisplayDate(selected);
-    if (datePickerVisible === "start") {
-      setStartDate(value);
-      clearRequiredFieldHighlight("startDate");
-    }
-    if (datePickerVisible === "end") {
-      setEndDate(value);
-      clearRequiredFieldHighlight("endDate");
-    }
-    setDatePickerVisible(null);
-  }
 
   const previewImage = imageUrls.map((x) => x.trim()).find(Boolean) || "";
   const selectedCategoryName = categories.find((item) => item.id === categoryId)?.name ?? "";
@@ -1630,39 +1493,6 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             />
           </View>
 
-          <View style={styles.row2}>
-            <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("startDate", event)}>
-              <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("startDate") && styles.sectionTitleError]}>{t('headline.seller.foods.startDate')}</Text>
-              <View style={styles.dateInputWrap}>
-                <TextInput
-                  style={[styles.input, styles.dateInput, isRequiredFieldHighlighted("startDate") && styles.inputError]}
-                  value={startDate}
-                  placeholder={t('label.common.datePlaceholder')}
-                  placeholderTextColor={PLACEHOLDER_COLOR}
-                  editable={false}
-                />
-                <TouchableOpacity style={styles.dateIconBtn} onPress={() => openDatePicker("start")}>
-                  <Ionicons name="calendar-outline" size={18} color={isRequiredFieldHighlighted("startDate") ? "#C2410C" : "#7A6B5D"} />
-                </TouchableOpacity>
-              </View>
-            </View>
-            <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("endDate", event)}>
-              <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("endDate") && styles.sectionTitleError]}>{t('headline.seller.foods.endDate')}</Text>
-              <View style={styles.dateInputWrap}>
-                <TextInput
-                  style={[styles.input, styles.dateInput, isRequiredFieldHighlighted("endDate") && styles.inputError]}
-                  value={endDate}
-                  placeholder={t('label.common.datePlaceholder')}
-                  placeholderTextColor={PLACEHOLDER_COLOR}
-                  editable={false}
-                />
-                <TouchableOpacity style={styles.dateIconBtn} onPress={() => openDatePicker("end")}>
-                  <Ionicons name="calendar-outline" size={18} color={isRequiredFieldHighlighted("endDate") ? "#C2410C" : "#7A6B5D"} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
           <TouchableOpacity style={styles.previewBtn} onPress={() => setPreviewVisible(true)}>
             <Text style={styles.previewBtnText}>👁️ {t('cta.seller.foods.preview')}</Text>
           </TouchableOpacity>
@@ -1737,52 +1567,6 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             <TouchableOpacity style={styles.previewCloseBtn} onPress={() => setPreviewVisible(false)}>
               <Text style={styles.previewCloseBtnText}>{t('cta.seller.foods.keepEditing')}</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={Boolean(datePickerVisible)} transparent animationType="fade" onRequestClose={() => setDatePickerVisible(null)}>
-        <View style={styles.previewOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={() => setDatePickerVisible(null)} />
-          <View style={styles.datePickerCard}>
-            <View style={styles.datePickerHead}>
-              <TouchableOpacity onPress={() => setPickerMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
-                <Ionicons name="chevron-back" size={20} color="#2E241C" />
-              </TouchableOpacity>
-              <Text style={styles.datePickerTitle}>{pickerMonthLabel}</Text>
-              <TouchableOpacity onPress={() => setPickerMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
-                <Ionicons name="chevron-forward" size={20} color="#2E241C" />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.dateWeekRow}>
-              {pickerWeekdays.map((label) => (
-                <Text key={label} style={styles.dateWeekLabel}>{label}</Text>
-              ))}
-            </View>
-            <View style={styles.dateGrid}>
-              {pickerDays.map((cell) => (
-                <TouchableOpacity
-                  key={cell.key}
-                  style={[
-                    styles.dateCell,
-                    !cell.value && styles.dateCellEmpty,
-                    cell.value && todayDayInPickerMonth === cell.value ? styles.dateCellToday : null,
-                  ]}
-                  disabled={!cell.value}
-                  onPress={() => cell.value && selectDate(cell.value)}
-                >
-                  <Text
-                    style={[
-                      styles.dateCellText,
-                      !cell.value && styles.dateCellTextEmpty,
-                      cell.value && todayDayInPickerMonth === cell.value ? styles.dateCellTextToday : null,
-                    ]}
-                  >
-                    {cell.value ?? ""}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
           </View>
         </View>
       </Modal>
@@ -1983,13 +1767,6 @@ const styles = StyleSheet.create({
   rowLabelWrap: { minHeight: 28, justifyContent: "flex-end" },
   row3: { flexDirection: "row", gap: 8 },
   row3Item: { flex: 1 },
-  dateInputWrap: { position: "relative" },
-  dateInput: { paddingRight: 38 },
-  dateIconBtn: {
-    position: "absolute",
-    right: 10,
-    top: 10,
-  },
   photoStrip: { flexDirection: "row", alignItems: "center", gap: 8, paddingBottom: 2 },
   photoTileWrap: { alignItems: "center", gap: 6 },
   photoRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
@@ -2171,13 +1948,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   previewCloseBtnText: { color: "#fff", fontWeight: "700" },
-  datePickerCard: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#E5DDCF",
-  },
   categoryModalCard: {
     maxHeight: "70%",
     backgroundColor: "#fff",
@@ -2216,30 +1986,4 @@ const styles = StyleSheet.create({
   },
   categoryOptionText: { color: "#2E241C" },
   categoryOptionTextActive: { color: "#2E6B44", fontWeight: "700" },
-  datePickerHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  datePickerTitle: { color: "#2E241C", fontWeight: "800", fontSize: 16 },
-  dateWeekRow: { flexDirection: "row", marginBottom: 6 },
-  dateWeekLabel: { flex: 1, textAlign: "center", color: "#7A6B5D", fontSize: 12, fontWeight: "700" },
-  dateGrid: { flexDirection: "row", flexWrap: "wrap" },
-  dateCell: {
-    width: "14.285%",
-    aspectRatio: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-  },
-  dateCellToday: {
-    borderWidth: 1.5,
-    borderColor: "#4A7C59",
-    backgroundColor: "#ECF4EE",
-  },
-  dateCellEmpty: { opacity: 0 },
-  dateCellText: { color: "#2E241C", fontWeight: "600" },
-  dateCellTextToday: { color: "#2E6B44", fontWeight: "800" },
-  dateCellTextEmpty: { color: "transparent" },
 });
