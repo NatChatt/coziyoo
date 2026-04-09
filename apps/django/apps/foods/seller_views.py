@@ -155,6 +155,7 @@ class SellerFoodListView(APIView):
                 f.ingredients_json,
                 f.allergens_json,
                 f.menu_items_json,
+                f.paid_addons_json,
                 f.secondary_category_ids_json,
                 f.preparation_time_minutes,
                 f.category_id,
@@ -215,7 +216,9 @@ class SellerFoodListView(APIView):
         ingredients = data.get("ingredients") if isinstance(data.get("ingredients"), list) else []
         allergens = data.get("allergens") if isinstance(data.get("allergens"), list) else []
         preparation_time_minutes = data.get("preparationTimeMinutes")
-        menu_items = data.get("menuItems") if isinstance(data.get("menuItems"), list) else []
+        all_menu_items = data.get("menuItems") if isinstance(data.get("menuItems"), list) else []
+        free_menu_items = [item for item in all_menu_items if item.get("pricing") != "paid"]
+        paid_menu_items = [item for item in all_menu_items if item.get("pricing") == "paid"]
         secondary_category_ids = data.get("secondaryCategoryIds") if isinstance(data.get("secondaryCategoryIds"), list) else []
 
         sql = """
@@ -223,9 +226,9 @@ class SellerFoodListView(APIView):
                 (
                     seller_id, category_id, name, card_summary, description, recipe, price,
                     image_url, ingredients_json, allergens_json, preparation_time_minutes,
-                    is_active, cuisine, image_urls_json, menu_items_json, secondary_category_ids_json
+                    is_active, cuisine, image_urls_json, menu_items_json, paid_addons_json, secondary_category_ids_json
                 )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """
         with connection.cursor() as cursor:
@@ -246,7 +249,8 @@ class SellerFoodListView(APIView):
                     is_active,
                     cuisine,
                     json.dumps(image_urls),
-                    json.dumps(menu_items),
+                    json.dumps(free_menu_items),
+                    json.dumps(paid_menu_items),
                     json.dumps(secondary_category_ids),
                 ],
             )
@@ -288,7 +292,6 @@ class SellerFoodDetailView(APIView):
             "imageUrls": "image_urls_json",
             "ingredients": "ingredients_json",
             "allergens": "allergens_json",
-            "menuItems": "menu_items_json",
             "secondaryCategoryIds": "secondary_category_ids_json",
         }
 
@@ -296,6 +299,15 @@ class SellerFoodDetailView(APIView):
             if json_key in data:
                 set_clauses.append(f"{col_name} = %s")
                 params.append(json.dumps(data[json_key]))
+
+        if "menuItems" in data:
+            all_items = data["menuItems"] if isinstance(data["menuItems"], list) else []
+            free_items = [item for item in all_items if item.get("pricing") != "paid"]
+            paid_items = [item for item in all_items if item.get("pricing") == "paid"]
+            set_clauses.append("menu_items_json = %s")
+            params.append(json.dumps(free_items))
+            set_clauses.append("paid_addons_json = %s")
+            params.append(json.dumps(paid_items))
 
         if "imageUrls" in data and "imageUrl" not in data:
             image_urls = data.get("imageUrls") if isinstance(data.get("imageUrls"), list) else []

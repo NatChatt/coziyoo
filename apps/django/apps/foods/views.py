@@ -262,7 +262,10 @@ def _serialize_food_row(row, category_map):
         "allergens": allergens,
         "ingredients": ingredients,
         "cuisine": row.get("cuisine"),
-        "menuItems": _parse_menu_items(row.get("menu_items_json"), category_map),
+        "menuItems": _parse_menu_items(
+            (_coerce_json(row.get("menu_items_json")) or []) + (_coerce_json(row.get("paid_addons_json")) or []),
+            category_map,
+        ),
         "secondaryCategories": _parse_secondary_categories(row.get("secondary_category_ids_json"), category_map),
         "lotId": str(row["lot_id"]) if row.get("lot_id") is not None else None,
         "category": row.get("category"),
@@ -292,6 +295,11 @@ class FoodListView(APIView):
             "u.home_card_image_url AS seller_home_card_image"
             if _has_public_column("users", "home_card_image_url")
             else "NULL::text AS seller_home_card_image"
+        )
+        paid_addons_sql = (
+            "f.paid_addons_json"
+            if _has_public_column("foods", "paid_addons_json")
+            else "'[]'::jsonb AS paid_addons_json"
         )
 
         where_clauses = [
@@ -335,6 +343,7 @@ class FoodListView(APIView):
                 f.ingredients_json,
                 f.cuisine,
                 f.menu_items_json,
+                {paid_addons_sql},
                 f.secondary_category_ids_json,
                 COALESCE(u.delivery_enabled, FALSE) AS seller_delivery_enabled,
                 u.delivery_radius_km AS seller_delivery_radius_km,
@@ -436,6 +445,11 @@ class SellerFoodsView(APIView):
             if _has_public_column("users", "home_card_image_url")
             else "NULL::text AS seller_home_card_image"
         )
+        paid_addons_sql = (
+            "f.paid_addons_json"
+            if _has_public_column("foods", "paid_addons_json")
+            else "'[]'::jsonb AS paid_addons_json"
+        )
         sql = f"""
             SELECT
                 f.id,
@@ -452,6 +466,7 @@ class SellerFoodsView(APIView):
                 f.ingredients_json,
                 f.cuisine,
                 f.menu_items_json,
+                {paid_addons_sql},
                 f.secondary_category_ids_json,
                 COALESCE(u.delivery_enabled, FALSE) AS seller_delivery_enabled,
                 u.delivery_radius_km AS seller_delivery_radius_km,

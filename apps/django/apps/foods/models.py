@@ -57,6 +57,7 @@ class Foods(models.Model):
     cuisine = models.TextField(blank=True, null=True)
     image_urls_json = models.JSONField(blank=True, null=True)
     menu_items_json = models.JSONField(blank=True, null=True)
+    paid_addons_json = models.JSONField(blank=True, null=True)
     secondary_category_ids_json = models.JSONField(blank=True, null=True)
 
     def __str__(self):
