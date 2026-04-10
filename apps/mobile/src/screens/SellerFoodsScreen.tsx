@@ -2016,7 +2016,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               <Text style={styles.saveText}>{t('cta.seller.foods.doneIngredients')}</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal
