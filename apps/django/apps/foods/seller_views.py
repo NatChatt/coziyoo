@@ -793,6 +793,106 @@ class SellerLotListView(APIView):
         return Response({"data": {"lotId": lot_id, "lotNumber": lot_number}}, status=status.HTTP_201_CREATED)
 
 
+class SellerLotDetailView(APIView):
+    """PATCH /v1/seller/lots/:lot_id — Update an existing production lot."""
+
+    permission_classes = [IsAppRealm]
+
+    def patch(self, request, lot_id):
+        data = request.data
+        sale_starts_at = data.get("saleStartsAt")
+        sale_ends_at = data.get("saleEndsAt")
+        quantity_available = data.get("quantityAvailable")
+
+        if sale_starts_at in (None, "") and sale_ends_at in (None, "") and quantity_available in (None, ""):
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "saleStartsAt, saleEndsAt, or quantityAvailable is required"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    SELECT id, food_id, produced_at, sale_starts_at, sale_ends_at,
+                           quantity_produced, quantity_available
+                    FROM production_lots
+                    WHERE id = %s AND seller_id = %s
+                """,
+                [str(lot_id), request.user.id],
+            )
+            current_lot = _row_as_dict(cursor)
+
+        if current_lot is None:
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Lot not found or does not belong to seller"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            next_quantity_available = (
+                int(quantity_available)
+                if quantity_available not in (None, "")
+                else int(current_lot["quantity_available"])
+            )
+            current_quantity_produced = int(current_lot["quantity_produced"])
+        except (TypeError, ValueError):
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "quantityAvailable must be an integer"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if next_quantity_available < 0:
+            return Response(
+                {"error": {"code": "LOT_INVALID_QUANTITY", "message": "quantityAvailable cannot be negative"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        next_quantity_produced = max(current_quantity_produced, next_quantity_available)
+
+        try:
+            produced_dt = _parse_iso(current_lot["produced_at"])
+            sale_start_dt = _parse_iso(sale_starts_at) if sale_starts_at not in (None, "") else _parse_iso(current_lot["sale_starts_at"])
+            sale_end_dt = _parse_iso(sale_ends_at) if sale_ends_at not in (None, "") else _parse_iso(current_lot["sale_ends_at"])
+        except (TypeError, ValueError):
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "Invalid ISO datetime payload"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if produced_dt > sale_start_dt or sale_start_dt > sale_end_dt:
+            return Response(
+                {"error": {"code": "LOT_INVALID_TIMELINE", "message": "producedAt must be before saleStartsAt and saleStartsAt before saleEndsAt"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    UPDATE production_lots
+                    SET sale_starts_at = %s,
+                        sale_ends_at = %s,
+                        quantity_produced = %s,
+                        quantity_available = %s,
+                        updated_at = now()
+                    WHERE id = %s AND seller_id = %s
+                    RETURNING id, food_id, produced_at, sale_starts_at, sale_ends_at,
+                              quantity_produced, quantity_available
+                """,
+                [
+                    sale_start_dt.isoformat(),
+                    sale_end_dt.isoformat(),
+                    next_quantity_produced,
+                    next_quantity_available,
+                    str(lot_id),
+                    request.user.id,
+                ],
+            )
+            updated_lot = _row_as_dict(cursor)
+
+        _stringify_uuids(updated_lot, ["id", "food_id"])
+        return Response({"data": updated_lot})
+
+
 class SellerLotAdjustView(APIView):
     """POST /v1/seller/lots/:lot_id/adjust — Adjust remaining quantity of a production lot."""
 

@@ -198,6 +198,16 @@ type SellerFood = {
   stock: number;
 };
 
+type SellerFoodLot = {
+  id: string;
+  quantityProduced: number;
+  quantityAvailable: number;
+  producedAt: string | null;
+  saleStartsAt: string | null;
+  saleEndsAt: string | null;
+  lifecycleStatus: string | null;
+};
+
 type FoodCategoryOption = {
   id: string;
   name: string;
@@ -309,6 +319,39 @@ function normalizeSellerFood(item: Record<string, unknown>): SellerFood {
     isActive: toBool(item.isActive ?? item.is_active),
     stock: Number(item.stock ?? 0),
   };
+}
+
+function normalizeSellerFoodLot(item: Record<string, unknown>): SellerFoodLot {
+  return {
+    id: String(item.id ?? ""),
+    quantityProduced: Number(item.quantityProduced ?? item.quantity_produced ?? 0),
+    quantityAvailable: Number(item.quantityAvailable ?? item.quantity_available ?? 0),
+    producedAt: typeof item.producedAt === "string" ? item.producedAt : (typeof item.produced_at === "string" ? item.produced_at : null),
+    saleStartsAt: typeof item.saleStartsAt === "string" ? item.saleStartsAt : (typeof item.sale_starts_at === "string" ? item.sale_starts_at : null),
+    saleEndsAt: typeof item.saleEndsAt === "string" ? item.saleEndsAt : (typeof item.sale_ends_at === "string" ? item.sale_ends_at : null),
+    lifecycleStatus: typeof item.lifecycleStatus === "string" ? item.lifecycleStatus : (typeof item.lifecycle_status === "string" ? item.lifecycle_status : null),
+  };
+}
+
+function pickEditableLot(lots: SellerFoodLot[]): SellerFoodLot | null {
+  if (lots.length === 0) return null;
+  const now = Date.now();
+  const activeStatuses = new Set(["active", "open"]);
+  const activeLot = lots.find((lot) => {
+    const status = String(lot.lifecycleStatus ?? "").toLowerCase();
+    const startsAt = Date.parse(String(lot.saleStartsAt ?? ""));
+    const endsAt = Date.parse(String(lot.saleEndsAt ?? ""));
+    return (
+      activeStatuses.has(status) &&
+      lot.quantityAvailable > 0 &&
+      Number.isFinite(startsAt) &&
+      Number.isFinite(endsAt) &&
+      startsAt <= now &&
+      endsAt > now
+    );
+  });
+  if (activeLot) return activeLot;
+  return lots[0] ?? null;
 }
 
 const ADDON_KIND_OPTIONS: Array<{ value: AddonKind; label: string }> = [
@@ -466,6 +509,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const [foods, setFoods] = useState<SellerFood[]>([]);
   const [categories, setCategories] = useState<FoodCategoryOption[]>([]);
   const [editingFood, setEditingFood] = useState<SellerFood | null>(null);
+  const [editingLot, setEditingLot] = useState<SellerFoodLot | null>(null);
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -513,6 +557,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   );
   const [requiredFieldHighlight, setRequiredFieldHighlight] = useState<SellerFoodsFieldKey | null>(null);
   const requiredFieldHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editLotRequestIdRef = useRef(0);
   const formPersistKey = useMemo(
     () => `${SELLER_FORM_PERSIST_KEY_PREFIX}:${currentAuth.userId}`,
     [currentAuth.userId],
@@ -899,8 +944,10 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
 
   function resetForm() {
     suppressNextDraftPersistRef.current = true;
+    editLotRequestIdRef.current += 1;
     setRequiredFieldHighlight(null);
     setEditingFood(null);
+    setEditingLot(null);
     setName("");
     setPrice("");
     setCardSummary("");
@@ -927,8 +974,11 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   }
 
   function openEdit(food: SellerFood) {
+    const requestId = editLotRequestIdRef.current + 1;
+    editLotRequestIdRef.current = requestId;
     setRequiredFieldHighlight(null);
     setEditingFood(food);
+    setEditingLot(null);
     setName(food.name);
     setPrice(String(food.price));
     setCardSummary(food.cardSummary ?? "");
@@ -973,6 +1023,30 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setPaidAddonNameInput("");
     setPaidAddonKindInput("extra");
     setPaidAddonPriceInput("");
+    void loadEditLot(food.id, requestId);
+  }
+
+  async function loadEditLot(foodId: string, requestId: number) {
+    try {
+      const res = await authedFetch(`/v1/seller/lots?foodId=${foodId}`);
+      const json = await parseResponseBodySafe(res);
+      if (!res.ok) throw new Error(resolveApiMessage(json, t('error.seller.foods.load')));
+      const payload = (json && typeof json === "object") ? (json as Record<string, unknown>) : {};
+      const lots = Array.isArray(payload.data)
+        ? (payload.data as unknown[])
+          .map((item) => normalizeSellerFoodLot((item ?? {}) as Record<string, unknown>))
+          .filter((item) => item.id)
+        : [];
+      if (editLotRequestIdRef.current !== requestId) return;
+      const targetLot = pickEditableLot(lots);
+      setEditingLot(targetLot);
+      if (!targetLot) return;
+      setInitialStock(String(targetLot.quantityAvailable));
+      setInitialSaleStartsAt(targetLot.saleStartsAt?.trim() ? targetLot.saleStartsAt : startOfDayIso());
+      setInitialSaleEndsAt(targetLot.saleEndsAt?.trim() ? targetLot.saleEndsAt : endOfDayIso());
+    } catch (error) {
+      console.warn("[seller-foods] failed to load edit lot", error);
+    }
   }
 
   function setImageAt(index: number, value: string) {
@@ -1090,34 +1164,32 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         Alert.alert(t('headline.common.error'), t('error.seller.foods.prepRequired'));
         return;
       }
-      if (!editingFood && (!Number.isFinite(parsedInitialStock) || parsedInitialStock <= 0)) {
+      if (!Number.isFinite(parsedInitialStock) || parsedInitialStock <= 0) {
         navigateToRequiredField("initialStock", { focusRef: initialStockInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.initialStockRequired'));
         return;
       }
-      if (!editingFood && !initialSaleStartsAt.trim()) {
+      if (!initialSaleStartsAt.trim()) {
         navigateToRequiredField("initialSaleStartsAt");
         Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleStartRequired'));
         return;
       }
-      if (!editingFood && !initialSaleEndsAt.trim()) {
+      if (!initialSaleEndsAt.trim()) {
         navigateToRequiredField("initialSaleEndsAt");
         Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleEndRequired'));
         return;
       }
-      if (!editingFood) {
-        const startsAtMs = Date.parse(initialSaleStartsAt);
-        const endsAtMs = Date.parse(initialSaleEndsAt);
-        if (!Number.isFinite(startsAtMs)) {
-          navigateToRequiredField("initialSaleStartsAt");
-          Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleStartRequired'));
-          return;
-        }
-        if (!Number.isFinite(endsAtMs) || startsAtMs > endsAtMs) {
-          navigateToRequiredField("initialSaleEndsAt");
-          Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleWindowInvalid'));
-          return;
-        }
+      const startsAtMs = Date.parse(initialSaleStartsAt);
+      const endsAtMs = Date.parse(initialSaleEndsAt);
+      if (!Number.isFinite(startsAtMs)) {
+        navigateToRequiredField("initialSaleStartsAt");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleStartRequired'));
+        return;
+      }
+      if (!Number.isFinite(endsAtMs) || startsAtMs > endsAtMs) {
+        navigateToRequiredField("initialSaleEndsAt");
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleWindowInvalid'));
+        return;
       }
       if (workingMenuItems.length < 1) {
         navigateToRequiredField("sideItems", { focusRef: sideItemsInputRef });
@@ -1180,13 +1252,26 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         ?? (typeof responseData?.id === "string" ? responseData.id : null);
       const createdLotId = typeof responseData?.lotId === "string" ? responseData.lotId : null;
 
+      if (editingFood && editingLot?.id) {
+        const lotRes = await authedFetch(`/v1/seller/lots/${editingLot.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            saleStartsAt: initialSaleStartsAt.trim(),
+            saleEndsAt: initialSaleEndsAt.trim(),
+            quantityAvailable: parsedInitialStock,
+          }),
+        });
+        const lotJson = await parseResponseBodySafe(lotRes);
+        if (!lotRes.ok) throw new Error(resolveApiMessage(lotJson, t('error.seller.foods.save')));
+      }
+
       if (options?.publishAfterSave && foodId) {
-        const saleStartsAt = new Date().toISOString();
+        const saleStartsAt = initialSaleStartsAt.trim() || new Date().toISOString();
         const fallbackEnd = new Date(saleStartsAt);
         fallbackEnd.setUTCDate(fallbackEnd.getUTCDate() + 30);
-        const saleEndsAt = fallbackEnd.toISOString();
-        const producedAt = saleStartsAt;
-        const quantityProduced = 1;
+        const saleEndsAt = initialSaleEndsAt.trim() || fallbackEnd.toISOString();
+        const producedAt = editingLot?.producedAt?.trim() || saleStartsAt;
+        const quantityProduced = parsedInitialStock;
         const statusRes = await authedFetch(`/v1/seller/foods/${foodId}/status`, {
           method: "PATCH",
           body: JSON.stringify({ isActive: true }),
@@ -1198,6 +1283,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
 
         let hasVisibleLot = false;
         if (!editingFood && createdLotId) {
+          hasVisibleLot = true;
+        }
+        if (editingFood && editingLot?.id) {
           hasVisibleLot = true;
         }
         const lotsRes = await authedFetch(`/v1/seller/lots?foodId=${foodId}`);
@@ -1698,50 +1786,46 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             />
           </View>
 
-          {!editingFood ? (
-            <>
-              <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialStock", event)}>
-                <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialStock") && styles.sectionTitleError]}>{t('headline.seller.foods.initialStock')}</Text>
-                <TextInput
-                  ref={initialStockInputRef}
-                  style={[styles.input, isRequiredFieldHighlighted("initialStock") && styles.inputError]}
-                  value={initialStock}
-                  onChangeText={(value) => {
-                    setInitialStock(value);
-                    const parsedValue = Number.parseInt(value.trim() || "0", 10);
-                    if (Number.isFinite(parsedValue) && parsedValue > 0) clearRequiredFieldHighlight("initialStock");
-                  }}
-                  placeholder={t('helper.seller.foods.initialStockPlaceholder')}
-                  placeholderTextColor={PLACEHOLDER_COLOR}
-                  keyboardType="number-pad"
-                />
-              </View>
+          <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialStock", event)}>
+            <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialStock") && styles.sectionTitleError]}>{t('headline.seller.foods.initialStock')}</Text>
+            <TextInput
+              ref={initialStockInputRef}
+              style={[styles.input, isRequiredFieldHighlighted("initialStock") && styles.inputError]}
+              value={initialStock}
+              onChangeText={(value) => {
+                setInitialStock(value);
+                const parsedValue = Number.parseInt(value.trim() || "0", 10);
+                if (Number.isFinite(parsedValue) && parsedValue > 0) clearRequiredFieldHighlight("initialStock");
+              }}
+              placeholder={t('helper.seller.foods.initialStockPlaceholder')}
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              keyboardType="number-pad"
+            />
+          </View>
 
-              <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialSaleStartsAt", event)}>
-                <View style={styles.dateIconRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleStartsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleStart')}</Text>
-                    {initialSaleStartsAt ? <Text style={styles.dateSelectedText}>{formatSaleDate(initialSaleStartsAt, locale)}</Text> : null}
-                  </View>
-                  <TouchableOpacity onPress={() => openSaleDatePicker("initialSaleStartsAt")} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-                    <Ionicons name="calendar-outline" size={26} color={isRequiredFieldHighlighted("initialSaleStartsAt") ? "#E5484D" : "#3F855C"} />
-                  </TouchableOpacity>
-                </View>
+          <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialSaleStartsAt", event)}>
+            <View style={styles.dateIconRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleStartsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleStart')}</Text>
+                {initialSaleStartsAt ? <Text style={styles.dateSelectedText}>{formatSaleDate(initialSaleStartsAt, locale)}</Text> : null}
               </View>
+              <TouchableOpacity onPress={() => openSaleDatePicker("initialSaleStartsAt")} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                <Ionicons name="calendar-outline" size={26} color={isRequiredFieldHighlighted("initialSaleStartsAt") ? "#E5484D" : "#3F855C"} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
-              <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialSaleEndsAt", event)}>
-                <View style={styles.dateIconRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleEndsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleEnd')}</Text>
-                    {initialSaleEndsAt ? <Text style={styles.dateSelectedText}>{formatSaleDate(initialSaleEndsAt, locale)}</Text> : null}
-                  </View>
-                  <TouchableOpacity onPress={() => openSaleDatePicker("initialSaleEndsAt")} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-                    <Ionicons name="calendar-outline" size={26} color={isRequiredFieldHighlighted("initialSaleEndsAt") ? "#E5484D" : "#3F855C"} />
-                  </TouchableOpacity>
-                </View>
+          <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialSaleEndsAt", event)}>
+            <View style={styles.dateIconRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleEndsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleEnd')}</Text>
+                {initialSaleEndsAt ? <Text style={styles.dateSelectedText}>{formatSaleDate(initialSaleEndsAt, locale)}</Text> : null}
               </View>
-            </>
-          ) : null}
+              <TouchableOpacity onPress={() => openSaleDatePicker("initialSaleEndsAt")} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                <Ionicons name="calendar-outline" size={26} color={isRequiredFieldHighlighted("initialSaleEndsAt") ? "#E5484D" : "#3F855C"} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <TouchableOpacity style={styles.previewBtn} onPress={() => setPreviewVisible(true)}>
             <Text style={styles.previewBtnText}>👁️ {t('cta.seller.foods.preview')}</Text>
@@ -1870,7 +1954,6 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               <TextInput
                 style={styles.newIngredientInput}
                 value={newIngredientInput}
-                onChangeText={setNewIngredientInput}
                 placeholder={t('helper.seller.foods.newIngredientPlaceholder')}
                 placeholderTextColor={PLACEHOLDER_COLOR}
                 autoCorrect={false}
