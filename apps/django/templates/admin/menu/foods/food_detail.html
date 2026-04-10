@@ -20,7 +20,7 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0">
 
-      <div class="relative w-full max-w-3xl rounded-2xl bg-white dark:bg-base-900 shadow-2xl border border-base-200 dark:border-base-700"
+      <div class="relative w-full max-w-3xl rounded-2xl bg-white dark:bg-base-950 shadow-2xl border border-base-200 dark:border-base-700"
            @click.stop
            x-transition:enter="transition ease-out duration-200"
            x-transition:enter-start="opacity-0 scale-95 translate-y-2"
@@ -30,9 +30,9 @@
           <div class="flex flex-col max-h-[88vh]">
 
             {# ── Header ── #}
-            <div class="shrink-0 flex items-center justify-between gap-4 px-6 py-4 border-b border-base-200 dark:border-base-700">
+            <div class="shrink-0 flex items-center justify-between gap-4 px-6 py-4 border-b border-base-200 dark:border-base-700 bg-white dark:bg-base-950">
               <div class="min-w-0 flex items-center gap-3">
-                <div class="w-9 h-9 rounded-lg bg-base-100 dark:bg-base-800 flex items-center justify-center shrink-0">
+                <div class="w-9 h-9 rounded-lg bg-base-100 dark:bg-base-900 border border-transparent dark:border-base-800 flex items-center justify-center shrink-0">
                   <span class="material-symbols-outlined text-lg text-base-500 dark:text-base-400 leading-none">inventory_2</span>
                 </div>
                 <div class="min-w-0">
@@ -51,17 +51,17 @@
             </div>
 
             {# ── Body — scrollable ── #}
-            <div class="overflow-y-auto flex-1 p-4">
+            <div class="overflow-y-auto flex-1 p-4 bg-base-50 dark:bg-base-950">
               <div class="grid grid-cols-2 gap-3 items-start">
 
                 {# ══ LEFT COLUMN ══ #}
                 <div class="flex flex-col gap-3">
 
                   {# Stok #}
-                  <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-                    <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                  <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-900">
+                    <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
                       <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">inventory</span>
-                      <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Stok" %}</span>
+                      <span class="text-[10px] font-bold uppercase tracking-widest text-base-500 dark:text-base-300">{% trans "Stok" %}</span>
                     </div>
                     <div class="p-4">
                       <div class="flex items-end justify-between mb-3">
@@ -84,10 +84,10 @@
                   </div>
 
                   {# Tarihler #}
-                  <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-                    <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                  <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-900">
+                    <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
                       <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">calendar_clock</span>
-                      <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Tarihler" %}</span>
+                      <span class="text-[10px] font-bold uppercase tracking-widest text-base-500 dark:text-base-300">{% trans "Tarihler" %}</span>
                     </div>
                     <div class="p-3.5 flex flex-col gap-2.5">
                       <template x-if="modal.produced_at">
@@ -145,13 +145,13 @@
 
                   {# Değişiklikler (only if diff exists) #}
                   <template x-if="(modal.ingredients_diff && modal.ingredients_diff.some(d => d.type !== 'same')) || (modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same'))">
-                    <div class="rounded-xl border border-amber-200 dark:border-amber-700/60 overflow-hidden bg-white dark:bg-base-800">
-                      <div class="px-3.5 py-2 flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700/60">
+                    <div class="rounded-xl border border-amber-200 dark:border-amber-800 overflow-hidden bg-white dark:bg-base-900">
+                      <div class="px-3.5 py-2 flex items-center justify-between bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-800">
                         <div class="flex items-center gap-1.5">
                           <span class="material-symbols-outlined text-sm text-amber-500 leading-none">difference</span>
-                          <span class="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">{% trans "Değişiklikler" %}</span>
+                          <span class="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">{% trans "Değişiklikler" %}</span>
                         </div>
-                        <div class="flex items-center gap-2 text-[10px] text-base-400 dark:text-base-500">
+                        <div class="flex items-center gap-2 text-[10px] text-base-500 dark:text-base-400">
                           <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>{% trans "Eklendi" %}</span>
                           <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block"></span>{% trans "Çıkarıldı" %}</span>
                         </div>
@@ -159,9 +159,10 @@
                       <div class="p-3.5 space-y-3">
                         <template x-if="modal.ingredients_diff && modal.ingredients_diff.some(d => d.type !== 'same')">
                           <div>
-                            <div class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide mb-1.5">{% trans "Malzemeler" %}</div>
+                            <div class="text-[10px] text-base-500 dark:text-base-400 uppercase tracking-wide mb-1.5">{% trans "Malzemeler" %}</div>
                             <div class="flex flex-wrap gap-1">
                               <template x-for="(item, i) in modal.ingredients_diff" :key="i">
+                                <template x-if="item.type !== 'same'">
                                 <span x-text="item.text"
                                       class="px-2 py-0.5 rounded-full text-[11px] font-medium border"
                                       :class="item.type === 'added'
@@ -169,15 +170,17 @@
                                         : item.type === 'removed'
                                           ? 'bg-rose-50 text-rose-700 border-rose-200 line-through opacity-80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800'
                                           : 'bg-base-50 text-base-500 border-base-200 dark:bg-base-900 dark:text-base-300 dark:border-base-700'"></span>
+                                </template>
                               </template>
                             </div>
                           </div>
                         </template>
                         <template x-if="modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same')">
                           <div>
-                            <div class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide mb-1.5">{% trans "Tarif" %}</div>
-                            <div class="rounded-lg overflow-hidden text-[11px] font-mono max-h-40 overflow-y-auto border border-base-100 dark:border-base-700">
+                            <div class="text-[10px] text-base-500 dark:text-base-400 uppercase tracking-wide mb-1.5">{% trans "Tarif" %}</div>
+                            <div class="rounded-lg overflow-hidden text-[11px] font-mono max-h-40 overflow-y-auto border border-base-100 dark:border-base-800 bg-white dark:bg-base-950">
                               <template x-for="(item, i) in modal.recipe_diff" :key="i">
+                                <template x-if="item.type !== 'same'">
                                 <div class="flex gap-1.5 px-2.5 py-0.5 border-b border-base-50 dark:border-base-800 last:border-0"
                                      :class="item.type === 'added'
                                        ? 'bg-emerald-50/80 dark:bg-emerald-950/30'
@@ -198,6 +201,7 @@
                                       : 'text-base-500 dark:text-base-300'"
                                         x-text="item.line"></span>
                                 </div>
+                                </template>
                               </template>
                             </div>
                           </div>
@@ -208,10 +212,10 @@
 
                   {# Alerjenler #}
                   <template x-if="modal.allergens && modal.allergens.length > 0">
-                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-900">
+                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
                         <span class="material-symbols-outlined text-sm text-amber-500 dark:text-amber-400 leading-none">warning</span>
-                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Alerjenler" %}</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-500 dark:text-base-300">{% trans "Alerjenler" %}</span>
                       </div>
                       <div class="p-3.5">
                         <div class="flex flex-wrap gap-1">
@@ -226,10 +230,10 @@
 
                   {# Tarif (only when no diff) #}
                   <template x-if="modal.recipe_snapshot && !(modal.recipe_diff && modal.recipe_diff.some(d => d.type !== 'same'))">
-                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-900">
+                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
                         <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">menu_book</span>
-                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Tarif" %}</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-500 dark:text-base-300">{% trans "Tarif" %}</span>
                       </div>
                       <div class="p-3.5 text-xs text-base-600 dark:text-base-300 whitespace-pre-wrap max-h-32 overflow-y-auto leading-relaxed"
                            x-text="modal.recipe_snapshot"></div>
@@ -238,10 +242,10 @@
 
                   {# Notlar #}
                   <template x-if="modal.notes">
-                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-900">
+                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
                         <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">notes</span>
-                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Notlar" %}</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-500 dark:text-base-300">{% trans "Notlar" %}</span>
                       </div>
                       <div class="p-3.5 text-xs text-base-600 dark:text-base-300" x-text="modal.notes"></div>
                     </div>
@@ -252,7 +256,7 @@
             </div>{# /body #}
 
             {# ── Footer ── #}
-            <div class="shrink-0 flex items-center justify-end px-5 py-3 border-t border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50 rounded-b-2xl">
+            <div class="shrink-0 flex items-center justify-end px-5 py-3 border-t border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-950 rounded-b-2xl">
               <button @click="modal = null"
                       class="px-4 py-1.5 rounded-lg border border-base-300 dark:border-base-600 text-sm font-medium text-base-600 dark:text-base-300 hover:bg-base-100 dark:hover:bg-base-700 transition-colors">
                 {% trans "Kapat" %}

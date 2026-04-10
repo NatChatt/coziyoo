@@ -27,10 +27,30 @@ def _fmt(dt):
     return dt.strftime("%d.%m.%Y %H:%M") if dt else None
 
 
+def _normalize_text_list(value):
+    if value in (None, ""):
+        return []
+    if isinstance(value, list):
+        return [str(x).strip() for x in value if str(x).strip()]
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return []
+        if raw.startswith("["):
+            try:
+                parsed = json.loads(raw)
+                if isinstance(parsed, list):
+                    return [str(x).strip() for x in parsed if str(x).strip()]
+            except Exception:
+                pass
+        return [item.strip() for item in raw.split(",") if item.strip()]
+    return [str(value).strip()] if str(value).strip() else []
+
+
 def _ingredients_diff(original, snapshot):
     """Return list of {text, type} where type is 'same'|'added'|'removed'."""
-    orig = [str(x).strip() for x in (original or [])]
-    snap = [str(x).strip() for x in (snapshot or [])]
+    orig = _normalize_text_list(original)
+    snap = _normalize_text_list(snapshot)
     orig_lower = {x.lower(): x for x in orig}
     snap_lower = {x.lower(): x for x in snap}
     seen = set()
