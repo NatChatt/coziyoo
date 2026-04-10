@@ -31,12 +31,11 @@ class PaymentStatusView(APIView):
                 """,
                 [order_id, user_id, user_id],
             )
-            cols = ["id", "status", "amount", "provider", "createdAt", "updatedAt"]
+            cols = ["id", "status", "provider", "createdAt", "updatedAt"]
             attempts = []
             for row in cur.fetchall():
                 attempt = dict(zip(cols, row))
                 attempt["id"] = str(attempt["id"])
-                attempt["amount"] = str(attempt["amount"]) if attempt["amount"] is not None else None
                 attempt["createdAt"] = attempt["createdAt"].isoformat() if attempt["createdAt"] else None
                 attempt["updatedAt"] = attempt["updatedAt"].isoformat() if attempt["updatedAt"] else None
                 attempts.append(attempt)
@@ -73,7 +72,7 @@ class PaymentInitView(APIView):
                     status=404,
                 )
 
-            db_order_id, status, total_price, buyer_id = order
+            db_order_id, status, _, buyer_id = order
 
             if status not in ("pending", "preparing"):
                 return Response(
@@ -103,7 +102,7 @@ class PaymentInitView(APIView):
                     INSERT INTO payment_attempts (order_id, buyer_id, status, provider, provider_session_id)
                     VALUES (%s, %s, 'pending', 'mockpay', %s) RETURNING id
                     """,
-                    [db_order_id, buyer_id, total_price, provider_session_id],
+                    [db_order_id, buyer_id, provider_session_id],
                 )
                 attempt_id = str(cur.fetchone()[0])
 
