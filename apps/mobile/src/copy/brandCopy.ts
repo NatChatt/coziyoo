@@ -885,7 +885,7 @@ export const brandCopy = {
   'helper.seller.lotCreate.quantity': 'Üretilen adet',
   'helper.seller.lotCreate.quantityAvailable': 'Satışa açık adet',
   'helper.seller.lotCreate.notes': 'Not (opsiyonel)',
-  'helper.seller.lotCreate.foodMissingSpecs': 'Bu yemeğe tarif/malzeme/alerjen eklenmemiş',
+  'helper.seller.lotCreate.foodMissingSpecs': 'Tarif/malzeme/alerjen eksik — sonraki adımda ekleyebilirsin',
   'status.seller.lotCreate.success': 'Lot başarıyla oluşturuldu!',
   'error.seller.lotCreate.failed': 'Lot oluşturulamadı.',
   'error.seller.lotCreate.validation': 'Lütfen tüm zorunlu alanları doldur.',
