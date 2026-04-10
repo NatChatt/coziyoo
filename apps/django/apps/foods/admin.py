@@ -177,8 +177,8 @@ class FoodsAdmin(ModelAdmin):
                 "use_by": _fmt(lot.use_by),
                 "best_before": _fmt(lot.best_before),
                 "recipe_snapshot": lot.recipe_snapshot or "",
-                "ingredients": lot.ingredients_snapshot_json or [],
-                "allergens": lot.allergens_snapshot_json or [],
+                "ingredients": _normalize_text_list(lot.ingredients_snapshot_json) or _normalize_text_list(food.ingredients_json),
+                "allergens": _normalize_text_list(lot.allergens_snapshot_json) or _normalize_text_list(food.allergens_json),
                 "notes": lot.notes or "",
                 "ingredients_diff": _ingredients_diff(
                     food.ingredients_json, lot.ingredients_snapshot_json
