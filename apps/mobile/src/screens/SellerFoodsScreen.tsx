@@ -283,13 +283,15 @@ function parseSaleDateOrToday(value: string): Date {
 
 function formatSaleDate(value: string, locale: string): string {
   if (!value.trim()) return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return "";
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0, 0);
+  if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
-  }).format(parsed);
+  }).format(date);
 }
 
 async function parseResponseBodySafe(res: Response): Promise<unknown> {
@@ -1898,21 +1900,43 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
         animationType="fade"
         onRequestClose={() => { setIngredientsPickerVisible(false); setIngredientSearch(""); setNewIngredientInput(""); }}
       >
-        <View style={styles.previewOverlay}>
+        <KeyboardAvoidingView style={styles.previewOverlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <TouchableOpacity
             style={StyleSheet.absoluteFillObject}
             onPress={() => { setIngredientsPickerVisible(false); setIngredientSearch(""); setNewIngredientInput(""); }}
           />
           <View style={styles.ingredientsModalCard}>
             <Text style={styles.categoryModalTitle}>{t('headline.seller.foods.ingredientsPicker')}</Text>
-            <TextInput
-              style={styles.ingredientSearchInput}
-              value={ingredientSearch}
-              onChangeText={setIngredientSearch}
-              placeholder={t('helper.seller.foods.ingredientsSearch')}
-              placeholderTextColor={PLACEHOLDER_COLOR}
-              autoCorrect={false}
-            />
+            <View style={styles.newIngredientRow}>
+              <TextInput
+                style={styles.newIngredientInput}
+                value={newIngredientInput}
+                onChangeText={setNewIngredientInput}
+                placeholder={t('helper.seller.foods.newIngredientPlaceholder')}
+                placeholderTextColor={PLACEHOLDER_COLOR}
+                autoCorrect={false}
+                onChangeText={(text) => {
+                  setNewIngredientInput(text);
+                  setIngredientSearch(text);
+                }}
+              />
+              <TouchableOpacity
+                style={[styles.newIngredientAddBtn, !newIngredientInput.trim() && styles.btnDisabled]}
+                disabled={!newIngredientInput.trim()}
+                onPress={async () => {
+                  const trimmed = newIngredientInput.trim();
+                  if (!trimmed) return;
+                  await addIngredientToLibrary(trimmed);
+                  const updated = await loadIngredientLibrary(apiUrl, currentAuth);
+                  setIngredientLibrary(updated);
+                  setSelectedIngredients((prev) => [...new Set([...prev, trimmed])]);
+                  setNewIngredientInput("");
+                  setIngredientSearch("");
+                }}
+              >
+                <Text style={styles.newIngredientAddBtnText}>{t('cta.seller.foods.addIngredient')}</Text>
+              </TouchableOpacity>
+            </View>
             <FlatList
               data={filteredIngredients}
               keyExtractor={(item) => item.id}
@@ -1924,6 +1948,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                   style={styles.categoryOption}
                   onPress={() => {
                     setSelectedIngredients((prev) => [...prev, item.name]);
+                    setNewIngredientInput("");
                     setIngredientSearch("");
                   }}
                 >
