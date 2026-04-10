@@ -210,6 +210,24 @@
                     </div>
                   </template>
 
+                  {# Malzemeler #}
+                  <template x-if="modal.ingredients && modal.ingredients.length > 0">
+                    <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-900">
+                      <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
+                        <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">grocery</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-500 dark:text-base-300">{% trans "Malzemeler" %}</span>
+                      </div>
+                      <div class="p-3.5">
+                        <div class="flex flex-wrap gap-1">
+                          <template x-for="ing in modal.ingredients" :key="ing">
+                            <span x-text="ing"
+                                  class="px-2 py-0.5 rounded-full text-[11px] font-medium border bg-base-50 text-base-600 border-base-200 dark:bg-base-800 dark:text-base-300 dark:border-base-700"></span>
+                          </template>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
                   {# Alerjenler #}
                   <template x-if="modal.allergens && modal.allergens.length > 0">
                     <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-900">
