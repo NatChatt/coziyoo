@@ -4,14 +4,17 @@ The caller must also be a seller (user_type in ('seller', 'both')),
 but role enforcement is left to the JWT payload (role == 'seller').
 """
 import json
+import logging
 import uuid
 from datetime import datetime
 
-from django.db import connection, transaction
+from django.db import DatabaseError, connection, transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+
+logger = logging.getLogger(__name__)
 
 _LOT_ACTIVE_STATUS_CACHE = None
 
@@ -292,86 +295,101 @@ class SellerFoodListView(APIView):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """
-        active_lot_status = _resolve_lot_active_status()
+        try:
+            active_lot_status = _resolve_lot_active_status()
+        except DatabaseError as exc:
+            logger.exception("Failed to resolve lot active status")
+            return Response(
+                {"error": {"code": "DB_ERROR", "message": f"Veritabanı hatası: {exc}"}},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
         produced_at = datetime.utcnow().isoformat() + "Z"
         lot_id = None
-        with transaction.atomic():
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    sql,
-                    [
-                        request.user.id,
-                        category_id,
-                        name,
-                        card_summary,
-                        description,
-                        recipe,
-                        price,
-                        image_url,
-                        json.dumps(ingredients),
-                        json.dumps(allergens),
-                        preparation_time_minutes,
-                        is_active,
-                        cuisine,
-                        json.dumps(image_urls),
-                        json.dumps(free_menu_items),
-                        json.dumps(paid_menu_items),
-                        json.dumps(secondary_category_ids),
-                    ],
-                )
-                row = cursor.fetchone()
-                food_id = str(row[0])
-                if should_create_initial_lot:
-                    lot_id = str(uuid.uuid4())
-                    lot_number = f"CZ-{food_id[:8].upper()}-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+        try:
+            with transaction.atomic():
+                with connection.cursor() as cursor:
                     cursor.execute(
-                        """
-                            INSERT INTO production_lots
-                                (
-                                    id, seller_id, food_id, lot_number, produced_at, sale_starts_at, sale_ends_at,
-                                    use_by, best_before, recipe_snapshot, ingredients_snapshot_json, allergens_snapshot_json,
-                                    quantity_produced, quantity_available, status, notes, created_at, updated_at
-                                )
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now())
-                        """,
+                        sql,
                         [
-                            lot_id,
                             request.user.id,
-                            food_id,
-                            lot_number,
-                            produced_at,
-                            sale_start_dt.isoformat(),
-                            sale_end_dt.isoformat(),
-                            None,
-                            None,
+                            category_id,
+                            name,
+                            card_summary,
+                            description,
                             recipe,
+                            price,
+                            image_url,
                             json.dumps(ingredients),
                             json.dumps(allergens),
-                            initial_stock,
-                            initial_stock,
-                            active_lot_status,
-                            "mobile_initial_stock",
+                            preparation_time_minutes,
+                            is_active,
+                            cuisine,
+                            json.dumps(image_urls),
+                            json.dumps(free_menu_items),
+                            json.dumps(paid_menu_items),
+                            json.dumps(secondary_category_ids),
                         ],
                     )
-                    cursor.execute(
-                        """
-                            INSERT INTO lot_events (lot_id, event_type, event_payload_json, created_by, created_at)
-                            VALUES (%s, 'created', %s, %s, now())
-                        """,
-                        [
-                            lot_id,
-                            json.dumps(
-                                {
-                                    "quantityProduced": initial_stock,
-                                    "quantityAvailable": initial_stock,
-                                    "saleStartsAt": sale_start_dt.isoformat(),
-                                    "saleEndsAt": sale_end_dt.isoformat(),
-                                    "source": "seller_food_create",
-                                }
-                            ),
-                            request.user.id,
-                        ],
-                    )
+                    row = cursor.fetchone()
+                    food_id = str(row[0])
+                    if should_create_initial_lot:
+                        lot_id = str(uuid.uuid4())
+                        lot_number = f"CZ-{food_id[:8].upper()}-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+                        cursor.execute(
+                            """
+                                INSERT INTO production_lots
+                                    (
+                                        id, seller_id, food_id, lot_number, produced_at, sale_starts_at, sale_ends_at,
+                                        use_by, best_before, recipe_snapshot, ingredients_snapshot_json, allergens_snapshot_json,
+                                        quantity_produced, quantity_available, status, notes, created_at, updated_at
+                                    )
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now())
+                            """,
+                            [
+                                lot_id,
+                                request.user.id,
+                                food_id,
+                                lot_number,
+                                produced_at,
+                                sale_start_dt.isoformat(),
+                                sale_end_dt.isoformat(),
+                                None,
+                                None,
+                                recipe,
+                                json.dumps(ingredients),
+                                json.dumps(allergens),
+                                initial_stock,
+                                initial_stock,
+                                active_lot_status,
+                                "mobile_initial_stock",
+                            ],
+                        )
+                        cursor.execute(
+                            """
+                                INSERT INTO lot_events (lot_id, event_type, event_payload_json, created_by, created_at)
+                                VALUES (%s, 'created', %s, %s, now())
+                            """,
+                            [
+                                lot_id,
+                                json.dumps(
+                                    {
+                                        "quantityProduced": initial_stock,
+                                        "quantityAvailable": initial_stock,
+                                        "saleStartsAt": sale_start_dt.isoformat(),
+                                        "saleEndsAt": sale_end_dt.isoformat(),
+                                        "source": "seller_food_create",
+                                    }
+                                ),
+                                request.user.id,
+                            ],
+                        )
+        except DatabaseError as exc:
+            logger.exception("Database error while creating food for seller %s", request.user.id)
+            return Response(
+                {"error": {"code": "DB_ERROR", "message": f"Veritabanı hatası: {exc}"}},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         payload = {"id": food_id, "foodId": food_id}
         if lot_id:
