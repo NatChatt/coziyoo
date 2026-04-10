@@ -1,8 +1,7 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Animated, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, type LayoutChangeEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { AuthSession } from "../utils/auth";
 import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
@@ -13,8 +12,6 @@ import { type AddonTemplate, addCustomAddon, loadAddonLibrary } from "../utils/a
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
-
-const SELLER_FORM_PERSIST_KEY_PREFIX = "seller_food_form_fields_v1";
 
 const CAL_MONTH_NAMES = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 const CAL_DAY_LABELS = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
@@ -220,29 +217,6 @@ type SellerMenuAddon = {
   kind: AddonKind;
   pricing: AddonPricing;
   price?: number;
-};
-
-type SellerFoodDraft = {
-  name?: string;
-  price?: string;
-  cardSummary?: string;
-  description?: string;
-  recipe?: string;
-  ingredients?: string[];
-  allergens?: string;
-  imageUrls?: string[];
-  prepTime?: string;
-  initialStock?: string;
-  initialSaleStartsAt?: string;
-  initialSaleEndsAt?: string;
-  cuisine?: string;
-  categoryId?: string;
-  freeAddonNameInput?: string;
-  freeAddonKindInput?: AddonKind;
-  paidAddonNameInput?: string;
-  paidAddonKindInput?: AddonKind;
-  paidAddonPriceInput?: string;
-  menuItems?: SellerMenuAddon[];
 };
 
 type SellerFoodsFieldKey =
@@ -550,23 +524,20 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const [addonSearch, setAddonSearch] = useState("");
   const [newAddonNameInput, setNewAddonNameInput] = useState("");
   const [newAddonPriceInput, setNewAddonPriceInput] = useState("");
-  const [persistentFieldsHydrated, setPersistentFieldsHydrated] = useState(false);
-  const suppressNextDraftPersistRef = useRef(false);
   const [pendingInitialEditId, setPendingInitialEditId] = useState<string | null>(
-    initialEditFood ? null : (initialEditFoodId ?? null),
+    initialEditFoodId ?? null,
   );
   const [requiredFieldHighlight, setRequiredFieldHighlight] = useState<SellerFoodsFieldKey | null>(null);
   const requiredFieldHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editLotRequestIdRef = useRef(0);
-  const formPersistKey = useMemo(
-    () => `${SELLER_FORM_PERSIST_KEY_PREFIX}:${currentAuth.userId}`,
-    [currentAuth.userId],
-  );
 
   useEffect(() => setCurrentAuth(auth), [auth]);
   useEffect(() => {
-    setPendingInitialEditId(initialEditFood ? null : (initialEditFoodId ?? null));
-  }, [initialEditFoodId, initialEditFood]);
+    setPendingInitialEditId(initialEditFoodId ?? null);
+    if (!initialEditFoodId) {
+      resetForm();
+    }
+  }, [initialEditFoodId]);
   // Load correct apiUrl from settings on mount so library effects fire with the right URL.
   useEffect(() => {
     void loadSettings().then((s) => setApiUrl(s.apiUrl));
@@ -585,132 +556,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       clearTimeout(requiredFieldHighlightTimeoutRef.current);
     }
   }, []);
-
-  useEffect(() => {
-    let active = true;
-    setPersistentFieldsHydrated(false);
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(formPersistKey);
-        if (!active) return;
-        if (!raw) return;
-        const parsed = JSON.parse(raw) as SellerFoodDraft;
-        const hasInitialEditContext = Boolean(initialEditFood || initialEditFoodId);
-        if (!hasInitialEditContext) {
-          setName(typeof parsed.name === "string" ? parsed.name : "");
-          setPrice(typeof parsed.price === "string" ? parsed.price : "");
-          setCardSummary(typeof parsed.cardSummary === "string" ? parsed.cardSummary : "");
-          setDescription(typeof parsed.description === "string" ? parsed.description : "");
-          setRecipe(typeof parsed.recipe === "string" ? parsed.recipe : "");
-          setAllergens(typeof parsed.allergens === "string" ? parsed.allergens : "");
-          setSelectedIngredients(Array.isArray(parsed.ingredients) ? parsed.ingredients.filter((x) => typeof x === "string") : []);
-          const hydratedImageUrls = Array.isArray(parsed.imageUrls)
-            ? parsed.imageUrls.map((item) => String(item ?? "").trim()).slice(0, 5)
-            : [];
-          while (hydratedImageUrls.length < 5) hydratedImageUrls.push("");
-          setImageUrls(hydratedImageUrls);
-          setPrepTime(typeof parsed.prepTime === "string" ? parsed.prepTime : "");
-          setInitialStock(typeof parsed.initialStock === "string" ? parsed.initialStock : "10");
-          setInitialSaleStartsAt(startOfDayIso());
-          setInitialSaleEndsAt(endOfDayIso());
-          setCuisine(typeof parsed.cuisine === "string" ? parsed.cuisine : "");
-          setCategoryId(typeof parsed.categoryId === "string" ? parsed.categoryId : "");
-          setFreeAddonNameInput(typeof parsed.freeAddonNameInput === "string" ? parsed.freeAddonNameInput : "");
-          setFreeAddonKindInput(
-            parsed.freeAddonKindInput === "sauce" || parsed.freeAddonKindInput === "appetizer"
-              ? parsed.freeAddonKindInput
-              : "extra",
-          );
-          setPaidAddonNameInput(typeof parsed.paidAddonNameInput === "string" ? parsed.paidAddonNameInput : "");
-          setPaidAddonKindInput(
-            parsed.paidAddonKindInput === "sauce" || parsed.paidAddonKindInput === "appetizer"
-              ? parsed.paidAddonKindInput
-              : "extra",
-          );
-          setPaidAddonPriceInput(typeof parsed.paidAddonPriceInput === "string" ? parsed.paidAddonPriceInput : "");
-          setMenuItems(
-            Array.isArray(parsed.menuItems)
-              ? parsed.menuItems.filter((item) => item && typeof item.name === "string" && item.name.trim())
-              : [],
-          );
-        }
-      } catch (error) {
-        console.warn("[seller-foods] failed to load persisted form fields", error);
-      } finally {
-        if (active) setPersistentFieldsHydrated(true);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [formPersistKey, initialEditFood, initialEditFoodId]);
-
-  useEffect(() => {
-    if (!persistentFieldsHydrated) return;
-    if (editingFood || pendingInitialEditId || initialEditFood || initialEditFoodId) return;
-    if (suppressNextDraftPersistRef.current) {
-      suppressNextDraftPersistRef.current = false;
-      return;
-    }
-    const payload = JSON.stringify({
-      name,
-      price,
-      cardSummary,
-      description,
-      recipe,
-      ingredients: selectedIngredients,
-      allergens,
-      imageUrls,
-      prepTime,
-      initialStock,
-      initialSaleStartsAt,
-      initialSaleEndsAt,
-      cuisine,
-      categoryId,
-      freeAddonNameInput,
-      freeAddonKindInput,
-      paidAddonNameInput,
-      paidAddonKindInput,
-      paidAddonPriceInput,
-      menuItems,
-    } satisfies SellerFoodDraft);
-    AsyncStorage.setItem(formPersistKey, payload).catch((error) => {
-      console.warn("[seller-foods] failed to persist form fields", error);
-    });
-  }, [
-    persistentFieldsHydrated,
-    formPersistKey,
-    editingFood,
-    pendingInitialEditId,
-    initialEditFood,
-    initialEditFoodId,
-    name,
-    price,
-    cardSummary,
-    description,
-    recipe,
-    selectedIngredients,
-    allergens,
-    imageUrls,
-    prepTime,
-    initialStock,
-    initialSaleStartsAt,
-    initialSaleEndsAt,
-    cuisine,
-    categoryId,
-    freeAddonNameInput,
-    freeAddonKindInput,
-    paidAddonNameInput,
-    paidAddonKindInput,
-    paidAddonPriceInput,
-    menuItems,
-  ]);
-
-  useLayoutEffect(() => {
-    if (!initialEditFood) return;
-    openEdit(initialEditFood);
-    setPendingInitialEditId(null);
-  }, [initialEditFood]);
 
   function handleFieldLayout(field: SellerFoodsFieldKey, event: LayoutChangeEvent) {
     fieldOffsetsRef.current[field] = event.nativeEvent.layout.y;
@@ -943,7 +788,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   }, [pendingInitialEditId, foods, loading]);
 
   function resetForm() {
-    suppressNextDraftPersistRef.current = true;
     editLotRequestIdRef.current += 1;
     setRequiredFieldHighlight(null);
     setEditingFood(null);
