@@ -1,4 +1,6 @@
+import hashlib
 import json
+import uuid
 from django import forms
 from django.conf import settings
 from django.contrib import admin
@@ -7,7 +9,7 @@ from django.db import connection
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
-from django.urls import path
+from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
@@ -35,6 +37,15 @@ STATUS_TR = {
 
 TYPE_TR = {"buyer": "Alıcı", "seller": "Satıcı", "both": "Her İkisi"}
 
+TAG_CHIP_STYLES = [
+    "background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd",
+    "background:#dcfce7;color:#166534;border:1px solid #86efac",
+    "background:#fef3c7;color:#92400e;border:1px solid #fcd34d",
+    "background:#fae8ff;color:#a21caf;border:1px solid #e879f9",
+    "background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5",
+    "background:#ccfbf1;color:#0f766e;border:1px solid #5eead4",
+]
+
 
 def _user_type_badge(obj):
     colors = {"buyer": "#2563eb", "seller": "#16a34a", "both": "#9333ea"}
@@ -58,6 +69,39 @@ def _seller_status_badge(obj):
         '<span style="color:{};font-weight:600">{}</span>',
         color, obj.seller_profile_status or "—",
     )
+
+
+def _tag_chip_style(tag):
+    digest = hashlib.md5((tag or "").strip().lower().encode("utf-8")).hexdigest()
+    return TAG_CHIP_STYLES[int(digest[:2], 16) % len(TAG_CHIP_STYLES)]
+
+
+def _resolve_admin_actor(request):
+    email = (getattr(request.user, "email", "") or "").strip()
+    if not email:
+        return None
+
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                id::text,
+                COALESCE(NULLIF(trim(concat_ws(' ', name, surname)), ''), email) AS creator_name
+            FROM admin_users
+            WHERE lower(email) = lower(%s) AND is_active = TRUE
+            LIMIT 1
+            """,
+            [email],
+        )
+        row = cur.fetchone()
+
+    if not row:
+        return None
+    return {"id": row[0], "creator_name": row[1]}
+
+
+def _detail_tab_redirect(route_name, user_id, tab="notes"):
+    return redirect(f"{reverse(route_name, args=[user_id])}?tab={tab}")
 
 
 _COMMON_FIELDSETS = [
@@ -271,6 +315,9 @@ class BuyerUsersAdmin(ModelAdmin):
         custom = [
             path("<uuid:user_id>/buyer-detail/", self.admin_site.admin_view(self.buyer_detail_view), name="authentication_buyerusers_buyer_detail"),
             path("order/<uuid:order_id>/detail/", self.admin_site.admin_view(self.order_detail_view), name="authentication_order_detail"),
+            path("<uuid:user_id>/buyer-detail/add-note/", self.admin_site.admin_view(self.buyer_add_note_view), name="authentication_buyerusers_add_note"),
+            path("<uuid:user_id>/buyer-detail/add-tag/", self.admin_site.admin_view(self.buyer_add_tag_view), name="authentication_buyerusers_add_tag"),
+            path("<uuid:user_id>/buyer-detail/delete-tag/", self.admin_site.admin_view(self.buyer_delete_tag_view), name="authentication_buyerusers_delete_tag"),
         ]
         return custom + urls
 
@@ -401,13 +448,18 @@ class BuyerUsersAdmin(ModelAdmin):
                         WHERE pa.buyer_id = %s ORDER BY pa.created_at DESC LIMIT 20
                     ) t),
                     (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
-                        SELECT bn.id, bn.note, au.email AS admin_email, bn.created_at
+                        SELECT
+                            bn.id,
+                            bn.note,
+                            COALESCE(NULLIF(trim(concat_ws(' ', au.name, au.surname)), ''), au.email, 'Admin') AS creator_name,
+                            au.email AS admin_email,
+                            bn.created_at
                         FROM buyer_notes bn
                         LEFT JOIN admin_users au ON au.id = bn.admin_id
                         WHERE bn.buyer_id = %s ORDER BY bn.created_at DESC
                     ) t),
                     (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
-                        SELECT tag, created_at FROM buyer_tags WHERE buyer_id = %s ORDER BY created_at DESC
+                        SELECT id, tag, created_at FROM buyer_tags WHERE buyer_id = %s ORDER BY created_at DESC
                     ) t)
             """, [uid, uid, uid, uid, uid, uid])
             orders_json, complaints_json, reviews_json, payments_json, notes_json, tags_json = cur.fetchone()
@@ -447,10 +499,20 @@ class BuyerUsersAdmin(ModelAdmin):
                      "created_at": r["created_at"], "amount": r["amount"],
                      "order_id": str(r["order_id"])} for r in (payments_json or [])]
 
-        notes = [{"id": str(r["id"]), "note": r["note"], "admin_email": r["admin_email"],
-                  "created_at": r["created_at"]} for r in (notes_json or [])]
+        notes = [{
+            "id": str(r["id"]),
+            "note": r["note"],
+            "creator_name": r.get("creator_name") or r.get("admin_email") or "Admin",
+            "admin_email": r.get("admin_email"),
+            "created_at": r["created_at"],
+        } for r in (notes_json or [])]
 
-        tags = [{"tag": r["tag"], "created_at": r["created_at"]} for r in (tags_json or [])]
+        tags = [{
+            "id": str(r["id"]),
+            "tag": r["tag"],
+            "created_at": r["created_at"],
+            "style": _tag_chip_style(r["tag"]),
+        } for r in (tags_json or [])]
 
         odata = orow_json or {}
         cdata = crow_json or {}
@@ -493,10 +555,89 @@ class BuyerUsersAdmin(ModelAdmin):
             "activity": activity,
             "notes": notes,
             "tags": tags,
+            "active_tab": request.GET.get("tab", "general"),
             "raw_json": json.dumps(raw_data, indent=2, default=str),
             "opts": self.model._meta,
         }
         return TemplateResponse(request, "admin/authentication/buyer_detail.html", context)
+
+    def buyer_add_note_view(self, request, user_id):
+        if request.method != "POST":
+            return JsonResponse({"error": "Method not allowed"}, status=405)
+
+        note = (request.POST.get("note") or "").strip()
+        if not note:
+            messages.error(request, "Not bos olamaz.")
+            return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
+
+        admin_actor = _resolve_admin_actor(request)
+        if not admin_actor:
+            messages.error(request, "Admin kullanicisi eslestirilemedi.")
+            return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO buyer_notes (id, buyer_id, admin_id, note, created_at)
+                VALUES (%s, %s, %s, %s, now())
+                """,
+                [str(uuid.uuid4()), str(user_id), admin_actor["id"], note],
+            )
+
+        messages.success(request, "Not eklendi.")
+        return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
+
+    def buyer_add_tag_view(self, request, user_id):
+        if request.method != "POST":
+            return JsonResponse({"error": "Method not allowed"}, status=405)
+
+        tag = (request.POST.get("tag") or "").strip()
+        if not tag:
+            messages.error(request, "Etiket bos olamaz.")
+            return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
+        if len(tag) > 100:
+            messages.error(request, "Etiket en fazla 100 karakter olabilir.")
+            return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO buyer_tags (id, buyer_id, tag, created_at)
+                VALUES (%s, %s, %s, now())
+                ON CONFLICT (buyer_id, tag) DO NOTHING
+                RETURNING id
+                """,
+                [str(uuid.uuid4()), str(user_id), tag],
+            )
+            row = cur.fetchone()
+
+        if row:
+            messages.success(request, "Etiket eklendi.")
+        else:
+            messages.info(request, "Bu etiket zaten var.")
+        return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
+
+    def buyer_delete_tag_view(self, request, user_id):
+        if request.method != "POST":
+            return JsonResponse({"error": "Method not allowed"}, status=405)
+
+        tag = (request.POST.get("tag") or "").strip()
+        if not tag:
+            messages.error(request, "Silinecek etiket bulunamadi.")
+            return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
+
+        with connection.cursor() as cur:
+            cur.execute(
+                "DELETE FROM buyer_tags WHERE buyer_id = %s AND tag = %s",
+                [str(user_id), tag],
+            )
+            deleted = cur.rowcount
+
+        if deleted:
+            messages.success(request, "Etiket silindi.")
+        else:
+            messages.info(request, "Etiket bulunamadi.")
+        return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
 
     @display(description=_("Name"), ordering="display_name")
     def display_name_link(self, obj):

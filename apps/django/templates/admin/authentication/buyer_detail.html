@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="space-y-4" x-data="{
-  tab: 'general', search: '',
+  tab: '{{ active_tab|default:"general"|escapejs }}', search: '',
   orderModal: { open: false, loading: false, order: null },
   async openOrder(id) {
     this.orderModal = { open: true, loading: true, order: null };
@@ -348,14 +348,71 @@
 
     {# ── Notes & Tags Tab ── #}
     <div x-show="tab === 'notes'" class="space-y-6 p-4 sm:p-6">
+      <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <form method="post" action="{% url 'admin:authentication_buyerusers_add_tag' user.id %}"
+              class="rounded-xl border border-base-200 bg-base-50/60 p-4 dark:border-base-700 dark:bg-base-800/60">
+          {% csrf_token %}
+          <div class="mb-3 flex items-center gap-2">
+            <span class="material-symbols-outlined text-base text-primary-500">sell</span>
+            <h3 class="text-sm font-semibold text-base-800 dark:text-base-100">Etiket ekle</h3>
+          </div>
+          <div class="flex flex-col gap-3 sm:flex-row">
+            <input type="text"
+                   name="tag"
+                   maxlength="100"
+                   placeholder="Etiket adi"
+                   class="w-full rounded-lg border border-base-300 bg-white px-3 py-2 text-sm text-base-900 outline-none transition focus:border-primary-500 dark:border-base-600 dark:bg-base-900 dark:text-white">
+            <button type="submit"
+                    class="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700">
+              <span class="material-symbols-outlined text-sm leading-none">add</span>
+              Ekle
+            </button>
+          </div>
+        </form>
+
+        <form method="post" action="{% url 'admin:authentication_buyerusers_add_note' user.id %}"
+              class="rounded-xl border border-base-200 bg-base-50/60 p-4 dark:border-base-700 dark:bg-base-800/60">
+          {% csrf_token %}
+          <div class="mb-3 flex items-center gap-2">
+            <span class="material-symbols-outlined text-base text-primary-500">note_add</span>
+            <h3 class="text-sm font-semibold text-base-800 dark:text-base-100">Not ekle</h3>
+          </div>
+          <div class="space-y-3">
+            <textarea name="note"
+                      rows="4"
+                      placeholder="Bu kullanici icin kisa bir not yaz"
+                      class="w-full rounded-lg border border-base-300 bg-white px-3 py-2 text-sm text-base-900 outline-none transition focus:border-primary-500 dark:border-base-600 dark:bg-base-900 dark:text-white"></textarea>
+            <div class="flex justify-end">
+              <button type="submit"
+                      class="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700">
+                <span class="material-symbols-outlined text-sm leading-none">save</span>
+                Kaydet
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
       <div>
         <h3 class="text-sm font-semibold text-base-500 uppercase tracking-wide mb-3">{% trans "Etiketler" %}</h3>
         {% if tags %}
           <div class="flex flex-wrap gap-2">
             {% for t in tags %}
-              <span class="px-3 py-1 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-sm font-medium">
-                {{ t.tag }}
-              </span>
+              <form method="post"
+                    action="{% url 'admin:authentication_buyerusers_delete_tag' user.id %}"
+                    class="inline-flex">
+                {% csrf_token %}
+                <input type="hidden" name="tag" value="{{ t.tag }}">
+                <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium"
+                      style="{{ t.style }}">
+                  <span>{{ t.tag }}</span>
+                  <button type="submit"
+                          class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/10 text-current transition hover:bg-black/20"
+                          aria-label="Etiketi sil">
+                    <span class="material-symbols-outlined text-sm leading-none">close</span>
+                  </button>
+                </span>
+              </form>
             {% endfor %}
           </div>
         {% else %}
@@ -367,13 +424,23 @@
         {% if notes %}
           <div class="space-y-3">
             {% for n in notes %}
-            <div data-search="{{ n.note }} {{ n.admin_email }}"
+            <div data-search="{{ n.note }} {{ n.creator_name }} {{ n.admin_email }}"
                  x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
                  class="border border-base-200 dark:border-base-700 rounded-lg p-4">
               <p class="text-sm text-base-900 dark:text-white">{{ n.note }}</p>
-              <div class="flex items-center justify-between mt-2">
-                <span class="text-xs text-base-400">{{ n.admin_email|default:"Admin" }}</span>
-                <span class="text-xs text-base-400">{{ n.created_at|date:"d.m.Y H:i" }}</span>
+              <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-base-400">
+                <span class="inline-flex items-center gap-1 rounded-full bg-base-100 px-2.5 py-1 dark:bg-base-800">
+                  <span class="material-symbols-outlined text-sm leading-none">person</span>
+                  {{ n.creator_name }}
+                </span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-base-100 px-2.5 py-1 dark:bg-base-800">
+                  <span class="material-symbols-outlined text-sm leading-none">calendar_today</span>
+                  {{ n.created_at|date:"d.m.Y" }}
+                </span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-base-100 px-2.5 py-1 dark:bg-base-800">
+                  <span class="material-symbols-outlined text-sm leading-none">schedule</span>
+                  {{ n.created_at|date:"H:i" }}
+                </span>
               </div>
             </div>
             {% endfor %}
