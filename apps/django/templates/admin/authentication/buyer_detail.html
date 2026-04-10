@@ -364,7 +364,7 @@
                      name="tag"
                      maxlength="100"
                      placeholder="Etiket adi"
-                     class="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none transition"
+                     class="min-w-0 flex-[1.6] rounded-lg border px-3 py-2 text-sm outline-none transition"
                      style="background:#151a2a;border-color:#353d58;color:#eef2ff"
                      onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#353d58'">
               <button type="submit"
@@ -402,10 +402,6 @@
               <p class="text-sm" style="color:#7f89a7">{% trans "Etiket bulunamadı." %}</p>
             {% endif %}
           </div>
-
-          <div class="mt-6 border-t pt-5" style="border-color:#2f3650">
-            <h4 class="text-sm font-semibold uppercase tracking-wide" style="color:#9aa3bd">{% trans "Notlar" %}</h4>
-          </div>
         </div>
 
         <div class="rounded-xl border p-4"
@@ -420,7 +416,7 @@
               <input type="text"
                      name="note"
                      placeholder=""
-                     class="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none transition"
+                     class="min-w-0 flex-[1.6] rounded-lg border px-3 py-2 text-sm outline-none transition"
                      style="background:#151a2a;border-color:#353d58;color:#eef2ff"
                      onfocus="this.style.borderColor='#8b5cf6'" onblur="this.style.borderColor='#353d58'">
               <button type="submit"
@@ -436,9 +432,8 @@
             {% if notes %}
               {% for n in notes %}
               <div data-search="{{ n.note }} {{ n.creator_name }} {{ n.admin_email }}"
-                   x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
-                   class="rounded-xl border p-4"
-                   style="background:#1c2234;border-color:#2f3650">
+                   x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())">
+                <div class="mb-3 h-px w-full" style="background:#2f3650"></div>
                 <div class="mb-1 flex flex-wrap items-center gap-1 text-sm font-semibold text-white">
                   <span>{{ n.creator_name }}</span>
                   <span style="color:#7f89a7">-</span>
@@ -447,6 +442,7 @@
                   <span class="font-medium" style="color:#9aa3bd">{{ n.created_at|date:"H:i" }}</span>
                 </div>
                 <p class="text-sm" style="color:#c6cde2">{{ n.note }}</p>
+                <div class="mt-3 h-px w-full" style="background:#2f3650"></div>
               </div>
               {% endfor %}
             {% else %}
