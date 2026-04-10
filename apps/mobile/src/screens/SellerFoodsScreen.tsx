@@ -1530,6 +1530,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                       setSelectedIngredients((prev) =>
                         selected ? prev.filter((x) => x !== item) : [...prev, item],
                       );
+                      setIngredientSearch("");
                     }}
                   >
                     <Text style={[styles.categoryOptionText, selected && styles.categoryOptionTextActive]}>{item}</Text>
