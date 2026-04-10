@@ -25,7 +25,7 @@ export function normalizeSellerLotSnapshot(raw: Record<string, unknown>): Seller
   return {
     id: String(raw.id ?? ""),
     foodId: String(raw.foodId ?? raw.food_id ?? "").trim(),
-    status: String(raw.status ?? "").trim().toLowerCase(),
+    status: String(raw.status ?? raw.lifecycleStatus ?? raw.lifecycle_status ?? "").trim().toLowerCase(),
     quantityAvailable: Number(raw.quantityAvailable ?? raw.quantity_available ?? 0),
     saleStartsAt: typeof raw.saleStartsAt === "string"
       ? raw.saleStartsAt
