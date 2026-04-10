@@ -37,6 +37,45 @@
 
     <template x-if="!loading && kpis">
         <div class="relative space-y-5">
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <template x-for="alert in opsAlerts()" :key="alert.key">
+                    <a :href="alert.href"
+                       class="group rounded-2xl border px-4 py-3.5 transition-all hover:-translate-y-0.5"
+                       :class="alert.tone === 'rose'
+                           ? 'border-rose-200/70 bg-rose-50/80 dark:border-rose-900/70 dark:bg-rose-950/30'
+                           : alert.tone === 'amber'
+                               ? 'border-amber-200/70 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/30'
+                               : 'border-sky-200/70 bg-sky-50/80 dark:border-sky-900/70 dark:bg-sky-950/30'">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="text-xs font-semibold uppercase tracking-widest"
+                                     :class="alert.tone === 'rose'
+                                         ? 'text-rose-700 dark:text-rose-300'
+                                         : alert.tone === 'amber'
+                                             ? 'text-amber-700 dark:text-amber-300'
+                                             : 'text-sky-700 dark:text-sky-300'"
+                                     x-text="alert.label"></div>
+                                <div class="mt-1.5 text-2xl font-semibold"
+                                     :class="alert.tone === 'rose'
+                                         ? 'text-rose-900 dark:text-rose-100'
+                                         : alert.tone === 'amber'
+                                             ? 'text-amber-900 dark:text-amber-100'
+                                             : 'text-sky-900 dark:text-sky-100'"
+                                     x-text="fmt(alert.value)"></div>
+                            </div>
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
+                                 :class="alert.tone === 'rose'
+                                     ? 'border-rose-300/50 text-rose-600 dark:border-rose-700 dark:text-rose-300'
+                                     : alert.tone === 'amber'
+                                         ? 'border-amber-300/50 text-amber-600 dark:border-amber-700 dark:text-amber-300'
+                                         : 'border-sky-300/50 text-sky-600 dark:border-sky-700 dark:text-sky-300'">
+                                <span class="material-symbols-outlined text-base leading-none" x-text="alert.icon"></span>
+                            </div>
+                        </div>
+                    </a>
+                </template>
+            </div>
+
             <div class="overflow-hidden rounded-3xl border border-slate-200/80 text-white shadow-xl dark:border-base-700"
                  style="background: linear-gradient(135deg, #0f172a 0%, #132238 42%, #0f766e 100%);">
                 <div class="grid gap-5 px-5 py-6 lg:grid-cols-4 lg:px-6">
@@ -132,7 +171,9 @@
                                 </div>
                                 <div class="flex items-center gap-2 text-xs text-slate-300">
                                     <span class="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                    {% trans "Updating" %}
+                                    <span>{% trans "Updating" %}</span>
+                                    <span class="text-slate-400">•</span>
+                                    <span class="text-slate-200" x-text="relativeLastUpdated()"></span>
                                 </div>
                             </div>
 
@@ -190,7 +231,8 @@
                             </div>
                             <div class="space-y-3 px-5 py-5">
                                 <template x-for="entry in activityFeed()" :key="entry.key">
-                                    <div class="rounded-xl border border-white/8 bg-slate-950/10 px-4 py-3">
+                                    <a :href="entry.href"
+                                       class="group block rounded-xl border border-white/8 bg-slate-950/10 px-4 py-3 transition-colors hover:bg-slate-950/20">
                                         <div class="flex items-center gap-3">
                                             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
                                                  :class="entry.tone === 'emerald'
@@ -200,19 +242,22 @@
                                                          : entry.tone === 'rose'
                                                              ? 'bg-rose-400/10 text-rose-100'
                                                              : 'bg-sky-400/10 text-sky-100'">
-                                                <span class="material-symbols-outlined text-[18px] leading-none" x-text="entry.icon"></span>
+                                                <span class="material-symbols-outlined text-lg leading-none" x-text="entry.icon"></span>
                                             </div>
                                             <div class="min-w-0 flex-1">
                                                 <div class="flex items-center justify-between gap-3">
                                                     <div class="min-w-0">
                                                         <div class="truncate text-base font-semibold text-white" x-text="entry.title"></div>
                                                     </div>
-                                                    <div class="shrink-0 pl-3 text-right text-xl font-semibold text-white"
-                                                         x-text="entry.value"></div>
+                                                    <div class="flex items-center gap-3 shrink-0">
+                                                        <div class="text-right text-xl font-semibold text-white" x-text="entry.value"></div>
+                                                        <span class="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[11px] font-medium text-slate-200"
+                                                              x-text="entry.action"></span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </a>
                                 </template>
                             </div>
                         </div>
@@ -252,14 +297,31 @@
                 <div class="overflow-hidden rounded-3xl border border-base-200/80 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 lg:col-span-1">
                     <div class="flex items-center justify-between gap-3 border-b border-base-200/80 px-5 py-4 dark:border-base-700">
                         <div>
-                            <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Recent complaints" %}</div>
-                            <div class="mt-1 text-lg font-semibold text-base-900 dark:text-base-50">{% trans "Priority queue" %}</div>
+                            <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "SLA & backlog" %}</div>
+                            <div class="mt-1 text-lg font-semibold text-base-900 dark:text-base-50">{% trans "Operational risk queue" %}</div>
                         </div>
-                        <a href="/admin/complaints/complaints/" class="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
-                            {% trans "View all" %}
-                        </a>
+                    </div>
+                    <div class="space-y-2 px-4 py-4 border-b border-base-100 dark:border-base-800">
+                        <template x-for="item in backlogItems()" :key="item.key">
+                            <a :href="item.href"
+                               class="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-base-50 dark:hover:bg-base-800/50">
+                                <div class="min-w-0">
+                                    <div class="truncate text-sm font-medium text-base-800 dark:text-base-100" x-text="item.label"></div>
+                                </div>
+                                <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
+                                      :class="item.tone === 'rose'
+                                          ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                                          : item.tone === 'amber'
+                                              ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                                              : 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300'"
+                                      x-text="fmt(item.value)"></span>
+                            </a>
+                        </template>
                     </div>
                     <div class="divide-y divide-base-100 dark:divide-base-800">
+                        <div class="px-5 py-3 text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">
+                            {% trans "Recent complaints" %}
+                        </div>
                         <template x-for="(c, i) in complaints.slice(0, 5)" :key="i">
                             <a :href="'/admin/complaints/complaints/' + c.id + '/change/'"
                                class="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-base-50 dark:hover:bg-base-800/40">
@@ -290,6 +352,7 @@ function dashboard() {
     return {
         loading: true,
         kpis: null,
+        ops: null,
         chart: [],
         orders: [],
         complaints: [],
@@ -302,6 +365,7 @@ function dashboard() {
                 if (!resp.ok) return;
                 const d = await resp.json();
                 this.kpis = d.kpis;
+                this.ops = d.ops || this.defaultOps();
                 this.chart = d.chart || [];
                 this.orders = d.recent_orders || [];
                 this.complaints = d.recent_complaints || [];
@@ -310,6 +374,18 @@ function dashboard() {
             } finally {
                 this.loading = false;
             }
+        },
+
+        defaultOps() {
+            return {
+                failed_payments_24h: 0,
+                open_disputes: 0,
+                overdue_active_orders: 0,
+                high_priority_complaints: 0,
+                stale_pending_docs: 0,
+                low_rating_reviews_7d: 0,
+                last_updated_at: null,
+            };
         },
 
         leftPanelItems() {
@@ -325,10 +401,27 @@ function dashboard() {
 
         activityFeed() {
             return [
-                { key: 'orders', title: '{% trans "Orders moving now" %}', text: '{% trans "Active delivery and preparation load" %}', value: this.fmt(this.kpis.orders_active), icon: 'local_shipping', tone: 'sky' },
-                { key: 'complaints', title: '{% trans "Attention needed" %}', text: '{% trans "Open customer complaints in queue" %}', value: this.fmt(this.kpis.open_complaints), icon: 'priority_high', tone: 'rose' },
-                { key: 'seller_reviews', title: '{% trans "Seller review lane" %}', text: '{% trans "Profiles waiting for decision" %}', value: this.fmt(this.kpis.pending_sellers), icon: 'store', tone: 'amber' },
-                { key: 'doc_reviews', title: '{% trans "Compliance lane" %}', text: '{% trans "Documents still pending" %}', value: this.fmt(this.kpis.pending_compliance), icon: 'inventory_2', tone: 'amber' },
+                { key: 'orders', title: '{% trans "Orders moving now" %}', value: this.fmt(this.kpis.orders_active), icon: 'local_shipping', tone: 'sky', action: '{% trans "Inspect" %}', href: '/admin/orders/orders/' },
+                { key: 'complaints', title: '{% trans "Attention needed" %}', value: this.fmt(this.ops.high_priority_complaints), icon: 'priority_high', tone: 'rose', action: '{% trans "Review" %}', href: '/admin/complaints/complaints/' },
+                { key: 'seller_reviews', title: '{% trans "Seller review lane" %}', value: this.fmt(this.kpis.pending_sellers), icon: 'store', tone: 'amber', action: '{% trans "Open" %}', href: '/admin/authentication/sellerusers/' },
+                { key: 'doc_reviews', title: '{% trans "Compliance lane" %}', value: this.fmt(this.ops.stale_pending_docs), icon: 'inventory_2', tone: 'amber', action: '{% trans "Check" %}', href: '/admin/compliance/sellercompliancedocuments/' },
+            ];
+        },
+
+        opsAlerts() {
+            return [
+                { key: 'high_priority_complaints', label: '{% trans "Critical complaints" %}', value: this.ops.high_priority_complaints, icon: 'emergency', tone: 'rose', href: '/admin/complaints/complaints/' },
+                { key: 'failed_payments_24h', label: '{% trans "Failed payments (24h)" %}', value: this.ops.failed_payments_24h, icon: 'payments', tone: 'amber', href: '/admin/orders/orders/?payment_completed__exact=0' },
+                { key: 'overdue_active_orders', label: '{% trans "Overdue active orders" %}', value: this.ops.overdue_active_orders, icon: 'schedule', tone: 'amber', href: '/admin/orders/orders/' },
+                { key: 'open_disputes', label: '{% trans "Open payment disputes" %}', value: this.ops.open_disputes, icon: 'gavel', tone: 'sky', href: '/admin/orders/orders/' },
+            ];
+        },
+
+        backlogItems() {
+            return [
+                { key: 'stale_docs', label: '{% trans "Stale pending docs (24h+)" %}', value: this.ops.stale_pending_docs, tone: 'amber', href: '/admin/compliance/sellercompliancedocuments/' },
+                { key: 'low_reviews', label: '{% trans "Low rating reviews (7d)" %}', value: this.ops.low_rating_reviews_7d, tone: 'rose', href: '/admin/orders/reviews/' },
+                { key: 'pending_sellers', label: '{% trans "Pending seller approvals" %}', value: this.kpis.pending_sellers, tone: 'sky', href: '/admin/authentication/sellerusers/' },
             ];
         },
 
@@ -368,6 +461,18 @@ function dashboard() {
             if (!dateStr) return '';
             const d = new Date(dateStr);
             return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+        },
+
+        relativeLastUpdated() {
+            if (!this.ops || !this.ops.last_updated_at) return '{% trans "just now" %}';
+            const now = new Date();
+            const stamp = new Date(this.ops.last_updated_at);
+            const sec = Math.max(0, Math.floor((now.getTime() - stamp.getTime()) / 1000));
+            if (sec < 60) return `${sec}s`;
+            const min = Math.floor(sec / 60);
+            if (min < 60) return `${min}m`;
+            const hr = Math.floor(min / 60);
+            return `${hr}h`;
         },
 
         ordersPoints() {

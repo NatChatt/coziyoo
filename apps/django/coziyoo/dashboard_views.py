@@ -61,6 +61,59 @@ def dashboard_data(request):
         """)
         pending_compliance = cur.fetchone()[0]
 
+        # ── Ops metrics (alerts + backlog) ──────────────────────────────────
+        cur.execute("""
+            SELECT count(*)
+            FROM payment_attempts
+            WHERE created_at >= now() - interval '24 hours'
+              AND status IN ('failed', 'error', 'cancelled')
+        """)
+        failed_payments_24h = cur.fetchone()[0]
+
+        cur.execute("""
+            SELECT count(*)
+            FROM payment_dispute_cases
+            WHERE status NOT IN ('resolved', 'closed')
+        """)
+        open_disputes = cur.fetchone()[0]
+
+        cur.execute("""
+            SELECT count(*)
+            FROM orders
+            WHERE status IN ('pending', 'processing', 'accepted')
+              AND created_at <= now() - interval '30 minutes'
+        """)
+        overdue_active_orders = cur.fetchone()[0]
+
+        cur.execute("""
+            SELECT count(*)
+            FROM complaints
+            WHERE status IN ('open', 'in_review')
+              AND priority IN ('high', 'critical', 'urgent')
+        """)
+        high_priority_complaints = cur.fetchone()[0]
+
+        cur.execute("""
+            SELECT count(*)
+            FROM seller_compliance_documents
+            WHERE status = 'pending'
+              AND created_at <= now() - interval '24 hours'
+        """)
+        stale_pending_docs = cur.fetchone()[0]
+
+        cur.execute("""
+            SELECT count(*)
+            FROM reviews
+            WHERE created_at >= now() - interval '7 days'
+              AND rating <= 2
+        """)
+        low_rating_reviews_7d = cur.fetchone()[0]
+
+        cur.execute("""
+            SELECT to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+        """)
+        last_updated_at = cur.fetchone()[0]
+
         # ── 7-day sparkline (orders + revenue) ──────────────────────────────
         cur.execute("""
             SELECT
@@ -153,6 +206,15 @@ def dashboard_data(request):
             "open_complaints": int(open_complaints),
             "complaints_today": int(complaints_today),
             "pending_compliance": int(pending_compliance),
+        },
+        "ops": {
+            "failed_payments_24h": int(failed_payments_24h),
+            "open_disputes": int(open_disputes),
+            "overdue_active_orders": int(overdue_active_orders),
+            "high_priority_complaints": int(high_priority_complaints),
+            "stale_pending_docs": int(stale_pending_docs),
+            "low_rating_reviews_7d": int(low_rating_reviews_7d),
+            "last_updated_at": last_updated_at,
         },
         "chart": chart_data,
         "recent_orders": recent_orders,
