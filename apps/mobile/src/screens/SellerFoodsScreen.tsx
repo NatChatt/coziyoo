@@ -566,8 +566,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
           setImageUrls(hydratedImageUrls);
           setPrepTime(typeof parsed.prepTime === "string" ? parsed.prepTime : "");
           setInitialStock(typeof parsed.initialStock === "string" ? parsed.initialStock : "10");
-          setInitialSaleStartsAt(typeof parsed.initialSaleStartsAt === "string" ? parsed.initialSaleStartsAt : startOfDayIso());
-          setInitialSaleEndsAt(typeof parsed.initialSaleEndsAt === "string" ? parsed.initialSaleEndsAt : endOfDayIso());
+          setInitialSaleStartsAt(startOfDayIso());
+          setInitialSaleEndsAt(endOfDayIso());
           setCuisine(typeof parsed.cuisine === "string" ? parsed.cuisine : "");
           setCategoryId(typeof parsed.categoryId === "string" ? parsed.categoryId : "");
           setFreeAddonNameInput(typeof parsed.freeAddonNameInput === "string" ? parsed.freeAddonNameInput : "");
