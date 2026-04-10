@@ -283,15 +283,13 @@ function parseSaleDateOrToday(value: string): Date {
 
 function formatSaleDate(value: string, locale: string): string {
   if (!value.trim()) return "";
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) return "";
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0, 0);
-  if (Number.isNaN(date.getTime())) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
   return new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
-  }).format(date);
+  }).format(parsed);
 }
 
 async function parseResponseBodySafe(res: Response): Promise<unknown> {
@@ -2118,8 +2116,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   dateSelectedText: {
-    fontSize: 13,
-    color: "#6C5F54",
+    fontSize: 15,
+    color: "#2E241C",
+    fontWeight: "600",
     marginTop: 2,
   },
   dropdownInput: {
