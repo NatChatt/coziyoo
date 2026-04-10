@@ -782,17 +782,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
 
   useEffect(() => {
     if (!pendingInitialEditId) return;
-    const target = foods.find((item) => String((item as { id?: unknown }).id ?? "") === pendingInitialEditId);
-    if (!target) {
-      if (!loading) {
-        setPendingInitialEditId(null);
-        Alert.alert(t('headline.common.error'), t('error.seller.foods.editTargetMissing'));
-      }
-      return;
-    }
-    openEdit(target);
-    setPendingInitialEditId(null);
-  }, [pendingInitialEditId, foods, loading]);
+    void loadFoodForEdit(pendingInitialEditId);
+  }, [pendingInitialEditId]);
 
   function resetForm() {
     editLotRequestIdRef.current += 1;
@@ -875,6 +866,35 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setPaidAddonKindInput("extra");
     setPaidAddonPriceInput("");
     void loadEditLot(food.id, requestId);
+  }
+
+  async function loadFoodForEdit(foodId: string) {
+    try {
+      setLoading(true);
+      const settings = await loadSettings();
+      const baseUrl = settings.apiUrl;
+      setApiUrl(baseUrl);
+      const res = await authedFetch(`/v1/seller/foods?foodId=${foodId}`, undefined, baseUrl);
+      const json = await parseResponseBodySafe(res);
+      if (!res.ok) throw new Error(resolveApiMessage(json, t('error.seller.foods.load')));
+      const payload = (json && typeof json === "object") ? (json as Record<string, unknown>) : {};
+      const rows: SellerFood[] = Array.isArray(payload.data)
+        ? (payload.data as unknown[]).map((item: unknown) => normalizeSellerFood((item ?? {}) as Record<string, unknown>))
+        : [];
+      const target = rows.find((item) => item.id === foodId) ?? rows[0] ?? null;
+      if (!target) {
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.editTargetMissing'));
+        setPendingInitialEditId(null);
+        return;
+      }
+      openEdit(target);
+      setPendingInitialEditId(null);
+    } catch (error) {
+      setPendingInitialEditId(null);
+      Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.seller.foods.load'));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadEditLot(foodId: string, requestId: number) {
