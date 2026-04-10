@@ -161,6 +161,20 @@ Tablo hover: `hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors`
 
 Birincil renk: mor (`primary-600` = `#9333ea`)
 
+### Admin Kart Ritmi
+
+Admin dashboard ve detail ekranlarindaki kartlarda asagidaki ritim korunmali:
+
+- Kart ici padding "sikisik" olmamali. Kucuk kartlarda minimum `px-4 py-4`, orta/buyuk kartlarda minimum `px-5 py-4` kullan.
+- Ikon kutusu, metin blogu ve sagdaki badge/deger ayni dikey eksende ortali ya da bilincli bicimde `items-start` ile hizali olmali; "yarim center" gorunumu olmamali.
+- Baslik ile aciklama arasinda minimum `mt-1`, aciklama satirinda da rahat okunur line-height (`leading-5`) kullan.
+- Kart gruplari arasinda nefes birak. Ust panel ile alt kart listeleri arasinda minimum `space-y-4` veya esdeger bosluk kullan.
+- Tiklanabilir kartlar bilgi kartlarindan ayri gorunmeli:
+  - tiklanabilir/action kart: yon oku, hover hareketi veya daha belirgin border/zemin
+  - salt bilgi karti: daha sakin arka plan, daha az hareket
+- Kart tasarlarken "tek bakista tarama" testi uygula: ikon, baslik, alt metin ve sayi birbirine yapisik gorunuyorsa spacing yetersizdir.
+- Yeni admin karti eklerken mevcut iyi referans olarak `templates/admin/index.html` icindeki live activity kart ritmini izle.
+
 ### Buyer/Seller Detail Header
 
 5 sütunlu grid: `grid grid-cols-5 gap-4 items-center`
