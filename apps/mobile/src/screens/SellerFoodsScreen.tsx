@@ -1494,52 +1494,13 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
           <View onLayout={(event) => handleFieldLayout("ingredients", event)}>
             <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("ingredients") && styles.sectionTitleError]}>{t('headline.seller.foods.ingredients')}</Text>
             {selectedIngredients.length === 0 ? (
-              <View>
-                <TouchableOpacity
-                  style={[styles.input, styles.ingredientsPickerBtn, isRequiredFieldHighlighted("ingredients") && styles.inputError]}
-                  onPress={() => { setIngredientsPickerVisible(true); clearRequiredFieldHighlight("ingredients"); }}
-                >
-                  <Text style={styles.ingredientsPickerPlaceholder}>{t('helper.seller.foods.ingredientsPickerPlaceholder')}</Text>
-                </TouchableOpacity>
-                <View style={styles.inlineIngredientRow}>
-                  <TextInput
-                    style={styles.inlineIngredientInput}
-                    value={inlineIngredientInput}
-                    onChangeText={setInlineIngredientInput}
-                    placeholder={t('helper.seller.foods.newIngredientPlaceholder')}
-                    placeholderTextColor={PLACEHOLDER_COLOR}
-                    returnKeyType="done"
-                    onSubmitEditing={async () => {
-                      const trimmed = inlineIngredientInput.trim();
-                      if (!trimmed) return;
-                      await addIngredientToLibrary(trimmed);
-                      const updated = await loadIngredientLibrary(apiUrl, currentAuth);
-                      setIngredientLibrary(updated);
-                      setSelectedIngredients((prev) => [...new Set([...prev, trimmed])]);
-                      setInlineIngredientInput("");
-                      clearRequiredFieldHighlight("ingredients");
-                    }}
-                  />
-                  <TouchableOpacity
-                    style={[styles.inlineIngredientAddBtn, !inlineIngredientInput.trim() && styles.btnDisabled]}
-                    disabled={!inlineIngredientInput.trim()}
-                    onPress={async () => {
-                      const trimmed = inlineIngredientInput.trim();
-                      if (!trimmed) return;
-                      await addIngredientToLibrary(trimmed);
-                      const updated = await loadIngredientLibrary(apiUrl, currentAuth);
-                      setIngredientLibrary(updated);
-                      setSelectedIngredients((prev) => [...new Set([...prev, trimmed])]);
-                      setInlineIngredientInput("");
-                      clearRequiredFieldHighlight("ingredients");
-                    }}
-                  >
-                    <Ionicons name="add" size={20} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              </View>
+              <TouchableOpacity
+                style={[styles.input, styles.ingredientsPickerBtn, isRequiredFieldHighlighted("ingredients") && styles.inputError]}
+                onPress={() => { setIngredientsPickerVisible(true); clearRequiredFieldHighlight("ingredients"); }}
+              >
+                <Text style={styles.ingredientsPickerPlaceholder}>{t('helper.seller.foods.ingredientsPickerPlaceholder')}</Text>
+              </TouchableOpacity>
             ) : (
-              <View>
               <View style={styles.ingredientChipsWrap}>
                 {selectedIngredients.map((ing) => (
                   <TouchableOpacity
@@ -1554,43 +1515,6 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                 <TouchableOpacity style={styles.ingredientAddChip} onPress={() => setIngredientsPickerVisible(true)}>
                   <Text style={styles.ingredientAddChipText}>+ {t('cta.seller.foods.editIngredients')}</Text>
                 </TouchableOpacity>
-              </View>
-              <View style={styles.inlineIngredientRow}>
-                <TextInput
-                  style={styles.inlineIngredientInput}
-                  value={inlineIngredientInput}
-                  onChangeText={setInlineIngredientInput}
-                  placeholder={t('helper.seller.foods.newIngredientPlaceholder')}
-                  placeholderTextColor={PLACEHOLDER_COLOR}
-                  returnKeyType="done"
-                  onSubmitEditing={async () => {
-                    const trimmed = inlineIngredientInput.trim();
-                    if (!trimmed) return;
-                    await addIngredientToLibrary(trimmed);
-                    const updated = await loadIngredientLibrary(apiUrl, currentAuth);
-                    setIngredientLibrary(updated);
-                    setSelectedIngredients((prev) => [...new Set([...prev, trimmed])]);
-                    setInlineIngredientInput("");
-                    clearRequiredFieldHighlight("ingredients");
-                  }}
-                />
-                <TouchableOpacity
-                  style={[styles.inlineIngredientAddBtn, !inlineIngredientInput.trim() && styles.btnDisabled]}
-                  disabled={!inlineIngredientInput.trim()}
-                  onPress={async () => {
-                    const trimmed = inlineIngredientInput.trim();
-                    if (!trimmed) return;
-                    await addIngredientToLibrary(trimmed);
-                    const updated = await loadIngredientLibrary(apiUrl, currentAuth);
-                    setIngredientLibrary(updated);
-                    setSelectedIngredients((prev) => [...new Set([...prev, trimmed])]);
-                    setInlineIngredientInput("");
-                    clearRequiredFieldHighlight("ingredients");
-                  }}
-                >
-                  <Ionicons name="add" size={20} color="#fff" />
-                </TouchableOpacity>
-              </View>
               </View>
             )}
           </View>
@@ -1738,41 +1662,27 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               </View>
 
               <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialSaleStartsAt", event)}>
-                <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleStartsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleStart')}</Text>
-                <TouchableOpacity
-                  style={[styles.input, styles.dateSelector, isRequiredFieldHighlighted("initialSaleStartsAt") && styles.inputError]}
-                  onPress={() => openSaleDatePicker("initialSaleStartsAt")}
-                  activeOpacity={0.85}
-                >
-                  <Text
-                    style={[
-                      styles.dateSelectorText,
-                      !formatSaleDate(initialSaleStartsAt, locale) && styles.dateSelectorPlaceholder,
-                    ]}
-                  >
-                    {formatSaleDate(initialSaleStartsAt, locale) || t('helper.seller.foods.initialSaleStartPlaceholder')}
-                  </Text>
-                  <Ionicons name="calendar-outline" size={20} color="#6C5F54" />
-                </TouchableOpacity>
+                <View style={styles.dateIconRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleStartsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleStart')}</Text>
+                    {initialSaleStartsAt ? <Text style={styles.dateSelectedText}>{formatSaleDate(initialSaleStartsAt, locale)}</Text> : null}
+                  </View>
+                  <TouchableOpacity onPress={() => openSaleDatePicker("initialSaleStartsAt")} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                    <Ionicons name="calendar-outline" size={26} color={isRequiredFieldHighlighted("initialSaleStartsAt") ? "#E5484D" : "#3F855C"} />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialSaleEndsAt", event)}>
-                <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleEndsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleEnd')}</Text>
-                <TouchableOpacity
-                  style={[styles.input, styles.dateSelector, isRequiredFieldHighlighted("initialSaleEndsAt") && styles.inputError]}
-                  onPress={() => openSaleDatePicker("initialSaleEndsAt")}
-                  activeOpacity={0.85}
-                >
-                  <Text
-                    style={[
-                      styles.dateSelectorText,
-                      !formatSaleDate(initialSaleEndsAt, locale) && styles.dateSelectorPlaceholder,
-                    ]}
-                  >
-                    {formatSaleDate(initialSaleEndsAt, locale) || t('helper.seller.foods.initialSaleEndPlaceholder')}
-                  </Text>
-                  <Ionicons name="calendar-outline" size={20} color="#6C5F54" />
-                </TouchableOpacity>
+                <View style={styles.dateIconRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleEndsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleEnd')}</Text>
+                    {initialSaleEndsAt ? <Text style={styles.dateSelectedText}>{formatSaleDate(initialSaleEndsAt, locale)}</Text> : null}
+                  </View>
+                  <TouchableOpacity onPress={() => openSaleDatePicker("initialSaleEndsAt")} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                    <Ionicons name="calendar-outline" size={26} color={isRequiredFieldHighlighted("initialSaleEndsAt") ? "#E5484D" : "#3F855C"} />
+                  </TouchableOpacity>
+                </View>
               </View>
             </>
           ) : null}
@@ -1838,7 +1748,8 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             <DateTimePicker
               value={pendingSaleDate}
               mode="date"
-              display="inline"
+              display="spinner"
+              locale={locale}
               onChange={handleSaleDateChange}
             />
           </View>
@@ -2201,20 +2112,15 @@ const styles = StyleSheet.create({
     borderColor: "#E5484D",
     backgroundColor: "#FFF5F5",
   },
-  dateSelector: {
+  dateIconRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  dateSelectorText: {
-    flex: 1,
-    color: "#2E241C",
-    fontWeight: "600",
-    paddingRight: 12,
-  },
-  dateSelectorPlaceholder: {
-    color: "#8A7A6A",
-    fontWeight: "500",
+  dateSelectedText: {
+    fontSize: 13,
+    color: "#6C5F54",
+    marginTop: 2,
   },
   dropdownInput: {
     flexDirection: "row",
