@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { AuthSession } from "../utils/auth";
 import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
-import { getCurrentLanguage, loadSettings } from "../utils/settings";
+import { getCurrentLanguage, loadSettings, subscribeSettings } from "../utils/settings";
 import { clearSellerFoodsCache } from "../utils/sellerFoodsCache";
 import { type IngredientTemplate, addIngredientToLibrary, loadIngredientLibrary } from "../utils/ingredientsLibrary";
 import { type AddonTemplate, addCustomAddon, loadAddonLibrary } from "../utils/addonLibrary";
@@ -336,7 +336,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const allergensInputRef = useRef<TextInput | null>(null);
   const priceInputRef = useRef<TextInput | null>(null);
   const prepTimeInputRef = useRef<TextInput | null>(null);
-  const currentLanguage = getCurrentLanguage();
+  const [currentLanguage, setCurrentLanguage_] = useState(getCurrentLanguage);
+  useEffect(() => subscribeSettings((s) => setCurrentLanguage_(s.language)), []);
   const locale = currentLanguage === "en" ? "en-GB" : "tr-TR";
   const [apiUrl, setApiUrl] = useState("");
   const [currentAuth, setCurrentAuth] = useState(auth);
@@ -1170,6 +1171,13 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
     });
   }, [ingredientLibrary, ingredientSearch, selectedIngredients]);
 
+  // Display name lookup: stored value is always TR; resolve EN for display when needed
+  const ingredientDisplayName = useMemo(() => {
+    const map = new Map(ingredientLibrary.map((x) => [x.name, x.nameEn]));
+    return (trName: string) =>
+      currentLanguage === "en" ? (map.get(trName) ?? trName) : trName;
+  }, [ingredientLibrary, currentLanguage]);
+
   const parsedPreviewPrice = parseLocalizedDecimal(price);
   const previewPrice = Number.isFinite(parsedPreviewPrice) && parsedPreviewPrice > 0 ? `${parsedPreviewPrice.toFixed(2)} ₺` : "-- ₺";
   const previewSellerHandle = useMemo(() => {
@@ -1392,7 +1400,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                     style={styles.ingredientChip}
                     onPress={() => setSelectedIngredients((prev) => prev.filter((x) => x !== ing))}
                   >
-                    <Text style={styles.ingredientChipText}>{ing}</Text>
+                    <Text style={styles.ingredientChipText}>{ingredientDisplayName(ing)}</Text>
                     <Ionicons name="close-circle" size={13} color="#6C5F54" style={{ marginLeft: 3 }} />
                   </TouchableOpacity>
                 ))}
@@ -1675,9 +1683,13 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                     setIngredientSearch("");
                   }}
                 >
-                  <Text style={styles.categoryOptionText}>{item.name}</Text>
+                  <Text style={styles.categoryOptionText}>
+                    {currentLanguage === "en" ? item.nameEn : item.name}
+                  </Text>
                   {item.nameEn && item.nameEn !== item.name ? (
-                    <Text style={styles.categoryOptionSubText}>{item.nameEn}</Text>
+                    <Text style={styles.categoryOptionSubText}>
+                      {currentLanguage === "en" ? item.name : item.nameEn}
+                    </Text>
                   ) : null}
                 </TouchableOpacity>
               )}
@@ -1696,7 +1708,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                   {selectedIngredients.map((item) => (
                     <IngredientChip
                       key={item}
-                      label={item}
+                      label={ingredientDisplayName(item)}
                       onRemove={() => setSelectedIngredients((prev) => prev.filter((x) => x !== item))}
                     />
                   ))}
