@@ -1544,6 +1544,25 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                 </View>
               }
             />
+            {selectedIngredients.length > 0 && (
+              <View style={styles.ingredientBasket}>
+                <Text style={styles.ingredientBasketLabel}>
+                  {selectedIngredients.length} seçili
+                </Text>
+                <View style={styles.ingredientBasketChips}>
+                  {selectedIngredients.map((item) => (
+                    <TouchableOpacity
+                      key={item}
+                      style={styles.ingredientBasketChip}
+                      onPress={() => setSelectedIngredients((prev) => prev.filter((x) => x !== item))}
+                    >
+                      <Text style={styles.ingredientBasketChipText}>{item}</Text>
+                      <Ionicons name="close" size={12} color="#2E6B44" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
             <View style={styles.newIngredientRow}>
               <TextInput
                 style={styles.newIngredientInput}
@@ -2099,6 +2118,42 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 14,
     color: "#2E241C",
+  },
+  ingredientBasket: {
+    backgroundColor: "#F0F8F3",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#B8DECA",
+    padding: 10,
+    gap: 6,
+  },
+  ingredientBasketLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#2E6B44",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  ingredientBasketChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  ingredientBasketChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#B8DECA",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  ingredientBasketChipText: {
+    fontSize: 12,
+    color: "#2E6B44",
+    fontWeight: "600",
   },
   newIngredientRow: {
     flexDirection: "row",
