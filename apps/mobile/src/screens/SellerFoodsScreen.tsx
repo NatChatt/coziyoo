@@ -2241,7 +2241,7 @@ const styles = StyleSheet.create({
   },
   inlineIngredientInput: {
     flex: 1,
-    backgroundColor: "#F7F4EF",
+    backgroundColor: "#fff",
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#E5DDCF",
