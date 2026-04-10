@@ -45,6 +45,39 @@ def _stringify_uuids(obj, fields):
     return obj
 
 
+_JSON_ARRAY_FIELDS = [
+    "ingredients_json",
+    "allergens_json",
+    "menu_items_json",
+    "paid_addons_json",
+    "image_urls_json",
+    "secondary_category_ids_json",
+]
+
+
+def _ensure_json_arrays(food: dict) -> dict:
+    """Guarantee jsonb columns are Python lists, not raw strings.
+
+    psycopg2 should auto-deserialise jsonb, but when columns were inserted
+    via json.dumps() as a plain text param there are edge cases where the
+    driver returns a str instead of a list.  Parsing defensively here keeps
+    the API contract stable regardless of driver behaviour.
+    """
+    for field in _JSON_ARRAY_FIELDS:
+        value = food.get(field)
+        if value is None:
+            food[field] = []
+        elif isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                food[field] = parsed if isinstance(parsed, list) else []
+            except (json.JSONDecodeError, ValueError):
+                food[field] = []
+        elif not isinstance(value, list):
+            food[field] = []
+    return food
+
+
 def _resolve_lot_active_status():
     global _LOT_ACTIVE_STATUS_CACHE
     if _LOT_ACTIVE_STATUS_CACHE is not None:
@@ -198,6 +231,7 @@ class SellerFoodListView(APIView):
         uuid_fields = ["id", "category_id"]
         for food in foods:
             _stringify_uuids(food, uuid_fields)
+            _ensure_json_arrays(food)
 
         return Response({"data": foods})
 

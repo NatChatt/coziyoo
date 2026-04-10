@@ -244,35 +244,34 @@ function toBool(value: unknown): boolean {
   return false;
 }
 
+function tryParseJsonArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string" && value.trim().startsWith("[")) {
+    try { const p = JSON.parse(value); return Array.isArray(p) ? p : []; } catch { /* fall through */ }
+  }
+  return [];
+}
+
 function normalizeSellerFood(item: Record<string, unknown>): SellerFood {
   const imageUrlsRaw = Array.isArray(item.imageUrls)
     ? item.imageUrls
-    : Array.isArray(item.image_urls_json)
-      ? item.image_urls_json
-      : [];
+    : tryParseJsonArray(item.image_urls_json);
 
   const ingredientsRaw = Array.isArray(item.ingredients)
     ? item.ingredients
-    : Array.isArray(item.ingredients_json)
-      ? item.ingredients_json
-      : [];
+    : tryParseJsonArray(item.ingredients_json);
 
   const allergensRaw = Array.isArray(item.allergens)
     ? item.allergens
-    : Array.isArray(item.allergens_json)
-      ? item.allergens_json
-      : [];
+    : tryParseJsonArray(item.allergens_json);
 
   const menuItemsRaw = Array.isArray(item.menuItems)
     ? item.menuItems
-    : Array.isArray(item.menu_items_json)
-      ? item.menu_items_json
-      : [];
+    : tryParseJsonArray(item.menu_items_json);
+
   const paidAddonsRaw = Array.isArray(item.paidAddons)
     ? item.paidAddons
-    : Array.isArray(item.paid_addons_json)
-      ? item.paid_addons_json
-      : [];
+    : tryParseJsonArray(item.paid_addons_json);
 
   return {
     id: String(item.id ?? ""),
@@ -1084,19 +1083,35 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         Alert.alert(t('headline.common.error'), t('error.seller.foods.paidAddonPrice'));
         return;
       }
+      // When editing, fall back to existing food data if the form state is
+      // unexpectedly empty (e.g. load failed silently) so we never wipe DB fields.
+      const safeIngredients = selectedIngredients.length > 0
+        ? selectedIngredients
+        : (editingFood?.ingredients ?? []);
+      const safeAllergens = parsedAllergens.length > 0
+        ? parsedAllergens
+        : (editingFood?.allergens ?? []);
+      const safeImageUrls = imageUrls.map((x) => x.trim()).filter(Boolean).slice(0, 5);
+      const finalImageUrls = safeImageUrls.length > 0
+        ? safeImageUrls
+        : (editingFood?.imageUrls ?? []).filter(Boolean);
+      const safeMenuItems = normalizedAddons.length > 0
+        ? normalizedAddons
+        : (editingFood?.menuItems ?? []);
+
       const payload: Record<string, unknown> = {
         name: name.trim(),
         price: parsedPrice,
         cardSummary: cardSummary.trim() || undefined,
         description: description.trim() || undefined,
-        recipe: recipe.trim() || undefined,
-        imageUrl: primaryImageUrl,
-        imageUrls: imageUrls.map((x) => x.trim()).filter(Boolean).slice(0, 5),
-        cuisine: cuisine.trim() || undefined,
-        ingredients: selectedIngredients,
-        allergens: parsedAllergens,
+        recipe: recipe.trim() || (editingFood?.recipe ?? undefined),
+        imageUrl: primaryImageUrl || (editingFood?.imageUrl ?? undefined),
+        imageUrls: finalImageUrls,
+        cuisine: cuisine.trim() || (editingFood?.cuisine ?? undefined),
+        ingredients: safeIngredients,
+        allergens: safeAllergens,
         preparationTimeMinutes: parsedPrepTime,
-        menuItems: normalizedAddons,
+        menuItems: safeMenuItems,
         secondaryCategoryIds: [],
       };
 
