@@ -502,7 +502,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const longPressConsumedIndexRef = useRef<number | null>(null);
   const imagePickerOpeningRef = useRef(false);
   const [prepTime, setPrepTime] = useState("");
-  const [initialStock, setInitialStock] = useState("10");
+  const [initialStock, setInitialStock] = useState("");
   const [initialSaleStartsAt, setInitialSaleStartsAt] = useState(() => startOfDayIso());
   const [initialSaleEndsAt, setInitialSaleEndsAt] = useState(() => endOfDayIso());
   const [activeSaleDateField, setActiveSaleDateField] = useState<"initialSaleStartsAt" | "initialSaleEndsAt" | null>(null);
@@ -802,7 +802,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setImageUrls(["", "", "", "", ""]);
     setMovingImageIndex(null);
     setPrepTime("");
-    setInitialStock("10");
+    setInitialStock("");
     setInitialSaleStartsAt(startOfDayIso());
     setInitialSaleEndsAt(endOfDayIso());
     setActiveSaleDateField(null);
