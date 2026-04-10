@@ -801,7 +801,7 @@ class SellerIngredientTemplatesView(APIView):
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT id, name
+                SELECT id, name, name_en
                 FROM ingredient_templates
                 WHERE is_active = true
                 ORDER BY sort_order, name
@@ -809,7 +809,10 @@ class SellerIngredientTemplatesView(APIView):
             )
             rows = _rows_as_dicts(cursor)
 
-        data = [{"id": str(row["id"]), "name": row["name"]} for row in rows]
+        data = [
+            {"id": str(row["id"]), "name": row["name"], "nameEn": row["name_en"] or row["name"]}
+            for row in rows
+        ]
         return Response({"data": data})
 
 

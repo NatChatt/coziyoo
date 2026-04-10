@@ -5,6 +5,7 @@ from django.db import models
 class IngredientTemplates(models.Model):
     id = models.UUIDField(primary_key=True)
     name = models.CharField(max_length=100)
+    name_en = models.CharField(max_length=100, blank=True, null=True)
     is_active = models.BooleanField(default=True)
     sort_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -71,14 +71,14 @@ def _recipe_diff(original, snapshot):
 
 @admin.register(IngredientTemplates)
 class IngredientTemplatesAdmin(ModelAdmin):
-    list_display = ["name", "sort_order", "is_active"]
+    list_display = ["name", "name_en", "sort_order", "is_active"]
     list_filter = ["is_active"]
-    search_fields = ["name"]
-    list_editable = ["sort_order", "is_active"]
+    search_fields = ["name", "name_en"]
+    list_editable = ["name_en", "sort_order", "is_active"]
     ordering = ["sort_order", "name"]
     readonly_fields = ["id", "created_at", "updated_at"]
     fieldsets = [
-        (None, {"fields": ["name", "sort_order", "is_active"]}),
+        (None, {"fields": ["name", "name_en", "sort_order", "is_active"]}),
         ("Meta", {"fields": ["id", "created_at", "updated_at"]}),
     ]
 

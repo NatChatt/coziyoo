@@ -8,7 +8,7 @@ import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
 import { getCurrentLanguage, loadSettings } from "../utils/settings";
 import { clearSellerFoodsCache } from "../utils/sellerFoodsCache";
-import { addIngredientToLibrary, loadIngredientLibrary } from "../utils/ingredientsLibrary";
+import { type IngredientTemplate, addIngredientToLibrary, loadIngredientLibrary } from "../utils/ingredientsLibrary";
 import { type AddonTemplate, addCustomAddon, loadAddonLibrary } from "../utils/addonLibrary";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
@@ -355,7 +355,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const [description, setDescription] = useState("");
   const [recipe, setRecipe] = useState("");
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
-  const [ingredientLibrary, setIngredientLibrary] = useState<string[]>([]);
+  const [ingredientLibrary, setIngredientLibrary] = useState<IngredientTemplate[]>([]);
   const [ingredientsPickerVisible, setIngredientsPickerVisible] = useState(false);
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [newIngredientInput, setNewIngredientInput] = useState("");
@@ -1161,8 +1161,12 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
   const filteredIngredients = useMemo(() => {
     const q = ingredientSearch.trim().toLocaleLowerCase("tr-TR");
     return ingredientLibrary.filter((x) => {
-      if (selectedIngredients.includes(x)) return false;
-      return !q || x.toLocaleLowerCase("tr-TR").includes(q);
+      if (selectedIngredients.includes(x.name)) return false;
+      if (!q) return true;
+      return (
+        x.name.toLocaleLowerCase("tr-TR").includes(q) ||
+        x.nameEn.toLocaleLowerCase("tr-TR").includes(q)
+      );
     });
   }, [ingredientLibrary, ingredientSearch, selectedIngredients]);
 
@@ -1659,7 +1663,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             />
             <FlatList
               data={filteredIngredients}
-              keyExtractor={(item) => item}
+              keyExtractor={(item) => item.id}
               style={styles.categoryList}
               contentContainerStyle={styles.categoryListContent}
               keyboardShouldPersistTaps="handled"
@@ -1667,11 +1671,14 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                 <TouchableOpacity
                   style={styles.categoryOption}
                   onPress={() => {
-                    setSelectedIngredients((prev) => [...prev, item]);
+                    setSelectedIngredients((prev) => [...prev, item.name]);
                     setIngredientSearch("");
                   }}
                 >
-                  <Text style={styles.categoryOptionText}>{item}</Text>
+                  <Text style={styles.categoryOptionText}>{item.name}</Text>
+                  {item.nameEn && item.nameEn !== item.name ? (
+                    <Text style={styles.categoryOptionSubText}>{item.nameEn}</Text>
+                  ) : null}
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
@@ -2202,6 +2209,7 @@ const styles = StyleSheet.create({
   },
   categoryOptionText: { color: "#2E241C" },
   categoryOptionTextActive: { color: "#2E6B44", fontWeight: "700" },
+  categoryOptionSubText: { color: "#9A8E84", fontSize: 11, marginTop: 1 },
   ingredientsPickerBtn: {
     minHeight: 44,
     justifyContent: "center",
