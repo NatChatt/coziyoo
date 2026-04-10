@@ -25,7 +25,7 @@ const defaults: AppSettings = {
   language: resolveDefaultLanguage(),
 };
 
-const RELEASE_FALLBACK_API_URL = "https://coziyoo.com";
+const RELEASE_FALLBACK_API_URL = "https://api.coziyoo.com";
 
 function isLocalhostLike(url: string): boolean {
   const lower = url.toLowerCase();
