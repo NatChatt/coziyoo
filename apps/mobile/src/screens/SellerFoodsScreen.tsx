@@ -359,6 +359,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const [ingredientsPickerVisible, setIngredientsPickerVisible] = useState(false);
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [newIngredientInput, setNewIngredientInput] = useState("");
+  const [inlineIngredientInput, setInlineIngredientInput] = useState("");
   const [allergens, setAllergens] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>(["", "", "", "", ""]);
   const [movingImageIndex, setMovingImageIndex] = useState<number | null>(null);
@@ -1334,13 +1335,52 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
           <View onLayout={(event) => handleFieldLayout("ingredients", event)}>
             <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("ingredients") && styles.sectionTitleError]}>{t('headline.seller.foods.ingredients')}</Text>
             {selectedIngredients.length === 0 ? (
-              <TouchableOpacity
-                style={[styles.input, styles.ingredientsPickerBtn, isRequiredFieldHighlighted("ingredients") && styles.inputError]}
-                onPress={() => { setIngredientsPickerVisible(true); clearRequiredFieldHighlight("ingredients"); }}
-              >
-                <Text style={styles.ingredientsPickerPlaceholder}>{t('helper.seller.foods.ingredientsPickerPlaceholder')}</Text>
-              </TouchableOpacity>
+              <View>
+                <TouchableOpacity
+                  style={[styles.input, styles.ingredientsPickerBtn, isRequiredFieldHighlighted("ingredients") && styles.inputError]}
+                  onPress={() => { setIngredientsPickerVisible(true); clearRequiredFieldHighlight("ingredients"); }}
+                >
+                  <Text style={styles.ingredientsPickerPlaceholder}>{t('helper.seller.foods.ingredientsPickerPlaceholder')}</Text>
+                </TouchableOpacity>
+                <View style={styles.inlineIngredientRow}>
+                  <TextInput
+                    style={styles.inlineIngredientInput}
+                    value={inlineIngredientInput}
+                    onChangeText={setInlineIngredientInput}
+                    placeholder={t('helper.seller.foods.newIngredientPlaceholder')}
+                    placeholderTextColor={PLACEHOLDER_COLOR}
+                    returnKeyType="done"
+                    onSubmitEditing={async () => {
+                      const trimmed = inlineIngredientInput.trim();
+                      if (!trimmed) return;
+                      await addIngredientToLibrary(trimmed);
+                      const updated = await loadIngredientLibrary(apiUrl, currentAuth);
+                      setIngredientLibrary(updated);
+                      setSelectedIngredients((prev) => [...new Set([...prev, trimmed])]);
+                      setInlineIngredientInput("");
+                      clearRequiredFieldHighlight("ingredients");
+                    }}
+                  />
+                  <TouchableOpacity
+                    style={[styles.inlineIngredientAddBtn, !inlineIngredientInput.trim() && styles.btnDisabled]}
+                    disabled={!inlineIngredientInput.trim()}
+                    onPress={async () => {
+                      const trimmed = inlineIngredientInput.trim();
+                      if (!trimmed) return;
+                      await addIngredientToLibrary(trimmed);
+                      const updated = await loadIngredientLibrary(apiUrl, currentAuth);
+                      setIngredientLibrary(updated);
+                      setSelectedIngredients((prev) => [...new Set([...prev, trimmed])]);
+                      setInlineIngredientInput("");
+                      clearRequiredFieldHighlight("ingredients");
+                    }}
+                  >
+                    <Ionicons name="add" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
             ) : (
+              <View>
               <View style={styles.ingredientChipsWrap}>
                 {selectedIngredients.map((ing) => (
                   <TouchableOpacity
@@ -1355,6 +1395,43 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                 <TouchableOpacity style={styles.ingredientAddChip} onPress={() => setIngredientsPickerVisible(true)}>
                   <Text style={styles.ingredientAddChipText}>+ {t('cta.seller.foods.editIngredients')}</Text>
                 </TouchableOpacity>
+              </View>
+              <View style={styles.inlineIngredientRow}>
+                <TextInput
+                  style={styles.inlineIngredientInput}
+                  value={inlineIngredientInput}
+                  onChangeText={setInlineIngredientInput}
+                  placeholder={t('helper.seller.foods.newIngredientPlaceholder')}
+                  placeholderTextColor={PLACEHOLDER_COLOR}
+                  returnKeyType="done"
+                  onSubmitEditing={async () => {
+                    const trimmed = inlineIngredientInput.trim();
+                    if (!trimmed) return;
+                    await addIngredientToLibrary(trimmed);
+                    const updated = await loadIngredientLibrary(apiUrl, currentAuth);
+                    setIngredientLibrary(updated);
+                    setSelectedIngredients((prev) => [...new Set([...prev, trimmed])]);
+                    setInlineIngredientInput("");
+                    clearRequiredFieldHighlight("ingredients");
+                  }}
+                />
+                <TouchableOpacity
+                  style={[styles.inlineIngredientAddBtn, !inlineIngredientInput.trim() && styles.btnDisabled]}
+                  disabled={!inlineIngredientInput.trim()}
+                  onPress={async () => {
+                    const trimmed = inlineIngredientInput.trim();
+                    if (!trimmed) return;
+                    await addIngredientToLibrary(trimmed);
+                    const updated = await loadIngredientLibrary(apiUrl, currentAuth);
+                    setIngredientLibrary(updated);
+                    setSelectedIngredients((prev) => [...new Set([...prev, trimmed])]);
+                    setInlineIngredientInput("");
+                    clearRequiredFieldHighlight("ingredients");
+                  }}
+                >
+                  <Ionicons name="add" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
               </View>
             )}
           </View>
@@ -2156,6 +2233,31 @@ const styles = StyleSheet.create({
     borderColor: "#D9C8B4",
   },
   ingredientAddChipText: { color: "#6C5F54", fontWeight: "700", fontSize: 13 },
+  inlineIngredientRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  inlineIngredientInput: {
+    flex: 1,
+    backgroundColor: "#F7F4EF",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5DDCF",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: "#2E241C",
+  },
+  inlineIngredientAddBtn: {
+    backgroundColor: "#2E6B44",
+    borderRadius: 8,
+    width: 38,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   ingredientsModalCard: {
     maxHeight: "80%",
     backgroundColor: "#fff",
