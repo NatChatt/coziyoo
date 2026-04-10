@@ -45,6 +45,7 @@ import SellerFinanceScreen from './src/screens/SellerFinanceScreen';
 import SellerReviewsScreen from './src/screens/SellerReviewsScreen';
 import { loadAuthSession, clearAuthSession, refreshAuthSession, saveAuthSession, type AuthSession } from './src/utils/auth';
 import { loadSettings, subscribeSettings } from './src/utils/settings';
+import { prefetchCatalogs } from './src/utils/prefetchCatalogs';
 import { t } from './src/copy/brandCopy';
 import { theme } from './src/theme/colors';
 
@@ -264,6 +265,12 @@ export default function App() {
       setLanguageVersion((value) => value + 1);
     });
   }, []);
+
+  // Warm ingredient + addon template caches whenever auth is established
+  useEffect(() => {
+    if (!auth) return;
+    void loadSettings().then((s) => prefetchCatalogs(s.apiUrl, auth));
+  }, [auth]);
 
   // Register push token and notification listeners when auth is set
   useEffect(() => {
