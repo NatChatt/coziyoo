@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, type LayoutChangeEvent } from "react-native";
+import { ActivityIndicator, Alert, Animated, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, type LayoutChangeEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,6 +15,69 @@ import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
 
 const SELLER_FORM_PERSIST_KEY_PREFIX = "seller_food_form_fields_v1";
+
+function IngredientChip({
+  label,
+  onRemove,
+}: {
+  label: string;
+  onRemove: () => void;
+}) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(anim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 120,
+      friction: 8,
+    }).start();
+  }, []);
+
+  function handleRemove() {
+    Animated.timing(anim, {
+      toValue: 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(onRemove);
+  }
+
+  return (
+    <Animated.View
+      style={{
+        opacity: anim,
+        transform: [
+          { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) },
+          { translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) },
+        ],
+      }}
+    >
+      <TouchableOpacity style={chipStyles.chip} onPress={handleRemove}>
+        <Text style={chipStyles.chipText}>{label}</Text>
+        <Ionicons name="close" size={12} color="#2E6B44" />
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+const chipStyles = StyleSheet.create({
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#B8DECA",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  chipText: {
+    fontSize: 12,
+    color: "#2E6B44",
+    fontWeight: "600",
+  },
+});
 
 type Props = {
   auth: AuthSession;
@@ -1547,14 +1610,11 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                 </Text>
                 <View style={styles.ingredientBasketChips}>
                   {selectedIngredients.map((item) => (
-                    <TouchableOpacity
+                    <IngredientChip
                       key={item}
-                      style={styles.ingredientBasketChip}
-                      onPress={() => setSelectedIngredients((prev) => prev.filter((x) => x !== item))}
-                    >
-                      <Text style={styles.ingredientBasketChipText}>{item}</Text>
-                      <Ionicons name="close" size={12} color="#2E6B44" />
-                    </TouchableOpacity>
+                      label={item}
+                      onRemove={() => setSelectedIngredients((prev) => prev.filter((x) => x !== item))}
+                    />
                   ))}
                 </View>
               </View>
@@ -2134,22 +2194,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
-  },
-  ingredientBasketChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#B8DECA",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    gap: 4,
-  },
-  ingredientBasketChipText: {
-    fontSize: 12,
-    color: "#2E6B44",
-    fontWeight: "600",
   },
   newIngredientRow: {
     flexDirection: "row",
