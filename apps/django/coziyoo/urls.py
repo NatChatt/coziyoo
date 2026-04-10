@@ -16,6 +16,8 @@ urlpatterns = [
 
     # REST API v1
     path("v1/auth/", include("apps.authentication.urls.app")),
+    path("v1/admin/auth/", include("apps.authentication.urls.admin_auth")),
+    path("v1/admin/", include("apps.authentication.urls.admin_panel")),
     path("v1/orders/", include("apps.orders.urls")),
     path("v1/foods/", include("apps.foods.urls")),
     path("v1/seller/", include("apps.foods.urls_seller")),

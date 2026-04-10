@@ -139,6 +139,9 @@ type SellerFoodDraft = {
   allergens?: string;
   imageUrls?: string[];
   prepTime?: string;
+  initialStock?: string;
+  initialSaleStartsAt?: string;
+  initialSaleEndsAt?: string;
   cuisine?: string;
   categoryId?: string;
   freeAddonNameInput?: string;
@@ -159,7 +162,10 @@ type SellerFoodsFieldKey =
   | "addons"
   | "allergens"
   | "price"
-  | "prepTime";
+  | "prepTime"
+  | "initialStock"
+  | "initialSaleStartsAt"
+  | "initialSaleEndsAt";
 
 function toBool(value: unknown): boolean {
   if (typeof value === "boolean") return value;
@@ -258,6 +264,16 @@ function parseLocalizedDecimal(value: string): number {
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function plusDaysIso(days: number): string {
+  const next = new Date();
+  next.setUTCDate(next.getUTCDate() + days);
+  return next.toISOString();
+}
+
 async function parseResponseBodySafe(res: Response): Promise<unknown> {
   const raw = await res.text();
   if (!raw) return null;
@@ -336,6 +352,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const allergensInputRef = useRef<TextInput | null>(null);
   const priceInputRef = useRef<TextInput | null>(null);
   const prepTimeInputRef = useRef<TextInput | null>(null);
+  const initialStockInputRef = useRef<TextInput | null>(null);
+  const initialSaleStartsAtInputRef = useRef<TextInput | null>(null);
+  const initialSaleEndsAtInputRef = useRef<TextInput | null>(null);
   const [currentLanguage, setCurrentLanguage_] = useState(getCurrentLanguage);
   useEffect(() => subscribeSettings((s) => setCurrentLanguage_(s.language)), []);
   const locale = currentLanguage === "en" ? "en-GB" : "tr-TR";
@@ -367,6 +386,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const longPressConsumedIndexRef = useRef<number | null>(null);
   const imagePickerOpeningRef = useRef(false);
   const [prepTime, setPrepTime] = useState("");
+  const [initialStock, setInitialStock] = useState("10");
+  const [initialSaleStartsAt, setInitialSaleStartsAt] = useState(nowIso());
+  const [initialSaleEndsAt, setInitialSaleEndsAt] = useState(plusDaysIso(30));
 
   // UI parity fields (opsiyonlar)
   const [cuisine, setCuisine] = useState("");
@@ -443,6 +465,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
           while (hydratedImageUrls.length < 5) hydratedImageUrls.push("");
           setImageUrls(hydratedImageUrls);
           setPrepTime(typeof parsed.prepTime === "string" ? parsed.prepTime : "");
+          setInitialStock(typeof parsed.initialStock === "string" ? parsed.initialStock : "10");
+          setInitialSaleStartsAt(typeof parsed.initialSaleStartsAt === "string" ? parsed.initialSaleStartsAt : nowIso());
+          setInitialSaleEndsAt(typeof parsed.initialSaleEndsAt === "string" ? parsed.initialSaleEndsAt : plusDaysIso(30));
           setCuisine(typeof parsed.cuisine === "string" ? parsed.cuisine : "");
           setCategoryId(typeof parsed.categoryId === "string" ? parsed.categoryId : "");
           setFreeAddonNameInput(typeof parsed.freeAddonNameInput === "string" ? parsed.freeAddonNameInput : "");
@@ -492,6 +517,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       allergens,
       imageUrls,
       prepTime,
+      initialStock,
+      initialSaleStartsAt,
+      initialSaleEndsAt,
       cuisine,
       categoryId,
       freeAddonNameInput,
@@ -520,6 +548,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     allergens,
     imageUrls,
     prepTime,
+    initialStock,
+    initialSaleStartsAt,
+    initialSaleEndsAt,
     cuisine,
     categoryId,
     freeAddonNameInput,
@@ -759,6 +790,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setImageUrls(["", "", "", "", ""]);
     setMovingImageIndex(null);
     setPrepTime("");
+    setInitialStock("10");
+    setInitialSaleStartsAt(nowIso());
+    setInitialSaleEndsAt(plusDaysIso(30));
     setCuisine("");
     setCategoryId("");
     setMenuItems([]);
@@ -784,6 +818,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setImageUrls(seededImageUrls);
     setMovingImageIndex(null);
     setPrepTime(food.preparationTimeMinutes ? String(food.preparationTimeMinutes) : "");
+    setInitialStock(String(food.stock > 0 ? food.stock : 10));
+    setInitialSaleStartsAt(nowIso());
+    setInitialSaleEndsAt(plusDaysIso(30));
     setCuisine(food.cuisine ?? "");
     setCategoryId(food.categoryId ?? "");
     const normalizedMenuItems = Array.isArray(food.menuItems)
@@ -883,6 +920,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       const workingMenuItems: SellerMenuAddon[] = [...paidOnlyItems, ...freeItems];
       const parsedPrice = parseLocalizedDecimal(price);
       const parsedPrepTime = prepTime.trim() ? Number.parseInt(prepTime.trim(), 10) : Number.NaN;
+      const parsedInitialStock = initialStock.trim() ? Number.parseInt(initialStock.trim(), 10) : Number.NaN;
       const parsedAllergens = allergens
         .split(",")
         .map((x) => x.trim())
@@ -927,6 +965,35 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         Alert.alert(t('headline.common.error'), t('error.seller.foods.prepRequired'));
         return;
       }
+      if (!editingFood && (!Number.isFinite(parsedInitialStock) || parsedInitialStock <= 0)) {
+        navigateToRequiredField("initialStock", { focusRef: initialStockInputRef });
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.initialStockRequired'));
+        return;
+      }
+      if (!editingFood && !initialSaleStartsAt.trim()) {
+        navigateToRequiredField("initialSaleStartsAt", { focusRef: initialSaleStartsAtInputRef });
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleStartRequired'));
+        return;
+      }
+      if (!editingFood && !initialSaleEndsAt.trim()) {
+        navigateToRequiredField("initialSaleEndsAt", { focusRef: initialSaleEndsAtInputRef });
+        Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleEndRequired'));
+        return;
+      }
+      if (!editingFood) {
+        const startsAtMs = Date.parse(initialSaleStartsAt);
+        const endsAtMs = Date.parse(initialSaleEndsAt);
+        if (!Number.isFinite(startsAtMs)) {
+          navigateToRequiredField("initialSaleStartsAt", { focusRef: initialSaleStartsAtInputRef });
+          Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleStartRequired'));
+          return;
+        }
+        if (!Number.isFinite(endsAtMs) || startsAtMs > endsAtMs) {
+          navigateToRequiredField("initialSaleEndsAt", { focusRef: initialSaleEndsAtInputRef });
+          Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleWindowInvalid'));
+          return;
+        }
+      }
       if (workingMenuItems.length < 1) {
         navigateToRequiredField("sideItems", { focusRef: sideItemsInputRef });
         Alert.alert(t('headline.common.error'), t('error.seller.foods.addonsRequired'));
@@ -965,6 +1032,12 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         secondaryCategoryIds: [],
       };
 
+      if (!editingFood) {
+        payload.initialStock = parsedInitialStock;
+        payload.initialSaleStartsAt = initialSaleStartsAt.trim();
+        payload.initialSaleEndsAt = initialSaleEndsAt.trim();
+      }
+
       payload.categoryId = categoryId.trim();
 
       const path = editingFood ? `/v1/seller/foods/${editingFood.id}` : "/v1/seller/foods";
@@ -980,6 +1053,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       const foodId = editingFood?.id
         ?? (typeof responseData?.foodId === "string" ? responseData.foodId : null)
         ?? (typeof responseData?.id === "string" ? responseData.id : null);
+      const createdLotId = typeof responseData?.lotId === "string" ? responseData.lotId : null;
 
       if (options?.publishAfterSave && foodId) {
         const saleStartsAt = new Date().toISOString();
@@ -998,6 +1072,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         }
 
         let hasVisibleLot = false;
+        if (!editingFood && createdLotId) {
+          hasVisibleLot = true;
+        }
         const lotsRes = await authedFetch(`/v1/seller/lots?foodId=${foodId}`);
         if (lotsRes.ok) {
           const lotsJson = await parseResponseBodySafe(lotsRes);
@@ -1007,7 +1084,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
           const lots = Array.isArray(lotsPayload.data) ? (lotsPayload.data as unknown[]) : [];
           const now = Date.now();
           let existingLotId: string | null = null;
-          hasVisibleLot = lots.some((lot: any) => {
+          const hasVisibleLotFromApi = lots.some((lot: any) => {
             const lotFoodId = String(lot?.food_id ?? lot?.foodId ?? "").trim();
             const status = String(lot?.status ?? "").toLowerCase();
             const qty = Number(lot?.quantity_available ?? lot?.quantityAvailable ?? 0);
@@ -1027,6 +1104,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
             }
             return false;
           });
+          hasVisibleLot = hasVisibleLot || hasVisibleLotFromApi;
 
         }
 
@@ -1570,6 +1648,61 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               keyboardType="number-pad"
             />
           </View>
+
+          {!editingFood ? (
+            <>
+              <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialStock", event)}>
+                <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialStock") && styles.sectionTitleError]}>{t('headline.seller.foods.initialStock')}</Text>
+                <TextInput
+                  ref={initialStockInputRef}
+                  style={[styles.input, isRequiredFieldHighlighted("initialStock") && styles.inputError]}
+                  value={initialStock}
+                  onChangeText={(value) => {
+                    setInitialStock(value);
+                    const parsedValue = Number.parseInt(value.trim() || "0", 10);
+                    if (Number.isFinite(parsedValue) && parsedValue > 0) clearRequiredFieldHighlight("initialStock");
+                  }}
+                  placeholder={t('helper.seller.foods.initialStockPlaceholder')}
+                  placeholderTextColor={PLACEHOLDER_COLOR}
+                  keyboardType="number-pad"
+                />
+              </View>
+
+              <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialSaleStartsAt", event)}>
+                <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleStartsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleStart')}</Text>
+                <TextInput
+                  ref={initialSaleStartsAtInputRef}
+                  style={[styles.input, isRequiredFieldHighlighted("initialSaleStartsAt") && styles.inputError]}
+                  value={initialSaleStartsAt}
+                  onChangeText={(value) => {
+                    setInitialSaleStartsAt(value);
+                    if (value.trim()) clearRequiredFieldHighlight("initialSaleStartsAt");
+                  }}
+                  placeholder={t('helper.seller.foods.initialSaleStartPlaceholder')}
+                  placeholderTextColor={PLACEHOLDER_COLOR}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialSaleEndsAt", event)}>
+                <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleEndsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleEnd')}</Text>
+                <TextInput
+                  ref={initialSaleEndsAtInputRef}
+                  style={[styles.input, isRequiredFieldHighlighted("initialSaleEndsAt") && styles.inputError]}
+                  value={initialSaleEndsAt}
+                  onChangeText={(value) => {
+                    setInitialSaleEndsAt(value);
+                    if (value.trim()) clearRequiredFieldHighlight("initialSaleEndsAt");
+                  }}
+                  placeholder={t('helper.seller.foods.initialSaleEndPlaceholder')}
+                  placeholderTextColor={PLACEHOLDER_COLOR}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </>
+          ) : null}
 
           <TouchableOpacity style={styles.previewBtn} onPress={() => setPreviewVisible(true)}>
             <Text style={styles.previewBtnText}>👁️ {t('cta.seller.foods.preview')}</Text>

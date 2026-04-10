@@ -7,7 +7,7 @@ import json
 import uuid
 from datetime import datetime
 
-from django.db import connection
+from django.db import connection, transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -62,6 +62,10 @@ def _resolve_lot_active_status():
     definition = str(row[0] if row else "")
     _LOT_ACTIVE_STATUS_CACHE = "active" if "'active'" in definition else "open"
     return _LOT_ACTIVE_STATUS_CACHE
+
+
+def _parse_iso(value):
+    return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
 
 
 class SellerProfileView(APIView):
@@ -198,6 +202,9 @@ class SellerFoodListView(APIView):
         data = request.data
         name = data.get("name")
         price = data.get("price")
+        initial_stock = data.get("initialStock")
+        initial_sale_starts_at = data.get("initialSaleStartsAt")
+        initial_sale_ends_at = data.get("initialSaleEndsAt")
 
         if not name or price is None:
             return Response(
@@ -221,6 +228,52 @@ class SellerFoodListView(APIView):
         paid_menu_items = [item for item in all_menu_items if item.get("pricing") == "paid"]
         secondary_category_ids = data.get("secondaryCategoryIds") if isinstance(data.get("secondaryCategoryIds"), list) else []
 
+        try:
+            initial_stock = int(initial_stock)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "initialStock must be an integer"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if initial_stock < 1:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "initialStock must be greater than 0"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not initial_sale_starts_at or not initial_sale_ends_at:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "initialSaleStartsAt and initialSaleEndsAt are required"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            sale_start_dt = _parse_iso(initial_sale_starts_at)
+            sale_end_dt = _parse_iso(initial_sale_ends_at)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "Invalid initial sale window"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if sale_start_dt > sale_end_dt:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "initialSaleStartsAt must be before initialSaleEndsAt"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not recipe or not ingredients or not allergens:
+            return Response(
+                {
+                    "error": {
+                        "code": "LOT_SNAPSHOT_REQUIRED",
+                        "message": "Recipe, ingredients, and allergens must be defined before creating the first lot",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         sql = """
             INSERT INTO foods
                 (
@@ -231,32 +284,86 @@ class SellerFoodListView(APIView):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """
-        with connection.cursor() as cursor:
-            cursor.execute(
-                sql,
-                [
-                    request.user.id,
-                    category_id,
-                    name,
-                    card_summary,
-                    description,
-                    recipe,
-                    price,
-                    image_url,
-                    json.dumps(ingredients),
-                    json.dumps(allergens),
-                    preparation_time_minutes,
-                    is_active,
-                    cuisine,
-                    json.dumps(image_urls),
-                    json.dumps(free_menu_items),
-                    json.dumps(paid_menu_items),
-                    json.dumps(secondary_category_ids),
-                ],
-            )
-            row = cursor.fetchone()
+        active_lot_status = _resolve_lot_active_status()
+        produced_at = datetime.utcnow().isoformat() + "Z"
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    sql,
+                    [
+                        request.user.id,
+                        category_id,
+                        name,
+                        card_summary,
+                        description,
+                        recipe,
+                        price,
+                        image_url,
+                        json.dumps(ingredients),
+                        json.dumps(allergens),
+                        preparation_time_minutes,
+                        is_active,
+                        cuisine,
+                        json.dumps(image_urls),
+                        json.dumps(free_menu_items),
+                        json.dumps(paid_menu_items),
+                        json.dumps(secondary_category_ids),
+                    ],
+                )
+                row = cursor.fetchone()
+                food_id = str(row[0])
+                lot_id = str(uuid.uuid4())
+                lot_number = f"CZ-{food_id[:8].upper()}-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+                cursor.execute(
+                    """
+                        INSERT INTO production_lots
+                            (
+                                id, seller_id, food_id, lot_number, produced_at, sale_starts_at, sale_ends_at,
+                                use_by, best_before, recipe_snapshot, ingredients_snapshot_json, allergens_snapshot_json,
+                                quantity_produced, quantity_available, status, notes, created_at, updated_at
+                            )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now())
+                    """,
+                    [
+                        lot_id,
+                        request.user.id,
+                        food_id,
+                        lot_number,
+                        produced_at,
+                        sale_start_dt.isoformat(),
+                        sale_end_dt.isoformat(),
+                        None,
+                        None,
+                        recipe,
+                        json.dumps(ingredients),
+                        json.dumps(allergens),
+                        initial_stock,
+                        initial_stock,
+                        active_lot_status,
+                        "mobile_initial_stock",
+                    ],
+                )
+                cursor.execute(
+                    """
+                        INSERT INTO lot_events (lot_id, event_type, event_payload_json, created_by, created_at)
+                        VALUES (%s, 'created', %s, %s, now())
+                    """,
+                    [
+                        lot_id,
+                        json.dumps(
+                            {
+                                "quantityProduced": initial_stock,
+                                "quantityAvailable": initial_stock,
+                                "saleStartsAt": sale_start_dt.isoformat(),
+                                "saleEndsAt": sale_end_dt.isoformat(),
+                                "source": "seller_food_create",
+                            }
+                        ),
+                        request.user.id,
+                    ],
+                )
 
-        return Response({"data": {"id": str(row[0]), "foodId": str(row[0])}}, status=status.HTTP_201_CREATED)
+        return Response({"data": {"id": food_id, "foodId": food_id, "lotId": lot_id}}, status=status.HTTP_201_CREATED)
 
 
 class SellerFoodDetailView(APIView):
