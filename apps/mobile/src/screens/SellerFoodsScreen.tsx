@@ -1096,9 +1096,11 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
   const previewTitle = name.trim() || t('headline.seller.foods.previewNameFallback');
   const filteredIngredients = useMemo(() => {
     const q = ingredientSearch.trim().toLocaleLowerCase("tr-TR");
-    if (!q) return ingredientLibrary;
-    return ingredientLibrary.filter((x) => x.toLocaleLowerCase("tr-TR").includes(q));
-  }, [ingredientLibrary, ingredientSearch]);
+    return ingredientLibrary.filter((x) => {
+      if (selectedIngredients.includes(x)) return false;
+      return !q || x.toLocaleLowerCase("tr-TR").includes(q);
+    });
+  }, [ingredientLibrary, ingredientSearch, selectedIngredients]);
 
   const parsedPreviewPrice = parseLocalizedDecimal(price);
   const previewPrice = Number.isFinite(parsedPreviewPrice) && parsedPreviewPrice > 0 ? `${parsedPreviewPrice.toFixed(2)} ₺` : "-- ₺";
@@ -1521,23 +1523,17 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
               style={styles.categoryList}
               contentContainerStyle={styles.categoryListContent}
               keyboardShouldPersistTaps="handled"
-              renderItem={({ item }) => {
-                const selected = selectedIngredients.includes(item);
-                return (
-                  <TouchableOpacity
-                    style={[styles.categoryOption, selected && styles.categoryOptionActive]}
-                    onPress={() => {
-                      setSelectedIngredients((prev) =>
-                        selected ? prev.filter((x) => x !== item) : [...prev, item],
-                      );
-                      setIngredientSearch("");
-                    }}
-                  >
-                    <Text style={[styles.categoryOptionText, selected && styles.categoryOptionTextActive]}>{item}</Text>
-                    {selected ? <Ionicons name="checkmark" size={16} color="#2E6B44" /> : null}
-                  </TouchableOpacity>
-                );
-              }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.categoryOption}
+                  onPress={() => {
+                    setSelectedIngredients((prev) => [...prev, item]);
+                    setIngredientSearch("");
+                  }}
+                >
+                  <Text style={styles.categoryOptionText}>{item}</Text>
+                </TouchableOpacity>
+              )}
               ListEmptyComponent={
                 <View style={styles.categoryEmptyWrap}>
                   <Text style={styles.categoryEmptyText}>{t('helper.seller.foods.ingredientsNoMatch')}</Text>
