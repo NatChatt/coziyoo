@@ -144,23 +144,34 @@ export default function SellerLotCreateScreen({
     }
   }, [step, loadFoods]);
 
-  // Load food detail
+  // Load food detail — uses the list endpoint with foodId query param because
+  // the /foods/:id path only supports PATCH (no GET handler on backend).
   const loadFoodDetail = useCallback(
     async (foodId: string) => {
       setDetailLoading(true);
-      const result = await apiRequest<FoodDetail>(
-        `/v1/seller/foods/${foodId}`,
+      setFoodDetail(null);
+      const result = await apiRequest<{ data: FoodDetail[] } | FoodDetail[]>(
+        `/v1/seller/foods?foodId=${foodId}`,
         currentAuth,
         { method: 'GET', actorRole: 'seller' },
       );
       setDetailLoading(false);
-      if (result.ok) {
-        const d = result.data;
-        setFoodDetail(d);
-        setEditedRecipe(d.recipe ?? '');
-        setEditedIngredients((d.ingredients_json ?? []).join(', '));
-        setEditedAllergens((d.allergens_json ?? []).join(', '));
-      }
+      if (!result.ok) return;
+      // The list endpoint returns { data: [...] } and apiRequest unwraps to data field.
+      // So result.data is the array directly.
+      const rows = Array.isArray(result.data)
+        ? (result.data as FoodDetail[])
+        : [];
+      const d = rows.find((f: any) => f.id === foodId) ?? rows[0] ?? null;
+      if (!d) return;
+      setFoodDetail(d);
+      setEditedRecipe(d.recipe ?? '');
+      setEditedIngredients(
+        Array.isArray(d.ingredients_json) ? d.ingredients_json.join(', ') : '',
+      );
+      setEditedAllergens(
+        Array.isArray(d.allergens_json) ? d.allergens_json.join(', ') : '',
+      );
     },
     [currentAuth],
   );
@@ -403,7 +414,16 @@ export default function SellerLotCreateScreen({
       );
     }
 
-    if (!foodDetail) return null;
+    if (!foodDetail) {
+      return (
+        <View style={styles.stepContent}>
+          <Text style={styles.helperText}>{t('error.seller.lotCreate.detailLoad')}</Text>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleChangeFood}>
+            <Text style={styles.secondaryButtonText}>{t('cta.common.goBack')}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
 
     return (
       <View style={styles.stepContent}>
