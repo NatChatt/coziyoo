@@ -372,23 +372,6 @@
         </div>
       </div>
 
-      {# Malzemeler #}
-      {% if food.ingredients_json %}
-      <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
-          <span class="material-symbols-outlined text-base text-base-400 dark:text-base-500 leading-none">nutrition</span>
-          <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Malzemeler" %}</span>
-        </div>
-        <div class="px-5 py-4">
-          <div class="flex flex-wrap gap-1.5">
-            {% for ing in food.ingredients_json %}
-              <span class="px-2.5 py-1 rounded-full text-xs text-base-600 dark:text-base-300 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600">{{ ing }}</span>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-      {% endif %}
-
       {# Alerjenler #}
       {% if food.allergens_json %}
       <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
@@ -430,6 +413,23 @@
           <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Kısa Açıklama" %}</span>
         </div>
         <div class="px-5 py-4 text-sm text-base-600 dark:text-base-300">{{ food.card_summary }}</div>
+      </div>
+      {% endif %}
+
+      {# Malzemeler #}
+      {% if food.ingredients_json %}
+      <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+          <span class="material-symbols-outlined text-base text-base-400 dark:text-base-500 leading-none">nutrition</span>
+          <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Malzemeler" %}</span>
+        </div>
+        <div class="px-5 py-4">
+          <div class="flex flex-wrap gap-1.5">
+            {% for ing in food.ingredients_json %}
+              <span class="px-2.5 py-1 rounded-full text-xs text-base-600 dark:text-base-300 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600">{{ ing }}</span>
+            {% endfor %}
+          </div>
+        </div>
       </div>
       {% endif %}
 
