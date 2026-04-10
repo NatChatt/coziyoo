@@ -2458,7 +2458,11 @@ export default function HomeScreen({
     let response = await requestWithToken(currentAuth.accessToken);
     if (response.status !== 401) return response;
 
-    const refreshed = await refreshAuthSession(apiUrl, currentAuth);
+    // Always use a freshly-loaded API URL for the refresh call so a stale closure
+    // value (e.g. 'http://localhost:3000' during app startup) never causes the
+    // refresh request to hang or connect to the wrong host.
+    const { apiUrl: refreshBaseUrl } = await loadSettings();
+    const refreshed = await refreshAuthSession(refreshBaseUrl, currentAuth);
     if (!refreshed) return response;
 
     handleAuthRefresh(refreshed);
@@ -2785,14 +2789,20 @@ export default function HomeScreen({
       Alert.alert(t('helper.home.cartEmptyAlertTitle'), t('helper.home.cartEmptyAlertMessage'));
       return;
     }
-    if (!apiUrl || apiUrl === 'http://localhost:3000') {
-      const s = await loadSettings();
-      if (s.apiUrl && s.apiUrl !== 'http://localhost:3000') {
-        setApiUrl(s.apiUrl);
-      } else {
-        setPaymentError(t('error.home.checkoutStartFailed'));
-        return;
-      }
+
+    // Resolve the effective API URL from settings so we always use the real server URL
+    // even if the apiUrl state hasn't been set yet in this render cycle (e.g. very fast
+    // interaction right after mount).  loadSettings() is cached after first hydration
+    // so this is effectively free on subsequent calls.
+    const { apiUrl: settingsApiUrl } = await loadSettings();
+    const effectiveApiUrl = settingsApiUrl || apiUrl;
+    if (!effectiveApiUrl || effectiveApiUrl === 'http://localhost:3000') {
+      setPaymentError(t('error.home.checkoutStartFailed'));
+      return;
+    }
+    // Keep the state in sync for other consumers in this component.
+    if (effectiveApiUrl !== apiUrl) {
+      setApiUrl(effectiveApiUrl);
     }
 
     const resolvedCartItems = cartItems.map((item) => {
@@ -2836,7 +2846,7 @@ export default function HomeScreen({
     try {
       const createdOrderIds: string[] = [];
       for (const [sellerId, sellerItems] of groupedBySeller.entries()) {
-        const orderRes = await authedJsonFetch(`${apiUrl}/v1/orders`, {
+        const orderRes = await authedJsonFetch(`${effectiveApiUrl}/v1/orders`, {
           method: 'POST',
           headers: {
             'x-actor-role': 'buyer',
