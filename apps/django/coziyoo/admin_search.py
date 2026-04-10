@@ -93,6 +93,29 @@ def admin_global_search(request):
                 })
             groups.append({"key": "foods", "label": _("Foods"), "color": "#d97706", "items": items})
 
+        # ── Production Lots ───────────────────────────────────────────────────
+        cur.execute("""
+            SELECT pl.id::text, pl.lot_number, pl.status, f.id::text, f.name, u.display_name AS seller
+            FROM production_lots pl
+            LEFT JOIN foods f ON f.id = pl.food_id
+            LEFT JOIN users u ON u.id = pl.seller_id
+            WHERE pl.lot_number ILIKE %s OR f.name ILIKE %s OR u.display_name ILIKE %s
+            LIMIT 5
+        """, [like, like, like])
+        lots = cur.fetchall()
+        if lots:
+            items = []
+            for r in lots:
+                lid, lot_number, status, food_id, food_name, seller = r
+                items.append({
+                    "id": lid,
+                    "label": lot_number,
+                    "sublabel": f"{food_name or '?'} · {seller or '?'} · {STATUS_TR.get(status, status)}",
+                    "badge": STATUS_TR.get(status, status),
+                    "url": f"/admin/menu/foods/{food_id}/detail/" if food_id else f"/admin/menu/productionlots/{lid}/change/",
+                })
+            groups.append({"key": "lots", "label": _("Production Lots"), "color": "#0891b2", "items": items})
+
         # ── Complaints ────────────────────────────────────────────────────────
         cur.execute("""
             SELECT c.id::text, c.status, c.description, u.display_name AS complainant
