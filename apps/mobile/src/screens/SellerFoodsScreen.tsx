@@ -1,7 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Animated, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, type LayoutChangeEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { AuthSession } from "../utils/auth";
@@ -16,6 +15,89 @@ import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
 
 const SELLER_FORM_PERSIST_KEY_PREFIX = "seller_food_form_fields_v1";
+
+const CAL_MONTH_NAMES = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const CAL_DAY_LABELS = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+
+function CalendarPicker({ value, onSelect }: { value: Date; onSelect: (date: Date) => void }) {
+  const [viewYear, setViewYear] = useState(value.getFullYear());
+  const [viewMonth, setViewMonth] = useState(value.getMonth());
+
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const startOffset = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7; // Monday-based
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  }
+
+  return (
+    <View style={calStyles.container}>
+      <View style={calStyles.header}>
+        <TouchableOpacity onPress={prevMonth} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+          <Ionicons name="chevron-back" size={20} color="#2E241C" />
+        </TouchableOpacity>
+        <Text style={calStyles.monthTitle}>{CAL_MONTH_NAMES[viewMonth]} {viewYear}</Text>
+        <TouchableOpacity onPress={nextMonth} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+          <Ionicons name="chevron-forward" size={20} color="#2E241C" />
+        </TouchableOpacity>
+      </View>
+      <View style={calStyles.dayLabelsRow}>
+        {CAL_DAY_LABELS.map(label => (
+          <Text key={label} style={calStyles.dayLabel}>{label}</Text>
+        ))}
+      </View>
+      {rows.map((row, ri) => (
+        <View key={ri} style={calStyles.row}>
+          {row.map((day, di) => {
+            const selected = day !== null &&
+              day === value.getDate() &&
+              viewMonth === value.getMonth() &&
+              viewYear === value.getFullYear();
+            return (
+              <TouchableOpacity
+                key={di}
+                style={[calStyles.dayCell, selected && calStyles.dayCellSelected]}
+                onPress={() => { if (day !== null) onSelect(new Date(viewYear, viewMonth, day)); }}
+                disabled={day === null}
+                activeOpacity={0.7}
+              >
+                <Text style={[calStyles.dayText, selected && calStyles.dayTextSelected]}>
+                  {day !== null ? String(day) : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const calStyles = StyleSheet.create({
+  container: { paddingHorizontal: 12, paddingBottom: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  monthTitle: { fontSize: 16, fontWeight: '800', color: '#2E241C' },
+  dayLabelsRow: { flexDirection: 'row', marginBottom: 4 },
+  dayLabel: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '700', color: '#8A7A6A' },
+  row: { flexDirection: 'row', marginBottom: 2 },
+  dayCell: { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
+  dayCellSelected: { backgroundColor: '#3F855C' },
+  dayText: { fontSize: 15, color: '#2E241C', fontWeight: '500' },
+  dayTextSelected: { color: '#fff', fontWeight: '800' },
+});
 
 function IngredientChip({
   label,
@@ -655,30 +737,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
 
   function closeSaleDatePicker() {
     setActiveSaleDateField(null);
-  }
-
-  function handleSaleDateChange(event: DateTimePickerEvent, selectedDate?: Date) {
-    if (!activeSaleDateField) return;
-    if (Platform.OS === "android") {
-      if (event.type === "dismissed") {
-        closeSaleDatePicker();
-        return;
-      }
-      if (selectedDate) {
-        setSaleDateForField(activeSaleDateField, selectedDate);
-      }
-      closeSaleDatePicker();
-      return;
-    }
-    if (selectedDate) {
-      setPendingSaleDate(selectedDate);
-    }
-  }
-
-  function confirmSaleDatePicker() {
-    if (!activeSaleDateField) return;
-    setSaleDateForField(activeSaleDateField, pendingSaleDate);
-    closeSaleDatePicker();
   }
 
   async function authedFetch(path: string, init?: RequestInit, baseUrl = apiUrl): Promise<Response> {
@@ -1713,22 +1771,14 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
         )}
       </KeyboardAvoidingView>
 
-      {activeSaleDateField && Platform.OS === "android" ? (
-        <DateTimePicker
-          value={pendingSaleDate}
-          mode="date"
-          display="default"
-          onChange={handleSaleDateChange}
-        />
-      ) : null}
-
       <Modal
-        visible={Boolean(activeSaleDateField && Platform.OS === "ios")}
+        visible={Boolean(activeSaleDateField)}
         transparent
         animationType="slide"
         onRequestClose={closeSaleDatePicker}
       >
         <View style={styles.datePickerOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={closeSaleDatePicker} activeOpacity={1} />
           <View style={styles.datePickerCard}>
             <View style={styles.datePickerHeader}>
               <TouchableOpacity onPress={closeSaleDatePicker} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
@@ -1739,17 +1789,16 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
                   ? t('headline.seller.foods.initialSaleEnd')
                   : t('headline.seller.foods.initialSaleStart')}
               </Text>
-              <TouchableOpacity onPress={confirmSaleDatePicker} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-                <Text style={styles.datePickerHeaderAction}>{t('cta.common.save')}</Text>
-              </TouchableOpacity>
+              <View style={{ minWidth: 56 }} />
             </View>
-            <DateTimePicker
+            <CalendarPicker
               value={pendingSaleDate}
-              mode="date"
-              display="inline"
-              locale={locale}
-              accentColor="#3F855C"
-              onChange={handleSaleDateChange}
+              onSelect={(date) => {
+                if (activeSaleDateField) {
+                  setSaleDateForField(activeSaleDateField, date);
+                  closeSaleDatePicker();
+                }
+              }}
             />
           </View>
         </View>
