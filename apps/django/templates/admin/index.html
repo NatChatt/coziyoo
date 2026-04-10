@@ -10,23 +10,24 @@
     .dashboard-shell::before {
         content: "";
         position: absolute;
-        inset: -24px 0 auto;
-        height: 220px;
+        inset: -16px 0 auto;
+        height: 180px;
         pointer-events: none;
         background:
-            radial-gradient(circle at top left, rgba(14, 165, 233, 0.12), transparent 42%),
-            radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 36%),
-            linear-gradient(180deg, rgba(15, 23, 42, 0.02), transparent 72%);
-        filter: blur(8px);
+            radial-gradient(circle at top left, rgba(14, 165, 233, 0.10), transparent 36%),
+            radial-gradient(circle at top right, rgba(16, 185, 129, 0.10), transparent 30%);
+        filter: blur(10px);
+    }
+
+    .mini-grid {
+        background-image:
+            linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+        background-size: 24px 24px;
     }
 </style>
 
-<div
-    x-data="dashboard()"
-    x-init="init()"
-    class="dashboard-shell space-y-6"
->
-
+<div x-data="dashboard()" x-init="init()" class="dashboard-shell space-y-5">
     <template x-if="loading">
         <div class="flex items-center justify-center gap-3 py-20 text-base-400 dark:text-base-500">
             <span class="material-symbols-outlined text-3xl animate-spin leading-none">progress_activity</span>
@@ -35,165 +36,213 @@
     </template>
 
     <template x-if="!loading && kpis">
-        <div class="relative space-y-6">
-
+        <div class="relative space-y-5">
             <div class="overflow-hidden rounded-3xl border border-slate-200/80 text-white shadow-xl dark:border-base-700"
-                 style="background: linear-gradient(135deg, #0f172a 0%, #16213e 48%, #123b53 100%);">
-                <div class="grid gap-6 px-6 py-6 lg:grid-cols-2 lg:px-8 lg:py-7">
-                    <div class="space-y-6">
-                        <div class="space-y-3">
-                            <div class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-sky-100">
-                                <span class="material-symbols-outlined text-sm leading-none">space_dashboard</span>
-                                {% trans "Overview" %}
+                 style="background: linear-gradient(135deg, #0f172a 0%, #132238 42%, #0f766e 100%);">
+                <div class="grid gap-4 px-5 py-5 lg:grid-cols-4 lg:px-6">
+                    <div class="space-y-3 lg:col-span-1">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <div class="text-xs font-semibold uppercase tracking-widest text-sky-100/80">{% trans "Control center" %}</div>
+                                <h1 class="mt-1 text-2xl font-semibold tracking-tight text-white">{% trans "Homepage dashboard" %}</h1>
                             </div>
-                            <div class="max-w-2xl space-y-2">
-                                <h1 class="text-2xl font-semibold tracking-tight text-white lg:text-3xl">
-                                    {% trans "Homepage dashboard" %}
-                                </h1>
-                                <p class="max-w-xl text-sm leading-6 text-slate-300">
-                                    {% trans "All key platform signals in one cleaner view." %}
-                                </p>
+                            <div class="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-slate-200">
+                                {% trans "Live view" %}
                             </div>
                         </div>
+                        <p class="text-sm leading-6 text-slate-300">
+                            {% trans "Track traffic, queue pressure and important activity from one compact screen." %}
+                        </p>
 
-                        <div class="grid gap-3 sm:grid-cols-3">
-                            <template x-for="stat in heroStats()" :key="stat.key">
-                                <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <div>
-                                            <div class="text-xs font-semibold uppercase tracking-widest text-slate-300" x-text="stat.label"></div>
-                                            <div class="mt-2 text-3xl font-semibold leading-none text-white" x-text="stat.format === 'currency' ? currency(stat.value) : fmt(stat.value)"></div>
-                                        </div>
-                                        <div class="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/10">
-                                            <span class="material-symbols-outlined text-lg leading-none text-white/90" x-text="stat.icon"></span>
+                        <div class="space-y-2.5">
+                            <template x-for="item in leftPanelItems()" :key="item.key">
+                                <template x-if="!item.href">
+                                    <div class="rounded-2xl border px-4 py-3"
+                                         :class="item.variant === 'action'
+                                             ? 'border-white/12 bg-white/10'
+                                             : 'border-white/10 bg-slate-950/20'">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border"
+                                                 :class="item.tone === 'emerald'
+                                                     ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100'
+                                                     : item.tone === 'amber'
+                                                         ? 'border-amber-300/20 bg-amber-400/10 text-amber-100'
+                                                         : item.tone === 'rose'
+                                                             ? 'border-rose-300/20 bg-rose-400/10 text-rose-100'
+                                                             : 'border-sky-300/20 bg-sky-400/10 text-sky-100'">
+                                                <span class="material-symbols-outlined text-lg leading-none" x-text="item.icon"></span>
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-start justify-between gap-3">
+                                                    <div class="min-w-0">
+                                                        <div class="truncate text-sm font-semibold text-white" x-text="item.label"></div>
+                                                        <div class="mt-0.5 text-xs text-slate-400" x-text="item.caption"></div>
+                                                    </div>
+                                                    <div class="shrink-0 text-right">
+                                                        <div class="text-xl font-semibold text-white"
+                                                             x-text="item.format === 'currency' ? currency(item.value) : fmt(item.value)"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                </template>
+                                <template x-if="item.href">
+                                    <a :href="item.href"
+                                       class="group block rounded-2xl border border-white/15 bg-white/10 px-4 py-3 transition-all hover:-translate-y-0.5 hover:bg-white/14">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border"
+                                                 :class="item.tone === 'emerald'
+                                                     ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100'
+                                                     : item.tone === 'amber'
+                                                         ? 'border-amber-300/20 bg-amber-400/10 text-amber-100'
+                                                         : item.tone === 'rose'
+                                                             ? 'border-rose-300/20 bg-rose-400/10 text-rose-100'
+                                                             : 'border-sky-300/20 bg-sky-400/10 text-sky-100'">
+                                                <span class="material-symbols-outlined text-lg leading-none" x-text="item.icon"></span>
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-start justify-between gap-3">
+                                                    <div class="min-w-0">
+                                                        <div class="truncate text-sm font-semibold text-white" x-text="item.label"></div>
+                                                        <div class="mt-0.5 text-xs text-slate-300" x-text="item.caption"></div>
+                                                    </div>
+                                                    <div class="flex items-center gap-3 shrink-0">
+                                                        <div class="text-right">
+                                                            <div class="text-xl font-semibold text-white"
+                                                                 x-text="item.format === 'currency' ? currency(item.value) : fmt(item.value)"></div>
+                                                        </div>
+                                                        <span class="material-symbols-outlined text-base text-white/70 transition-transform group-hover:translate-x-0.5">arrow_forward</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </template>
                             </template>
                         </div>
                     </div>
 
-                    <div class="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
-                        <div class="flex items-center justify-between gap-3">
-                            <div>
-                                <div class="text-xs font-semibold uppercase tracking-widest text-slate-300">{% trans "Pending review" %}</div>
-                                <div class="mt-1 text-lg font-semibold text-white">{% trans "Needs attention today" %}</div>
+                    <div class="grid gap-4 lg:col-span-3 lg:grid-cols-4">
+                        <div class="overflow-hidden rounded-3xl border border-white/10 bg-white/10 backdrop-blur-sm lg:col-span-3">
+                            <div class="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+                                <div>
+                                    <div class="text-xs font-semibold uppercase tracking-widest text-slate-300">{% trans "Realtime pulse" %}</div>
+                                    <div class="mt-1 text-lg font-semibold text-white">{% trans "Orders and revenue flow" %}</div>
+                                </div>
+                                <div class="flex items-center gap-2 text-xs text-slate-300">
+                                    <span class="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    {% trans "Updating" %}
+                                </div>
                             </div>
-                            <div class="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10">
-                                <span class="material-symbols-outlined text-lg text-amber-200">notifications_active</span>
+
+                            <div class="mini-grid px-5 py-4">
+                                <div class="grid gap-4 md:grid-cols-2">
+                                    <div class="rounded-2xl border border-white/10 bg-slate-950/20 p-4">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div>
+                                                <div class="text-xs font-semibold uppercase tracking-widest text-slate-400">{% trans "Orders trend" %}</div>
+                                                <div class="mt-2 text-2xl font-semibold text-white" x-text="fmt(kpis.orders_today)"></div>
+                                            </div>
+                                            <span class="material-symbols-outlined text-2xl text-sky-200">monitoring</span>
+                                        </div>
+                                        <svg viewBox="0 0 320 120" class="mt-4 h-28 w-full">
+                                            <polyline fill="none" stroke="rgba(56,189,248,0.22)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" :points="ordersLineShadow()"></polyline>
+                                            <polyline fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" :points="ordersLine()"></polyline>
+                                            <template x-for="point in ordersPoints()" :key="point.x">
+                                                <circle :cx="point.x" :cy="point.y" r="4" fill="#0f172a" stroke="#38bdf8" stroke-width="3"></circle>
+                                            </template>
+                                        </svg>
+                                    </div>
+
+                                    <div class="rounded-2xl border border-white/10 bg-slate-950/20 p-4">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div>
+                                                <div class="text-xs font-semibold uppercase tracking-widest text-slate-400">{% trans "Revenue trend" %}</div>
+                                                <div class="mt-2 text-2xl font-semibold text-white" x-text="currency(kpis.revenue_today)"></div>
+                                            </div>
+                                            <span class="material-symbols-outlined text-2xl text-emerald-200">candlestick_chart</span>
+                                        </div>
+                                        <div class="mt-4 space-y-2">
+                                            <template x-for="(day, i) in chart" :key="i">
+                                                <div class="grid grid-cols-12 items-center gap-3">
+                                                    <div class="col-span-2 text-xs text-slate-400" x-text="shortDate(day.date)"></div>
+                                                    <div class="col-span-7 h-2.5 overflow-hidden rounded-full bg-white/10">
+                                                        <div class="h-full rounded-full bg-gradient-to-r from-emerald-300 to-emerald-500"
+                                                             :style="'width:' + barWidth(day.revenue, maxRevenue) + '%'"></div>
+                                                    </div>
+                                                    <div class="col-span-3 text-right text-xs font-medium text-slate-300" x-text="compactCurrency(day.revenue)"></div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="mt-5 space-y-3">
-                            <template x-for="item in attentionStats()" :key="item.key">
-                                <div class="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-slate-950/20 px-4 py-3">
-                                    <div class="flex items-center gap-3 min-w-0">
-                                        <div class="flex h-10 w-10 items-center justify-center rounded-xl border text-sm"
-                                             :class="item.tone === 'rose'
-                                                 ? 'border-rose-300/20 bg-rose-400/10 text-rose-200'
-                                                 : item.tone === 'amber'
-                                                     ? 'border-amber-300/20 bg-amber-400/10 text-amber-100'
-                                                     : 'border-sky-300/20 bg-sky-400/10 text-sky-100'">
-                                            <span class="material-symbols-outlined text-base leading-none" x-text="item.icon"></span>
-                                        </div>
-                                        <div class="min-w-0">
-                                            <div class="truncate text-sm font-medium text-white" x-text="item.label"></div>
-                                            <div class="text-xs text-slate-400" x-text="item.caption"></div>
-                                        </div>
-                                    </div>
-                                    <div class="shrink-0 text-right">
-                                        <div class="text-xl font-semibold text-white" x-text="fmt(item.value)"></div>
-                                    </div>
+                        <div class="overflow-hidden rounded-3xl border border-white/10 bg-white/10 backdrop-blur-sm lg:col-span-1">
+                            <div class="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+                                <div>
+                                    <div class="text-xs font-semibold uppercase tracking-widest text-slate-300">{% trans "Live activity" %}</div>
+                                    <div class="mt-1 text-lg font-semibold text-white">{% trans "Important feed" %}</div>
                                 </div>
-                            </template>
+                                <span class="material-symbols-outlined text-lg text-white/70">hub</span>
+                            </div>
+                            <div class="space-y-3 px-5 py-4">
+                                <template x-for="entry in activityFeed()" :key="entry.key">
+                                    <div class="rounded-2xl border border-white/10 bg-slate-950/20 p-3.5">
+                                        <div class="flex items-start gap-3">
+                                            <div class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border"
+                                                 :class="entry.tone === 'emerald'
+                                                     ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100'
+                                                     : entry.tone === 'amber'
+                                                         ? 'border-amber-300/20 bg-amber-400/10 text-amber-100'
+                                                         : entry.tone === 'rose'
+                                                             ? 'border-rose-300/20 bg-rose-400/10 text-rose-100'
+                                                             : 'border-sky-300/20 bg-sky-400/10 text-sky-100'">
+                                                <span class="material-symbols-outlined text-base leading-none" x-text="entry.icon"></span>
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-start justify-between gap-3">
+                                                    <div class="min-w-0">
+                                                        <div class="text-sm font-semibold text-white" x-text="entry.title"></div>
+                                                        <div class="mt-0.5 text-xs text-slate-400" x-text="entry.text"></div>
+                                                    </div>
+                                                    <div class="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs font-medium text-white"
+                                                         x-text="entry.value"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <template x-for="stat in primaryStats()" :key="stat.key">
-                    <div class="group relative overflow-hidden rounded-3xl border border-base-200/80 bg-white p-5 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 dark:border-base-700 dark:bg-base-900">
-                        <div class="absolute inset-x-0 top-0 h-1.5"
-                             :class="stat.tone === 'sky'
-                                 ? 'bg-sky-500/90'
-                                 : stat.tone === 'emerald'
-                                     ? 'bg-emerald-500/90'
-                                     : stat.tone === 'amber'
-                                         ? 'bg-amber-500/90'
-                                         : 'bg-rose-500/90'">
-                        </div>
-                        <div class="flex items-start justify-between gap-4">
-                            <div class="min-w-0">
-                                <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500" x-text="stat.label"></div>
-                                <div class="mt-3 text-3xl font-semibold leading-none text-base-900 dark:text-base-50"
-                                     x-text="stat.format === 'currency' ? currency(stat.value) : fmt(stat.value)"></div>
-                            </div>
-                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
-                                 :class="stat.tone === 'sky'
-                                     ? 'border-sky-200 bg-sky-50 text-sky-600 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300'
-                                     : stat.tone === 'emerald'
-                                         ? 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                         : stat.tone === 'amber'
-                                             ? 'border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300'
-                                             : 'border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300'">
-                                <span class="material-symbols-outlined text-xl leading-none" x-text="stat.icon"></span>
-                            </div>
-                        </div>
-                        <div class="mt-4 text-sm text-base-500 dark:text-base-400" x-text="stat.caption"></div>
-                    </div>
-                </template>
-            </div>
-
-            <div class="grid gap-4 lg:grid-cols-5">
+            <div class="grid gap-4 lg:grid-cols-4">
                 <div class="overflow-hidden rounded-3xl border border-base-200/80 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 lg:col-span-3">
-                    <div class="flex flex-col gap-3 border-b border-base-200/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-base-700">
+                    <div class="flex items-center justify-between gap-3 border-b border-base-200/80 px-5 py-4 dark:border-base-700">
                         <div>
-                            <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Performance" %}</div>
-                            <div class="mt-1 text-lg font-semibold text-base-900 dark:text-base-50">{% trans "Last 7 days" %}</div>
+                            <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Traffic map" %}</div>
+                            <div class="mt-1 text-lg font-semibold text-base-900 dark:text-base-50">{% trans "7-day operational density" %}</div>
                         </div>
-                        <div class="flex flex-wrap items-center gap-3 text-xs text-base-500 dark:text-base-400">
-                            <span class="inline-flex items-center gap-2">
-                                <span class="h-2.5 w-2.5 rounded-full bg-primary-500"></span>
-                                {% trans "Orders" %}
-                            </span>
-                            <span class="inline-flex items-center gap-2">
-                                <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                                {% trans "Revenue" %}
-                            </span>
-                        </div>
+                        <span class="text-xs text-base-400 dark:text-base-500">{% trans "Orders vs queue pressure" %}</span>
                     </div>
-                    <div class="space-y-4 p-5">
+                    <div class="grid gap-3 px-5 py-4 md:grid-cols-7">
                         <template x-for="(day, i) in chart" :key="i">
-                            <div class="rounded-2xl border border-base-100 bg-base-50/70 p-4 dark:border-base-800 dark:bg-base-950/30">
-                                <div class="mb-3 flex items-center justify-between gap-3">
-                                    <div class="text-sm font-semibold text-base-900 dark:text-base-100" x-text="fmtDate(day.date)"></div>
-                                    <div class="text-xs text-base-400 dark:text-base-500">
-                                        <span x-text="fmt(day.orders)"></span>
-                                        <span class="mx-1">•</span>
-                                        <span x-text="currency(day.revenue)"></span>
+                            <div class="rounded-2xl border border-base-100 bg-base-50/80 p-3 dark:border-base-800 dark:bg-base-950/30">
+                                <div class="text-xs font-semibold uppercase tracking-wider text-base-400 dark:text-base-500" x-text="shortDate(day.date)"></div>
+                                <div class="mt-3 space-y-2">
+                                    <div class="rounded-xl p-2 text-white"
+                                         :style="'background:' + heatColor(day.orders, maxOrders)">
+                                        <div class="text-xs uppercase tracking-wider text-white/80">{% trans "Orders" %}</div>
+                                        <div class="mt-1 text-lg font-semibold" x-text="fmt(day.orders)"></div>
                                     </div>
-                                </div>
-                                <div class="space-y-3">
-                                    <div class="space-y-1.5">
-                                        <div class="flex items-center justify-between gap-3 text-xs font-medium uppercase tracking-wider text-base-400 dark:text-base-500">
-                                            <span>{% trans "Orders" %}</span>
-                                            <span x-text="fmt(day.orders)"></span>
-                                        </div>
-                                        <div class="h-2.5 overflow-hidden rounded-full bg-primary-500/10 dark:bg-primary-500/15">
-                                            <div class="h-full rounded-full bg-primary-500 transition-all duration-500"
-                                                 :style="'width:' + barWidth(day.orders, maxOrders) + '%'"></div>
-                                        </div>
-                                    </div>
-                                    <div class="space-y-1.5">
-                                        <div class="flex items-center justify-between gap-3 text-xs font-medium uppercase tracking-wider text-base-400 dark:text-base-500">
-                                            <span>{% trans "Revenue" %}</span>
-                                            <span x-text="currency(day.revenue)"></span>
-                                        </div>
-                                        <div class="h-2.5 overflow-hidden rounded-full bg-emerald-500/10 dark:bg-emerald-500/15">
-                                            <div class="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                                                 :style="'width:' + barWidth(day.revenue, maxRevenue) + '%'"></div>
-                                        </div>
+                                    <div class="rounded-xl border border-base-200 bg-white px-3 py-2 dark:border-base-700 dark:bg-base-900">
+                                        <div class="text-xs uppercase tracking-wider text-base-400 dark:text-base-500">{% trans "Revenue" %}</div>
+                                        <div class="mt-1 text-sm font-semibold text-base-900 dark:text-base-100" x-text="compactCurrency(day.revenue)"></div>
                                     </div>
                                 </div>
                             </div>
@@ -201,31 +250,30 @@
                     </div>
                 </div>
 
-                <div class="overflow-hidden rounded-3xl border border-base-200/80 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 lg:col-span-2">
+                <div class="overflow-hidden rounded-3xl border border-base-200/80 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 lg:col-span-1">
                     <div class="flex items-center justify-between gap-3 border-b border-base-200/80 px-5 py-4 dark:border-base-700">
                         <div>
-                            <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Complaints" %}</div>
-                            <div class="mt-1 text-lg font-semibold text-base-900 dark:text-base-50">{% trans "Recent activity" %}</div>
+                            <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Recent complaints" %}</div>
+                            <div class="mt-1 text-lg font-semibold text-base-900 dark:text-base-50">{% trans "Priority queue" %}</div>
                         </div>
-                        <a href="/admin/complaints/complaints/" class="text-xs font-medium text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
+                        <a href="/admin/complaints/complaints/" class="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
                             {% trans "View all" %}
                         </a>
                     </div>
                     <div class="divide-y divide-base-100 dark:divide-base-800">
-                        <template x-for="(c, i) in complaints" :key="i">
+                        <template x-for="(c, i) in complaints.slice(0, 5)" :key="i">
                             <a :href="'/admin/complaints/complaints/' + c.id + '/change/'"
                                class="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-base-50 dark:hover:bg-base-800/40">
-                                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-                                    <span class="material-symbols-outlined text-lg leading-none">campaign</span>
+                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+                                    <span class="material-symbols-outlined text-base leading-none">warning</span>
                                 </div>
                                 <div class="min-w-0 flex-1">
                                     <div class="truncate text-sm font-semibold text-base-900 dark:text-base-100" x-text="c.complainant"></div>
                                     <div class="mt-1 text-xs text-base-400 dark:text-base-500" x-text="c.created_at"></div>
                                 </div>
-                                <span class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize"
+                                <span class="rounded-full px-3 py-1 text-xs font-semibold capitalize"
                                       :class="complaintBadgeClass(c.status)"
-                                      x-text="humanizeStatus(c.status)">
-                                </span>
+                                      x-text="humanizeStatus(c.status)"></span>
                             </a>
                         </template>
                         <template x-if="complaints.length === 0">
@@ -234,66 +282,8 @@
                     </div>
                 </div>
             </div>
-
-            <div class="overflow-hidden rounded-3xl border border-base-200/80 bg-white shadow-sm dark:border-base-700 dark:bg-base-900">
-                <div class="flex flex-col gap-3 border-b border-base-200/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-base-700">
-                    <div>
-                        <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Orders" %}</div>
-                        <div class="mt-1 text-lg font-semibold text-base-900 dark:text-base-50">{% trans "Recent orders" %}</div>
-                    </div>
-                    <a href="/admin/orders/orders/" class="text-xs font-medium text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
-                        {% trans "View all" %}
-                    </a>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="min-w-full w-full text-sm">
-                        <thead>
-                            <tr class="bg-base-50/80 dark:bg-base-800/50">
-                                <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Order" %}</th>
-                                <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Buyer" %}</th>
-                                <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Seller" %}</th>
-                                <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Status" %}</th>
-                                <th class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Total" %}</th>
-                                <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Date" %}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-base-100 dark:divide-base-800">
-                            <template x-for="(o, i) in orders" :key="i">
-                                <tr class="cursor-pointer transition-colors hover:bg-base-50 dark:hover:bg-base-800/35"
-                                    @click="window.location='/admin/orders/orders/' + o.id + '/change/'">
-                                    <td class="px-5 py-4">
-                                        <div class="text-sm font-semibold text-base-900 dark:text-base-100" x-text="'#' + o.id_short"></div>
-                                    </td>
-                                    <td class="px-5 py-4 text-sm text-base-700 dark:text-base-200">
-                                        <div class="max-w-xs truncate" x-text="o.buyer"></div>
-                                    </td>
-                                    <td class="px-5 py-4 text-sm text-base-500 dark:text-base-400">
-                                        <div class="max-w-xs truncate" x-text="o.seller"></div>
-                                    </td>
-                                    <td class="px-5 py-4">
-                                        <span class="rounded-full px-3 py-1 text-xs font-semibold capitalize"
-                                              :class="orderBadgeClass(o.status)"
-                                              x-text="humanizeStatus(o.status)">
-                                        </span>
-                                    </td>
-                                    <td class="px-5 py-4 text-right text-sm font-semibold text-base-900 dark:text-base-100" x-text="'₺' + o.total.toFixed(2)"></td>
-                                    <td class="px-5 py-4 text-xs text-base-400 dark:text-base-500 whitespace-nowrap" x-text="o.created_at"></td>
-                                </tr>
-                            </template>
-                            <template x-if="orders.length === 0">
-                                <tr>
-                                    <td colspan="6" class="py-12 text-center text-sm text-base-400 dark:text-base-500">{% trans "No orders" %}</td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
         </div>
     </template>
-
 </div>
 
 <script>
@@ -313,40 +303,33 @@ function dashboard() {
                 if (!resp.ok) return;
                 const d = await resp.json();
                 this.kpis = d.kpis;
-                this.chart = d.chart;
-                this.orders = d.recent_orders;
-                this.complaints = d.recent_complaints;
-                this.maxOrders = Math.max(1, ...d.chart.map((r) => r.orders));
-                this.maxRevenue = Math.max(1, ...d.chart.map((r) => r.revenue));
+                this.chart = d.chart || [];
+                this.orders = d.recent_orders || [];
+                this.complaints = d.recent_complaints || [];
+                this.maxOrders = Math.max(1, ...this.chart.map((r) => r.orders || 0));
+                this.maxRevenue = Math.max(1, ...this.chart.map((r) => r.revenue || 0));
             } finally {
                 this.loading = false;
             }
         },
 
-        heroStats() {
+        leftPanelItems() {
             return [
-                { key: 'revenue_today', label: '{% trans "Revenue today" %}', value: this.kpis.revenue_today, icon: 'payments', format: 'currency' },
-                { key: 'orders_today', label: '{% trans "Orders today" %}', value: this.kpis.orders_today, icon: 'receipt_long' },
-                { key: 'orders_active', label: '{% trans "Active orders" %}', value: this.kpis.orders_active, icon: 'local_shipping' },
+                { key: 'revenue_today', label: '{% trans "Revenue today" %}', caption: '{% trans "Current day gross volume" %}', value: this.kpis.revenue_today, icon: 'payments', tone: 'emerald', format: 'currency' },
+                { key: 'orders_today', label: '{% trans "Orders today" %}', caption: '{% trans "Incoming order count" %}', value: this.kpis.orders_today, icon: 'receipt_long', tone: 'sky' },
+                { key: 'orders_active', label: '{% trans "Active orders" %}', caption: '{% trans "Still in fulfillment" %}', value: this.kpis.orders_active, icon: 'local_shipping', tone: 'sky' },
+                { key: 'open_complaints', label: '{% trans "Open complaints" %}', caption: '{% trans "Customer-side urgent queue" %}', value: this.kpis.open_complaints, icon: 'report_problem', tone: 'rose', href: '/admin/complaints/complaints/', variant: 'action' },
+                { key: 'pending_sellers', label: '{% trans "Pending sellers" %}', caption: '{% trans "Seller approvals waiting" %}', value: this.kpis.pending_sellers, icon: 'storefront', tone: 'amber', href: '/admin/authentication/sellerusers/' , variant: 'action' },
+                { key: 'pending_compliance', label: '{% trans "Pending docs" %}', caption: '{% trans "Documents to review" %}', value: this.kpis.pending_compliance, icon: 'folder_open', tone: 'amber', href: '/admin/compliance/', variant: 'action' },
             ];
         },
 
-        attentionStats() {
+        activityFeed() {
             return [
-                { key: 'open_complaints', label: '{% trans "Open complaints" %}', value: this.kpis.open_complaints, icon: 'report_problem', tone: 'rose', caption: '{% trans "Customer-side urgent queue" %}' },
-                { key: 'pending_sellers', label: '{% trans "Pending sellers" %}', value: this.kpis.pending_sellers, icon: 'storefront', tone: 'amber', caption: '{% trans "Seller approvals waiting" %}' },
-                { key: 'pending_compliance', label: '{% trans "Pending docs" %}', value: this.kpis.pending_compliance, icon: 'folder_open', tone: 'sky', caption: '{% trans "Documents to review" %}' },
-            ];
-        },
-
-        primaryStats() {
-            return [
-                { key: 'total_buyers', label: '{% trans "Total buyers" %}', value: this.kpis.total_buyers, icon: 'group', tone: 'sky', caption: '{% trans "Registered customer base" %}' },
-                { key: 'new_buyers_month', label: '{% trans "New buyers (30d)" %}', value: this.kpis.new_buyers_month, icon: 'person_add', tone: 'sky', caption: '{% trans "Fresh growth in the last month" %}' },
-                { key: 'active_sellers', label: '{% trans "Active sellers" %}', value: this.kpis.active_sellers, icon: 'store', tone: 'emerald', caption: '{% trans "Currently selling on platform" %}' },
-                { key: 'revenue_month', label: '{% trans "Revenue (month)" %}', value: this.kpis.revenue_month, icon: 'trending_up', tone: 'emerald', format: 'currency', caption: '{% trans "Gross volume in the current month" %}' },
-                { key: 'open_complaints', label: '{% trans "Open complaints" %}', value: this.kpis.open_complaints, icon: 'support_agent', tone: 'rose', caption: '{% trans "Still waiting for resolution" %}' },
-                { key: 'pending_compliance', label: '{% trans "Pending docs" %}', value: this.kpis.pending_compliance, icon: 'task', tone: 'amber', caption: '{% trans "Compliance checks not completed yet" %}' },
+                { key: 'orders', title: '{% trans "Orders moving now" %}', text: '{% trans "Active delivery and preparation load" %}', value: this.fmt(this.kpis.orders_active), icon: 'local_shipping', tone: 'sky' },
+                { key: 'complaints', title: '{% trans "Attention needed" %}', text: '{% trans "Open customer complaints in queue" %}', value: this.fmt(this.kpis.open_complaints), icon: 'priority_high', tone: 'rose' },
+                { key: 'seller_reviews', title: '{% trans "Seller review lane" %}', text: '{% trans "Profiles waiting for decision" %}', value: this.fmt(this.kpis.pending_sellers), icon: 'store', tone: 'amber' },
+                { key: 'doc_reviews', title: '{% trans "Compliance lane" %}', text: '{% trans "Documents still pending" %}', value: this.fmt(this.kpis.pending_compliance), icon: 'inventory_2', tone: 'amber' },
             ];
         },
 
@@ -360,15 +343,10 @@ function dashboard() {
             return '₺' + new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
         },
 
-        barWidth(val, max) {
-            if (!max || max === 0) return 0;
-            return Math.max(4, Math.round((val / max) * 100));
-        },
-
-        fmtDate(dateStr) {
-            if (!dateStr) return '';
-            const d = new Date(dateStr);
-            return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long' });
+        compactCurrency(n) {
+            if (n === null || n === undefined) return '—';
+            if (n >= 1000) return '₺' + (n / 1000).toFixed(1) + 'k';
+            return '₺' + Math.round(n);
         },
 
         humanizeStatus(status) {
@@ -376,18 +354,47 @@ function dashboard() {
             return status.replaceAll('_', ' ');
         },
 
-        orderBadgeClass(status) {
-            if (status === 'delivered') return 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800';
-            if (status === 'processing' || status === 'accepted') return 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800';
-            if (status === 'pending') return 'bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800';
-            if (status === 'cancelled') return 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800';
-            return 'bg-base-100 text-base-600 border border-base-200 dark:bg-base-800 dark:text-base-400 dark:border-base-700';
-        },
-
         complaintBadgeClass(status) {
             if (status === 'open') return 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800';
             if (status === 'in_review') return 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800';
             return 'bg-base-100 text-base-600 border border-base-200 dark:bg-base-800 dark:text-base-400 dark:border-base-700';
+        },
+
+        barWidth(val, max) {
+            if (!max || max === 0) return 0;
+            return Math.max(8, Math.round((val / max) * 100));
+        },
+
+        shortDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+        },
+
+        ordersPoints() {
+            if (!this.chart.length) return [];
+            return this.chart.map((day, index) => {
+                const x = 16 + (index * (288 / Math.max(1, this.chart.length - 1)));
+                const ratio = this.maxOrders ? (day.orders || 0) / this.maxOrders : 0;
+                const y = 96 - (ratio * 72);
+                return { x, y };
+            });
+        },
+
+        ordersLine() {
+            return this.ordersPoints().map((point) => `${point.x},${point.y}`).join(' ');
+        },
+
+        ordersLineShadow() {
+            return this.ordersPoints().map((point) => `${point.x},${point.y + 1}`).join(' ');
+        },
+
+        heatColor(val, max) {
+            const ratio = max ? (val || 0) / max : 0;
+            if (ratio > 0.75) return 'linear-gradient(135deg, #0f766e, #14b8a6)';
+            if (ratio > 0.45) return 'linear-gradient(135deg, #0369a1, #38bdf8)';
+            if (ratio > 0.15) return 'linear-gradient(135deg, #334155, #64748b)';
+            return 'linear-gradient(135deg, #1e293b, #334155)';
         },
     };
 }
