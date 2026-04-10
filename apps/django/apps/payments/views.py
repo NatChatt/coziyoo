@@ -20,16 +20,30 @@ class PaymentStatusView(APIView):
     def get(self, request, order_id):
         user_id = request.user.id
         with connection.cursor() as cur:
+            # Fetch order status (verify access at the same time)
+            cur.execute(
+                "SELECT status FROM orders WHERE id = %s AND (buyer_id = %s OR seller_id = %s)",
+                [order_id, user_id, user_id],
+            )
+            order_row = cur.fetchone()
+
+        if not order_row:
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
+                status=404,
+            )
+
+        order_status = order_row[0]
+
+        with connection.cursor() as cur:
             cur.execute(
                 """
                 SELECT pa.id, pa.status, pa.provider, pa.created_at, pa.updated_at
                 FROM payment_attempts pa
-                WHERE pa.order_id = %s AND pa.order_id IN (
-                    SELECT id FROM orders WHERE buyer_id = %s OR seller_id = %s
-                )
+                WHERE pa.order_id = %s
                 ORDER BY pa.created_at DESC
                 """,
-                [order_id, user_id, user_id],
+                [order_id],
             )
             cols = ["id", "status", "provider", "createdAt", "updatedAt"]
             attempts = []
@@ -41,12 +55,13 @@ class PaymentStatusView(APIView):
                 attempts.append(attempt)
 
         latest_attempt = attempts[0] if attempts else None
-        payment_completed = bool(latest_attempt and latest_attempt.get("status") == "paid")
+        payment_completed = bool(order_status == "paid" or (latest_attempt and latest_attempt.get("status") == "paid"))
 
         return Response(
             {
                 "data": {
                     "orderId": str(order_id),
+                    "orderStatus": order_status,
                     "attempts": attempts,
                     "latestAttempt": latest_attempt,
                     "paymentCompleted": payment_completed,

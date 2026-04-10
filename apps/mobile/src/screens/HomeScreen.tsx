@@ -2003,13 +2003,8 @@ export default function HomeScreen({
   const mealsLoadedOnceRef = useRef(false);
   const recommendedMealsLoadedOnceRef = useRef(false);
   const buyerFeedRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const authInitialized = useRef(false);
-
   useEffect(() => {
-    if (!authInitialized.current) {
-      authInitialized.current = true;
-      setCurrentAuth(auth);
-    }
+    setCurrentAuth(auth);
   }, [auth]);
 
   const handleAuthRefresh = useCallback((session: AuthSession) => {
@@ -2790,6 +2785,15 @@ export default function HomeScreen({
       Alert.alert(t('helper.home.cartEmptyAlertTitle'), t('helper.home.cartEmptyAlertMessage'));
       return;
     }
+    if (!apiUrl || apiUrl === 'http://localhost:3000') {
+      const s = await loadSettings();
+      if (s.apiUrl && s.apiUrl !== 'http://localhost:3000') {
+        setApiUrl(s.apiUrl);
+      } else {
+        setPaymentError(t('error.home.checkoutStartFailed'));
+        return;
+      }
+    }
 
     const resolvedCartItems = cartItems.map((item) => {
       if (item.meal.lotId) return item;
@@ -2877,7 +2881,7 @@ export default function HomeScreen({
           ? t('helper.home.paymentCapturePendingMultiple')
           : t('helper.home.paymentCapturePendingSingle'),
       );
-      void refreshPaymentStatus(true, createdOrderIds);
+      void refreshPaymentStatus(true, createdOrderIds, true);
       setPaymentError(null);
       setCartItems([]);
     } catch (err) {
@@ -2887,7 +2891,7 @@ export default function HomeScreen({
     }
   }
 
-  async function refreshPaymentStatus(waitForSettlement = false, overrideOrderIds?: string[]) {
+  async function refreshPaymentStatus(waitForSettlement = false, overrideOrderIds?: string[], orderCreatedByUs = false) {
     const orderIds = (overrideOrderIds && overrideOrderIds.length > 0
       ? overrideOrderIds
       : activeOrderIds.length > 0
@@ -2899,15 +2903,12 @@ export default function HomeScreen({
           : []);
     if (orderIds.length === 0) return;
     setPaymentLoading(true);
-    setPaymentError(null);
+    if (!orderCreatedByUs) setPaymentError(null);
     try {
       const loadSnapshots = async () => Promise.all(
         orderIds.map(async (oid) => {
-          const response = await fetch(`${apiUrl}/v1/payments/${oid}/status`, {
-            headers: {
-              Authorization: `Bearer ${currentAuth.accessToken}`,
-              'x-actor-role': 'buyer',
-            },
+          const response = await authedJsonFetch(`${apiUrl}/v1/payments/${oid}/status`, {
+            headers: { 'x-actor-role': 'buyer' },
           });
           const json = await readJsonSafe<{
             data?: {
@@ -2923,7 +2924,7 @@ export default function HomeScreen({
           }
           return {
             orderId: String(json?.data?.orderId ?? oid),
-            orderStatus: String(json?.data?.orderStatus ?? ''),
+            orderStatus: String(json?.data?.orderStatus ?? 'pending_seller_approval'),
             paymentCompleted: Boolean(json?.data?.paymentCompleted),
             latestAttemptStatus: json?.data?.latestAttempt?.status
               ? String(json.data.latestAttempt.status)
@@ -2953,7 +2954,10 @@ export default function HomeScreen({
         setCartItems([]);
       }
     } catch (err) {
-      setPaymentError(err instanceof Error ? err.message : t('error.home.paymentStatusFailed'));
+      // If the order was successfully created, don't overwrite the success state with a status-poll error.
+      if (!orderCreatedByUs) {
+        setPaymentError(err instanceof Error ? err.message : t('error.home.paymentStatusFailed'));
+      }
     } finally {
       setPaymentLoading(false);
       void fetchRecentBuyerOrders();
