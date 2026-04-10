@@ -1746,8 +1746,9 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             <DateTimePicker
               value={pendingSaleDate}
               mode="date"
-              display="spinner"
+              display="inline"
               locale={locale}
+              accentColor="#3F855C"
               onChange={handleSaleDateChange}
             />
           </View>
@@ -2264,33 +2265,36 @@ const styles = StyleSheet.create({
   previewBtnText: { color: "#46392D", fontWeight: "700" },
   datePickerOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.28)",
+    backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "flex-end",
   },
   datePickerCard: {
     backgroundColor: "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: 4,
     paddingTop: 12,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   datePickerHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 4,
+    paddingHorizontal: 12,
   },
   datePickerHeaderAction: {
     color: "#3F855C",
     fontWeight: "700",
     minWidth: 56,
+    fontSize: 16,
   },
   datePickerTitle: {
     flex: 1,
     textAlign: "center",
     color: "#2E241C",
     fontWeight: "800",
+    fontSize: 16,
     paddingHorizontal: 8,
   },
   saveBtn: {
