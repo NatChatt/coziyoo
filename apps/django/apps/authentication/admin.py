@@ -38,12 +38,12 @@ STATUS_TR = {
 TYPE_TR = {"buyer": "Alıcı", "seller": "Satıcı", "both": "Her İkisi"}
 
 TAG_CHIP_STYLES = [
-    "background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd",
-    "background:#dcfce7;color:#166534;border:1px solid #86efac",
-    "background:#fef3c7;color:#92400e;border:1px solid #fcd34d",
-    "background:#fae8ff;color:#a21caf;border:1px solid #e879f9",
-    "background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5",
-    "background:#ccfbf1;color:#0f766e;border:1px solid #5eead4",
+    "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700",
+    "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700",
+    "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700",
+    "bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200 dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-700",
+    "bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-700",
+    "bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-700",
 ]
 
 

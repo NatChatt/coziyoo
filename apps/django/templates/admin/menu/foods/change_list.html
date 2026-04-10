@@ -59,9 +59,9 @@
         {# Status #}
         <td class="px-4 py-3 text-center">
           {% if food.is_active %}
-            <span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">{% trans "Aktif" %}</span>
+            <span class="inline-flex px-2.5 py-0.5 rounded text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">{% trans "Aktif" %}</span>
           {% else %}
-            <span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500">{% trans "Pasif" %}</span>
+            <span class="inline-flex px-2.5 py-0.5 rounded text-xs font-semibold bg-base-100 dark:bg-base-700 text-base-500 dark:text-base-400 border border-base-200 dark:border-base-600">{% trans "Pasif" %}</span>
           {% endif %}
         </td>
 

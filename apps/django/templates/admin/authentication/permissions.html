@@ -57,8 +57,8 @@
                 :class="loading === 'admin:{{ perm_key }}' ? 'animate-pulse' : ''"
                 @click="toggle('admin', '{{ perm_key }}')"
                 :title="perms['admin:{{ perm_key }}'] ? '{% trans "Allowed — click to deny" %}' : '{% trans "Denied — click to allow" %}'">
-                <span x-show="perms['admin:{{ perm_key }}']" class="material-symbols-outlined text-xl leading-none" style="color:#22c55e">check_circle</span>
-                <span x-show="!perms['admin:{{ perm_key }}']" class="material-symbols-outlined text-xl leading-none" style="color:#f87171">cancel</span>
+                <span x-show="perms['admin:{{ perm_key }}']" class="material-symbols-outlined text-xl leading-none text-emerald-500 dark:text-emerald-400">check_circle</span>
+                <span x-show="!perms['admin:{{ perm_key }}']" class="material-symbols-outlined text-xl leading-none text-rose-400 dark:text-rose-500">cancel</span>
               </button>
             </div>
 
@@ -70,8 +70,8 @@
                 :class="loading === 'user:{{ perm_key }}' ? 'animate-pulse' : ''"
                 @click="toggle('user', '{{ perm_key }}')"
                 :title="perms['user:{{ perm_key }}'] ? '{% trans "Allowed — click to deny" %}' : '{% trans "Denied — click to allow" %}'">
-                <span x-show="perms['user:{{ perm_key }}']" class="material-symbols-outlined text-xl leading-none" style="color:#22c55e">check_circle</span>
-                <span x-show="!perms['user:{{ perm_key }}']" class="material-symbols-outlined text-xl leading-none" style="color:#f87171">cancel</span>
+                <span x-show="perms['user:{{ perm_key }}']" class="material-symbols-outlined text-xl leading-none text-emerald-500 dark:text-emerald-400">check_circle</span>
+                <span x-show="!perms['user:{{ perm_key }}']" class="material-symbols-outlined text-xl leading-none text-rose-400 dark:text-rose-500">cancel</span>
               </button>
             </div>
           </div>
@@ -85,11 +85,11 @@
     <div class="px-5 py-3 border-t border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800/50">
       <div class="flex items-center gap-4 text-xs text-base-500 dark:text-base-400">
         <div class="flex items-center gap-1">
-          <span class="material-symbols-outlined text-sm leading-none" style="color:#22c55e">check_circle</span>
+          <span class="material-symbols-outlined text-sm leading-none text-emerald-500 dark:text-emerald-400">check_circle</span>
           {% trans "Allowed" %}
         </div>
         <div class="flex items-center gap-1">
-          <span class="material-symbols-outlined text-sm leading-none" style="color:#f87171">cancel</span>
+          <span class="material-symbols-outlined text-sm leading-none text-rose-400 dark:text-rose-500">cancel</span>
           {% trans "Denied" %}
         </div>
       </div>
