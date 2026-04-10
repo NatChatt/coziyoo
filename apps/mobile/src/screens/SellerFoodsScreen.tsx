@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Animated, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, type LayoutChangeEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { AuthSession } from "../utils/auth";
@@ -264,14 +265,31 @@ function parseLocalizedDecimal(value: string): number {
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
-function nowIso(): string {
-  return new Date().toISOString();
+function startOfDayIso(date: Date = new Date()): string {
+  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+  return next.toISOString();
 }
 
-function plusDaysIso(days: number): string {
-  const next = new Date();
-  next.setUTCDate(next.getUTCDate() + days);
+function endOfDayIso(date: Date = new Date()): string {
+  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
   return next.toISOString();
+}
+
+function parseSaleDateOrToday(value: string): Date {
+  const parsed = value ? new Date(value) : new Date();
+  if (Number.isNaN(parsed.getTime())) return new Date();
+  return parsed;
+}
+
+function formatSaleDate(value: string, locale: string): string {
+  if (!value.trim()) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(parsed);
 }
 
 async function parseResponseBodySafe(res: Response): Promise<unknown> {
@@ -353,8 +371,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const priceInputRef = useRef<TextInput | null>(null);
   const prepTimeInputRef = useRef<TextInput | null>(null);
   const initialStockInputRef = useRef<TextInput | null>(null);
-  const initialSaleStartsAtInputRef = useRef<TextInput | null>(null);
-  const initialSaleEndsAtInputRef = useRef<TextInput | null>(null);
   const [currentLanguage, setCurrentLanguage_] = useState(getCurrentLanguage);
   useEffect(() => subscribeSettings((s) => setCurrentLanguage_(s.language)), []);
   const locale = currentLanguage === "en" ? "en-GB" : "tr-TR";
@@ -387,8 +403,10 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const imagePickerOpeningRef = useRef(false);
   const [prepTime, setPrepTime] = useState("");
   const [initialStock, setInitialStock] = useState("10");
-  const [initialSaleStartsAt, setInitialSaleStartsAt] = useState(nowIso());
-  const [initialSaleEndsAt, setInitialSaleEndsAt] = useState(plusDaysIso(30));
+  const [initialSaleStartsAt, setInitialSaleStartsAt] = useState(() => startOfDayIso());
+  const [initialSaleEndsAt, setInitialSaleEndsAt] = useState(() => endOfDayIso());
+  const [activeSaleDateField, setActiveSaleDateField] = useState<"initialSaleStartsAt" | "initialSaleEndsAt" | null>(null);
+  const [pendingSaleDate, setPendingSaleDate] = useState<Date>(() => new Date());
 
   // UI parity fields (opsiyonlar)
   const [cuisine, setCuisine] = useState("");
@@ -466,8 +484,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
           setImageUrls(hydratedImageUrls);
           setPrepTime(typeof parsed.prepTime === "string" ? parsed.prepTime : "");
           setInitialStock(typeof parsed.initialStock === "string" ? parsed.initialStock : "10");
-          setInitialSaleStartsAt(typeof parsed.initialSaleStartsAt === "string" ? parsed.initialSaleStartsAt : nowIso());
-          setInitialSaleEndsAt(typeof parsed.initialSaleEndsAt === "string" ? parsed.initialSaleEndsAt : plusDaysIso(30));
+          setInitialSaleStartsAt(typeof parsed.initialSaleStartsAt === "string" ? parsed.initialSaleStartsAt : startOfDayIso());
+          setInitialSaleEndsAt(typeof parsed.initialSaleEndsAt === "string" ? parsed.initialSaleEndsAt : endOfDayIso());
           setCuisine(typeof parsed.cuisine === "string" ? parsed.cuisine : "");
           setCategoryId(typeof parsed.categoryId === "string" ? parsed.categoryId : "");
           setFreeAddonNameInput(typeof parsed.freeAddonNameInput === "string" ? parsed.freeAddonNameInput : "");
@@ -616,6 +634,51 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     if (options?.focusRef?.current) {
       setTimeout(() => options.focusRef?.current?.focus(), 220);
     }
+  }
+
+  function setSaleDateForField(field: "initialSaleStartsAt" | "initialSaleEndsAt", date: Date) {
+    const nextValue = field === "initialSaleStartsAt" ? startOfDayIso(date) : endOfDayIso(date);
+    if (field === "initialSaleStartsAt") {
+      setInitialSaleStartsAt(nextValue);
+    } else {
+      setInitialSaleEndsAt(nextValue);
+    }
+    clearRequiredFieldHighlight(field);
+  }
+
+  function openSaleDatePicker(field: "initialSaleStartsAt" | "initialSaleEndsAt") {
+    const currentValue = field === "initialSaleStartsAt" ? initialSaleStartsAt : initialSaleEndsAt;
+    setPendingSaleDate(parseSaleDateOrToday(currentValue));
+    setActiveSaleDateField(field);
+    clearRequiredFieldHighlight(field);
+  }
+
+  function closeSaleDatePicker() {
+    setActiveSaleDateField(null);
+  }
+
+  function handleSaleDateChange(event: DateTimePickerEvent, selectedDate?: Date) {
+    if (!activeSaleDateField) return;
+    if (Platform.OS === "android") {
+      if (event.type === "dismissed") {
+        closeSaleDatePicker();
+        return;
+      }
+      if (selectedDate) {
+        setSaleDateForField(activeSaleDateField, selectedDate);
+      }
+      closeSaleDatePicker();
+      return;
+    }
+    if (selectedDate) {
+      setPendingSaleDate(selectedDate);
+    }
+  }
+
+  function confirmSaleDatePicker() {
+    if (!activeSaleDateField) return;
+    setSaleDateForField(activeSaleDateField, pendingSaleDate);
+    closeSaleDatePicker();
   }
 
   async function authedFetch(path: string, init?: RequestInit, baseUrl = apiUrl): Promise<Response> {
@@ -791,8 +854,10 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setMovingImageIndex(null);
     setPrepTime("");
     setInitialStock("10");
-    setInitialSaleStartsAt(nowIso());
-    setInitialSaleEndsAt(plusDaysIso(30));
+    setInitialSaleStartsAt(startOfDayIso());
+    setInitialSaleEndsAt(endOfDayIso());
+    setActiveSaleDateField(null);
+    setPendingSaleDate(new Date());
     setCuisine("");
     setCategoryId("");
     setMenuItems([]);
@@ -819,8 +884,10 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setMovingImageIndex(null);
     setPrepTime(food.preparationTimeMinutes ? String(food.preparationTimeMinutes) : "");
     setInitialStock(String(food.stock > 0 ? food.stock : 10));
-    setInitialSaleStartsAt(nowIso());
-    setInitialSaleEndsAt(plusDaysIso(30));
+    setInitialSaleStartsAt(startOfDayIso());
+    setInitialSaleEndsAt(endOfDayIso());
+    setActiveSaleDateField(null);
+    setPendingSaleDate(new Date());
     setCuisine(food.cuisine ?? "");
     setCategoryId(food.categoryId ?? "");
     const normalizedMenuItems = Array.isArray(food.menuItems)
@@ -971,12 +1038,12 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         return;
       }
       if (!editingFood && !initialSaleStartsAt.trim()) {
-        navigateToRequiredField("initialSaleStartsAt", { focusRef: initialSaleStartsAtInputRef });
+        navigateToRequiredField("initialSaleStartsAt");
         Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleStartRequired'));
         return;
       }
       if (!editingFood && !initialSaleEndsAt.trim()) {
-        navigateToRequiredField("initialSaleEndsAt", { focusRef: initialSaleEndsAtInputRef });
+        navigateToRequiredField("initialSaleEndsAt");
         Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleEndRequired'));
         return;
       }
@@ -984,12 +1051,12 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         const startsAtMs = Date.parse(initialSaleStartsAt);
         const endsAtMs = Date.parse(initialSaleEndsAt);
         if (!Number.isFinite(startsAtMs)) {
-          navigateToRequiredField("initialSaleStartsAt", { focusRef: initialSaleStartsAtInputRef });
+          navigateToRequiredField("initialSaleStartsAt");
           Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleStartRequired'));
           return;
         }
         if (!Number.isFinite(endsAtMs) || startsAtMs > endsAtMs) {
-          navigateToRequiredField("initialSaleEndsAt", { focusRef: initialSaleEndsAtInputRef });
+          navigateToRequiredField("initialSaleEndsAt");
           Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleWindowInvalid'));
           return;
         }
@@ -1670,36 +1737,40 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
 
               <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialSaleStartsAt", event)}>
                 <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleStartsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleStart')}</Text>
-                <TextInput
-                  ref={initialSaleStartsAtInputRef}
-                  style={[styles.input, isRequiredFieldHighlighted("initialSaleStartsAt") && styles.inputError]}
-                  value={initialSaleStartsAt}
-                  onChangeText={(value) => {
-                    setInitialSaleStartsAt(value);
-                    if (value.trim()) clearRequiredFieldHighlight("initialSaleStartsAt");
-                  }}
-                  placeholder={t('helper.seller.foods.initialSaleStartPlaceholder')}
-                  placeholderTextColor={PLACEHOLDER_COLOR}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
+                <TouchableOpacity
+                  style={[styles.input, styles.dateSelector, isRequiredFieldHighlighted("initialSaleStartsAt") && styles.inputError]}
+                  onPress={() => openSaleDatePicker("initialSaleStartsAt")}
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={[
+                      styles.dateSelectorText,
+                      !formatSaleDate(initialSaleStartsAt, locale) && styles.dateSelectorPlaceholder,
+                    ]}
+                  >
+                    {formatSaleDate(initialSaleStartsAt, locale) || t('helper.seller.foods.initialSaleStartPlaceholder')}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={20} color="#6C5F54" />
+                </TouchableOpacity>
               </View>
 
               <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("initialSaleEndsAt", event)}>
                 <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("initialSaleEndsAt") && styles.sectionTitleError]}>{t('headline.seller.foods.initialSaleEnd')}</Text>
-                <TextInput
-                  ref={initialSaleEndsAtInputRef}
-                  style={[styles.input, isRequiredFieldHighlighted("initialSaleEndsAt") && styles.inputError]}
-                  value={initialSaleEndsAt}
-                  onChangeText={(value) => {
-                    setInitialSaleEndsAt(value);
-                    if (value.trim()) clearRequiredFieldHighlight("initialSaleEndsAt");
-                  }}
-                  placeholder={t('helper.seller.foods.initialSaleEndPlaceholder')}
-                  placeholderTextColor={PLACEHOLDER_COLOR}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
+                <TouchableOpacity
+                  style={[styles.input, styles.dateSelector, isRequiredFieldHighlighted("initialSaleEndsAt") && styles.inputError]}
+                  onPress={() => openSaleDatePicker("initialSaleEndsAt")}
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={[
+                      styles.dateSelectorText,
+                      !formatSaleDate(initialSaleEndsAt, locale) && styles.dateSelectorPlaceholder,
+                    ]}
+                  >
+                    {formatSaleDate(initialSaleEndsAt, locale) || t('helper.seller.foods.initialSaleEndPlaceholder')}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={20} color="#6C5F54" />
+                </TouchableOpacity>
               </View>
             </>
           ) : null}
@@ -1731,6 +1802,46 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
           </ScrollView>
         )}
       </KeyboardAvoidingView>
+
+      {activeSaleDateField && Platform.OS === "android" ? (
+        <DateTimePicker
+          value={pendingSaleDate}
+          mode="date"
+          display="default"
+          onChange={handleSaleDateChange}
+        />
+      ) : null}
+
+      <Modal
+        visible={Boolean(activeSaleDateField && Platform.OS === "ios")}
+        transparent
+        animationType="slide"
+        onRequestClose={closeSaleDatePicker}
+      >
+        <View style={styles.datePickerOverlay}>
+          <View style={styles.datePickerCard}>
+            <View style={styles.datePickerHeader}>
+              <TouchableOpacity onPress={closeSaleDatePicker} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                <Text style={styles.datePickerHeaderAction}>{t('cta.common.cancel')}</Text>
+              </TouchableOpacity>
+              <Text style={styles.datePickerTitle}>
+                {activeSaleDateField === "initialSaleEndsAt"
+                  ? t('headline.seller.foods.initialSaleEnd')
+                  : t('headline.seller.foods.initialSaleStart')}
+              </Text>
+              <TouchableOpacity onPress={confirmSaleDatePicker} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                <Text style={styles.datePickerHeaderAction}>{t('cta.common.save')}</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              value={pendingSaleDate}
+              mode="date"
+              display="inline"
+              onChange={handleSaleDateChange}
+            />
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={previewVisible} transparent animationType="fade" onRequestClose={() => setPreviewVisible(false)}>
         <View style={styles.previewOverlay}>
@@ -2065,6 +2176,21 @@ const styles = StyleSheet.create({
     borderColor: "#E5484D",
     backgroundColor: "#FFF5F5",
   },
+  dateSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dateSelectorText: {
+    flex: 1,
+    color: "#2E241C",
+    fontWeight: "600",
+    paddingRight: 12,
+  },
+  dateSelectorPlaceholder: {
+    color: "#8A7A6A",
+    fontWeight: "500",
+  },
   dropdownInput: {
     flexDirection: "row",
     alignItems: "center",
@@ -2206,6 +2332,37 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   previewBtnText: { color: "#46392D", fontWeight: "700" },
+  datePickerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.28)",
+    justifyContent: "flex-end",
+  },
+  datePickerCard: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
+  },
+  datePickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  datePickerHeaderAction: {
+    color: "#3F855C",
+    fontWeight: "700",
+    minWidth: 56,
+  },
+  datePickerTitle: {
+    flex: 1,
+    textAlign: "center",
+    color: "#2E241C",
+    fontWeight: "800",
+    paddingHorizontal: 8,
+  },
   saveBtn: {
     marginTop: 10,
     backgroundColor: "#3F855C",

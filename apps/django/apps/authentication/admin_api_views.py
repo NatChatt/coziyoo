@@ -70,6 +70,29 @@ def _admin_payload(row):
     }
 
 
+def _log_security_login_event(*, realm: str, identifier: str, success: bool, failure_reason: str | None = None, actor_user_id: str | None = None, request=None):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+                INSERT INTO security_login_events
+                    (id, realm, actor_user_id, identifier, success, failure_reason, device_id, device_name, ip, user_agent, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+            """,
+            [
+                str(uuid.uuid4()),
+                realm,
+                actor_user_id,
+                identifier,
+                success,
+                failure_reason,
+                None,
+                None,
+                request.META.get("REMOTE_ADDR", "") if request else "",
+                request.META.get("HTTP_USER_AGENT", "") if request else "",
+            ],
+        )
+
+
 class AdminLoginView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = "login"
@@ -95,12 +118,27 @@ class AdminLoginView(APIView):
             admin_user = _row_as_dict(cursor)
 
         if not admin_user or not verify_password(admin_user["password_hash"], password):
+            _log_security_login_event(
+                realm="admin",
+                identifier=email,
+                success=False,
+                failure_reason="invalid_credentials",
+                request=request,
+            )
             return Response(
                 {"error": {"code": "INVALID_CREDENTIALS", "message": "Email or password invalid"}},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
         if not admin_user["is_active"]:
+            _log_security_login_event(
+                realm="admin",
+                identifier=email,
+                success=False,
+                failure_reason="account_disabled",
+                actor_user_id=str(admin_user["id"]),
+                request=request,
+            )
             return Response(
                 {"error": {"code": "ACCOUNT_DISABLED", "message": "Account is disabled"}},
                 status=status.HTTP_403_FORBIDDEN,
@@ -125,6 +163,13 @@ class AdminLoginView(APIView):
                 ],
             )
 
+        _log_security_login_event(
+            realm="admin",
+            identifier=email,
+            success=True,
+            actor_user_id=str(admin_user["id"]),
+            request=request,
+        )
         access_token = sign_access_token(str(admin_user["id"]), session_id, "admin", str(admin_user["role"]))
         return Response(
             {

@@ -205,6 +205,11 @@ class SellerFoodListView(APIView):
         initial_stock = data.get("initialStock")
         initial_sale_starts_at = data.get("initialSaleStartsAt")
         initial_sale_ends_at = data.get("initialSaleEndsAt")
+        should_create_initial_lot = (
+            initial_stock not in (None, "")
+            or initial_sale_starts_at not in (None, "")
+            or initial_sale_ends_at not in (None, "")
+        )
 
         if not name or price is None:
             return Response(
@@ -228,51 +233,54 @@ class SellerFoodListView(APIView):
         paid_menu_items = [item for item in all_menu_items if item.get("pricing") == "paid"]
         secondary_category_ids = data.get("secondaryCategoryIds") if isinstance(data.get("secondaryCategoryIds"), list) else []
 
-        try:
-            initial_stock = int(initial_stock)
-        except (TypeError, ValueError):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "initialStock must be an integer"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        sale_start_dt = None
+        sale_end_dt = None
+        if should_create_initial_lot:
+            try:
+                initial_stock = int(initial_stock)
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": {"code": "VALIDATION_ERROR", "message": "initialStock must be an integer"}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        if initial_stock < 1:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "initialStock must be greater than 0"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if initial_stock < 1:
+                return Response(
+                    {"error": {"code": "VALIDATION_ERROR", "message": "initialStock must be greater than 0"}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        if not initial_sale_starts_at or not initial_sale_ends_at:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "initialSaleStartsAt and initialSaleEndsAt are required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if not initial_sale_starts_at or not initial_sale_ends_at:
+                return Response(
+                    {"error": {"code": "VALIDATION_ERROR", "message": "initialSaleStartsAt and initialSaleEndsAt are required"}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        try:
-            sale_start_dt = _parse_iso(initial_sale_starts_at)
-            sale_end_dt = _parse_iso(initial_sale_ends_at)
-        except (TypeError, ValueError):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "Invalid initial sale window"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            try:
+                sale_start_dt = _parse_iso(initial_sale_starts_at)
+                sale_end_dt = _parse_iso(initial_sale_ends_at)
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": {"code": "VALIDATION_ERROR", "message": "Invalid initial sale window"}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        if sale_start_dt > sale_end_dt:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "initialSaleStartsAt must be before initialSaleEndsAt"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if sale_start_dt > sale_end_dt:
+                return Response(
+                    {"error": {"code": "VALIDATION_ERROR", "message": "initialSaleStartsAt must be before initialSaleEndsAt"}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        if not recipe or not ingredients or not allergens:
-            return Response(
-                {
-                    "error": {
-                        "code": "LOT_SNAPSHOT_REQUIRED",
-                        "message": "Recipe, ingredients, and allergens must be defined before creating the first lot",
-                    }
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if not recipe or not ingredients or not allergens:
+                return Response(
+                    {
+                        "error": {
+                            "code": "LOT_SNAPSHOT_REQUIRED",
+                            "message": "Recipe, ingredients, and allergens must be defined before creating the first lot",
+                        }
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         sql = """
             INSERT INTO foods
@@ -286,6 +294,7 @@ class SellerFoodListView(APIView):
         """
         active_lot_status = _resolve_lot_active_status()
         produced_at = datetime.utcnow().isoformat() + "Z"
+        lot_id = None
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute(
@@ -312,58 +321,62 @@ class SellerFoodListView(APIView):
                 )
                 row = cursor.fetchone()
                 food_id = str(row[0])
-                lot_id = str(uuid.uuid4())
-                lot_number = f"CZ-{food_id[:8].upper()}-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
-                cursor.execute(
-                    """
-                        INSERT INTO production_lots
-                            (
-                                id, seller_id, food_id, lot_number, produced_at, sale_starts_at, sale_ends_at,
-                                use_by, best_before, recipe_snapshot, ingredients_snapshot_json, allergens_snapshot_json,
-                                quantity_produced, quantity_available, status, notes, created_at, updated_at
-                            )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now())
-                    """,
-                    [
-                        lot_id,
-                        request.user.id,
-                        food_id,
-                        lot_number,
-                        produced_at,
-                        sale_start_dt.isoformat(),
-                        sale_end_dt.isoformat(),
-                        None,
-                        None,
-                        recipe,
-                        json.dumps(ingredients),
-                        json.dumps(allergens),
-                        initial_stock,
-                        initial_stock,
-                        active_lot_status,
-                        "mobile_initial_stock",
-                    ],
-                )
-                cursor.execute(
-                    """
-                        INSERT INTO lot_events (lot_id, event_type, event_payload_json, created_by, created_at)
-                        VALUES (%s, 'created', %s, %s, now())
-                    """,
-                    [
-                        lot_id,
-                        json.dumps(
-                            {
-                                "quantityProduced": initial_stock,
-                                "quantityAvailable": initial_stock,
-                                "saleStartsAt": sale_start_dt.isoformat(),
-                                "saleEndsAt": sale_end_dt.isoformat(),
-                                "source": "seller_food_create",
-                            }
-                        ),
-                        request.user.id,
-                    ],
-                )
+                if should_create_initial_lot:
+                    lot_id = str(uuid.uuid4())
+                    lot_number = f"CZ-{food_id[:8].upper()}-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+                    cursor.execute(
+                        """
+                            INSERT INTO production_lots
+                                (
+                                    id, seller_id, food_id, lot_number, produced_at, sale_starts_at, sale_ends_at,
+                                    use_by, best_before, recipe_snapshot, ingredients_snapshot_json, allergens_snapshot_json,
+                                    quantity_produced, quantity_available, status, notes, created_at, updated_at
+                                )
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now())
+                        """,
+                        [
+                            lot_id,
+                            request.user.id,
+                            food_id,
+                            lot_number,
+                            produced_at,
+                            sale_start_dt.isoformat(),
+                            sale_end_dt.isoformat(),
+                            None,
+                            None,
+                            recipe,
+                            json.dumps(ingredients),
+                            json.dumps(allergens),
+                            initial_stock,
+                            initial_stock,
+                            active_lot_status,
+                            "mobile_initial_stock",
+                        ],
+                    )
+                    cursor.execute(
+                        """
+                            INSERT INTO lot_events (lot_id, event_type, event_payload_json, created_by, created_at)
+                            VALUES (%s, 'created', %s, %s, now())
+                        """,
+                        [
+                            lot_id,
+                            json.dumps(
+                                {
+                                    "quantityProduced": initial_stock,
+                                    "quantityAvailable": initial_stock,
+                                    "saleStartsAt": sale_start_dt.isoformat(),
+                                    "saleEndsAt": sale_end_dt.isoformat(),
+                                    "source": "seller_food_create",
+                                }
+                            ),
+                            request.user.id,
+                        ],
+                    )
 
-        return Response({"data": {"id": food_id, "foodId": food_id, "lotId": lot_id}}, status=status.HTTP_201_CREATED)
+        payload = {"id": food_id, "foodId": food_id}
+        if lot_id:
+            payload["lotId"] = lot_id
+        return Response({"data": payload}, status=status.HTTP_201_CREATED)
 
 
 class SellerFoodDetailView(APIView):
