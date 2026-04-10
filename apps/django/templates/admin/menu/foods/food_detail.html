@@ -162,10 +162,13 @@
                             <div class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide mb-1.5">{% trans "Malzemeler" %}</div>
                             <div class="flex flex-wrap gap-1">
                               <template x-for="(item, i) in modal.ingredients_diff" :key="i">
-                                <span x-text="item.text" class="px-2 py-0.5 rounded-full text-[11px] font-medium"
-                                      :style="item.type === 'added'   ? 'background:#dcfce7;color:#166534;border:1px solid #86efac'
-                                            : item.type === 'removed' ? 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;text-decoration:line-through;opacity:0.8'
-                                            :                           'background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0'"></span>
+                                <span x-text="item.text"
+                                      class="px-2 py-0.5 rounded-full text-[11px] font-medium border"
+                                      :class="item.type === 'added'
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                                        : item.type === 'removed'
+                                          ? 'bg-rose-50 text-rose-700 border-rose-200 line-through opacity-80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800'
+                                          : 'bg-base-50 text-base-500 border-base-200 dark:bg-base-900 dark:text-base-300 dark:border-base-700'"></span>
                               </template>
                             </div>
                           </div>
@@ -176,17 +179,23 @@
                             <div class="rounded-lg overflow-hidden text-[11px] font-mono max-h-40 overflow-y-auto border border-base-100 dark:border-base-700">
                               <template x-for="(item, i) in modal.recipe_diff" :key="i">
                                 <div class="flex gap-1.5 px-2.5 py-0.5 border-b border-base-50 dark:border-base-800 last:border-0"
-                                     :style="item.type === 'added'   ? 'background:#f0fdf4'
-                                           : item.type === 'removed' ? 'background:#fff1f2'
-                                           :                           'background:transparent'">
+                                     :class="item.type === 'added'
+                                       ? 'bg-emerald-50/80 dark:bg-emerald-950/30'
+                                       : item.type === 'removed'
+                                         ? 'bg-rose-50/80 dark:bg-rose-950/30'
+                                         : 'bg-transparent'">
                                   <span class="shrink-0 font-bold select-none"
-                                        :style="item.type === 'added'   ? 'color:#16a34a'
-                                              : item.type === 'removed' ? 'color:#dc2626'
-                                              :                           'color:#cbd5e1'"
+                                        :class="item.type === 'added'
+                                          ? 'text-emerald-600 dark:text-emerald-400'
+                                          : item.type === 'removed'
+                                            ? 'text-rose-600 dark:text-rose-400'
+                                            : 'text-base-300 dark:text-base-600'"
                                         x-text="item.type === 'added' ? '+' : item.type === 'removed' ? '−' : ' '"></span>
-                                  <span :style="item.type === 'added'   ? 'color:#166534'
-                                              : item.type === 'removed' ? 'color:#991b1b'
-                                              :                           'color:#94a3b8'"
+                                  <span :class="item.type === 'added'
+                                    ? 'text-emerald-800 dark:text-emerald-200'
+                                    : item.type === 'removed'
+                                      ? 'text-rose-800 dark:text-rose-200'
+                                      : 'text-base-500 dark:text-base-300'"
                                         x-text="item.line"></span>
                                 </div>
                               </template>
@@ -197,38 +206,20 @@
                     </div>
                   </template>
 
-                  {# İçindekiler & Alerjenler #}
-                  <template x-if="(modal.allergens && modal.allergens.length > 0) || (modal.ingredients && modal.ingredients.length > 0)">
+                  {# Alerjenler #}
+                  <template x-if="modal.allergens && modal.allergens.length > 0">
                     <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
                       <div class="px-3.5 py-2 flex items-center gap-1.5 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
-                        <span class="material-symbols-outlined text-sm text-base-400 dark:text-base-500 leading-none">nutrition</span>
-                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "İçindekiler" %}</span>
+                        <span class="material-symbols-outlined text-sm text-amber-500 dark:text-amber-400 leading-none">warning</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Alerjenler" %}</span>
                       </div>
-                      <div class="p-3.5 space-y-3">
-                        <template x-if="modal.allergens && modal.allergens.length > 0">
-                          <div>
-                            <div class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide mb-1.5">{% trans "Alerjenler" %}</div>
-                            <div class="flex flex-wrap gap-1">
-                              <template x-for="a in modal.allergens" :key="a">
-                                <span class="px-2 py-0.5 rounded-full text-[11px] font-medium"
-                                      style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d"
-                                      x-text="a"></span>
-                              </template>
-                            </div>
-                          </div>
-                        </template>
-                        <template x-if="modal.ingredients && modal.ingredients.length > 0">
-                          <div>
-                            <div class="text-[10px] text-base-400 dark:text-base-500 uppercase tracking-wide mb-1.5">{% trans "Malzemeler" %}</div>
-                            <div class="flex flex-wrap gap-1">
-                              <template x-for="ing in modal.ingredients" :key="ing">
-                                <span class="px-2 py-0.5 rounded-full text-[11px] text-base-600 dark:text-base-300"
-                                      style="background:#f8fafc;border:1px solid #e2e8f0"
-                                      x-text="ing"></span>
-                              </template>
-                            </div>
-                          </div>
-                        </template>
+                      <div class="p-3.5">
+                        <div class="flex flex-wrap gap-1">
+                          <template x-for="a in modal.allergens" :key="a">
+                            <span class="px-2 py-0.5 rounded-full text-[11px] font-medium border bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800"
+                                  x-text="a"></span>
+                          </template>
+                        </div>
                       </div>
                     </div>
                   </template>
