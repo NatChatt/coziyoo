@@ -11,23 +11,16 @@
         content: "";
         position: absolute;
         inset: -16px 0 auto;
-        height: 180px;
+        height: 160px;
         pointer-events: none;
         background:
-            radial-gradient(circle at top left, rgba(14, 165, 233, 0.10), transparent 36%),
-            radial-gradient(circle at top right, rgba(16, 185, 129, 0.10), transparent 30%);
+            radial-gradient(circle at top left, rgba(14, 165, 233, 0.08), transparent 36%),
+            radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 30%);
         filter: blur(10px);
-    }
-
-    .mini-grid {
-        background-image:
-            linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
-        background-size: 24px 24px;
     }
 </style>
 
-<div x-data="dashboard()" x-init="init()" class="dashboard-shell space-y-5">
+<div x-data="dashboard()" x-init="init()" class="dashboard-shell space-y-4">
     <template x-if="loading">
         <div class="flex items-center justify-center gap-3 py-20 text-base-400 dark:text-base-500">
             <span class="material-symbols-outlined text-3xl animate-spin leading-none">progress_activity</span>
@@ -36,309 +29,137 @@
     </template>
 
     <template x-if="!loading && kpis">
-        <div class="relative space-y-5">
+        <div class="relative space-y-4">
             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <template x-for="alert in opsAlerts()" :key="alert.key">
                     <a :href="alert.href"
-                       class="group rounded-2xl border px-4 py-3.5 transition-all hover:-translate-y-0.5"
+                       class="rounded-2xl border px-4 py-3 transition-colors hover:bg-base-50 dark:hover:bg-base-800/40"
                        :class="alert.tone === 'rose'
-                           ? 'border-rose-200/70 bg-rose-50/80 dark:border-rose-900/70 dark:bg-rose-950/30'
+                           ? 'border-rose-200 dark:border-rose-900'
                            : alert.tone === 'amber'
-                               ? 'border-amber-200/70 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/30'
-                               : 'border-sky-200/70 bg-sky-50/80 dark:border-sky-900/70 dark:bg-sky-950/30'">
+                               ? 'border-amber-200 dark:border-amber-900'
+                               : 'border-sky-200 dark:border-sky-900'">
                         <div class="flex items-center justify-between gap-3">
                             <div class="min-w-0">
-                                <div class="text-xs font-semibold uppercase tracking-widest"
-                                     :class="alert.tone === 'rose'
-                                         ? 'text-rose-700 dark:text-rose-300'
-                                         : alert.tone === 'amber'
-                                             ? 'text-amber-700 dark:text-amber-300'
-                                             : 'text-sky-700 dark:text-sky-300'"
-                                     x-text="alert.label"></div>
-                                <div class="mt-1.5 text-2xl font-semibold"
-                                     :class="alert.tone === 'rose'
-                                         ? 'text-rose-900 dark:text-rose-100'
-                                         : alert.tone === 'amber'
-                                             ? 'text-amber-900 dark:text-amber-100'
-                                             : 'text-sky-900 dark:text-sky-100'"
-                                     x-text="fmt(alert.value)"></div>
+                                <div class="text-xs font-semibold uppercase tracking-widest text-base-500 dark:text-base-400" x-text="alert.label"></div>
+                                <div class="mt-1 text-2xl font-semibold text-base-900 dark:text-base-100" x-text="fmt(alert.value)"></div>
                             </div>
-                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
-                                 :class="alert.tone === 'rose'
-                                     ? 'border-rose-300/50 text-rose-600 dark:border-rose-700 dark:text-rose-300'
-                                     : alert.tone === 'amber'
-                                         ? 'border-amber-300/50 text-amber-600 dark:border-amber-700 dark:text-amber-300'
-                                         : 'border-sky-300/50 text-sky-600 dark:border-sky-700 dark:text-sky-300'">
-                                <span class="material-symbols-outlined text-base leading-none" x-text="alert.icon"></span>
-                            </div>
+                            <span class="material-symbols-outlined text-lg"
+                                  :class="alert.tone === 'rose'
+                                      ? 'text-rose-600 dark:text-rose-300'
+                                      : alert.tone === 'amber'
+                                          ? 'text-amber-600 dark:text-amber-300'
+                                          : 'text-sky-600 dark:text-sky-300'"
+                                  x-text="alert.icon"></span>
                         </div>
                     </a>
                 </template>
             </div>
 
-            <div class="overflow-hidden rounded-3xl border border-slate-200/80 text-white shadow-xl dark:border-base-700"
-                 style="background: linear-gradient(135deg, #0f172a 0%, #132238 42%, #0f766e 100%);">
-                <div class="grid gap-5 px-5 py-6 lg:grid-cols-4 lg:px-6">
-                    <div class="space-y-4 lg:col-span-1">
-                        <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:justify-between">
-                            <div class="space-y-1.5">
-                                <div class="text-xs font-semibold uppercase tracking-widest text-sky-100/80">{% trans "Control center" %}</div>
-                                <h1 class="mt-1 text-2xl font-semibold tracking-tight text-white">{% trans "Homepage dashboard" %}</h1>
+            <div class="grid gap-4 lg:grid-cols-4">
+                <div class="overflow-hidden rounded-3xl border border-base-200 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 lg:col-span-1">
+                    <div class="border-b border-base-200 px-5 py-4 dark:border-base-700">
+                        <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Control center" %}</div>
+                        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-base-900 dark:text-base-50">{% trans "Homepage dashboard" %}</h1>
+                        <div class="mt-2 text-xs text-base-500 dark:text-base-400">{% trans "Last update" %}: <span x-text="relativeLastUpdated()"></span></div>
+                    </div>
+                    <div class="space-y-2 px-4 py-4">
+                        <template x-for="m in coreMetrics()" :key="m.key">
+                            <div class="flex items-center justify-between gap-3 rounded-xl border border-base-200 px-3 py-2.5 dark:border-base-700">
+                                <div class="min-w-0">
+                                    <div class="text-sm font-medium text-base-700 dark:text-base-200" x-text="m.label"></div>
+                                </div>
+                                <div class="shrink-0 text-right text-xl font-semibold text-base-900 dark:text-base-100"
+                                     x-text="m.format === 'currency' ? currency(m.value) : fmt(m.value)"></div>
                             </div>
-                            <div class="rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-medium text-slate-200">
-                                {% trans "Live view" %}
-                            </div>
-                        </div>
-                        <p class="pr-2 text-sm leading-7 text-slate-300">
-                            {% trans "Track traffic, queue pressure and important activity from one compact screen." %}
-                        </p>
-
-                        <div class="space-y-3.5">
-                            <template x-for="item in leftPanelItems()" :key="item.key">
-                                <template x-if="!item.href">
-                                    <div class="rounded-2xl border px-5 py-4"
-                                         :class="item.variant === 'action'
-                                             ? 'border-white/12 bg-white/10'
-                                             : 'border-white/10 bg-slate-950/20'">
-                                        <div class="flex items-center gap-4">
-                                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
-                                                 :class="item.tone === 'emerald'
-                                                     ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100'
-                                                     : item.tone === 'amber'
-                                                         ? 'border-amber-300/20 bg-amber-400/10 text-amber-100'
-                                                         : item.tone === 'rose'
-                                                             ? 'border-rose-300/20 bg-rose-400/10 text-rose-100'
-                                                             : 'border-sky-300/20 bg-sky-400/10 text-sky-100'">
-                                                <span class="material-symbols-outlined text-lg leading-none" x-text="item.icon"></span>
-                                            </div>
-                                            <div class="min-w-0 flex-1">
-                                                <div class="flex items-start justify-between gap-4">
-                                                    <div class="min-w-0 pr-2">
-                                                        <div class="truncate text-base font-semibold text-white" x-text="item.label"></div>
-                                                        <div class="mt-1 text-sm text-slate-400" x-text="item.caption"></div>
-                                                    </div>
-                                                    <div class="shrink-0 text-right">
-                                                        <div class="text-2xl font-semibold text-white"
-                                                             x-text="item.format === 'currency' ? currency(item.value) : fmt(item.value)"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </template>
-                                <template x-if="item.href">
-                                    <a :href="item.href"
-                                       class="group block rounded-2xl border border-white/15 bg-white/10 px-5 py-4 transition-all hover:-translate-y-0.5 hover:bg-white/14">
-                                        <div class="flex items-center gap-4">
-                                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
-                                                 :class="item.tone === 'emerald'
-                                                     ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100'
-                                                     : item.tone === 'amber'
-                                                         ? 'border-amber-300/20 bg-amber-400/10 text-amber-100'
-                                                         : item.tone === 'rose'
-                                                             ? 'border-rose-300/20 bg-rose-400/10 text-rose-100'
-                                                             : 'border-sky-300/20 bg-sky-400/10 text-sky-100'">
-                                                <span class="material-symbols-outlined text-lg leading-none" x-text="item.icon"></span>
-                                            </div>
-                                            <div class="min-w-0 flex-1">
-                                                <div class="flex items-start justify-between gap-4">
-                                                    <div class="min-w-0 pr-2">
-                                                        <div class="truncate text-base font-semibold text-white" x-text="item.label"></div>
-                                                        <div class="mt-1 text-sm text-slate-300" x-text="item.caption"></div>
-                                                    </div>
-                                                    <div class="flex items-center gap-3 shrink-0">
-                                                        <div class="text-right">
-                                                            <div class="text-2xl font-semibold text-white"
-                                                                 x-text="item.format === 'currency' ? currency(item.value) : fmt(item.value)"></div>
-                                                        </div>
-                                                        <span class="material-symbols-outlined text-base text-white/70 transition-transform group-hover:translate-x-0.5">arrow_forward</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </template>
+                        </template>
+                    </div>
+                    <div class="border-t border-base-100 px-4 py-3 dark:border-base-800">
+                        <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Quick actions" %}</div>
+                        <div class="mt-2 space-y-2">
+                            <template x-for="a in quickActions()" :key="a.key">
+                                <a :href="a.href" class="flex items-center justify-between rounded-xl px-3 py-2 transition-colors hover:bg-base-50 dark:hover:bg-base-800/40">
+                                    <span class="text-sm text-base-700 dark:text-base-200" x-text="a.label"></span>
+                                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                                          :class="a.tone === 'rose'
+                                              ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                                              : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'"
+                                          x-text="fmt(a.value)"></span>
+                                </a>
                             </template>
                         </div>
                     </div>
+                </div>
 
-                    <div class="grid gap-4 lg:col-span-3 lg:grid-cols-4">
-                        <div class="overflow-hidden rounded-3xl border border-white/10 bg-white/10 backdrop-blur-sm lg:col-span-3">
-                            <div class="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
-                                <div>
-                                    <div class="text-xs font-semibold uppercase tracking-widest text-slate-300">{% trans "Realtime pulse" %}</div>
-                                    <div class="mt-1 text-lg font-semibold text-white">{% trans "Orders and revenue flow" %}</div>
-                                </div>
-                                <div class="flex items-center gap-2 text-xs text-slate-300">
-                                    <span class="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                    <span>{% trans "Updating" %}</span>
-                                    <span class="text-slate-400">•</span>
-                                    <span class="text-slate-200" x-text="relativeLastUpdated()"></span>
-                                </div>
-                            </div>
-
-                            <div class="mini-grid px-5 py-4">
-                                <div class="grid gap-4 md:grid-cols-2">
-                                    <div class="rounded-2xl border border-white/10 bg-slate-950/20 p-4">
-                                        <div class="flex items-center justify-between gap-3">
-                                            <div>
-                                                <div class="text-xs font-semibold uppercase tracking-widest text-slate-400">{% trans "Orders trend" %}</div>
-                                                <div class="mt-2 text-2xl font-semibold text-white" x-text="fmt(kpis.orders_today)"></div>
-                                            </div>
-                                            <span class="material-symbols-outlined text-2xl text-sky-200">monitoring</span>
-                                        </div>
-                                        <svg viewBox="0 0 320 120" class="mt-4 h-28 w-full">
-                                            <polyline fill="none" stroke="rgba(56,189,248,0.22)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" :points="ordersLineShadow()"></polyline>
-                                            <polyline fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" :points="ordersLine()"></polyline>
-                                            <template x-for="point in ordersPoints()" :key="point.x">
-                                                <circle :cx="point.x" :cy="point.y" r="4" fill="#0f172a" stroke="#38bdf8" stroke-width="3"></circle>
-                                            </template>
-                                        </svg>
-                                    </div>
-
-                                    <div class="rounded-2xl border border-white/10 bg-slate-950/20 p-4">
-                                        <div class="flex items-center justify-between gap-3">
-                                            <div>
-                                                <div class="text-xs font-semibold uppercase tracking-widest text-slate-400">{% trans "Revenue trend" %}</div>
-                                                <div class="mt-2 text-2xl font-semibold text-white" x-text="currency(kpis.revenue_today)"></div>
-                                            </div>
-                                            <span class="material-symbols-outlined text-2xl text-emerald-200">candlestick_chart</span>
-                                        </div>
-                                        <div class="mt-4 space-y-2">
-                                            <template x-for="(day, i) in chart" :key="i">
-                                                <div class="grid grid-cols-12 items-center gap-3">
-                                                    <div class="col-span-2 text-xs text-slate-400" x-text="shortDate(day.date)"></div>
-                                                    <div class="col-span-7 h-2.5 overflow-hidden rounded-full bg-white/10">
-                                                        <div class="h-full rounded-full bg-gradient-to-r from-emerald-300 to-emerald-500"
-                                                             :style="'width:' + barWidth(day.revenue, maxRevenue) + '%'"></div>
-                                                    </div>
-                                                    <div class="col-span-3 text-right text-xs font-medium text-slate-300" x-text="compactCurrency(day.revenue)"></div>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="overflow-hidden rounded-3xl border border-base-200 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 lg:col-span-2">
+                    <div class="flex items-center justify-between gap-3 border-b border-base-200 px-5 py-4 dark:border-base-700">
+                        <div>
+                            <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Realtime pulse" %}</div>
+                            <div class="mt-1 text-lg font-semibold text-base-900 dark:text-base-50">{% trans "Orders and revenue flow" %}</div>
+                        </div>
+                    </div>
+                    <div class="grid gap-4 p-4 md:grid-cols-2">
+                        <div class="rounded-2xl border border-base-200 p-4 dark:border-base-700">
+                            <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Orders trend" %}</div>
+                            <div class="mt-1 text-2xl font-semibold text-base-900 dark:text-base-100" x-text="fmt(kpis.orders_today)"></div>
+                            <svg viewBox="0 0 320 120" class="mt-3 h-28 w-full">
+                                <polyline fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" :points="ordersLine()"></polyline>
+                                <template x-for="point in ordersPoints()" :key="point.x">
+                                    <circle :cx="point.x" :cy="point.y" r="3.5" fill="#38bdf8"></circle>
+                                </template>
+                            </svg>
                         </div>
 
-                        <div class="overflow-hidden rounded-3xl border border-white/10 bg-white/10 backdrop-blur-sm lg:col-span-1">
-                            <div class="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
-                                <div>
-                                    <div class="text-xs font-semibold uppercase tracking-widest text-slate-300">{% trans "Live activity" %}</div>
-                                    <div class="mt-1 text-lg font-semibold text-white">{% trans "Important feed" %}</div>
-                                </div>
-                                <span class="material-symbols-outlined text-lg text-white/70">hub</span>
-                            </div>
-                            <div class="space-y-3 px-5 py-5">
-                                <template x-for="entry in activityFeed()" :key="entry.key">
-                                    <a :href="entry.href"
-                                       class="group block rounded-xl border border-white/8 bg-slate-950/10 px-4 py-3 transition-colors hover:bg-slate-950/20">
-                                        <div class="flex items-center gap-3">
-                                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-                                                 :class="entry.tone === 'emerald'
-                                                     ? 'bg-emerald-400/10 text-emerald-100'
-                                                     : entry.tone === 'amber'
-                                                         ? 'bg-amber-400/10 text-amber-100'
-                                                         : entry.tone === 'rose'
-                                                             ? 'bg-rose-400/10 text-rose-100'
-                                                             : 'bg-sky-400/10 text-sky-100'">
-                                                <span class="material-symbols-outlined text-lg leading-none" x-text="entry.icon"></span>
-                                            </div>
-                                            <div class="min-w-0 flex-1">
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <div class="min-w-0">
-                                                        <div class="truncate text-base font-semibold text-white" x-text="entry.title"></div>
-                                                    </div>
-                                                    <div class="flex items-center gap-3 shrink-0">
-                                                        <div class="text-right text-xl font-semibold text-white" x-text="entry.value"></div>
-                                                        <span class="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[11px] font-medium text-slate-200"
-                                                              x-text="entry.action"></span>
-                                                    </div>
-                                                </div>
-                                            </div>
+                        <div class="rounded-2xl border border-base-200 p-4 dark:border-base-700">
+                            <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Revenue trend" %}</div>
+                            <div class="mt-1 text-2xl font-semibold text-base-900 dark:text-base-100" x-text="currency(kpis.revenue_today)"></div>
+                            <div class="mt-3 space-y-2">
+                                <template x-for="(day, i) in chart" :key="i">
+                                    <div class="grid grid-cols-12 items-center gap-2">
+                                        <div class="col-span-3 text-xs text-base-500 dark:text-base-400" x-text="shortDate(day.date)"></div>
+                                        <div class="col-span-6 h-2 overflow-hidden rounded-full bg-base-100 dark:bg-base-800">
+                                            <div class="h-full rounded-full bg-emerald-500" :style="'width:' + barWidth(day.revenue, maxRevenue) + '%'"></div>
                                         </div>
-                                    </a>
+                                        <div class="col-span-3 text-right text-xs font-medium text-base-600 dark:text-base-300" x-text="compactCurrency(day.revenue)"></div>
+                                    </div>
                                 </template>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="grid gap-4 lg:grid-cols-4">
-                <div class="overflow-hidden rounded-3xl border border-base-200/80 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 lg:col-span-3">
-                    <div class="flex items-center justify-between gap-3 border-b border-base-200/80 px-5 py-4 dark:border-base-700">
-                        <div>
-                            <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Traffic map" %}</div>
-                            <div class="mt-1 text-lg font-semibold text-base-900 dark:text-base-50">{% trans "7-day operational density" %}</div>
-                        </div>
-                        <span class="text-xs text-base-400 dark:text-base-500">{% trans "Orders vs queue pressure" %}</span>
+                <div class="overflow-hidden rounded-3xl border border-base-200 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 lg:col-span-1">
+                    <div class="border-b border-base-200 px-5 py-4 dark:border-base-700">
+                        <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "Live activity" %}</div>
+                        <div class="mt-1 text-lg font-semibold text-base-900 dark:text-base-50">{% trans "Important feed" %}</div>
                     </div>
-                    <div class="grid gap-3 px-5 py-4 md:grid-cols-7">
-                        <template x-for="(day, i) in chart" :key="i">
-                            <div class="rounded-2xl border border-base-100 bg-base-50/80 p-3 dark:border-base-800 dark:bg-base-950/30">
-                                <div class="text-xs font-semibold uppercase tracking-wider text-base-400 dark:text-base-500" x-text="shortDate(day.date)"></div>
-                                <div class="mt-3 space-y-2">
-                                    <div class="rounded-xl p-2 text-white"
-                                         :style="'background:' + heatColor(day.orders, maxOrders)">
-                                        <div class="text-xs uppercase tracking-wider text-white/80">{% trans "Orders" %}</div>
-                                        <div class="mt-1 text-lg font-semibold" x-text="fmt(day.orders)"></div>
-                                    </div>
-                                    <div class="rounded-xl border border-base-200 bg-white px-3 py-2 dark:border-base-700 dark:bg-base-900">
-                                        <div class="text-xs uppercase tracking-wider text-base-400 dark:text-base-500">{% trans "Revenue" %}</div>
-                                        <div class="mt-1 text-sm font-semibold text-base-900 dark:text-base-100" x-text="compactCurrency(day.revenue)"></div>
-                                    </div>
+                    <div class="space-y-2 px-4 py-4">
+                        <template x-for="entry in activityFeed()" :key="entry.key">
+                            <a :href="entry.href"
+                               class="flex items-center justify-between gap-3 rounded-xl border border-base-200 px-3 py-2.5 transition-colors hover:bg-base-50 dark:border-base-700 dark:hover:bg-base-800/40">
+                                <div class="min-w-0 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-base text-base-500 dark:text-base-400" x-text="entry.icon"></span>
+                                    <div class="truncate text-sm font-medium text-base-800 dark:text-base-100" x-text="entry.title"></div>
                                 </div>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-
-                <div class="overflow-hidden rounded-3xl border border-base-200/80 bg-white shadow-sm dark:border-base-700 dark:bg-base-900 lg:col-span-1">
-                    <div class="flex items-center justify-between gap-3 border-b border-base-200/80 px-5 py-4 dark:border-base-700">
-                        <div>
-                            <div class="text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">{% trans "SLA & backlog" %}</div>
-                            <div class="mt-1 text-lg font-semibold text-base-900 dark:text-base-50">{% trans "Operational risk queue" %}</div>
-                        </div>
-                    </div>
-                    <div class="space-y-2 px-4 py-4 border-b border-base-100 dark:border-base-800">
-                        <template x-for="item in backlogItems()" :key="item.key">
-                            <a :href="item.href"
-                               class="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-base-50 dark:hover:bg-base-800/50">
-                                <div class="min-w-0">
-                                    <div class="truncate text-sm font-medium text-base-800 dark:text-base-100" x-text="item.label"></div>
-                                </div>
-                                <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
-                                      :class="item.tone === 'rose'
-                                          ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
-                                          : item.tone === 'amber'
-                                              ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-                                              : 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300'"
-                                      x-text="fmt(item.value)"></span>
+                                <div class="shrink-0 text-right text-lg font-semibold text-base-900 dark:text-base-100" x-text="entry.value"></div>
                             </a>
                         </template>
                     </div>
+                    <div class="border-t border-base-100 px-5 py-3 text-xs font-semibold uppercase tracking-widest text-base-400 dark:border-base-800 dark:text-base-500">
+                        {% trans "Recent complaints" %}
+                    </div>
                     <div class="divide-y divide-base-100 dark:divide-base-800">
-                        <div class="px-5 py-3 text-xs font-semibold uppercase tracking-widest text-base-400 dark:text-base-500">
-                            {% trans "Recent complaints" %}
-                        </div>
-                        <template x-for="(c, i) in complaints.slice(0, 5)" :key="i">
+                        <template x-for="(c, i) in complaints.slice(0, 4)" :key="i">
                             <a :href="'/admin/complaints/complaints/' + c.id + '/change/'"
-                               class="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-base-50 dark:hover:bg-base-800/40">
-                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-                                    <span class="material-symbols-outlined text-base leading-none">warning</span>
-                                </div>
+                               class="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-base-50 dark:hover:bg-base-800/40">
                                 <div class="min-w-0 flex-1">
                                     <div class="truncate text-sm font-semibold text-base-900 dark:text-base-100" x-text="c.complainant"></div>
-                                    <div class="mt-1 text-xs text-base-400 dark:text-base-500" x-text="c.created_at"></div>
+                                    <div class="mt-0.5 text-xs text-base-400 dark:text-base-500" x-text="c.created_at"></div>
                                 </div>
-                                <span class="rounded-full px-3 py-1 text-xs font-semibold capitalize"
+                                <span class="rounded-full px-2.5 py-1 text-xs font-semibold capitalize"
                                       :class="complaintBadgeClass(c.status)"
                                       x-text="humanizeStatus(c.status)"></span>
                             </a>
-                        </template>
-                        <template x-if="complaints.length === 0">
-                            <div class="py-12 text-center text-sm text-base-400 dark:text-base-500">{% trans "No complaints" %}</div>
                         </template>
                     </div>
                 </div>
@@ -354,7 +175,6 @@ function dashboard() {
         kpis: null,
         ops: null,
         chart: [],
-        orders: [],
         complaints: [],
         maxOrders: 1,
         maxRevenue: 1,
@@ -367,7 +187,6 @@ function dashboard() {
                 this.kpis = d.kpis;
                 this.ops = d.ops || this.defaultOps();
                 this.chart = d.chart || [];
-                this.orders = d.recent_orders || [];
                 this.complaints = d.recent_complaints || [];
                 this.maxOrders = Math.max(1, ...this.chart.map((r) => r.orders || 0));
                 this.maxRevenue = Math.max(1, ...this.chart.map((r) => r.revenue || 0));
@@ -388,23 +207,28 @@ function dashboard() {
             };
         },
 
-        leftPanelItems() {
+        coreMetrics() {
             return [
-                { key: 'revenue_today', label: '{% trans "Revenue today" %}', caption: '{% trans "Current day gross volume" %}', value: this.kpis.revenue_today, icon: 'payments', tone: 'emerald', format: 'currency' },
-                { key: 'orders_today', label: '{% trans "Orders today" %}', caption: '{% trans "Incoming order count" %}', value: this.kpis.orders_today, icon: 'receipt_long', tone: 'sky' },
-                { key: 'orders_active', label: '{% trans "Active orders" %}', caption: '{% trans "Still in fulfillment" %}', value: this.kpis.orders_active, icon: 'local_shipping', tone: 'sky' },
-                { key: 'open_complaints', label: '{% trans "Open complaints" %}', caption: '{% trans "Customer-side urgent queue" %}', value: this.kpis.open_complaints, icon: 'report_problem', tone: 'rose', href: '/admin/complaints/complaints/', variant: 'action' },
-                { key: 'pending_sellers', label: '{% trans "Pending sellers" %}', caption: '{% trans "Seller approvals waiting" %}', value: this.kpis.pending_sellers, icon: 'storefront', tone: 'amber', href: '/admin/authentication/sellerusers/' , variant: 'action' },
-                { key: 'pending_compliance', label: '{% trans "Pending docs" %}', caption: '{% trans "Documents to review" %}', value: this.kpis.pending_compliance, icon: 'folder_open', tone: 'amber', href: '/admin/compliance/', variant: 'action' },
+                { key: 'revenue_today', label: '{% trans "Revenue today" %}', value: this.kpis.revenue_today, format: 'currency' },
+                { key: 'orders_today', label: '{% trans "Orders today" %}', value: this.kpis.orders_today },
+                { key: 'orders_active', label: '{% trans "Active orders" %}', value: this.kpis.orders_active },
+            ];
+        },
+
+        quickActions() {
+            return [
+                { key: 'complaints', label: '{% trans "Open complaints" %}', value: this.kpis.open_complaints, tone: 'rose', href: '/admin/complaints/complaints/' },
+                { key: 'sellers', label: '{% trans "Pending sellers" %}', value: this.kpis.pending_sellers, tone: 'amber', href: '/admin/authentication/sellerusers/' },
+                { key: 'docs', label: '{% trans "Pending docs" %}', value: this.kpis.pending_compliance, tone: 'amber', href: '/admin/compliance/sellercompliancedocuments/' },
             ];
         },
 
         activityFeed() {
             return [
-                { key: 'orders', title: '{% trans "Orders moving now" %}', value: this.fmt(this.kpis.orders_active), icon: 'local_shipping', tone: 'sky', action: '{% trans "Inspect" %}', href: '/admin/orders/orders/' },
-                { key: 'complaints', title: '{% trans "Attention needed" %}', value: this.fmt(this.ops.high_priority_complaints), icon: 'priority_high', tone: 'rose', action: '{% trans "Review" %}', href: '/admin/complaints/complaints/' },
-                { key: 'seller_reviews', title: '{% trans "Seller review lane" %}', value: this.fmt(this.kpis.pending_sellers), icon: 'store', tone: 'amber', action: '{% trans "Open" %}', href: '/admin/authentication/sellerusers/' },
-                { key: 'doc_reviews', title: '{% trans "Compliance lane" %}', value: this.fmt(this.ops.stale_pending_docs), icon: 'inventory_2', tone: 'amber', action: '{% trans "Check" %}', href: '/admin/compliance/sellercompliancedocuments/' },
+                { key: 'orders', title: '{% trans "Orders moving now" %}', value: this.fmt(this.kpis.orders_active), icon: 'local_shipping', href: '/admin/orders/orders/' },
+                { key: 'critical_complaints', title: '{% trans "Critical complaints" %}', value: this.fmt(this.ops.high_priority_complaints), icon: 'priority_high', href: '/admin/complaints/complaints/' },
+                { key: 'failed_payments', title: '{% trans "Failed payments (24h)" %}', value: this.fmt(this.ops.failed_payments_24h), icon: 'payments', href: '/admin/orders/orders/?payment_completed__exact=0' },
+                { key: 'stale_docs', title: '{% trans "Stale pending docs" %}', value: this.fmt(this.ops.stale_pending_docs), icon: 'inventory_2', href: '/admin/compliance/sellercompliancedocuments/' },
             ];
         },
 
@@ -413,15 +237,7 @@ function dashboard() {
                 { key: 'high_priority_complaints', label: '{% trans "Critical complaints" %}', value: this.ops.high_priority_complaints, icon: 'emergency', tone: 'rose', href: '/admin/complaints/complaints/' },
                 { key: 'failed_payments_24h', label: '{% trans "Failed payments (24h)" %}', value: this.ops.failed_payments_24h, icon: 'payments', tone: 'amber', href: '/admin/orders/orders/?payment_completed__exact=0' },
                 { key: 'overdue_active_orders', label: '{% trans "Overdue active orders" %}', value: this.ops.overdue_active_orders, icon: 'schedule', tone: 'amber', href: '/admin/orders/orders/' },
-                { key: 'open_disputes', label: '{% trans "Open payment disputes" %}', value: this.ops.open_disputes, icon: 'gavel', tone: 'sky', href: '/admin/orders/orders/' },
-            ];
-        },
-
-        backlogItems() {
-            return [
-                { key: 'stale_docs', label: '{% trans "Stale pending docs (24h+)" %}', value: this.ops.stale_pending_docs, tone: 'amber', href: '/admin/compliance/sellercompliancedocuments/' },
-                { key: 'low_reviews', label: '{% trans "Low rating reviews (7d)" %}', value: this.ops.low_rating_reviews_7d, tone: 'rose', href: '/admin/orders/reviews/' },
-                { key: 'pending_sellers', label: '{% trans "Pending seller approvals" %}', value: this.kpis.pending_sellers, tone: 'sky', href: '/admin/authentication/sellerusers/' },
+                { key: 'low_rating_reviews_7d', label: '{% trans "Low rating reviews (7d)" %}', value: this.ops.low_rating_reviews_7d, icon: 'star', tone: 'sky', href: '/admin/orders/reviews/' },
             ];
         },
 
@@ -487,18 +303,6 @@ function dashboard() {
 
         ordersLine() {
             return this.ordersPoints().map((point) => `${point.x},${point.y}`).join(' ');
-        },
-
-        ordersLineShadow() {
-            return this.ordersPoints().map((point) => `${point.x},${point.y + 1}`).join(' ');
-        },
-
-        heatColor(val, max) {
-            const ratio = max ? (val || 0) / max : 0;
-            if (ratio > 0.75) return 'linear-gradient(135deg, #0f766e, #14b8a6)';
-            if (ratio > 0.45) return 'linear-gradient(135deg, #0369a1, #38bdf8)';
-            if (ratio > 0.15) return 'linear-gradient(135deg, #334155, #64748b)';
-            return 'linear-gradient(135deg, #1e293b, #334155)';
         },
     };
 }
