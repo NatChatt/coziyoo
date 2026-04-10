@@ -510,7 +510,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const [prepTime, setPrepTime] = useState("");
   const [initialStock, setInitialStock] = useState("");
   const [initialSaleStartsAt, setInitialSaleStartsAt] = useState(() => startOfDayIso());
-  const [initialSaleEndsAt, setInitialSaleEndsAt] = useState(() => endOfDayIso());
+  const [initialSaleEndsAt, setInitialSaleEndsAt] = useState(() => endOfDayIso(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
   const [activeSaleDateField, setActiveSaleDateField] = useState<"initialSaleStartsAt" | "initialSaleEndsAt" | null>(null);
   const [pendingSaleDate, setPendingSaleDate] = useState<Date>(() => new Date());
 
@@ -834,7 +834,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setPrepTime(food.preparationTimeMinutes ? String(food.preparationTimeMinutes) : "");
     setInitialStock(String(food.stock > 0 ? food.stock : 10));
     setInitialSaleStartsAt(startOfDayIso());
-    setInitialSaleEndsAt(endOfDayIso());
+    setInitialSaleEndsAt(endOfDayIso(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
     setActiveSaleDateField(null);
     setPendingSaleDate(new Date());
     setCuisine(food.cuisine ?? "");
@@ -913,7 +913,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       if (!targetLot) return;
       setInitialStock(String(targetLot.quantityAvailable));
       setInitialSaleStartsAt(targetLot.saleStartsAt?.trim() ? targetLot.saleStartsAt : startOfDayIso());
-      setInitialSaleEndsAt(targetLot.saleEndsAt?.trim() ? targetLot.saleEndsAt : endOfDayIso());
+      setInitialSaleEndsAt(targetLot.saleEndsAt?.trim() ? targetLot.saleEndsAt : endOfDayIso(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
     } catch (error) {
       console.warn("[seller-foods] failed to load edit lot", error);
     }
