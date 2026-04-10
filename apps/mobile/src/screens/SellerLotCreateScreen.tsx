@@ -10,7 +10,9 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../components/ScreenHeader';
 import { apiRequest } from '../utils/api';
 import { t, formatCopy } from '../copy/brandCopy';
@@ -115,6 +117,10 @@ export default function SellerLotCreateScreen({
     notes: '',
   });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+
+  // Date picker modal
+  const [activeDateField, setActiveDateField] = useState<'useBy' | 'bestBefore' | null>(null);
+  const [pendingDateCal, setPendingDateCal] = useState<Date>(new Date());
 
   // Step 4
   const [submitting, setSubmitting] = useState(false);
@@ -568,17 +574,21 @@ export default function SellerLotCreateScreen({
           error={formErrors.saleEndsAt}
           placeholder="ISO 8601"
         />
-        <FormField
+        <DatePickerRow
           label={t('helper.seller.lotCreate.useBy')}
           value={form.useBy}
-          onChangeText={(v) => updateForm('useBy', v)}
-          placeholder={t('placeholder.seller.lotCreate.isoOptional')}
+          onPress={() => {
+            setPendingDateCal(form.useBy ? new Date(form.useBy) : new Date());
+            setActiveDateField('useBy');
+          }}
         />
-        <FormField
+        <DatePickerRow
           label={t('helper.seller.lotCreate.bestBefore')}
           value={form.bestBefore}
-          onChangeText={(v) => updateForm('bestBefore', v)}
-          placeholder={t('placeholder.seller.lotCreate.isoOptional')}
+          onPress={() => {
+            setPendingDateCal(form.bestBefore ? new Date(form.bestBefore) : new Date());
+            setActiveDateField('bestBefore');
+          }}
         />
         <FormField
           label={t('helper.seller.lotCreate.quantity')}
@@ -662,14 +672,14 @@ export default function SellerLotCreateScreen({
           {!!form.useBy && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>{t('helper.seller.lotCreate.useBy')}</Text>
-              <Text style={styles.summaryValue}>{form.useBy}</Text>
+              <Text style={styles.summaryValue}>{formatDateDisplay(form.useBy)}</Text>
             </View>
           )}
 
           {!!form.bestBefore && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>{t('helper.seller.lotCreate.bestBefore')}</Text>
-              <Text style={styles.summaryValue}>{form.bestBefore}</Text>
+              <Text style={styles.summaryValue}>{formatDateDisplay(form.bestBefore)}</Text>
             </View>
           )}
 
@@ -731,7 +741,157 @@ export default function SellerLotCreateScreen({
         {step === 4 && renderStep4()}
         {renderBackButton()}
       </ScrollView>
+
+      {/* Date picker modal — useBy / bestBefore */}
+      <Modal
+        visible={activeDateField !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActiveDateField(null)}
+      >
+        <TouchableOpacity
+          style={styles.calModalOverlay}
+          activeOpacity={1}
+          onPress={() => setActiveDateField(null)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.calModalCard}>
+            <Text style={styles.calModalTitle}>
+              {activeDateField === 'useBy'
+                ? t('helper.seller.lotCreate.useBy')
+                : t('helper.seller.lotCreate.bestBefore')}
+            </Text>
+            <CalendarPicker
+              value={pendingDateCal}
+              onSelect={(date) => {
+                if (activeDateField) {
+                  updateForm(activeDateField, dateToEndOfDayIso(date));
+                }
+                setActiveDateField(null);
+              }}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
+  );
+}
+
+// ─── Inline Calendar Picker (shared logic with SellerFoodsScreen) ──────────
+
+const CAL_MONTH_NAMES = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const CAL_DAY_LABELS = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+
+function CalendarPicker({ value, onSelect }: { value: Date; onSelect: (date: Date) => void }) {
+  const [viewYear, setViewYear] = useState(value.getFullYear());
+  const [viewMonth, setViewMonth] = useState(value.getMonth());
+
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const startOffset = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  }
+
+  return (
+    <View style={calStyles.container}>
+      <View style={calStyles.header}>
+        <TouchableOpacity onPress={prevMonth} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+          <Ionicons name="chevron-back" size={20} color="#2E241C" />
+        </TouchableOpacity>
+        <Text style={calStyles.monthTitle}>{CAL_MONTH_NAMES[viewMonth]} {viewYear}</Text>
+        <TouchableOpacity onPress={nextMonth} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+          <Ionicons name="chevron-forward" size={20} color="#2E241C" />
+        </TouchableOpacity>
+      </View>
+      <View style={calStyles.dayLabelsRow}>
+        {CAL_DAY_LABELS.map(label => (
+          <Text key={label} style={calStyles.dayLabel}>{label}</Text>
+        ))}
+      </View>
+      {rows.map((row, ri) => (
+        <View key={ri} style={calStyles.row}>
+          {row.map((day, di) => {
+            const selected = day !== null &&
+              day === value.getDate() &&
+              viewMonth === value.getMonth() &&
+              viewYear === value.getFullYear();
+            return (
+              <TouchableOpacity
+                key={di}
+                style={[calStyles.dayCell, selected && calStyles.dayCellSelected]}
+                onPress={() => { if (day !== null) onSelect(new Date(viewYear, viewMonth, day)); }}
+                disabled={day === null}
+                activeOpacity={0.7}
+              >
+                <Text style={[calStyles.dayText, selected && calStyles.dayTextSelected]}>
+                  {day !== null ? String(day) : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const calStyles = StyleSheet.create({
+  container: { paddingHorizontal: 12, paddingBottom: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  monthTitle: { fontSize: 16, fontWeight: '800', color: '#2E241C' },
+  dayLabelsRow: { flexDirection: 'row', marginBottom: 4 },
+  dayLabel: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '700', color: '#8A7A6A' },
+  row: { flexDirection: 'row', marginBottom: 2 },
+  dayCell: { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
+  dayCellSelected: { backgroundColor: '#3F855C' },
+  dayText: { fontSize: 15, color: '#2E241C', fontWeight: '500' },
+  dayTextSelected: { color: '#fff', fontWeight: '800' },
+});
+
+function formatDateDisplay(iso: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return `${d.getDate()} ${CAL_MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function dateToEndOfDayIso(date: Date): string {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).toISOString();
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
+type DatePickerRowProps = {
+  label: string;
+  value: string; // ISO string or empty
+  onPress: () => void;
+};
+
+function DatePickerRow({ label, value, onPress }: DatePickerRowProps) {
+  const displayText = value ? formatDateDisplay(value) : '—';
+  return (
+    <View style={styles.formField}>
+      <Text style={styles.formLabel}>{label}</Text>
+      <TouchableOpacity style={styles.datePickerRow} onPress={onPress} activeOpacity={0.7}>
+        <Text style={[styles.datePickerText, !value && styles.datePickerPlaceholder]}>
+          {displayText}
+        </Text>
+        <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -1070,5 +1230,51 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.error,
     textAlign: 'center',
+  },
+  datePickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5DDCF',
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  datePickerText: {
+    fontSize: 14,
+    color: theme.text,
+    fontWeight: '500',
+  },
+  datePickerPlaceholder: {
+    color: theme.textSecondary,
+  },
+  calModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  calModalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    paddingTop: 20,
+    paddingBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  calModalTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2E241C',
+    textAlign: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 12,
   },
 });
