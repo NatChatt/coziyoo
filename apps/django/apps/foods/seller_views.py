@@ -304,7 +304,11 @@ class SellerFoodListView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        produced_at = datetime.utcnow().isoformat() + "Z"
+        now = datetime.utcnow()
+        produced_at = now.isoformat() + "Z"
+        # Clamp sale_starts_at to now if the user picked a time in the past (e.g. today's midnight in local timezone)
+        if sale_start_dt is not None and sale_start_dt.replace(tzinfo=None) < now:
+            sale_start_dt = now
         lot_id = None
         try:
             with transaction.atomic():
