@@ -1,3 +1,5 @@
+import json
+
 from django.db import connection, transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,7 +10,11 @@ from rest_framework import status
 # ---------------------------------------------------------------------------
 
 TRANSITIONS = {
-    "pending":     ["preparing", "cancelled"],
+    "pending":     ["preparing", "cancelled", "rejected"],
+    "pending_seller_approval": ["seller_approved", "cancelled", "rejected"],
+    "seller_approved": ["awaiting_payment", "paid", "preparing", "cancelled"],
+    "awaiting_payment": ["paid", "cancelled"],
+    "paid": ["preparing", "cancelled"],
     "preparing":   ["ready", "cancelled"],
     "ready":       ["in_delivery", "cancelled"],
     "in_delivery": ["approaching", "delivered"],
@@ -59,6 +65,43 @@ def _dictfetchall(cursor):
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
+def _json_dumps(value):
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _selected_addons_total(selected_addons):
+    if not isinstance(selected_addons, dict):
+        return 0.0
+
+    paid_addons = selected_addons.get("paid")
+    if not isinstance(paid_addons, list):
+        return 0.0
+
+    total = 0.0
+    for addon in paid_addons:
+        if not isinstance(addon, dict):
+            continue
+        try:
+            price = float(addon.get("price") or 0)
+            quantity = int(addon.get("quantity") or 1)
+        except (TypeError, ValueError):
+            continue
+        if quantity > 0 and price > 0:
+            total += price * quantity
+    return total
+
+
+def _normalize_seller_decision(value):
+    raw = str(value or "").strip().lower()
+    if raw == "approve":
+        return "approved"
+    if raw == "reject":
+        return "rejected"
+    if raw == "revise":
+        return "revised"
+    return raw
+
+
 # ---------------------------------------------------------------------------
 # Views
 # ---------------------------------------------------------------------------
@@ -99,7 +142,8 @@ class OrderListCreateView(APIView):
         params.extend([page_size, offset])
 
         sql = f"""
-            SELECT o.id, o.status, o.total_price, o.delivery_type, o.created_at,
+            SELECT o.id, o.status, o.total_price, o.delivery_type, o.created_at, o.updated_at,
+                   o.requested_delivery_type, o.active_delivery_type, o.seller_decision_state,
                    o.buyer_id, o.seller_id,
                    ub.display_name AS buyer_name,
                    us.display_name AS seller_name
@@ -122,6 +166,10 @@ class OrderListCreateView(APIView):
                 "totalPrice": float(r["total_price"]),
                 "deliveryType": r["delivery_type"],
                 "createdAt": r["created_at"].isoformat() if r["created_at"] else None,
+                "updatedAt": r["updated_at"].isoformat() if r["updated_at"] else None,
+                "requestedDeliveryType": r["requested_delivery_type"],
+                "activeDeliveryType": r["active_delivery_type"],
+                "sellerDecisionState": r["seller_decision_state"],
                 "buyerId": str(r["buyer_id"]),
                 "sellerId": str(r["seller_id"]),
                 "buyerName": r["buyer_name"],
@@ -174,42 +222,98 @@ class OrderListCreateView(APIView):
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
-            # 2. Validate each food belongs to seller and is active
-            food_ids = [item.get("foodId") for item in items]
-            if any(f is None for f in food_ids):
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "Each item must have a foodId"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            normalized_items = []
+            lot_ids = []
+            food_ids = []
+            for item in items:
+                if not isinstance(item, dict):
+                    return Response(
+                        {"error": {"code": "VALIDATION_ERROR", "message": "Each item must be an object"}},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
-            placeholders = ", ".join(["%s"] * len(food_ids))
-            cursor.execute(
-                f"SELECT id FROM foods WHERE id IN ({placeholders}) AND seller_id = %s AND is_active = TRUE",
-                food_ids + [seller_id],
-            )
-            valid_foods = {str(row[0]) for row in cursor.fetchall()}
+                lot_id = item.get("lotId")
+                food_id = item.get("foodId")
+                if not lot_id and not food_id:
+                    return Response(
+                        {"error": {"code": "VALIDATION_ERROR", "message": "Each item must have a lotId or foodId"}},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
-            invalid = [fid for fid in food_ids if str(fid) not in valid_foods]
-            if invalid:
-                return Response(
+                normalized_items.append(
                     {
-                        "error": {
-                            "code": "VALIDATION_ERROR",
-                            "message": f"Food(s) not found or not active: {invalid}",
-                        }
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
+                        "lotId": str(lot_id) if lot_id else None,
+                        "foodId": str(food_id) if food_id else None,
+                        "quantity": item.get("quantity"),
+                        "selectedAddons": item.get("selectedAddons"),
+                    }
                 )
+                if lot_id:
+                    lot_ids.append(str(lot_id))
+                elif food_id:
+                    food_ids.append(str(food_id))
 
-            # Fetch prices from DB
-            cursor.execute(
-                f"SELECT id, price FROM foods WHERE id IN ({placeholders}) AND seller_id = %s AND is_active = TRUE",
-                food_ids + [seller_id],
-            )
-            food_prices = {str(row[0]): float(row[1]) for row in cursor.fetchall()}
+            lot_details = {}
+            if lot_ids:
+                placeholders = ", ".join(["%s"] * len(lot_ids))
+                cursor.execute(
+                    f"""
+                    SELECT l.id, l.food_id, f.price
+                    FROM production_lots l
+                    JOIN foods f ON f.id = l.food_id
+                    WHERE l.id IN ({placeholders})
+                      AND l.seller_id = %s
+                      AND f.seller_id = %s
+                      AND f.is_active = TRUE
+                    """,
+                    lot_ids + [seller_id, seller_id],
+                )
+                lot_details = {
+                    str(row[0]): {"foodId": str(row[1]), "unitPrice": float(row[2])}
+                    for row in cursor.fetchall()
+                }
+
+                invalid_lots = [lot_id for lot_id in lot_ids if lot_id not in lot_details]
+                if invalid_lots:
+                    return Response(
+                        {
+                            "error": {
+                                "code": "VALIDATION_ERROR",
+                                "message": f"Lot(s) not found or not active: {invalid_lots}",
+                            }
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            food_prices = {}
+            if food_ids:
+                placeholders = ", ".join(["%s"] * len(food_ids))
+                cursor.execute(
+                    f"SELECT id, price FROM foods WHERE id IN ({placeholders}) AND seller_id = %s AND is_active = TRUE",
+                    food_ids + [seller_id],
+                )
+                food_prices = {str(row[0]): float(row[1]) for row in cursor.fetchall()}
+
+                invalid = [food_id for food_id in food_ids if food_id not in food_prices]
+                if invalid:
+                    return Response(
+                        {
+                            "error": {
+                                "code": "VALIDATION_ERROR",
+                                "message": f"Food(s) not found or not active: {invalid}",
+                            }
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
         # 3. Validate quantities and inject prices from DB
-        for item in items:
+        for item in normalized_items:
+            if item["lotId"]:
+                item["foodId"] = lot_details[item["lotId"]]["foodId"]
+                item["unitPrice"] = lot_details[item["lotId"]]["unitPrice"]
+            else:
+                item["unitPrice"] = food_prices.get(item["foodId"], 0.0)
+
             try:
                 item["quantity"] = int(item["quantity"])
             except (ValueError, TypeError):
@@ -222,9 +326,10 @@ class OrderListCreateView(APIView):
                     {"error": {"code": "VALIDATION_ERROR", "message": "quantity must be > 0"}},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            item["unitPrice"] = food_prices.get(str(item.get("foodId")), 0.0)
+            addons_total = _selected_addons_total(item.get("selectedAddons"))
+            item["lineTotal"] = (item["quantity"] * item["unitPrice"]) + addons_total
 
-        total_price = sum(i["quantity"] * i["unitPrice"] for i in items)
+        total_price = sum(i["lineTotal"] for i in normalized_items)
 
         with transaction.atomic():
             with connection.cursor() as cursor:
@@ -234,7 +339,7 @@ class OrderListCreateView(APIView):
                     INSERT INTO orders (buyer_id, seller_id, status, total_price,
                                        delivery_type, requested_delivery_type, active_delivery_type,
                                        seller_decision_state)
-                    VALUES (%s, %s, 'pending', %s, %s, %s, %s, 'pending')
+                    VALUES (%s, %s, 'pending_seller_approval', %s, %s, %s, %s, 'pending')
                     RETURNING id
                     """,
                     [buyer_id, seller_id, total_price, delivery_type, delivery_type, delivery_type],
@@ -242,27 +347,34 @@ class OrderListCreateView(APIView):
                 order_id = str(cursor.fetchone()[0])
 
                 # 5. Insert order items
-                for item in items:
-                    subtotal = item["quantity"] * item["unitPrice"]
+                for item in normalized_items:
                     cursor.execute(
                         """
-                        INSERT INTO order_items (order_id, food_id, quantity, unit_price, line_total)
-                        VALUES (%s, %s, %s, %s, %s)
+                        INSERT INTO order_items (order_id, lot_id, food_id, quantity, unit_price, line_total, selected_addons_json)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                         """,
-                        [order_id, item["foodId"], item["quantity"], item["unitPrice"], subtotal],
+                        [
+                            order_id,
+                            item["lotId"],
+                            item["foodId"],
+                            item["quantity"],
+                            item["unitPrice"],
+                            item["lineTotal"],
+                            _json_dumps(item.get("selectedAddons")) if item.get("selectedAddons") is not None else None,
+                        ],
                     )
 
                 # 6. Insert order event
                 cursor.execute(
                     """
                     INSERT INTO order_events (order_id, event_type, actor_user_id, payload_json)
-                    VALUES (%s, 'order_created', %s, '{}')
+                    VALUES (%s, 'order_created', %s, %s)
                     """,
-                    [order_id, buyer_id],
+                    [order_id, buyer_id, _json_dumps({"note": note, "itemCount": len(normalized_items)})],
                 )
 
         return Response(
-            {"data": {"orderId": order_id, "status": "pending", "totalPrice": total_price}},
+            {"data": {"orderId": order_id, "status": "pending_seller_approval", "totalPrice": total_price}},
             status=status.HTTP_201_CREATED,
         )
 
@@ -282,6 +394,8 @@ class OrderDetailView(APIView):
             cursor.execute(
                 """
                 SELECT o.id, o.status, o.total_price, o.delivery_type, o.seller_delivery_note,
+                       o.requested_delivery_type, o.active_delivery_type, o.seller_decision_state,
+                       o.seller_eta_minutes, o.seller_promised_at, o.approved_at, o.payment_captured_at,
                        o.created_at, o.updated_at,
                        o.buyer_id, o.seller_id,
                        ub.display_name AS buyer_name,
@@ -304,7 +418,7 @@ class OrderDetailView(APIView):
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT oi.id, oi.food_id, oi.quantity, oi.unit_price, oi.line_total,
+                SELECT oi.id, oi.food_id, oi.quantity, oi.unit_price, oi.line_total, oi.selected_addons_json,
                        f.name AS food_name
                 FROM order_items oi
                 JOIN foods f ON f.id = oi.food_id
@@ -333,6 +447,13 @@ class OrderDetailView(APIView):
                     "totalPrice": float(order["total_price"]),
                     "deliveryType": order["delivery_type"],
                     "note": order["seller_delivery_note"],
+                    "requestedDeliveryType": order["requested_delivery_type"],
+                    "activeDeliveryType": order["active_delivery_type"],
+                    "sellerDecisionState": order["seller_decision_state"],
+                    "sellerEtaMinutes": order["seller_eta_minutes"],
+                    "sellerPromisedAt": order["seller_promised_at"].isoformat() if order["seller_promised_at"] else None,
+                    "approvedAt": order["approved_at"].isoformat() if order["approved_at"] else None,
+                    "paymentCapturedAt": order["payment_captured_at"].isoformat() if order["payment_captured_at"] else None,
                     "createdAt": order["created_at"].isoformat() if order["created_at"] else None,
                     "updatedAt": order["updated_at"].isoformat() if order["updated_at"] else None,
                     "buyerId": str(order["buyer_id"]),
@@ -344,9 +465,12 @@ class OrderDetailView(APIView):
                             "id": str(i["id"]),
                             "foodId": str(i["food_id"]),
                             "foodName": i["food_name"],
+                            "name": i["food_name"],
                             "quantity": i["quantity"],
                             "unitPrice": float(i["unit_price"]),
                             "subtotal": float(i["line_total"]),
+                            "lineTotal": float(i["line_total"]),
+                            "selectedAddons": i["selected_addons_json"],
                         }
                         for i in items
                     ],
@@ -371,7 +495,7 @@ class OrderStatusView(APIView):
         if err:
             return err
 
-        new_status = request.data.get("status")
+        new_status = request.data.get("status") or request.data.get("toStatus")
         if not new_status:
             return Response(
                 {"error": {"code": "VALIDATION_ERROR", "message": "status is required"}},
@@ -415,8 +539,6 @@ class OrderStatusView(APIView):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
-        actor_type = "buyer" if user_id == buyer_id else "seller"
-
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute(
@@ -425,10 +547,17 @@ class OrderStatusView(APIView):
                 )
                 cursor.execute(
                     """
-                    INSERT INTO order_events (order_id, event_type, actor_user_id, payload_json)
-                    VALUES (%s, %s, %s, %s, '{}')
+                    INSERT INTO order_events (order_id, event_type, actor_user_id, from_status, to_status, payload_json)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     """,
-                    [order_id_str, f"status_changed_to_{new_status}", actor_type, user_id],
+                    [
+                        order_id_str,
+                        f"status_changed_to_{new_status}",
+                        user_id,
+                        current_status,
+                        new_status,
+                        _json_dumps({"actorRole": "buyer" if user_id == buyer_id else "seller"}),
+                    ],
                 )
 
         return Response({"data": {"orderId": order_id_str, "status": new_status}})
@@ -467,8 +596,6 @@ class OrderCancelView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        actor_type = "buyer" if user_id == buyer_id else "seller"
-
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute(
@@ -497,9 +624,9 @@ class OrderCancelView(APIView):
                 cursor.execute(
                     """
                     INSERT INTO order_events (order_id, event_type, actor_user_id, payload_json)
-                    VALUES (%s, 'order_cancelled', %s, %s, '{}')
+                    VALUES (%s, 'order_cancelled', %s, %s)
                     """,
-                    [order_id_str, actor_type, user_id],
+                    [order_id_str, user_id, _json_dumps({"cancelledBy": "buyer" if user_id == buyer_id else "seller"})],
                 )
 
         return Response({"data": {"orderId": order_id_str, "status": "cancelled"}})
@@ -588,9 +715,9 @@ class SellerDecisionView(APIView):
     """POST /v1/orders/:order_id/seller-decision"""
 
     DECISION_STATUS_MAP = {
-        "approved": "preparing",
-        "rejected": "cancelled",
-        "revised": "pending",
+        "approved": "seller_approved",
+        "rejected": "rejected",
+        "revised": "pending_seller_approval",
     }
 
     def post(self, request, order_id):
@@ -598,8 +725,10 @@ class SellerDecisionView(APIView):
         if err:
             return err
 
-        decision = request.data.get("decision")
+        decision = _normalize_seller_decision(request.data.get("decision"))
         note = request.data.get("note", "")
+        requested_delivery_type = request.data.get("deliveryType")
+        eta_minutes = request.data.get("etaMinutes")
 
         if decision not in self.DECISION_STATUS_MAP:
             return Response(
@@ -637,13 +766,12 @@ class SellerDecisionView(APIView):
         current_status = order["status"]
         new_status = self.DECISION_STATUS_MAP[decision]
 
-        # "revised" keeps the order in "pending" — only valid when currently pending
-        if decision == "revised" and current_status != "pending":
+        if decision == "revised" and current_status not in ("pending", "pending_seller_approval"):
             return Response(
                 {
                     "error": {
                         "code": "INVALID_TRANSITION",
-                        "message": "revised decision is only valid for pending orders",
+                        "message": "revised decision is only valid for pending seller approval orders",
                     }
                 },
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -660,22 +788,75 @@ class SellerDecisionView(APIView):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
-        import json
+        if requested_delivery_type not in (None, "", "pickup", "delivery"):
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "deliveryType must be pickup or delivery",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        metadata = json.dumps({"decision": decision, "note": note})
+        seller_eta_minutes = None
+        if eta_minutes not in (None, ""):
+            try:
+                seller_eta_minutes = int(eta_minutes)
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": {"code": "VALIDATION_ERROR", "message": "etaMinutes must be an integer"}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if seller_eta_minutes < 0:
+                return Response(
+                    {"error": {"code": "VALIDATION_ERROR", "message": "etaMinutes must be >= 0"}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        metadata = {
+            "decision": decision,
+            "note": note,
+            "deliveryType": requested_delivery_type,
+            "etaMinutes": seller_eta_minutes,
+        }
 
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "UPDATE orders SET status = %s, updated_at = now() WHERE id = %s",
-                    [new_status, order_id_str],
+                    """
+                    UPDATE orders
+                    SET status = %s,
+                        updated_at = now(),
+                        seller_decision_state = %s,
+                        seller_delivery_note = %s,
+                        seller_eta_minutes = COALESCE(%s, seller_eta_minutes),
+                        active_delivery_type = COALESCE(%s, active_delivery_type),
+                        approved_at = CASE WHEN %s = 'approved' THEN now() ELSE approved_at END,
+                        seller_promised_at = CASE
+                            WHEN %s IS NOT NULL THEN now() + (%s * INTERVAL '1 minute')
+                            ELSE seller_promised_at
+                        END
+                    WHERE id = %s
+                    """,
+                    [
+                        new_status,
+                        decision,
+                        note or None,
+                        seller_eta_minutes,
+                        requested_delivery_type,
+                        decision,
+                        seller_eta_minutes,
+                        seller_eta_minutes,
+                        order_id_str,
+                    ],
                 )
                 cursor.execute(
                     """
-                    INSERT INTO order_events (order_id, event_type, actor_user_id, payload_json)
-                    VALUES (%s, 'seller_decision', 'seller', %s, %s)
+                    INSERT INTO order_events (order_id, event_type, actor_user_id, from_status, to_status, payload_json)
+                    VALUES (%s, 'seller_decision', %s, %s, %s, %s)
                     """,
-                    [order_id_str, user_id, metadata],
+                    [order_id_str, user_id, current_status, new_status, _json_dumps(metadata)],
                 )
 
         return Response(

@@ -40,7 +40,19 @@ class PaymentStatusView(APIView):
                 attempt["updatedAt"] = attempt["updatedAt"].isoformat() if attempt["updatedAt"] else None
                 attempts.append(attempt)
 
-        return Response({"data": {"orderId": str(order_id), "attempts": attempts}})
+        latest_attempt = attempts[0] if attempts else None
+        payment_completed = bool(latest_attempt and latest_attempt.get("status") == "paid")
+
+        return Response(
+            {
+                "data": {
+                    "orderId": str(order_id),
+                    "attempts": attempts,
+                    "latestAttempt": latest_attempt,
+                    "paymentCompleted": payment_completed,
+                }
+            }
+        )
 
 
 # ── Initiate Payment ──────────────────────────────────────────────────────────
@@ -61,7 +73,11 @@ class PaymentInitView(APIView):
         with transaction.atomic():
             with connection.cursor() as cur:
                 cur.execute(
-                    "SELECT id, status, total_price, buyer_id FROM orders WHERE id = %s AND buyer_id = %s",
+                    """
+                    SELECT id, status, total_price, buyer_id, seller_decision_state
+                    FROM orders
+                    WHERE id = %s AND buyer_id = %s
+                    """,
                     [order_id, user_id],
                 )
                 order = cur.fetchone()
@@ -72,26 +88,26 @@ class PaymentInitView(APIView):
                     status=404,
                 )
 
-            db_order_id, status, _, buyer_id = order
+            db_order_id, status, _, buyer_id, seller_decision_state = order
 
-            if status not in ("pending", "preparing"):
+            if status not in (
+                "pending",
+                "pending_seller_approval",
+                "seller_approved",
+                "awaiting_payment",
+                "paid",
+                "preparing",
+            ):
                 return Response(
                     {"error": {"code": "INVALID_ORDER_STATUS", "message": f"Order status '{status}' does not allow payment"}},
                     status=409,
                 )
 
-            if status == "preparing":
-                with connection.cursor() as cur:
-                    cur.execute(
-                        "SELECT seller_decision_state FROM orders WHERE id = %s",
-                        [db_order_id],
-                    )
-                    row = cur.fetchone()
-                    if row and row[0] != "approved":
-                        return Response(
-                            {"error": {"code": "SELLER_NOT_APPROVED", "message": "Satıcı onayı bekleniyor"}},
-                            status=409,
-                        )
+            if status in ("seller_approved", "awaiting_payment", "paid", "preparing") and seller_decision_state not in ("approved", None):
+                return Response(
+                    {"error": {"code": "SELLER_NOT_APPROVED", "message": "Satıcı onayı bekleniyor"}},
+                    status=409,
+                )
 
             attempt_id = str(uuid.uuid4())
             provider_session_id = str(uuid.uuid4())
@@ -105,10 +121,33 @@ class PaymentInitView(APIView):
                     [db_order_id, buyer_id, provider_session_id],
                 )
                 attempt_id = str(cur.fetchone()[0])
+                cur.execute(
+                    """
+                    UPDATE orders
+                    SET status = CASE
+                        WHEN status IN ('pending', 'pending_seller_approval', 'seller_approved') THEN 'awaiting_payment'
+                        ELSE status
+                    END,
+                        updated_at = now()
+                    WHERE id = %s
+                    """,
+                    [db_order_id],
+                )
 
         checkout_url = f"/v1/payments/mock-checkout?sessionId={attempt_id}&orderId={db_order_id}"
 
-        return Response({"data": {"paymentUrl": checkout_url, "attemptId": attempt_id}}, status=201)
+        return Response(
+            {
+                "data": {
+                    "paymentUrl": checkout_url,
+                    "checkoutUrl": checkout_url,
+                    "attemptId": attempt_id,
+                    "sessionId": attempt_id,
+                    "provider": "mockpay",
+                }
+            },
+            status=201,
+        )
 
 
 # ── Mock Process (dev only) ───────────────────────────────────────────────────
@@ -118,11 +157,12 @@ class MockProcessView(APIView):
 
     def post(self, request):
         order_id = request.data.get("orderId")
+        session_id = request.data.get("sessionId")
         result = request.data.get("result", "success")
 
-        if not order_id:
+        if not order_id and not session_id:
             return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "orderId is required"}},
+                {"error": {"code": "VALIDATION_ERROR", "message": "orderId or sessionId is required"}},
                 status=400,
             )
 
@@ -134,14 +174,24 @@ class MockProcessView(APIView):
 
         with transaction.atomic():
             with connection.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT id FROM payment_attempts
-                    WHERE order_id = %s AND status = 'pending'
-                    ORDER BY created_at DESC LIMIT 1
-                    """,
-                    [order_id],
-                )
+                if session_id:
+                    cur.execute(
+                        """
+                        SELECT id, order_id FROM payment_attempts
+                        WHERE id = %s AND status = 'pending'
+                        ORDER BY created_at DESC LIMIT 1
+                        """,
+                        [session_id],
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT id, order_id FROM payment_attempts
+                        WHERE order_id = %s AND status = 'pending'
+                        ORDER BY created_at DESC LIMIT 1
+                        """,
+                        [order_id],
+                    )
                 row = cur.fetchone()
 
             if not row:
@@ -150,7 +200,8 @@ class MockProcessView(APIView):
                     status=404,
                 )
 
-            attempt_id = row[0]
+            attempt_id, resolved_order_id = row
+            order_id = resolved_order_id
 
             with connection.cursor() as cur:
                 if result == "success":
@@ -159,7 +210,14 @@ class MockProcessView(APIView):
                         [attempt_id],
                     )
                     cur.execute(
-                        "UPDATE orders SET status = 'preparing' WHERE id = %s AND status IN ('pending', 'preparing')",
+                        """
+                        UPDATE orders
+                        SET status = 'paid',
+                            payment_completed = TRUE,
+                            payment_captured_at = now(),
+                            updated_at = now()
+                        WHERE id = %s AND status IN ('pending', 'pending_seller_approval', 'seller_approved', 'awaiting_payment', 'paid', 'preparing')
+                        """,
                         [order_id],
                     )
                 else:
