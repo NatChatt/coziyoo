@@ -55,7 +55,7 @@
       ]
     ],
     "extra": {
-      "apiUrl": "https://api.coziyoo.com",
+      "apiUrl": "https://coziyoo.com",
       "eas": {
         "projectId": "cbc63115-75ec-4c47-a938-d72e2473feee"
       }
