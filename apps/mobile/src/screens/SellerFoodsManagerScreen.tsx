@@ -107,7 +107,7 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
         id: String(item.id),
         name: String(item.name ?? ""),
         categoryId: typeof item.categoryId === "string" ? item.categoryId : (typeof item.category_id === "string" ? item.category_id : undefined),
-        cardSummary: typeof item.cardSummary === "string" ? item.cardSummary : null,
+        cardSummary: typeof item.cardSummary === "string" ? item.cardSummary : (typeof item.card_summary === "string" ? item.card_summary : null),
         price: Number(item.price ?? 0),
         isActive: toBool(item.isActive ?? item.is_active),
         stock: lotSummaries.get(String(item.id))?.stock ?? Number(item.stock ?? 0),

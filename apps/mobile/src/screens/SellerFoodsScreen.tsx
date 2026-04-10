@@ -268,6 +268,11 @@ function normalizeSellerFood(item: Record<string, unknown>): SellerFood {
     : Array.isArray(item.menu_items_json)
       ? item.menu_items_json
       : [];
+  const paidAddonsRaw = Array.isArray(item.paidAddons)
+    ? item.paidAddons
+    : Array.isArray(item.paid_addons_json)
+      ? item.paid_addons_json
+      : [];
 
   return {
     id: String(item.id ?? ""),
@@ -276,11 +281,13 @@ function normalizeSellerFood(item: Record<string, unknown>): SellerFood {
       ? item.categoryName
       : (typeof item.category_name === "string" ? item.category_name : null),
     name: String(item.name ?? ""),
-    cardSummary: typeof item.cardSummary === "string" ? item.cardSummary : null,
+    cardSummary: typeof item.cardSummary === "string"
+      ? item.cardSummary
+      : (typeof item.card_summary === "string" ? item.card_summary : null),
     description: typeof item.description === "string" ? item.description : null,
     recipe: typeof item.recipe === "string" ? item.recipe : null,
     cuisine: typeof item.cuisine === "string" ? item.cuisine : null,
-    menuItems: menuItemsRaw as SellerFood["menuItems"],
+    menuItems: [...menuItemsRaw, ...paidAddonsRaw] as SellerFood["menuItems"],
     secondaryCategories: Array.isArray(item.secondaryCategories) ? (item.secondaryCategories as SellerFood["secondaryCategories"]) : [],
     price: Number(item.price ?? 0),
     imageUrl: typeof item.imageUrl === "string" ? item.imageUrl : (typeof item.image_url === "string" ? item.image_url : null),
