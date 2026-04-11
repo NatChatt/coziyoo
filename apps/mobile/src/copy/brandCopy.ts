@@ -613,6 +613,8 @@ export const brandCopy = {
   'status.seller.home.stockLotMissing': 'Lot oluşturulmadı',
   'status.seller.home.stockDepleted': 'Stok tükendi',
   'error.seller.home.actionFailed': 'İşlem başarısız',
+  'cta.seller.home.approveOrder': 'Onayla',
+  'cta.seller.home.rejectOrder': 'Reddet',
 
   'headline.seller.foodsManager.title': 'Yemek Düzenle',
   'cta.seller.foodsManager.addFood': 'Yemek Ekle',
@@ -1455,6 +1457,8 @@ const brandCopyEn: Partial<Record<BrandCopyKey, string>> = {
   'status.seller.home.stockLotMissing': 'Lot not created',
   'status.seller.home.stockDepleted': 'Stock depleted',
   'error.seller.home.actionFailed': 'Action failed',
+  'cta.seller.home.approveOrder': 'Approve',
+  'cta.seller.home.rejectOrder': 'Reject',
   'headline.seller.foodsManager.title': 'Edit Food',
   'cta.seller.foodsManager.addFood': 'Add Food',
   'status.seller.foodsManager.loading': 'Preparing foods...',

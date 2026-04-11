@@ -575,7 +575,20 @@ class SellerOrdersView(APIView):
     def get(self, request):
         sql = """
             SELECT o.id, o.status, o.total_price, o.created_at, o.buyer_id,
-                   u.display_name AS buyer_name, o.delivery_type
+                   u.display_name AS buyer_name, o.delivery_type,
+                   (
+                       SELECT f.name
+                       FROM order_items oi
+                       JOIN foods f ON f.id = oi.food_id
+                       WHERE oi.order_id = o.id
+                       ORDER BY oi.created_at
+                       LIMIT 1
+                   ) AS primary_food_name,
+                   (
+                       SELECT COUNT(*)
+                       FROM order_items oi
+                       WHERE oi.order_id = o.id
+                   ) AS item_count
             FROM orders o
             JOIN users u ON u.id = o.buyer_id
             WHERE o.seller_id = %s
@@ -589,6 +602,8 @@ class SellerOrdersView(APIView):
         uuid_fields = ["id", "buyer_id"]
         for order in orders:
             _stringify_uuids(order, uuid_fields)
+            if order.get("item_count") is not None:
+                order["item_count"] = int(order["item_count"])
 
         return Response({"data": orders})
 

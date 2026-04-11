@@ -39,7 +39,7 @@ type SellerOrder = {
 };
 
 type SellerAction =
-  | { label: string; toStatus: "preparing" | "ready" | "in_delivery" | "approaching" | "at_door" | "delivered" | "completed"; tone: "preparing" | "ready" | "in_delivery" | "approaching" | "at_door" | "delivered" };
+  | { label: string; toStatus: "preparing" | "ready" | "in_delivery" | "approaching" | "at_door" | "delivered" | "completed" | "seller_approved" | "rejected" | "cancelled"; tone: "preparing" | "ready" | "in_delivery" | "approaching" | "at_door" | "delivered" | "approve" | "reject" };
 
 type OrderGroupKey = "preparing" | "route" | "done";
 
@@ -188,6 +188,9 @@ function normalizeDisplayStatus(status: string, deliveryType?: string): string {
 
 function cardActionByStatus(status: string, deliveryType?: string): SellerAction | null {
   const pickup = deliveryType === "pickup";
+  if (status === "pending_seller_approval") {
+    return { label: t('cta.seller.home.approveOrder'), toStatus: "seller_approved", tone: "approve" };
+  }
   if (status === "paid") {
     return { label: t('cta.seller.home.startPreparing'), toStatus: "preparing", tone: "preparing" };
   }
@@ -220,6 +223,7 @@ function cardActionByStatus(status: string, deliveryType?: string): SellerAction
 }
 
 function toneFromStatus(status: string, deliveryType?: string): SellerAction["tone"] | null {
+  if (status === "pending_seller_approval") return "approve";
   const normalized = normalizeDisplayStatus(status, deliveryType);
   if (normalized === "preparing") return "preparing";
   if (normalized === "ready") return "ready";
@@ -632,7 +636,7 @@ export default function SellerHomeScreen({
     setRefreshing(false);
   }
 
-  async function changeStatus(orderId: string, toStatus: "ready" | "in_delivery" | "approaching" | "at_door" | "delivered" | "preparing" | "completed"): Promise<void> {
+  async function changeStatus(orderId: string, toStatus: "ready" | "in_delivery" | "approaching" | "at_door" | "delivered" | "preparing" | "completed" | "seller_approved" | "rejected" | "cancelled"): Promise<void> {
     const res = await fetchWithAuthInit(
       `/v1/orders/${orderId}/status`,
       {
@@ -654,7 +658,7 @@ export default function SellerHomeScreen({
 
   async function advanceStatusWithCompatibility(
     orderId: string,
-    toStatus: "ready" | "in_delivery" | "approaching" | "at_door" | "delivered" | "preparing" | "completed",
+    toStatus: "ready" | "in_delivery" | "approaching" | "at_door" | "delivered" | "preparing" | "completed" | "seller_approved" | "rejected" | "cancelled",
   ): Promise<void> {
     try {
       await changeStatus(orderId, toStatus);
@@ -810,6 +814,9 @@ export default function SellerHomeScreen({
             )}
             renderItem={({ item, section, index }) => {
               const action = cardActionByStatus(item.status, item.deliveryType);
+              const rejectAction: SellerAction | null = item.status === "pending_seller_approval"
+                ? { label: t('cta.seller.home.rejectOrder'), toStatus: "rejected", tone: "reject" }
+                : null;
               const isUpdating = updatingOrderId === item.id;
               const buyerFlowText = buyerProgressLabel(item.buyerProgressStatus);
               const statusText = statusLabel(item.status, item.deliveryType);
@@ -897,6 +904,18 @@ export default function SellerHomeScreen({
                           <Text style={styles.cardCelebrateEmoji}>👍</Text>
                         </Animated.View>
                       ) : null}
+                      {rejectAction ? (
+                        <TouchableOpacity
+                          activeOpacity={0.86}
+                          style={[styles.cardActionBtn, styles.cardActionBtnReject, isUpdating && styles.cardActionBtnDisabled]}
+                          disabled={isUpdating}
+                          onPress={() => void runCardAction(item.id, rejectAction)}
+                        >
+                          <Text style={[styles.cardActionBtnText, styles.cardActionBtnRejectText]}>
+                            {isUpdating ? t('status.seller.home.processing') : rejectAction.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
                       <TouchableOpacity
                         activeOpacity={0.86}
                         style={[
@@ -911,7 +930,9 @@ export default function SellerHomeScreen({
                                   ? styles.cardActionBtnApproaching
                                   : resolvedTone === "at_door"
                                     ? styles.cardActionBtnDelivered
-                                    : styles.cardActionBtnCompleted,
+                                    : resolvedTone === "approve"
+                                      ? styles.cardActionBtnApprove
+                                      : styles.cardActionBtnCompleted,
                           isDoorStep && styles.cardActionBtnKapidaPulse,
                           isUpdating && styles.cardActionBtnDisabled,
                         ]}
@@ -1227,6 +1248,9 @@ const styles = StyleSheet.create({
   cardActionBtnKapidaPulse: { borderWidth: 2, borderColor: "#C98E61" },
   cardActionBtnDisabled: { opacity: 0.6 },
   cardActionBtnText: { fontWeight: "800", fontSize: 13, color: "#3F3126" },
+  cardActionBtnApprove: { backgroundColor: "#C8E6C9", borderColor: "#81C784" },
+  cardActionBtnReject: { backgroundColor: "#FFCDD2", borderColor: "#E57373", flex: 0.7 },
+  cardActionBtnRejectText: { color: "#B71C1C" },
   actions: { gap: 12, marginTop: 8 },
   switchRoleButton: {
     height: 48,
