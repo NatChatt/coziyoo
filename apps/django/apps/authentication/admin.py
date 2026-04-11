@@ -346,6 +346,7 @@ class BuyerUsersAdmin(ModelAdmin):
         return custom + urls
 
     def order_detail_view(self, request, order_id):
+      try:
         with connection.cursor() as cur:
             cur.execute("""
                 SELECT
@@ -400,7 +401,7 @@ class BuyerUsersAdmin(ModelAdmin):
         return JsonResponse({
             "id": str(oid),
             "status": status,
-            "status_tr": STATUS_TR.get(status, status),
+            "status_tr": _humanize_status(status),
             "delivery_type": delivery_type,
             "total_price": str(total_price),
             "created_at": created_at.strftime("%d.%m.%Y %H:%M") if created_at else None,
@@ -414,9 +415,12 @@ class BuyerUsersAdmin(ModelAdmin):
             "address": ", ".join(address_parts) if address_parts else None,
             "delivery_note": delivery_note,
             "payment_provider": payment.get("provider"),
-            "payment_status": payment.get("status"),
+            "payment_status": _humanize_status(payment.get("status")),
             "items": items,
         })
+      except Exception as e:
+        import traceback
+        return JsonResponse({"error": str(e), "trace": traceback.format_exc()}, status=500)
 
     def buyer_detail_view(self, request, user_id):
         user = get_object_or_404(Users, pk=user_id)

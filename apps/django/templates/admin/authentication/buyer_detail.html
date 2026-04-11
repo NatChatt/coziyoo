@@ -8,12 +8,17 @@
     el.style.height = 'auto';
     el.style.height = el.scrollHeight + 'px';
   },
-  orderModal: { open: false, loading: false, order: null },
+  orderModal: { open: false, loading: false, order: null, error: null },
   async openOrder(id) {
-    this.orderModal = { open: true, loading: true, order: null };
+    this.orderModal = { open: true, loading: true, order: null, error: null };
     try {
       const r = await fetch('/admin/authentication/buyerusers/order/' + id + '/detail/');
+      if (!r.ok) { this.orderModal.error = 'HTTP ' + r.status; return; }
+      const ct = r.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) { this.orderModal.error = 'Sunucu JSON döndürmedi'; return; }
       this.orderModal.order = await r.json();
+    } catch (e) {
+      this.orderModal.error = e.message;
     } finally {
       this.orderModal.loading = false;
     }
@@ -494,6 +499,12 @@
       {# ── Loading ── #}
       <div x-show="orderModal.loading" class="flex items-center justify-center py-20">
         <span class="material-symbols-outlined text-4xl animate-spin text-primary-500">progress_activity</span>
+      </div>
+
+      {# ── Error ── #}
+      <div x-show="!orderModal.loading && orderModal.error" class="px-5 py-12 text-center">
+        <span class="material-symbols-outlined text-3xl text-rose-400 block mb-2">error</span>
+        <p class="text-sm text-base-500 dark:text-base-400" x-text="orderModal.error"></p>
       </div>
 
       {# ── Content ── #}
