@@ -136,15 +136,21 @@ class SellerProfileView(APIView):
         data = request.data
         kitchen_title = data.get("kitchenTitle")
         kitchen_description = data.get("kitchenDescription")
+        kitchen_specialties = data.get("kitchenSpecialties")
         delivery_enabled = data.get("deliveryEnabled")
         delivery_radius_km = data.get("deliveryRadiusKm")
+        delivery_terms = data.get("deliveryTerms")
+        working_hours = data.get("workingHours")
 
         sql = """
             UPDATE users
             SET kitchen_title = %s,
                 kitchen_description = %s,
+                kitchen_specialties = %s,
                 delivery_enabled = %s,
                 delivery_radius_km = %s,
+                delivery_terms = %s,
+                working_hours_json = %s,
                 updated_at = now()
             WHERE id = %s
             RETURNING id
@@ -152,7 +158,16 @@ class SellerProfileView(APIView):
         with connection.cursor() as cursor:
             cursor.execute(
                 sql,
-                [kitchen_title, kitchen_description, delivery_enabled, delivery_radius_km, request.user.id],
+                [
+                    kitchen_title,
+                    kitchen_description,
+                    json.dumps(kitchen_specialties) if kitchen_specialties is not None else None,
+                    delivery_enabled,
+                    delivery_radius_km,
+                    delivery_terms,
+                    json.dumps(working_hours) if working_hours is not None else None,
+                    request.user.id,
+                ],
             )
             row = cursor.fetchone()
 

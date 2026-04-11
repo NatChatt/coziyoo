@@ -13,4 +13,5 @@ urlpatterns = [
     path("forgot-password/confirm", views.ForgotPasswordConfirmView.as_view(), name="auth-forgot-password-confirm"),
     path("me/enable-seller", views.EnableSellerView.as_view(), name="auth-enable-seller"),
     path("me/addresses", views.UserAddressListView.as_view(), name="auth-addresses"),
+    path("me/addresses/<uuid:address_id>", views.UserAddressDetailView.as_view(), name="auth-address-detail"),
 ]

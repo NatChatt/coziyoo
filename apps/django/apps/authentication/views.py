@@ -126,7 +126,8 @@ class MeView(APIView):
     def get(self, request):
         with connection.cursor() as cur:
             cur.execute(
-                """SELECT id, email, display_name, username, user_type, is_active, created_at
+                """SELECT id, email, display_name, username, user_type, is_active, created_at,
+                          full_name, phone, dob, country_code, national_id
                    FROM users WHERE id = %s""",
                 [request.user.id],
             )
@@ -138,6 +139,70 @@ class MeView(APIView):
         return Response({"data": {
             "id": str(row[0]), "email": row[1], "displayName": row[2],
             "username": row[3], "userType": row[4],
+            "fullName": row[7], "phone": row[8],
+            "dob": row[9].isoformat() if row[9] else None,
+            "countryCode": row[10], "nationalId": row[11],
+            "createdAt": row[6].isoformat() if row[6] else None,
+        }})
+
+    def put(self, request):
+        payload = request.data if isinstance(request.data, dict) else {}
+        updates = []
+        params = []
+
+        field_map = {
+            "email": "email",
+            "displayName": "display_name",
+            "fullName": "full_name",
+            "phone": "phone",
+            "countryCode": "country_code",
+            "nationalId": "national_id",
+            "dob": "dob",
+        }
+
+        for api_field, column in field_map.items():
+            if api_field not in payload:
+                continue
+            value = payload.get(api_field)
+            if isinstance(value, str):
+                value = value.strip()
+            if api_field == "countryCode" and isinstance(value, str):
+                value = value.upper()
+            updates.append(f"{column} = %s")
+            params.append(value or None)
+
+        if "displayName" in payload:
+            display_name = str(payload.get("displayName") or "").strip()
+            updates.append("display_name_normalized = %s")
+            params.append(display_name.lower() if display_name else None)
+
+        if not updates:
+            return self.get(request)
+
+        params.extend([request.user.id])
+        with connection.cursor() as cur:
+            cur.execute(
+                f"""
+                UPDATE users
+                SET {", ".join(updates)},
+                    updated_at = now()
+                WHERE id = %s
+                RETURNING id, email, display_name, username, user_type, is_active, created_at,
+                          full_name, phone, dob, country_code, national_id
+                """,
+                params,
+            )
+            row = cur.fetchone()
+
+        if not row:
+            return Response({"error": {"code": "NOT_FOUND", "message": "User not found"}}, status=404)
+
+        return Response({"data": {
+            "id": str(row[0]), "email": row[1], "displayName": row[2],
+            "username": row[3], "userType": row[4],
+            "fullName": row[7], "phone": row[8],
+            "dob": row[9].isoformat() if row[9] else None,
+            "countryCode": row[10], "nationalId": row[11],
             "createdAt": row[6].isoformat() if row[6] else None,
         }})
 
@@ -242,21 +307,80 @@ class UserAddressListView(APIView):
     def get(self, request):
         with connection.cursor() as cur:
             cur.execute(
-                "SELECT id, label, address_line, city, latitude, longitude, is_default FROM user_addresses WHERE user_id = %s ORDER BY is_default DESC",
+                """
+                SELECT id, title, address_line, is_default
+                FROM user_addresses
+                WHERE user_id = %s
+                ORDER BY is_default DESC, updated_at DESC
+                """,
                 [request.user.id],
             )
-            cols = ["id", "label", "addressLine", "city", "latitude", "longitude", "isDefault"]
+            cols = ["id", "title", "addressLine", "isDefault"]
             rows = [dict(zip(cols, r)) for r in cur.fetchall()]
         return Response({"data": rows})
 
     def post(self, request):
         d = request.data
+        title = d.get("title") or d.get("label")
+        address_line = d.get("addressLine")
+        is_default = bool(d.get("isDefault", False))
         with connection.cursor() as cur:
+            if is_default:
+                cur.execute("UPDATE user_addresses SET is_default = FALSE, updated_at = now() WHERE user_id = %s", [request.user.id])
             cur.execute(
-                """INSERT INTO user_addresses (user_id, label, address_line, city, latitude, longitude, is_default)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""",
-                [request.user.id, d.get("label"), d.get("addressLine"), d.get("city"),
-                 d.get("latitude"), d.get("longitude"), d.get("isDefault", False)],
+                """INSERT INTO user_addresses (user_id, title, address_line, is_default)
+                   VALUES (%s, %s, %s, %s) RETURNING id""",
+                [request.user.id, title, address_line, is_default],
             )
             new_id = cur.fetchone()[0]
         return Response({"data": {"id": str(new_id)}}, status=201)
+
+
+class UserAddressDetailView(APIView):
+    permission_classes = [IsAppRealm]
+
+    def patch(self, request, address_id):
+        d = request.data if isinstance(request.data, dict) else {}
+        title = d.get("title") or d.get("label")
+        address_line = d.get("addressLine")
+        is_default = d.get("isDefault")
+
+        updates = []
+        params = []
+        if title is not None:
+            updates.append("title = %s")
+            params.append(str(title).strip() or None)
+        if address_line is not None:
+            updates.append("address_line = %s")
+            params.append(str(address_line).strip() or None)
+        if is_default is not None:
+            updates.append("is_default = %s")
+            params.append(bool(is_default))
+
+        if not updates:
+            return Response({"data": {"id": str(address_id)}})
+
+        with transaction.atomic():
+            with connection.cursor() as cur:
+                if bool(is_default):
+                    cur.execute(
+                        "UPDATE user_addresses SET is_default = FALSE, updated_at = now() WHERE user_id = %s AND id <> %s",
+                        [request.user.id, address_id],
+                    )
+                params.extend([request.user.id, address_id])
+                cur.execute(
+                    f"""
+                    UPDATE user_addresses
+                    SET {", ".join(updates)},
+                        updated_at = now()
+                    WHERE user_id = %s AND id = %s
+                    RETURNING id
+                    """,
+                    params,
+                )
+                row = cur.fetchone()
+
+        if not row:
+            return Response({"error": {"code": "NOT_FOUND", "message": "Address not found"}}, status=404)
+
+        return Response({"data": {"id": str(row[0])}})
