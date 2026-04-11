@@ -44,7 +44,7 @@ export default function ChatListScreen({ auth, onBack, onOpenChat, onAuthRefresh
     }
     setLoading(false);
     setRefreshing(false);
-  }, [auth, onAuthRefresh]);
+  }, [auth.accessToken, auth.userId, onAuthRefresh]);
 
   useEffect(() => { fetchChats(); }, [fetchChats]);
 

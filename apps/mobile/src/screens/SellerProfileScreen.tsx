@@ -48,7 +48,9 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
   const [editingDeliveryRadius, setEditingDeliveryRadius] = useState(false);
   const [editingWorkingHours, setEditingWorkingHours] = useState(false);
 
-  useEffect(() => setCurrentAuth(auth), [auth]);
+  useEffect(() => {
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   async function readResponsePayload(res: Response): Promise<{ json: SellerProfilePayload | null; rawText: string }> {
     const rawText = await res.text();

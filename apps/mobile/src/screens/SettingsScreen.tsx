@@ -43,8 +43,8 @@ export default function SettingsScreen({ auth, onBack, onOpenComplaintOrders, on
   const [appLanguage, setAppLanguage] = useState<AppSettings['language']>('tr');
 
   useEffect(() => {
-    setCurrentAuth(auth);
-  }, [auth]);
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   useEffect(() => {
     void fetchProfile();

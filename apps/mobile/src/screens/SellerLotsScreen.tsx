@@ -33,7 +33,9 @@ export default function SellerLotsScreen({ auth, onBack, onOpenLotCreate, filter
   const [loading, setLoading] = useState(true);
   const [foods, setFoods] = useState<SellerFood[]>([]);
   const [lots, setLots] = useState<SellerLot[]>([]);
-  useEffect(() => setCurrentAuth(auth), [auth]);
+  useEffect(() => {
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   async function authedFetch(path: string, init?: RequestInit, baseUrl = apiUrl): Promise<Response> {
     const makeHeaders = (session: AuthSession): Record<string, string> => ({

@@ -123,7 +123,9 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
   const [clockMs, setClockMs] = useState(() => Date.now());
   const [sellerCountryCode, setSellerCountryCode] = useState<string>(() => normalizeCountryCode(getSellerMeCache()?.countryCode ?? ""));
 
-  useEffect(() => setCurrentAuth(auth), [auth]);
+  useEffect(() => {
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   async function authedFetch(path: string, baseUrl = apiUrl): Promise<Response> {
     const headers = {

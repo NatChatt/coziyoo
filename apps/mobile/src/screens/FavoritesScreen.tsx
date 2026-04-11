@@ -43,7 +43,7 @@ export default function FavoritesScreen({ auth, onBack, onOpenFood, onAuthRefres
     }
     setLoading(false);
     setRefreshing(false);
-  }, [auth, onAuthRefresh]);
+  }, [auth.accessToken, auth.userId, onAuthRefresh]);
 
   useEffect(() => { fetchFavorites(); }, [fetchFavorites]);
 

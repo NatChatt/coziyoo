@@ -127,7 +127,9 @@ export default function SellerProfileDetailScreen({
   const [newSpecialty, setNewSpecialty] = useState("");
   const [kitchenSaving, setKitchenSaving] = useState(false);
 
-  useEffect(() => setCurrentAuth(auth), [auth]);
+  useEffect(() => {
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   async function readResponsePayload(res: Response): Promise<{ json: Record<string, unknown> | null; rawText: string }> {
     const rawText = await res.text();

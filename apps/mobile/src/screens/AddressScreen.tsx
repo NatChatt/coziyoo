@@ -51,8 +51,8 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
-    setCurrentAuth(auth);
-  }, [auth]);
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   useEffect(() => {
     fetchAddresses();

@@ -537,7 +537,9 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const requiredFieldHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editLotRequestIdRef = useRef(0);
 
-  useEffect(() => setCurrentAuth(auth), [auth]);
+  useEffect(() => {
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
   useEffect(() => {
     setPendingInitialEditId(initialEditFoodId ?? null);
     if (!initialEditFoodId) {

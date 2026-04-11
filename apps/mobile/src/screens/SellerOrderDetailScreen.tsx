@@ -213,7 +213,9 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
 
-  useEffect(() => setCurrentAuth(auth), [auth]);
+  useEffect(() => {
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   async function authedFetch(path: string, init?: RequestInit, baseUrl = apiUrl): Promise<Response> {
     const headers: Record<string, string> = {

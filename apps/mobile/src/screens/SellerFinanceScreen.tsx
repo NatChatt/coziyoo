@@ -121,7 +121,9 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
   const [cardNumber, setCardNumber] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("0,00");
 
-  useEffect(() => setCurrentAuth(auth), [auth]);
+  useEffect(() => {
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   async function authedFetch(path: string, init?: RequestInit, baseUrl = apiUrl): Promise<Response> {
     const headers: Record<string, string> = {

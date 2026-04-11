@@ -47,7 +47,9 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
   const [uploadingDocCode, setUploadingDocCode] = useState<string | null>(null);
   const [payload, setPayload] = useState<CompliancePayload["data"] | null>(null);
 
-  useEffect(() => setCurrentAuth(auth), [auth]);
+  useEffect(() => {
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   async function authedFetch(path: string, init?: RequestInit, baseUrl = apiUrl): Promise<Response> {
     const headers = {

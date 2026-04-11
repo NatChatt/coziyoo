@@ -48,7 +48,7 @@ export default function ChatScreen({ auth, chatId, sellerName, onBack, onAuthRef
       setMessages(Array.isArray(result.data) ? result.data : []);
     }
     setLoading(false);
-  }, [chatId, auth, onAuthRefresh]);
+  }, [chatId, auth.accessToken, auth.userId, onAuthRefresh]);
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
 

@@ -67,7 +67,7 @@ export default function NotificationsScreen({ auth, onBack, onOpenOrderDetail, o
     }
     setLoading(false);
     setRefreshing(false);
-  }, [auth, onAuthRefresh]);
+  }, [auth.accessToken, auth.userId, onAuthRefresh]);
 
   useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 

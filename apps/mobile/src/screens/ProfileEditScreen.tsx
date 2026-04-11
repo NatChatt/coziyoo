@@ -109,8 +109,8 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
   }
 
   useEffect(() => {
-    setCurrentAuth(auth);
-  }, [auth]);
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   useEffect(() => {
     if (isNewRegistration && auth.email) {

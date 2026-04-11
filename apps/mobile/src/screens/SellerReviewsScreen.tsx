@@ -68,7 +68,9 @@ export default function SellerReviewsScreen({ auth, onBack, onAuthRefresh }: Pro
   const [summary, setSummary] = useState<ReviewsSummary>({ averageRating: 0, totalReviews: 0 });
   const [reviews, setReviews] = useState<SellerReview[]>([]);
 
-  useEffect(() => setCurrentAuth(auth), [auth]);
+  useEffect(() => {
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   async function authedFetch(path: string, base = apiUrl): Promise<Response> {
     const makeHeaders = (session: AuthSession): Record<string, string> => ({

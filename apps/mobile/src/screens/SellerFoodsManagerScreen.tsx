@@ -47,7 +47,9 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
   const [foods, setFoods] = useState<SellerFood[]>(initialCache ?? []);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => setCurrentAuth(auth), [auth]);
+  useEffect(() => {
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   async function authedFetch(path: string, init?: RequestInit, baseUrl = apiUrl): Promise<Response> {
     const makeHeaders = (session: AuthSession): Record<string, string> => ({

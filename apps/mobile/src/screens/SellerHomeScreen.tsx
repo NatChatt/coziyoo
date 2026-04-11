@@ -329,7 +329,9 @@ export default function SellerHomeScreen({
   const refreshOrdersOnlyRef = useRef<(baseUrl?: string) => Promise<void>>(async () => {});
   const loadRef = useRef<() => Promise<void>>(async () => {});
 
-  useEffect(() => setCurrentAuth(auth), [auth]);
+  useEffect(() => {
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   useEffect(() => {
     seenOrderIdsRef.current = new Set();

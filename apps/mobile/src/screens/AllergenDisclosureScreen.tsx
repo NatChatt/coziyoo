@@ -42,7 +42,7 @@ export default function AllergenDisclosureScreen({ auth, orderId, onBack, onAuth
       setRecords(Array.isArray(result.data) ? result.data : []);
     }
     setLoading(false);
-  }, [orderId, auth, onAuthRefresh]);
+  }, [orderId, auth.accessToken, auth.userId, onAuthRefresh]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 

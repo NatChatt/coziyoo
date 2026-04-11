@@ -55,7 +55,7 @@ export default function DeliveryPinScreen({ auth, orderId, onBack, onVerified, o
       setError(result.message ?? t('status.deliveryPin.loading'));
     }
     if (!silent) setLoading(false);
-  }, [orderId, auth, onAuthRefresh]);
+  }, [orderId, auth.accessToken, auth.userId, onAuthRefresh]);
 
   useEffect(() => { void fetchProof(); }, [fetchProof]);
 

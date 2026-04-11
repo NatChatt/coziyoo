@@ -254,8 +254,8 @@ export default function OrderDetailScreen({
   const pinAutoOpenedRef = useRef(false);
 
   useEffect(() => {
-    setCurrentAuth(auth);
-  }, [auth]);
+    setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
+  }, [auth.accessToken]);
 
   useEffect(() => {
     orderRef.current = order;
