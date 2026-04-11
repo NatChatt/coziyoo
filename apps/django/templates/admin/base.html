@@ -5,14 +5,12 @@
 {% block extrastyle %}
 {{ block.super }}
 <style>
-  /* Fix: Unfold data-row dark mode hover applies base-50 (near-white) without color-mix support.
-     Override with a proper dark-appropriate hover color. */
-  @media not print {
-    @media (hover: hover) {
-      .dark .data-row:hover {
-        background-color: var(--color-base-800) !important;
-      }
-    }
+  /* Fix: hover:bg-base-50 appears white in dark mode.
+     Force all base-50 hovers to use base-800 in dark mode. */
+  .dark .data-row:hover,
+  .dark .hover\:bg-base-50:hover,
+  .dark [class*="hover\:bg-base-50"]:hover {
+    background-color: var(--color-base-800) !important;
   }
 </style>
 {% endblock %}
