@@ -640,6 +640,17 @@ function normalizeHomeRequestError(error: unknown, fallbackKey: string): string 
   return t(fallbackKey as any);
 }
 
+function areAuthSessionsEqual(a: AuthSession | null | undefined, b: AuthSession | null | undefined): boolean {
+  if (!a || !b) return false;
+  return (
+    a.accessToken === b.accessToken
+    && a.refreshToken === b.refreshToken
+    && a.userId === b.userId
+    && a.userType === b.userType
+    && a.email === b.email
+  );
+}
+
 function shouldRetryTransientStatus(status: number): boolean {
   return status === 502 || status === 503 || status === 504;
 }
@@ -1929,6 +1940,19 @@ export default function HomeScreen({
     () => userAddresses.find((item) => item.isDefault) ?? null,
     [userAddresses],
   );
+  const authSnapshot = useMemo<AuthSession>(() => ({
+    accessToken: currentAuth.accessToken,
+    refreshToken: currentAuth.refreshToken,
+    userId: currentAuth.userId,
+    userType: currentAuth.userType,
+    email: currentAuth.email,
+  }), [
+    currentAuth.accessToken,
+    currentAuth.refreshToken,
+    currentAuth.userId,
+    currentAuth.userType,
+    currentAuth.email,
+  ]);
 
   useEffect(() => {
     setSelectedMealAddons({ free: [], paid: [] });
@@ -2027,18 +2051,18 @@ export default function HomeScreen({
   const recommendedMealsLoadedOnceRef = useRef(false);
   const buyerFeedRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    setCurrentAuth(auth);
-  }, [auth]);
+    setCurrentAuth((prev) => (areAuthSessionsEqual(prev, auth) ? prev : auth));
+  }, [auth.accessToken, auth.refreshToken, auth.userId, auth.userType, auth.email]);
 
   const handleAuthRefresh = useCallback((session: AuthSession) => {
-    setCurrentAuth(session);
+    setCurrentAuth((prev) => (areAuthSessionsEqual(prev, session) ? prev : session));
     onAuthRefresh?.(session);
   }, [onAuthRefresh]);
 
   const fetchRecentBuyerOrders = useCallback(async () => {
     let result = await apiRequest<HomeOrdersApiItem[]>(
       '/v1/orders?pageSize=100&sortDir=desc&role=buyer',
-      currentAuth,
+      authSnapshot,
       { actorRole: 'buyer' },
       handleAuthRefresh,
     );
@@ -2046,7 +2070,7 @@ export default function HomeScreen({
     if (!result.ok) {
       result = await apiRequest<HomeOrdersApiItem[]>(
         '/v1/orders?page=1&pageSize=100&sortDir=desc&role=buyer',
-        currentAuth,
+        authSnapshot,
         { actorRole: 'buyer' },
         handleAuthRefresh,
       );
@@ -2070,7 +2094,7 @@ export default function HomeScreen({
     }));
 
     setRecentBuyerOrders(mapped);
-  }, [currentAuth, handleAuthRefresh]);
+  }, [authSnapshot, handleAuthRefresh]);
 
   const requestDeliveryForOrder = useCallback(async (order: HomeOrderSummary) => {
     if (!canRequestBuyerDelivery(order) || deliveryRequestOrderIds[order.id]) return;
@@ -2276,7 +2300,7 @@ export default function HomeScreen({
     if (showLoading) setRecommendedMealsLoading(true);
     apiRequest<ApiRecommendationItem[]>(
       '/v1/foods/recommendations?limit=8',
-      currentAuth,
+      authSnapshot,
       { actorRole: 'buyer' },
       handleAuthRefresh,
     )
@@ -2302,16 +2326,16 @@ export default function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, [currentAuth, handleAuthRefresh]);
+  }, [authSnapshot, handleAuthRefresh]);
 
   useEffect(() => {
-    if (!currentAuth.accessToken) return;
+    if (!authSnapshot.accessToken) return;
     let cancelled = false;
 
     async function fetchFavoriteIds() {
       const result = await apiRequest<FavoriteFoodItem[]>(
         '/v1/favorites',
-        currentAuth,
+        authSnapshot,
         { actorRole: 'buyer' },
         handleAuthRefresh,
       );
@@ -2328,7 +2352,7 @@ export default function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, [currentAuth, handleAuthRefresh]);
+  }, [authSnapshot.accessToken, authSnapshot.refreshToken, authSnapshot.userId, authSnapshot.userType, authSnapshot.email, handleAuthRefresh]);
 
   const toggleFavorite = useCallback(async (foodId: string) => {
     if (!foodId || favoritePendingIds[foodId]) return;
@@ -2347,7 +2371,7 @@ export default function HomeScreen({
 
     const result = await apiRequest(
       `/v1/favorites/${foodId}`,
-      currentAuth,
+      authSnapshot,
       { method: wasFavorite ? 'DELETE' : 'POST', actorRole: 'buyer' },
       handleAuthRefresh,
     );
@@ -2367,7 +2391,7 @@ export default function HomeScreen({
       delete next[foodId];
       return next;
     });
-  }, [currentAuth, favoriteIds, favoritePendingIds, handleAuthRefresh]);
+  }, [authSnapshot, favoriteIds, favoritePendingIds, handleAuthRefresh]);
 
   async function fetchFoods(url: string, options?: { silent?: boolean }) {
     const silent = Boolean(options?.silent) && mealsLoadedOnceRef.current;
