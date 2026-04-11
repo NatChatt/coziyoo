@@ -100,6 +100,7 @@ import { formatCopy, randomHomeGreetingSubtitle, requestErrorLine, t } from '../
 import { HOME_FEED_CATEGORIES } from '../constants/foodCategories';
 
 const AnimatedTouchableOpacity: any = Animated.createAnimatedComponent(RNTouchableOpacity as any);
+const PICKUP_ADDRESS_REQUEST_TIMEOUT_MS = 12000;
 
 function shouldDisableGlobalPressFx(style: unknown, activeOpacity?: number): boolean {
   if (activeOpacity === 1) return true;
@@ -1867,6 +1868,12 @@ export default function HomeScreen({
       return;
     }
     const sellerId = cartItems[0].meal.sellerId;
+    if (!sellerId) {
+      setPickupSellerAddress(null);
+      setPickupSellerAddressLoading(false);
+      setPickupSellerAddressError(t('helper.home.flowSellerMissing'));
+      return;
+    }
     const sellerIds = [...new Set(cartItems.map((ci) => ci.meal.sellerId))];
     if (sellerIds.length !== 1) {
       setPickupSellerAddress(null);
@@ -1875,20 +1882,28 @@ export default function HomeScreen({
       return;
     }
     let cancelled = false;
+    const controller = new AbortController();
     setPickupSellerAddressLoading(true);
     setPickupSellerAddressError(null);
-    fetch(`${apiUrl}/v1/foods/sellers/${sellerId}/address`, {
-      headers: {
-        Authorization: `Bearer ${currentAuth.accessToken}`,
-        'x-actor-role': 'buyer',
-      },
-    })
-      .then(async (r) => {
-        const json = await readJsonSafe<{ data?: { title?: string; addressLine?: string } | null; error?: { message?: string } }>(r);
-        if (!r.ok) {
-          throw new Error(json?.error?.message ?? requestErrorLine(r.status));
+    loadSettings()
+      .then(async (settings) => {
+        const effectiveApiUrl = settings.apiUrl || apiUrl;
+        const timeoutId = setTimeout(() => controller.abort(), PICKUP_ADDRESS_REQUEST_TIMEOUT_MS);
+        try {
+          const response = await authedJsonFetch(`${effectiveApiUrl}/v1/foods/sellers/${sellerId}/address`, {
+            headers: {
+              'x-actor-role': 'buyer',
+            },
+            signal: controller.signal,
+          });
+          const json = await readJsonSafe<{ data?: { title?: string; addressLine?: string } | null; error?: { message?: string } }>(response);
+          if (!response.ok) {
+            throw new Error(json?.error?.message ?? requestErrorLine(response.status));
+          }
+          return json;
+        } finally {
+          clearTimeout(timeoutId);
         }
-        return json;
       })
       .then((json) => {
         if (cancelled) return;
@@ -1903,13 +1918,20 @@ export default function HomeScreen({
       .catch((error: unknown) => {
         if (cancelled) return;
         setPickupSellerAddress(null);
+        if (error instanceof Error && error.name === 'AbortError') {
+          setPickupSellerAddressError(t('error.home.pickupAddressFailed'));
+          return;
+        }
         setPickupSellerAddressError(normalizeHomeRequestError(error, 'error.home.pickupAddressFailed'));
       })
       .finally(() => {
         if (cancelled) return;
         setPickupSellerAddressLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [deliveryType, cartItems, apiUrl, currentAuth.accessToken]);
 
   useEffect(() => {
