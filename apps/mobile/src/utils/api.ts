@@ -9,6 +9,15 @@ type RequestOptions = {
 
 type ApiResult<T> = { ok: true; data: T } | { ok: false; status: number; code?: string; message?: string };
 
+function resolveRefreshBaseUrl(requestUrl: string, fallbackApiUrl: string): string {
+  try {
+    const parsed = new URL(requestUrl);
+    return parsed.origin;
+  } catch {
+    return fallbackApiUrl;
+  }
+}
+
 export async function apiRequest<T = unknown>(
   path: string,
   auth: AuthSession,
@@ -41,7 +50,7 @@ export async function apiRequest<T = unknown>(
   // Auto-refresh on 401
   if (res.status === 401 && onAuthRefresh) {
     const settings2 = await loadSettings();
-    const refreshed = await refreshAuthSession(settings2.apiUrl, auth);
+    const refreshed = await refreshAuthSession(resolveRefreshBaseUrl(url, settings2.apiUrl), auth);
     if (refreshed) {
       onAuthRefresh(refreshed);
       // Retry with new token

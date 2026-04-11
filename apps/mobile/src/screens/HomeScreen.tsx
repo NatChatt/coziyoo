@@ -651,6 +651,15 @@ function areAuthSessionsEqual(a: AuthSession | null | undefined, b: AuthSession 
   );
 }
 
+function resolveRefreshBaseUrlFromRequest(url: string, fallbackApiUrl: string): string {
+  try {
+    const parsed = new URL(url);
+    return parsed.origin;
+  } catch {
+    return fallbackApiUrl;
+  }
+}
+
 function shouldRetryTransientStatus(status: number): boolean {
   return status === 502 || status === 503 || status === 504;
 }
@@ -2488,8 +2497,11 @@ export default function HomeScreen({
     // Always use a freshly-loaded API URL for the refresh call so a stale closure
     // value (e.g. 'http://localhost:3000' during app startup) never causes the
     // refresh request to hang or connect to the wrong host.
-    const { apiUrl: refreshBaseUrl } = await loadSettings();
-    const refreshed = await refreshAuthSession(refreshBaseUrl, currentAuth);
+    const { apiUrl: fallbackApiUrl } = await loadSettings();
+    const refreshed = await refreshAuthSession(
+      resolveRefreshBaseUrlFromRequest(url, fallbackApiUrl),
+      currentAuth,
+    );
     if (!refreshed) return response;
 
     handleAuthRefresh(refreshed);
