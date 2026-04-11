@@ -178,10 +178,9 @@
               <tr data-search="{{ o.id }} {{ o.seller_name }} {{ o.total_price }} {{ o.status_tr }}"
                   x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
                   @click="openOrder('{{ o.id }}')"
-<<<<<<< Updated upstream
-                  class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors cursor-pointer">
-                <td class="py-2 pr-4 font-mono text-xs">{{ o.id|slice:":8" }}…</td>
-                <td class="py-2 pr-4">
+                  class="border-b border-base-100 dark:border-base-700/50 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors cursor-pointer">
+                <td class="px-5 py-3.5 font-mono text-xs text-base-700 dark:text-base-300">{{ o.id|slice:":8" }}…</td>
+                <td class="px-5 py-3.5 text-sm text-base-700 dark:text-base-300">
                   {% if o.seller_id %}
                     <a href="{% url 'admin:authentication_sellerusers_seller_detail' o.seller_id %}"
                        @click.stop
@@ -192,17 +191,6 @@
                     {{ o.seller_name|default:"—" }}
                   {% endif %}
                 </td>
-                <td class="py-2 pr-4 font-medium">₺{{ o.total_price }}</td>
-                <td class="py-2 pr-4">
-                  <span class="px-2 py-0.5 rounded text-xs font-medium
-                    {% if o.status == 'delivered' or o.status == 'completed' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400
-                    {% elif o.status == 'pending' or o.status == 'processing' or o.status == 'accepted' %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400
-                    {% elif o.status == 'cancelled' or o.status == 'rejected' or o.status == 'failed' %}bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400
-                    {% else %}bg-base-100 text-base-500 dark:bg-base-800 dark:text-base-400{% endif %}">
-=======
-                  class="border-b border-base-100 dark:border-base-700/50 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors cursor-pointer">
-                <td class="px-5 py-3.5 font-mono text-xs text-base-700 dark:text-base-300">{{ o.id|slice:":8" }}…</td>
-                <td class="px-5 py-3.5 text-sm text-base-700 dark:text-base-300">{{ o.seller_name|default:"—" }}</td>
                 <td class="px-5 py-3.5 text-sm font-medium text-base-900 dark:text-white">₺{{ o.total_price }}</td>
                 <td class="px-5 py-3.5">
                   <span class="inline-flex px-2.5 py-0.5 rounded text-xs font-semibold
@@ -210,7 +198,6 @@
                     {% elif o.status == 'pending' or o.status == 'processing' or o.status == 'accepted' %}bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700
                     {% elif o.status == 'cancelled' or o.status == 'rejected' or o.status == 'failed' %}bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-700
                     {% else %}bg-base-100 dark:bg-base-700 text-base-500 dark:text-base-400 border border-base-200 dark:border-base-600{% endif %}">
->>>>>>> Stashed changes
                     {{ o.status_tr }}
                   </span>
                 </td>
@@ -383,117 +370,6 @@
 
     {# ── Notes & Tags Tab ── #}
     <div x-show="tab === 'notes'" class="p-4 sm:p-6">
-<<<<<<< Updated upstream
-      <div class="rounded-2xl border border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-900/50 p-3 sm:p-4">
-        <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
-
-        {# Tag panel #}
-        <div class="rounded-xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-          <form method="post" action="{% url 'admin:authentication_buyerusers_add_tag' user.id %}">
-            {% csrf_token %}
-            <div class="mb-3 flex items-center gap-2">
-              <span class="material-symbols-outlined text-base text-primary-500 dark:text-primary-400 leading-none">sell</span>
-              <h3 class="text-sm font-semibold text-base-900 dark:text-white">{% trans "Etiket Ekle" %}</h3>
-            </div>
-            <div class="flex items-start gap-2">
-              <textarea name="tag"
-                        maxlength="100"
-                        rows="1"
-                        placeholder="{% trans 'Etiket adı' %}"
-                        x-init="autoResize($el)"
-                        @input="autoResize($el)"
-                        class="min-w-0 flex-1 resize-none overflow-hidden rounded-lg border border-base-300 dark:border-base-600 bg-white dark:bg-base-950 text-base-900 dark:text-base-100 px-3 py-2 text-sm outline-none transition focus:border-primary-500 dark:focus:border-primary-500"
-                        style="min-height:46px"></textarea>
-              <button type="submit"
-                      class="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-primary-600 hover:bg-primary-700 px-4 py-2 text-sm font-medium text-white transition">
-                <span class="material-symbols-outlined text-sm leading-none">add</span>
-                {% trans "Ekle" %}
-              </button>
-            </div>
-          </form>
-
-          <div class="mt-6 border-t border-base-200 dark:border-base-700 pt-5">
-            {% if tags %}
-              <div class="flex flex-wrap gap-2">
-                {% for t in tags %}
-                  <form method="post"
-                        action="{% url 'admin:authentication_buyerusers_delete_tag' user.id %}"
-                        class="inline-flex">
-                    {% csrf_token %}
-                    <input type="hidden" name="tag" value="{{ t.tag }}">
-                    <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium {{ t.style }}">
-                      <span>{{ t.tag }}</span>
-                      <button type="submit"
-                              class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/10 text-current transition hover:bg-black/20"
-                              aria-label="{% trans 'Etiketi sil' %}">
-                        <span class="material-symbols-outlined text-sm leading-none">close</span>
-                      </button>
-                    </span>
-                  </form>
-                {% endfor %}
-              </div>
-            {% else %}
-              <p class="text-sm text-base-400 dark:text-base-500">{% trans "Etiket bulunamadı." %}</p>
-            {% endif %}
-          </div>
-        </div>
-
-        {# Notes panel #}
-        <div class="rounded-xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-          <form method="post" action="{% url 'admin:authentication_buyerusers_add_note' user.id %}">
-            {% csrf_token %}
-            <div class="mb-3 flex items-center gap-2">
-              <span class="material-symbols-outlined text-base text-primary-500 dark:text-primary-400 leading-none">note_add</span>
-              <h3 class="text-sm font-semibold text-base-900 dark:text-white">{% trans "Notlar" %}</h3>
-            </div>
-            <div class="flex items-start gap-2">
-              <textarea name="note"
-                        rows="1"
-                        placeholder=""
-                        x-init="autoResize($el)"
-                        @input="autoResize($el)"
-                        class="min-w-0 flex-1 resize-none overflow-hidden rounded-lg border border-base-300 dark:border-base-600 bg-white dark:bg-base-950 text-base-900 dark:text-base-100 px-3 py-2 text-sm outline-none transition focus:border-primary-500 dark:focus:border-primary-500"
-                        style="min-height:46px"></textarea>
-              <button type="submit"
-                      class="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-primary-600 hover:bg-primary-700 px-4 py-2 text-sm font-medium text-white transition">
-                <span class="material-symbols-outlined text-sm leading-none">add</span>
-                {% trans "Ekle" %}
-              </button>
-            </div>
-          </form>
-
-          <div class="mt-5 space-y-0">
-            {% if notes %}
-              {% for n in notes %}
-              <div data-search="{{ n.note }} {{ n.creator_name }} {{ n.admin_email }}"
-                   x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())">
-                <div class="h-px w-full bg-base-100 dark:bg-base-700 my-3"></div>
-                <div class="mb-1 flex flex-wrap items-center gap-1 text-sm font-semibold text-base-900 dark:text-white">
-                  <span>{{ n.creator_name }}</span>
-                  <span class="text-base-400 dark:text-base-500">-</span>
-                  <span class="font-medium text-base-600 dark:text-base-300">{{ n.created_at|date:"d M Y" }}</span>
-                  <span class="text-base-400 dark:text-base-500">-</span>
-                  <span class="font-medium text-base-600 dark:text-base-300">{{ n.created_at|date:"H:i" }}</span>
-                </div>
-                <p class="text-sm text-base-700 dark:text-base-200">{{ n.note }}</p>
-                <div class="mt-2 flex items-center gap-2 text-xs font-medium text-base-400 dark:text-base-500">
-                  <span>{% trans "Tarih:" %}</span>
-                  <span>{{ n.created_at|date:"d.m.Y" }}</span>
-                  <span class="text-base-300 dark:text-base-600">|</span>
-                  <span>{% trans "Saat:" %}</span>
-                  <span>{{ n.created_at|date:"H:i" }}</span>
-                </div>
-              </div>
-              {% endfor %}
-              <div class="h-px w-full bg-base-100 dark:bg-base-700 mt-3"></div>
-            {% else %}
-              <p class="text-sm text-base-400 dark:text-base-500 mt-4">{% trans "Not bulunamadı." %}</p>
-            {% endif %}
-          </div>
-        </div>
-
-        </div>
-=======
       <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
 
         {# ── Tags card ── #}
@@ -574,7 +450,6 @@
           </div>
         </div>
 
->>>>>>> Stashed changes
       </div>
     </div>
 
