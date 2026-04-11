@@ -388,10 +388,10 @@ class OrderListCreateView(APIView):
                 # 6. Insert order event
                 cursor.execute(
                     """
-                    INSERT INTO order_events (order_id, event_type, actor_user_id, payload_json)
-                    VALUES (%s, 'order_created', %s, %s)
+                    INSERT INTO order_events (id, order_id, event_type, actor_user_id, payload_json)
+                    VALUES (%s, %s, 'order_created', %s, %s)
                     """,
-                    [order_id, buyer_id, _json_dumps({"note": note, "itemCount": len(normalized_items)})],
+                    [str(uuid.uuid4()), order_id, buyer_id, _json_dumps({"note": note, "itemCount": len(normalized_items)})],
                 )
                 _create_notification(
                     cursor,
@@ -591,10 +591,11 @@ class OrderStatusView(APIView):
                 )
                 cursor.execute(
                     """
-                    INSERT INTO order_events (order_id, event_type, actor_user_id, from_status, to_status, payload_json)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO order_events (id, order_id, event_type, actor_user_id, from_status, to_status, payload_json)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """,
                     [
+                        str(uuid.uuid4()),
                         order_id_str,
                         f"status_changed_to_{new_status}",
                         user_id,
@@ -667,10 +668,10 @@ class OrderCancelView(APIView):
 
                 cursor.execute(
                     """
-                    INSERT INTO order_events (order_id, event_type, actor_user_id, payload_json)
-                    VALUES (%s, 'order_cancelled', %s, %s)
+                    INSERT INTO order_events (id, order_id, event_type, actor_user_id, payload_json)
+                    VALUES (%s, %s, 'order_cancelled', %s, %s)
                     """,
-                    [order_id_str, user_id, _json_dumps({"cancelledBy": "buyer" if user_id == buyer_id else "seller"})],
+                    [str(uuid.uuid4()), order_id_str, user_id, _json_dumps({"cancelledBy": "buyer" if user_id == buyer_id else "seller"})],
                 )
 
         return Response({"data": {"orderId": order_id_str, "status": "cancelled"}})
@@ -897,10 +898,10 @@ class SellerDecisionView(APIView):
                 )
                 cursor.execute(
                     """
-                    INSERT INTO order_events (order_id, event_type, actor_user_id, from_status, to_status, payload_json)
-                    VALUES (%s, 'seller_decision', %s, %s, %s, %s)
+                    INSERT INTO order_events (id, order_id, event_type, actor_user_id, from_status, to_status, payload_json)
+                    VALUES (%s, %s, 'seller_decision', %s, %s, %s, %s)
                     """,
-                    [order_id_str, user_id, current_status, new_status, _json_dumps(metadata)],
+                    [str(uuid.uuid4()), order_id_str, user_id, current_status, new_status, _json_dumps(metadata)],
                 )
 
         return Response(
