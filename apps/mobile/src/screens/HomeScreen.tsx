@@ -1932,7 +1932,7 @@ export default function HomeScreen({
       cancelled = true;
       controller.abort();
     };
-  }, [deliveryType, cartItems, apiUrl, currentAuth.accessToken]);
+  }, [deliveryType, cartItems, apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadSettings().then((settings) => setAppLanguage(settings.language));
@@ -3247,7 +3247,7 @@ export default function HomeScreen({
     setSellerReviewsLoading(true);
     setSellerReviewsError(null);
     fetch(`${apiUrl}/v1/foods/sellers/${selectedSeller.id}/reviews`, {
-      headers: { Authorization: `Bearer ${currentAuth.accessToken}` },
+      headers: { Authorization: `Bearer ${currentAuthRef.current.accessToken}` },
     })
       .then(async (response) => {
         const json = await readJsonSafe<{ data?: SellerReview[]; error?: { message?: string } }>(response);
@@ -3272,7 +3272,7 @@ export default function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, [selectedSeller?.id, apiUrl, currentAuth.accessToken]);
+  }, [selectedSeller?.id, apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!selectedSeller) {
@@ -3283,7 +3283,7 @@ export default function HomeScreen({
     let cancelled = false;
     setSellerCompletedMealsLoading(true);
     fetch(`${apiUrl}/v1/foods/sellers/${selectedSeller.id}/completed-sales`, {
-      headers: { Authorization: `Bearer ${currentAuth.accessToken}` },
+      headers: { Authorization: `Bearer ${currentAuthRef.current.accessToken}` },
     })
       .then(async (response) => {
         const json = await readJsonSafe<SellerCompletedSalesResponse>(response);
@@ -3307,7 +3307,7 @@ export default function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, [selectedSeller?.id, apiUrl, currentAuth.accessToken]);
+  }, [selectedSeller?.id, apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!selectedSeller) return;
