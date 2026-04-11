@@ -717,6 +717,11 @@ class SellerUsersAdmin(ModelAdmin):
     def delete_queryset(self, request, queryset):
         queryset.update(is_active=False)
 
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        if object_id:
+            return redirect("admin:authentication_sellerusers_seller_detail", user_id=object_id)
+        return super().changeform_view(request, object_id, form_url, extra_context)
+
     def get_urls(self):
         urls = super().get_urls()
         custom = [
