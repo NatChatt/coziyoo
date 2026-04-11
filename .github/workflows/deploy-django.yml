@@ -47,6 +47,7 @@ jobs:
             echo "Triggering deploy → ${NAME} (${WEBHOOK_URL})"
 
             for attempt in 1 2 3; do
+              > /tmp/response.txt
               HTTP_CODE=$(curl -s -o /tmp/response.txt -w '%{http_code}' \
                 --max-time 90 \
                 -X POST \
@@ -55,7 +56,7 @@ jobs:
                 -d '{}' \
                 "${WEBHOOK_URL}" || echo "000")
 
-              BODY=$(cat /tmp/response.txt)
+              BODY=$(cat /tmp/response.txt 2>/dev/null || true)
               echo "Attempt ${attempt}/3 — Response: ${HTTP_CODE} — ${BODY}"
 
               if [[ "${HTTP_CODE}" -eq 200 ]]; then
