@@ -245,16 +245,59 @@ export default function App() {
   const pushTokenRef = useRef<string | null>(null);
   const [, setLanguageVersion] = useState(0);
 
+  function applyAuthSession(session: AuthSession) {
+    void saveAuthSession(session);
+    setAuth(session);
+    setActorMode(session.userType === 'seller' ? 'seller' : 'buyer');
+  }
+
   useEffect(() => {
-    loadAuthSession().then((stored) => {
-      if (stored) {
-        setAuth(stored);
-        setActorMode(stored.userType === 'seller' ? 'seller' : 'buyer');
-        setScreen('home');
-      } else {
-        setScreen('onboarding');
+    let cancelled = false;
+
+    async function hydrateSession() {
+      const stored = await loadAuthSession();
+      if (!stored) {
+        if (!cancelled) setScreen('onboarding');
+        return;
       }
-    });
+
+      try {
+        const { apiUrl } = await loadSettings();
+        let activeSession: AuthSession | null = stored;
+
+        const meResponse = await fetch(`${apiUrl}/v1/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${stored.accessToken}`,
+          },
+        });
+
+        if (meResponse.status === 401) {
+          activeSession = await refreshAuthSession(apiUrl, stored);
+        }
+
+        if (!activeSession) {
+          await clearAuthSession();
+          if (!cancelled) {
+            setAuth(null);
+            setScreen('login');
+          }
+          return;
+        }
+
+        if (cancelled) return;
+        applyAuthSession(activeSession);
+        setScreen('home');
+      } catch {
+        if (cancelled) return;
+        applyAuthSession(stored);
+        setScreen('home');
+      }
+    }
+
+    void hydrateSession();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -298,14 +341,12 @@ export default function App() {
   }, [auth]);
 
   function handleLogin(session: AuthSession) {
-    setAuth(session);
-    setActorMode(session.userType === 'seller' ? 'seller' : 'buyer');
+    applyAuthSession(session);
     setScreen('home');
   }
 
   function handleOnboardingComplete(session: AuthSession) {
-    setAuth(session);
-    setActorMode(session.userType === 'seller' ? 'seller' : 'buyer');
+    applyAuthSession(session);
     setIsNewRegistration(false);
     setScreen('home');
   }
