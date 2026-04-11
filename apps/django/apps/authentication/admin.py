@@ -1,6 +1,7 @@
 import hashlib
 import json
 import uuid
+from datetime import datetime as _dt
 from django import forms
 from django.conf import settings
 from django.contrib import admin
@@ -70,6 +71,28 @@ def _seller_status_badge(obj):
         '<span style="color:{};font-weight:600">{}</span>',
         color, obj.seller_profile_status or "—",
     )
+
+
+def _parse_dt(val):
+    """Parse a datetime value from JSON (string) into a Python datetime."""
+    if val is None:
+        return None
+    if isinstance(val, _dt):
+        return val
+    try:
+        return _dt.fromisoformat(str(val))
+    except (ValueError, TypeError):
+        return None
+
+
+def _humanize_status(status):
+    """Return Turkish label for a status, with fallback humanization."""
+    if not status:
+        return "—"
+    tr = STATUS_TR.get(status)
+    if tr:
+        return tr
+    return status.replace("_", " ").capitalize()
 
 
 def _tag_chip_style(tag):
@@ -487,23 +510,23 @@ class BuyerUsersAdmin(ModelAdmin):
         # Parse JSON results
         orders = [{"id": str(r["id"]), "seller_id": str(r["seller_id"]) if r.get("seller_id") else None,
                    "seller_name": r["seller_name"], "total_price": r["total_price"],
-                   "status": r["status"], "status_tr": STATUS_TR.get(r["status"], r["status"]),
-                   "created_at": r["created_at"]} for r in (orders_json or [])]
+                   "status": r["status"], "status_tr": _humanize_status(r["status"]),
+                   "created_at": _parse_dt(r.get("created_at"))} for r in (orders_json or [])]
 
         complaints = [{"id": str(r["id"]), "description": r["description"], "status": r["status"],
-                       "status_tr": STATUS_TR.get(r["status"], r["status"]),
-                       "created_at": r["created_at"]} for r in (complaints_json or [])]
+                       "status_tr": _humanize_status(r["status"]),
+                       "created_at": _parse_dt(r.get("created_at"))} for r in (complaints_json or [])]
 
         reviews = [{"id": str(r["id"]), "food_name": r["food_name"],
                     "stars": "★" * int(r["rating"]) + "☆" * (5 - int(r["rating"])),
-                    "comment": r["comment"], "created_at": r["created_at"],
+                    "comment": r["comment"], "created_at": _parse_dt(r.get("created_at")),
                     "order_id": str(r["order_id"]) if r.get("order_id") else None,
                     "seller_id": str(r["seller_id"]) if r.get("seller_id") else None,
                     "seller_name": r.get("seller_name") or "—"} for r in (reviews_json or [])]
 
         payments = [{"id": str(r["id"]), "provider": r["provider"], "status": r["status"],
-                     "status_tr": STATUS_TR.get(r["status"], r["status"]),
-                     "created_at": r["created_at"], "amount": r["amount"],
+                     "status_tr": _humanize_status(r["status"]),
+                     "created_at": _parse_dt(r.get("created_at")), "amount": r["amount"],
                      "order_id": str(r["order_id"])} for r in (payments_json or [])]
 
         notes = [{

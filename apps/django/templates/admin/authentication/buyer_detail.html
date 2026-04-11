@@ -179,8 +179,8 @@
                   x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
                   @click="openOrder('{{ o.id }}')"
                   class="border-b border-base-100 dark:border-base-700/50 hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors cursor-pointer">
-                <td class="px-5 py-3.5 font-mono text-xs text-base-700 dark:text-base-300">{{ o.id|slice:":8" }}…</td>
-                <td class="px-5 py-3.5 text-sm text-base-700 dark:text-base-300">
+                <td class="px-5 py-5 font-mono text-xs text-base-700 dark:text-base-300">{{ o.id|slice:":8" }}…</td>
+                <td class="px-5 py-5 text-sm text-base-700 dark:text-base-300">
                   {% if o.seller_id %}
                     <a href="{% url 'admin:authentication_sellerusers_seller_detail' o.seller_id %}"
                        @click.stop
@@ -191,8 +191,8 @@
                     {{ o.seller_name|default:"—" }}
                   {% endif %}
                 </td>
-                <td class="px-5 py-3.5 text-sm font-medium text-base-900 dark:text-white">₺{{ o.total_price }}</td>
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-5 text-sm font-medium text-base-900 dark:text-white">₺{{ o.total_price }}</td>
+                <td class="px-5 py-5">
                   <span class="inline-flex px-2.5 py-0.5 rounded text-xs font-semibold
                     {% if o.status == 'delivered' or o.status == 'completed' %}bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700
                     {% elif o.status == 'pending' or o.status == 'pending_seller_approval' or o.status == 'processing' or o.status == 'accepted' %}bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700
@@ -201,7 +201,7 @@
                     {{ o.status_tr }}
                   </span>
                 </td>
-                <td class="px-5 py-3.5 text-sm text-base-500 dark:text-base-400">{{ o.created_at|date:"d.m.Y H:i" }}</td>
+                <td class="px-5 py-5 text-sm text-base-500 dark:text-base-400">{{ o.created_at|date:"d.m.Y H:i" }}</td>
               </tr>
               {% endfor %}
             </tbody>
