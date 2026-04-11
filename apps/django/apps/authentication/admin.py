@@ -28,7 +28,8 @@ from .models import (
 )
 
 STATUS_TR = {
-    "pending": "Beklemede", "processing": "Hazırlanıyor", "accepted": "Kabul Edildi",
+    "pending": "Beklemede", "pending_seller_approval": "Satıcı Onayı Bekleniyor",
+    "processing": "Hazırlanıyor", "accepted": "Kabul Edildi",
     "delivered": "Teslim Edildi", "completed": "Tamamlandı", "cancelled": "İptal Edildi",
     "rejected": "Reddedildi", "failed": "Başarısız",
     "open": "Açık", "in_review": "İnceleniyor", "resolved": "Çözüldü", "closed": "Kapatıldı",
