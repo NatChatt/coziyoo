@@ -392,8 +392,9 @@ class BuyerUsersAdmin(ModelAdmin):
         payment = (payments_json or [{}])[0]
 
         addr = addr_json if isinstance(addr_json, dict) else (json.loads(addr_json) if addr_json else {})
+        full_addr = addr.get("address") or addr.get("street") or addr.get("address_line") or addr.get("line1")
         address_parts = [p for p in [
-            addr.get("street") or addr.get("address_line") or addr.get("line1"),
+            full_addr,
             addr.get("district") or addr.get("neighborhood"),
             addr.get("city"),
         ] if p]
