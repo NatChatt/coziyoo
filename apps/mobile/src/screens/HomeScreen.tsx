@@ -3278,7 +3278,7 @@ export default function HomeScreen({
     }).start();
   }, [selectedSeller, sellerModalSlideX]);
 
-  const closeSellerModal = useCallback(() => {
+  function closeSellerModal() {
     Animated.timing(sellerModalSlideX, {
       toValue: Dimensions.get('window').width,
       duration: 200,
@@ -3288,7 +3288,7 @@ export default function HomeScreen({
       setSelectedSeller(null);
       setSellerModalTouchGuardUntil(0);
     });
-  }, [sellerModalSlideX]);
+  }
 
 
   /* ---------- Render helpers ---------- */
