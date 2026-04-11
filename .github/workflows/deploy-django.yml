@@ -53,7 +53,7 @@ jobs:
                 -H "Content-Type: application/json" \
                 -H "X-Webhook-Signature: ${SIGNATURE}" \
                 -d '{}' \
-                "${WEBHOOK_URL}")
+                "${WEBHOOK_URL}" || echo "000")
 
               BODY=$(cat /tmp/response.txt)
               echo "Attempt ${attempt}/3 — Response: ${HTTP_CODE} — ${BODY}"
