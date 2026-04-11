@@ -2378,39 +2378,42 @@ export default function HomeScreen({
     try {
       const maxRetries = 3;
       for (let attempt = 0; attempt < maxRetries; attempt += 1) {
-        const result = await apiRequest<ApiFoodItem[]>(
-          '/v1/foods',
-          currentAuth,
-          { actorRole: 'buyer' },
-          handleAuthRefresh,
-        );
+        const response = await authedJsonFetch(`${url}/v1/foods`, {
+          headers: {
+            'x-actor-role': 'buyer',
+          },
+        });
+        const json = await readJsonSafe<{
+          data?: ApiFoodItem[];
+          error?: { message?: string };
+        }>(response);
 
-        if (result.ok) {
-          if (!Array.isArray(result.data)) {
+        if (response.ok) {
+          if (!Array.isArray(json.data)) {
             if (!silent) setMealsError(t('error.home.noMealsInResponse'));
             return;
           }
-          setMeals(result.data.map(apiToMealCard));
+          setMeals(json.data.map(apiToMealCard));
           setMealsError(null);
           mealsLoadedOnceRef.current = true;
           return;
         }
 
-        if (result.status === 401) {
+        if (response.status === 401) {
           if (!silent) setMealsError(t('error.home.sessionExpired'));
           return;
         }
 
-        if (shouldRetryTransientStatus(result.status) && attempt < maxRetries - 1) {
+        if (shouldRetryTransientStatus(response.status) && attempt < maxRetries - 1) {
           await sleep(500 * (attempt + 1));
           continue;
         }
 
         if (!silent) {
           setMealsError(
-            result.message && !isAuthErrorMessage(result.message)
-              ? result.message
-              : humanizeHttpError(result.status),
+            json?.error?.message && !isAuthErrorMessage(json.error.message)
+              ? json.error.message
+              : humanizeHttpError(response.status),
           );
         }
         return;
@@ -2427,21 +2430,18 @@ export default function HomeScreen({
 
   async function fetchMeProfile(url: string, accessToken: string) {
     try {
-      const result = await apiRequest<MeProfile>(
-        '/v1/auth/me',
-        {
-          ...currentAuth,
-          accessToken,
+      const response = await authedJsonFetch(`${url}/v1/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
-        undefined,
-        handleAuthRefresh,
-      );
-      if (!result.ok) return;
-      const imageUrl = result.data?.profileImageUrl ?? null;
+      });
+      if (!response.ok) return;
+      const json = await readJsonSafe<{ data?: MeProfile }>(response);
+      const imageUrl = json.data?.profileImageUrl ?? null;
       setProfileImageUrl(imageUrl);
       if (imageUrl) saveCachedProfileImageUrl(imageUrl);
-      setGreetingName(resolveGreetingName(result.data, currentAuth.email));
-      setProfileDisplayName(resolveProfileDisplayName(result.data, currentAuth.email));
+      setGreetingName(resolveGreetingName(json.data, currentAuth.email));
+      setProfileDisplayName(resolveProfileDisplayName(json.data, currentAuth.email));
     } catch {
       // Keep fallback avatar when profile fetch fails
     }
