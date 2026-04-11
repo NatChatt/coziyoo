@@ -619,6 +619,27 @@ function humanizeHttpError(status: number): string {
   return requestErrorLine(status);
 }
 
+function isAuthErrorMessage(message: string | null | undefined): boolean {
+  const normalized = (message ?? '').trim().toLowerCase();
+  if (!normalized) return false;
+  return (
+    normalized.includes('authentication credentials were not provided')
+    || normalized.includes('credentials were not provided')
+    || normalized.includes('token')
+    || normalized.includes('unauthorized')
+    || normalized.includes('yetkilendirme')
+  );
+}
+
+function normalizeHomeRequestError(error: unknown, fallbackKey: string): string {
+  if (error instanceof Error) {
+    const message = error.message?.trim();
+    if (isAuthErrorMessage(message)) return t('error.home.sessionExpired');
+    if (message) return message;
+  }
+  return t(fallbackKey as any);
+}
+
 function shouldRetryTransientStatus(status: number): boolean {
   return status === 502 || status === 503 || status === 504;
 }
@@ -1862,7 +1883,7 @@ export default function HomeScreen({
       .catch((error: unknown) => {
         if (cancelled) return;
         setPickupSellerAddress(null);
-        setPickupSellerAddressError(error instanceof Error ? error.message : t('error.home.pickupAddressFailed'));
+        setPickupSellerAddressError(normalizeHomeRequestError(error, 'error.home.pickupAddressFailed'));
       })
       .finally(() => {
         if (cancelled) return;
@@ -2356,57 +2377,49 @@ export default function HomeScreen({
     }
     try {
       const maxRetries = 3;
+      for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+        const result = await apiRequest<ApiFoodItem[]>(
+          '/v1/foods',
+          currentAuth,
+          { actorRole: 'buyer' },
+          handleAuthRefresh,
+        );
 
-      const fetchFoodsWithToken = async (
-        accessToken: string,
-      ): Promise<'ok' | 'unauthorized' | 'failed'> => {
-        for (let attempt = 0; attempt < maxRetries; attempt += 1) {
-          const response = await fetch(`${url}/v1/foods`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          if (response.status === 401) {
-            return 'unauthorized';
-          }
-          if (!response.ok) {
-            if (shouldRetryTransientStatus(response.status) && attempt < maxRetries - 1) {
-              await sleep(500 * (attempt + 1));
-              continue;
-            }
-            setMealsError(humanizeHttpError(response.status));
-            return 'failed';
-          }
-          const json = await readJsonSafe<{ data?: ApiFoodItem[] }>(response);
-          if (!Array.isArray(json.data)) {
+        if (result.ok) {
+          if (!Array.isArray(result.data)) {
             if (!silent) setMealsError(t('error.home.noMealsInResponse'));
-            return 'failed';
+            return;
           }
-          setMeals(json.data.map(apiToMealCard));
+          setMeals(result.data.map(apiToMealCard));
           setMealsError(null);
           mealsLoadedOnceRef.current = true;
-          return 'ok';
+          return;
         }
-        if (!silent) setMealsError(t('error.home.retryLater'));
-        return 'failed';
-      };
 
-      const initial = await fetchFoodsWithToken(currentAuth.accessToken);
-      if (initial === 'ok') return;
-      if (initial === 'failed') return;
+        if (result.status === 401) {
+          if (!silent) setMealsError(t('error.home.sessionExpired'));
+          return;
+        }
 
-      const refreshed = await refreshAuthSession(url, currentAuth);
-      if (!refreshed) {
-        if (!silent) setMealsError(t('error.home.sessionExpired'));
+        if (shouldRetryTransientStatus(result.status) && attempt < maxRetries - 1) {
+          await sleep(500 * (attempt + 1));
+          continue;
+        }
+
+        if (!silent) {
+          setMealsError(
+            result.message && !isAuthErrorMessage(result.message)
+              ? result.message
+              : humanizeHttpError(result.status),
+          );
+        }
         return;
       }
-      setCurrentAuth(refreshed);
-      onAuthRefresh?.(refreshed);
-      const retryResult = await fetchFoodsWithToken(refreshed.accessToken);
-      if (retryResult === 'ok') {
-        mealsLoadedOnceRef.current = true;
-      }
+
+      if (!silent) setMealsError(t('error.home.retryLater'));
     } catch (err) {
       console.warn('[HomeScreen] failed to fetch foods:', err);
-      if (!silent) setMealsError(err instanceof Error ? err.message : t('error.home.requestFailed'));
+      if (!silent) setMealsError(normalizeHomeRequestError(err, 'error.home.requestFailed'));
     } finally {
       if (!silent) setMealsLoading(false);
     }
@@ -2414,33 +2427,21 @@ export default function HomeScreen({
 
   async function fetchMeProfile(url: string, accessToken: string) {
     try {
-      const response = await fetch(`${url}/v1/auth/me`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (response.status === 401) {
-        const refreshed = await refreshAuthSession(url, currentAuth);
-        if (!refreshed) return;
-        setCurrentAuth(refreshed);
-        onAuthRefresh?.(refreshed);
-        const retryRes = await fetch(`${url}/v1/auth/me`, {
-          headers: { Authorization: `Bearer ${refreshed.accessToken}` },
-        });
-        if (!retryRes.ok) return;
-        const retryJson = await readJsonSafe<{ data?: MeProfile }>(retryRes);
-        const imageUrl = retryJson.data?.profileImageUrl ?? null;
-        setProfileImageUrl(imageUrl);
-        if (imageUrl) saveCachedProfileImageUrl(imageUrl);
-        setGreetingName(resolveGreetingName(retryJson.data, currentAuth.email));
-        setProfileDisplayName(resolveProfileDisplayName(retryJson.data, currentAuth.email));
-        return;
-      }
-      if (!response.ok) return;
-      const json = await readJsonSafe<{ data?: MeProfile }>(response);
-      const imageUrl = json.data?.profileImageUrl ?? null;
+      const result = await apiRequest<MeProfile>(
+        '/v1/auth/me',
+        {
+          ...currentAuth,
+          accessToken,
+        },
+        undefined,
+        handleAuthRefresh,
+      );
+      if (!result.ok) return;
+      const imageUrl = result.data?.profileImageUrl ?? null;
       setProfileImageUrl(imageUrl);
       if (imageUrl) saveCachedProfileImageUrl(imageUrl);
-      setGreetingName(resolveGreetingName(json.data, currentAuth.email));
-      setProfileDisplayName(resolveProfileDisplayName(json.data, currentAuth.email));
+      setGreetingName(resolveGreetingName(result.data, currentAuth.email));
+      setProfileDisplayName(resolveProfileDisplayName(result.data, currentAuth.email));
     } catch {
       // Keep fallback avatar when profile fetch fails
     }
@@ -2915,7 +2916,7 @@ export default function HomeScreen({
       setPaymentError(null);
       setCartItems([]);
     } catch (err) {
-      setPaymentError(err instanceof Error ? err.message : t('error.home.checkoutStartFailed'));
+      setPaymentError(normalizeHomeRequestError(err, 'error.home.checkoutStartFailed'));
     } finally {
       setPaymentLoading(false);
     }
@@ -2988,7 +2989,7 @@ export default function HomeScreen({
     } catch (err) {
       // If the order was successfully created, don't overwrite the success state with a status-poll error.
       if (!orderCreatedByUs && !silent) {
-        setPaymentError(err instanceof Error ? err.message : t('error.home.paymentStatusFailed'));
+        setPaymentError(normalizeHomeRequestError(err, 'error.home.paymentStatusFailed'));
       }
     } finally {
       if (!silent) {
