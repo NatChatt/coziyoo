@@ -180,7 +180,17 @@
                   @click="openOrder('{{ o.id }}')"
                   class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors cursor-pointer">
                 <td class="py-2 pr-4 font-mono text-xs">{{ o.id|slice:":8" }}…</td>
-                <td class="py-2 pr-4">{{ o.seller_name|default:"—" }}</td>
+                <td class="py-2 pr-4">
+                  {% if o.seller_id %}
+                    <a href="{% url 'admin:authentication_sellerusers_seller_detail' o.seller_id %}"
+                       @click.stop
+                       class="text-primary-600 dark:text-primary-400 hover:underline font-medium">
+                      {{ o.seller_name|default:"—" }}
+                    </a>
+                  {% else %}
+                    {{ o.seller_name|default:"—" }}
+                  {% endif %}
+                </td>
                 <td class="py-2 pr-4 font-medium">₺{{ o.total_price }}</td>
                 <td class="py-2 pr-4">
                   <span class="px-2 py-0.5 rounded text-xs font-medium
@@ -253,7 +263,15 @@
             <div class="flex items-center gap-3 mt-1.5 mb-2 text-xs text-base-500 dark:text-base-400">
               <span class="flex items-center gap-1">
                 <span class="material-symbols-outlined text-sm leading-none">storefront</span>
-                {{ r.seller_name }}
+                {% if r.seller_id %}
+                  <a href="{% url 'admin:authentication_sellerusers_seller_detail' r.seller_id %}"
+                     @click.stop
+                     class="text-primary-600 dark:text-primary-400 hover:underline font-medium">
+                    {{ r.seller_name }}
+                  </a>
+                {% else %}
+                  {{ r.seller_name }}
+                {% endif %}
               </span>
               {% if r.order_id %}
               <span class="flex items-center gap-1">
@@ -525,7 +543,14 @@
             <span class="material-symbols-outlined text-base text-violet-500 mt-0.5 shrink-0">storefront</span>
             <div class="min-w-0">
               <div class="text-xs text-base-400 mb-0.5">{% trans "Satıcı" %}</div>
-              <div class="text-sm font-semibold text-base-800 dark:text-base-100 truncate" x-text="orderModal.order?.seller_name || '—'"></div>
+              <template x-if="orderModal.order?.seller_admin_url">
+                <a :href="orderModal.order?.seller_admin_url"
+                   class="text-sm font-semibold text-primary-600 dark:text-primary-400 truncate hover:underline"
+                   x-text="orderModal.order?.seller_name || '—'"></a>
+              </template>
+              <template x-if="!orderModal.order?.seller_admin_url">
+                <div class="text-sm font-semibold text-base-800 dark:text-base-100 truncate" x-text="orderModal.order?.seller_name || '—'"></div>
+              </template>
               <div class="text-xs text-base-400 truncate" x-text="orderModal.order?.seller_email || ''"></div>
             </div>
           </div>

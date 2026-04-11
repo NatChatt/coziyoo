@@ -327,6 +327,7 @@ class BuyerUsersAdmin(ModelAdmin):
                 SELECT
                     o.id, o.status, o.delivery_type, o.total_price, o.created_at,
                     o.delivery_address_json, o.seller_delivery_note, o.payment_completed,
+                    o.buyer_id, o.seller_id,
                     b.display_name AS buyer_name, b.email AS buyer_email,
                     s.display_name AS seller_name, s.email AS seller_email,
                     (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
@@ -353,6 +354,7 @@ class BuyerUsersAdmin(ModelAdmin):
 
         (oid, status, delivery_type, total_price, created_at,
          addr_json, delivery_note, payment_completed,
+         buyer_id, seller_id,
          buyer_name, buyer_email, seller_name, seller_email,
          items_json, payments_json) = row
 
@@ -381,8 +383,10 @@ class BuyerUsersAdmin(ModelAdmin):
             "payment_completed": payment_completed,
             "buyer_name": buyer_name,
             "buyer_email": buyer_email,
+            "buyer_admin_url": reverse("admin:authentication_buyerusers_buyer_detail", args=[str(buyer_id)]) if buyer_id else None,
             "seller_name": seller_name,
             "seller_email": seller_email,
+            "seller_admin_url": reverse("admin:authentication_sellerusers_seller_detail", args=[str(seller_id)]) if seller_id else None,
             "address": ", ".join(address_parts) if address_parts else None,
             "delivery_note": delivery_note,
             "payment_provider": payment.get("provider"),
@@ -423,7 +427,7 @@ class BuyerUsersAdmin(ModelAdmin):
             cur.execute("""
                 SELECT
                     (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
-                        SELECT o.id, u.display_name AS seller_name, o.total_price, o.status, o.created_at
+                        SELECT o.id, o.seller_id, u.display_name AS seller_name, o.total_price, o.status, o.created_at
                         FROM orders o LEFT JOIN users u ON u.id = o.seller_id
                         WHERE o.buyer_id = %s ORDER BY o.created_at DESC LIMIT 20
                     ) t),
@@ -434,7 +438,7 @@ class BuyerUsersAdmin(ModelAdmin):
                     ) t),
                     (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
                         SELECT r.id, f.name AS food_name, r.rating, r.comment, r.created_at,
-                               r.order_id, s.display_name AS seller_name
+                               r.order_id, r.seller_id, s.display_name AS seller_name
                         FROM reviews r
                         LEFT JOIN foods f ON f.id = r.food_id
                         LEFT JOIN users s ON s.id = r.seller_id
@@ -480,7 +484,8 @@ class BuyerUsersAdmin(ModelAdmin):
                          "ip": r[1], "detail": r[2], "happened_at": r[3]} for r in cur.fetchall()]
 
         # Parse JSON results
-        orders = [{"id": str(r["id"]), "seller_name": r["seller_name"], "total_price": r["total_price"],
+        orders = [{"id": str(r["id"]), "seller_id": str(r["seller_id"]) if r.get("seller_id") else None,
+                   "seller_name": r["seller_name"], "total_price": r["total_price"],
                    "status": r["status"], "status_tr": STATUS_TR.get(r["status"], r["status"]),
                    "created_at": r["created_at"]} for r in (orders_json or [])]
 
@@ -492,6 +497,7 @@ class BuyerUsersAdmin(ModelAdmin):
                     "stars": "★" * int(r["rating"]) + "☆" * (5 - int(r["rating"])),
                     "comment": r["comment"], "created_at": r["created_at"],
                     "order_id": str(r["order_id"]) if r.get("order_id") else None,
+                    "seller_id": str(r["seller_id"]) if r.get("seller_id") else None,
                     "seller_name": r.get("seller_name") or "—"} for r in (reviews_json or [])]
 
         payments = [{"id": str(r["id"]), "provider": r["provider"], "status": r["status"],
