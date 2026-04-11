@@ -466,6 +466,8 @@ type PaymentStatusSnapshot = {
   latestAttemptStatus?: string;
 };
 
+const CHECKOUT_REQUEST_TIMEOUT_MS = 15000;
+
 type HomeOrdersApiItem = {
   id: string;
   status: string;
@@ -2845,33 +2847,50 @@ export default function HomeScreen({
     setPaymentInfo(null);
     try {
       const createdOrderIds: string[] = [];
+      let firstCreatedStatus = 'pending_seller_approval';
       for (const [sellerId, sellerItems] of groupedBySeller.entries()) {
-        const orderRes = await authedJsonFetch(`${effectiveApiUrl}/v1/orders`, {
-          method: 'POST',
-          headers: {
-            'x-actor-role': 'buyer',
-            'Idempotency-Key': `mobile-order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          },
-          body: JSON.stringify({
-            sellerId,
-            deliveryType: checkoutDeliveryType,
-            items: sellerItems.map((item) => ({
-              lotId: item.meal.lotId,
-              quantity: item.quantity,
-              selectedAddons: item.selectedAddons,
-            })),
-          }),
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), CHECKOUT_REQUEST_TIMEOUT_MS);
+        let orderRes: Response;
+        try {
+          orderRes = await authedJsonFetch(`${effectiveApiUrl}/v1/orders`, {
+            method: 'POST',
+            headers: {
+              'x-actor-role': 'buyer',
+              'Idempotency-Key': `mobile-order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            },
+            body: JSON.stringify({
+              sellerId,
+              deliveryType: checkoutDeliveryType,
+              items: sellerItems.map((item) => ({
+                lotId: item.meal.lotId,
+                quantity: item.quantity,
+                selectedAddons: item.selectedAddons,
+              })),
+            }),
+            signal: controller.signal,
+          });
+        } catch (error) {
+          clearTimeout(timeoutId);
+          if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error(t('error.home.checkoutCreateFailed'));
+          }
+          throw new Error(t('error.home.checkoutStartFailed'));
+        }
+        clearTimeout(timeoutId);
         const orderJson = await readJsonSafe<{
-          data?: { orderId?: string; status?: string };
+          data?: { orderId?: string; status?: string; sellerId?: string; createdAt?: string };
           error?: { message?: string };
         }>(orderRes);
         if (!orderRes.ok) {
-          throw new Error(orderJson?.error?.message ?? `${t('error.home.checkoutCreateFailed')} (${orderRes.status})`);
+          throw new Error(t('error.home.checkoutCreateFailed'));
         }
         const orderId = String(orderJson?.data?.orderId ?? '');
         if (!orderId) {
           throw new Error(t('error.home.checkoutMissingOrderId'));
+        }
+        if (createdOrderIds.length === 0) {
+          firstCreatedStatus = String(orderJson?.data?.status ?? 'pending_seller_approval');
         }
         createdOrderIds.push(orderId);
       }
@@ -2881,7 +2900,7 @@ export default function HomeScreen({
         createdOrderIds[0]
           ? {
               orderId: createdOrderIds[0],
-              orderStatus: 'pending_seller_approval',
+              orderStatus: firstCreatedStatus,
               paymentCompleted: false,
             }
           : null,
@@ -2891,7 +2910,8 @@ export default function HomeScreen({
           ? t('helper.home.paymentCapturePendingMultiple')
           : t('helper.home.paymentCapturePendingSingle'),
       );
-      void refreshPaymentStatus(true, createdOrderIds, true);
+      await fetchRecentBuyerOrders();
+      void refreshPaymentStatus(false, createdOrderIds, true, true);
       setPaymentError(null);
       setCartItems([]);
     } catch (err) {
@@ -2901,7 +2921,7 @@ export default function HomeScreen({
     }
   }
 
-  async function refreshPaymentStatus(waitForSettlement = false, overrideOrderIds?: string[], orderCreatedByUs = false) {
+  async function refreshPaymentStatus(waitForSettlement = false, overrideOrderIds?: string[], orderCreatedByUs = false, silent = false) {
     const orderIds = (overrideOrderIds && overrideOrderIds.length > 0
       ? overrideOrderIds
       : activeOrderIds.length > 0
@@ -2912,8 +2932,10 @@ export default function HomeScreen({
           ? [paymentStatus.orderId]
           : []);
     if (orderIds.length === 0) return;
-    setPaymentLoading(true);
-    if (!orderCreatedByUs) setPaymentError(null);
+    if (!silent) {
+      setPaymentLoading(true);
+    }
+    if (!orderCreatedByUs && !silent) setPaymentError(null);
     try {
       const loadSnapshots = async () => Promise.all(
         orderIds.map(async (oid) => {
@@ -2930,7 +2952,7 @@ export default function HomeScreen({
             error?: { message?: string };
           }>(response);
           if (!response.ok) {
-            throw new Error(json?.error?.message ?? `Durum alınamadı (${response.status})`);
+            throw new Error(t('error.home.paymentStatusFailed'));
           }
           return {
             orderId: String(json?.data?.orderId ?? oid),
@@ -2965,11 +2987,13 @@ export default function HomeScreen({
       }
     } catch (err) {
       // If the order was successfully created, don't overwrite the success state with a status-poll error.
-      if (!orderCreatedByUs) {
+      if (!orderCreatedByUs && !silent) {
         setPaymentError(err instanceof Error ? err.message : t('error.home.paymentStatusFailed'));
       }
     } finally {
-      setPaymentLoading(false);
+      if (!silent) {
+        setPaymentLoading(false);
+      }
       void fetchRecentBuyerOrders();
     }
   }

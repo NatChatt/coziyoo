@@ -574,7 +574,7 @@ class SellerOrdersView(APIView):
 
     def get(self, request):
         sql = """
-            SELECT o.id, o.status, o.total_price, o.created_at, o.buyer_id,
+            SELECT o.id, o.seller_id, o.status, o.total_price, o.created_at, o.updated_at, o.buyer_id,
                    u.display_name AS buyer_name, o.delivery_type,
                    (
                        SELECT f.name
@@ -599,13 +599,25 @@ class SellerOrdersView(APIView):
             cursor.execute(sql, [request.user.id])
             orders = _rows_as_dicts(cursor)
 
-        uuid_fields = ["id", "buyer_id"]
+        result = []
         for order in orders:
-            _stringify_uuids(order, uuid_fields)
-            if order.get("item_count") is not None:
-                order["item_count"] = int(order["item_count"])
+            result.append(
+                {
+                    "id": str(order["id"]),
+                    "sellerId": str(order["seller_id"]) if order.get("seller_id") else None,
+                    "buyerId": str(order["buyer_id"]) if order.get("buyer_id") else None,
+                    "buyerName": order.get("buyer_name"),
+                    "primaryFoodName": order.get("primary_food_name"),
+                    "itemCount": int(order["item_count"]) if order.get("item_count") is not None else 0,
+                    "status": order.get("status"),
+                    "deliveryType": order.get("delivery_type"),
+                    "totalPrice": float(order["total_price"]) if order.get("total_price") is not None else 0,
+                    "createdAt": order["created_at"].isoformat() if order.get("created_at") else None,
+                    "updatedAt": order["updated_at"].isoformat() if order.get("updated_at") else None,
+                }
+            )
 
-        return Response({"data": orders})
+        return Response({"data": result})
 
 
 class SellerReviewsView(APIView):

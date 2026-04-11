@@ -1,4 +1,5 @@
 import json
+import uuid
 
 from django.db import connection, transaction
 from rest_framework.views import APIView
@@ -102,6 +103,23 @@ def _normalize_seller_decision(value):
     return raw
 
 
+def _create_notification(cursor, user_id, notif_type, title, body, data=None):
+    cursor.execute(
+        """
+        INSERT INTO notification_events (id, user_id, type, title, body, data_json, is_read, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, FALSE, now())
+        """,
+        [
+            str(uuid.uuid4()),
+            user_id,
+            notif_type,
+            title,
+            body,
+            _json_dumps(data or {}),
+        ],
+    )
+
+
 # ---------------------------------------------------------------------------
 # Views
 # ---------------------------------------------------------------------------
@@ -161,6 +179,7 @@ class OrderListCreateView(APIView):
 
         orders = [
             {
+                "id": str(r["id"]),
                 "orderId": str(r["id"]),
                 "status": r["status"],
                 "totalPrice": float(r["total_price"]),
@@ -340,11 +359,13 @@ class OrderListCreateView(APIView):
                                        delivery_type, requested_delivery_type, active_delivery_type,
                                        seller_decision_state)
                     VALUES (%s, %s, 'pending_seller_approval', %s, %s, %s, %s, 'pending')
-                    RETURNING id
+                    RETURNING id, created_at
                     """,
                     [buyer_id, seller_id, total_price, delivery_type, delivery_type, delivery_type],
                 )
-                order_id = str(cursor.fetchone()[0])
+                order_row = cursor.fetchone()
+                order_id = str(order_row[0])
+                created_at = order_row[1]
 
                 # 5. Insert order items
                 for item in normalized_items:
@@ -372,9 +393,32 @@ class OrderListCreateView(APIView):
                     """,
                     [order_id, buyer_id, _json_dumps({"note": note, "itemCount": len(normalized_items)})],
                 )
+                _create_notification(
+                    cursor,
+                    seller_id,
+                    "order_created",
+                    "Yeni liste geldi",
+                    "Bir alıcı senden onay bekleyen yeni bir liste gönderdi.",
+                    {
+                        "orderId": order_id,
+                        "sellerId": seller_id,
+                        "buyerId": buyer_id,
+                        "status": "pending_seller_approval",
+                        "deliveryType": delivery_type,
+                    },
+                )
 
         return Response(
-            {"data": {"orderId": order_id, "status": "pending_seller_approval", "totalPrice": total_price}},
+            {
+                "data": {
+                    "id": order_id,
+                    "orderId": order_id,
+                    "sellerId": seller_id,
+                    "status": "pending_seller_approval",
+                    "totalPrice": total_price,
+                    "createdAt": created_at.isoformat() if created_at else None,
+                }
+            },
             status=status.HTTP_201_CREATED,
         )
 
