@@ -13,7 +13,7 @@ apps/django/
 ├── requirements.txt
 ├── coziyoo/                     # Proje konfigürasyonu
 │   ├── settings/
-│   │   ├── base.py              # Ortak ayarlar (DB, JWT, DRF, CORS, S3, unfold sidebar)
+│   │   ├── base.py              # Ortak ayarlar (DB, JWT, DRF, CORS, S3, unfold navbar)
 │   │   ├── development.py       # DEBUG=True, CORS açık, SQL log
 │   │   └── production.py        # DEBUG=False, whitenoise, secure cookies
 │   ├── urls.py                  # Tüm URL rotaları
@@ -33,7 +33,8 @@ apps/django/
 └── templates/
     └── admin/                   # Django admin HTML override'ları (django-unfold)
         ├── base.html
-        ├── nav_sidebar.html
+        ├── nav_sidebar.html     # Kullanılmıyor — top navbar'a taşındı
+        ├── nav_topbar.html      # Top navbar (sidebar'ın yerine geçti)
         └── authentication/
             ├── buyer_detail.html
             ├── seller_detail.html
@@ -182,9 +183,10 @@ Admin dashboard ve detail ekranlarindaki kartlarda asagidaki ritim korunmali:
 - Col 2: Boş spacer
 - Col 3–5: KPI kartları (rose / emerald / blue)
 
-### Unfold Sidebar Navigasyonu
+### Top Navbar Navigasyonu
 
-`coziyoo/settings/base.py` içindeki `UNFOLD["SIDEBAR"]` dict'inde tanımlanır:
+Navigasyon, sol sidebar yerine sayfanın üstünde bir top navbar olarak tasarlanmıştır (`templates/admin/nav_topbar.html`).
+Navbar öğeleri `coziyoo/settings/base.py` içindeki `UNFOLD["SIDEBAR"]` dict'inde tanımlanır (Unfold'un kendi config key'i):
 
 - **Platform:** Users, Orders, Foods, Categories, Production Lots, Reviews
 - **Compliance & Support:** Compliance Docs, Doc Types, Complaints, Complaint Categories

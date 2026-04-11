@@ -478,7 +478,7 @@ class BuyerUsersAdmin(ModelAdmin):
                     FROM user_presence_events
                     WHERE subject_type = 'user' AND subject_id = %s
                 ) combined
-                ORDER BY happened_at DESC NULLS LAST LIMIT 30
+                ORDER BY happened_at DESC NULLS LAST
             """, [uid, uid])
             activity = [{"event_type": r[0], "event_tr": "Giriş" if r[0] == "login" else r[0],
                          "ip": r[1], "detail": r[2], "happened_at": r[3]} for r in cur.fetchall()]

@@ -79,7 +79,10 @@
       "Bash(psql --version)",
       "Bash(.venv/bin/python -c ':*)",
       "Bash(.venv/bin/python manage.py check)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "mcp__2142179a-5882-4d24-9788-c174d77cac66__execute_sql",
+      "mcp__2142179a-5882-4d24-9788-c174d77cac66__get_advisors",
+      "Bash(xargs cat:*)"
     ],
     "additionalDirectories": [
       "/tmp",
