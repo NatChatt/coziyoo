@@ -504,6 +504,34 @@ class SellerFoodsView(APIView):
         return Response({"data": [_serialize_food_row(item, category_map) for item in items]})
 
 
+class SellerAddressView(APIView):
+    """GET /v1/foods/sellers/:sellerId/address — seller default pickup address."""
+
+    permission_classes = [IsAppRealm]
+
+    def get(self, request, seller_id):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT ua.title, ua.address_line
+                FROM user_addresses ua
+                JOIN users u ON u.id = ua.user_id
+                WHERE ua.user_id = %s
+                  AND u.user_type IN ('seller', 'both')
+                  AND u.is_active = TRUE
+                ORDER BY ua.is_default DESC, ua.updated_at DESC, ua.created_at DESC
+                LIMIT 1
+                """,
+                [str(seller_id)],
+            )
+            row = cursor.fetchone()
+
+        if row is None:
+            return Response({"data": None})
+
+        return Response({"data": {"title": row[0], "addressLine": row[1]}})
+
+
 class SellerReviewsView(APIView):
     """GET /v1/foods/sellers/:sellerId/reviews — Reviews for a seller."""
 
