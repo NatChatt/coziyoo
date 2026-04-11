@@ -2081,6 +2081,10 @@ export default function HomeScreen({
   const mealsLoadedOnceRef = useRef(false);
   const recommendedMealsLoadedOnceRef = useRef(false);
   const buyerFeedRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Always-current auth ref — avoids stale closures without triggering re-renders.
+  const currentAuthRef = useRef<AuthSession>(currentAuth);
+  useEffect(() => { currentAuthRef.current = currentAuth; });
+
   useEffect(() => {
     setCurrentAuth((prev) => (areAuthSessionsEqual(prev, auth) ? prev : auth));
   }, [auth.accessToken, auth.refreshToken, auth.userId, auth.userType, auth.email]);
@@ -2090,10 +2094,13 @@ export default function HomeScreen({
     onAuthRefresh?.(session);
   }, [onAuthRefresh]);
 
+  // Stable callback — reads auth from ref so it never needs to be recreated on
+  // token refresh, which would cascade into a useEffect re-fire loop.
   const fetchRecentBuyerOrders = useCallback(async () => {
+    const auth = currentAuthRef.current;
     let result = await apiRequest<HomeOrdersApiItem[]>(
       '/v1/orders?pageSize=100&sortDir=desc&role=buyer',
-      authSnapshot,
+      auth,
       { actorRole: 'buyer' },
       handleAuthRefresh,
     );
@@ -2101,7 +2108,7 @@ export default function HomeScreen({
     if (!result.ok) {
       result = await apiRequest<HomeOrdersApiItem[]>(
         '/v1/orders?page=1&pageSize=100&sortDir=desc&role=buyer',
-        authSnapshot,
+        auth,
         { actorRole: 'buyer' },
         handleAuthRefresh,
       );
@@ -2125,7 +2132,7 @@ export default function HomeScreen({
     }));
 
     setRecentBuyerOrders(mapped);
-  }, [authSnapshot, handleAuthRefresh]);
+  }, [handleAuthRefresh]); // handleAuthRefresh is stable (depends only on onAuthRefresh=setAuth)
 
   const requestDeliveryForOrder = useCallback(async (order: HomeOrderSummary) => {
     if (!canRequestBuyerDelivery(order) || deliveryRequestOrderIds[order.id]) return;
@@ -2190,12 +2197,12 @@ export default function HomeScreen({
   useEffect(() => {
     if (!apiUrl) return;
     void fetchMeProfile(apiUrl, currentAuth.accessToken);
-  }, [apiUrl, currentAuth.accessToken]);
+  }, [apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!apiUrl) return;
     void fetchUserAddresses();
-  }, [apiUrl, currentAuth.accessToken]);
+  }, [apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!selectedCheckoutAddressId) return;
@@ -2268,7 +2275,8 @@ export default function HomeScreen({
     };
   }, [sloganMarqueeX, sloganTextWidth, sloganTrackWidth]);
 
-  // Fetch foods from API
+  // Fetch foods from API — authedJsonFetch handles token refresh internally,
+  // no need to re-run this on every access token change.
   useEffect(() => {
     if (!apiUrl || apiUrl === 'http://localhost:3000') {
       // Wait until apiUrl is loaded from settings
@@ -2278,7 +2286,7 @@ export default function HomeScreen({
       return;
     }
     fetchFoods(apiUrl, { silent: mealsLoadedOnceRef.current });
-  }, [apiUrl, currentAuth.accessToken]);
+  }, [apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refresh feed every time user returns to home tab (e.g. after publishing from seller side)
   useEffect(() => {
@@ -2296,7 +2304,7 @@ export default function HomeScreen({
       fetchFoods(apiUrl, { silent: true });
     });
     return () => sub.remove();
-  }, [activeTab, apiUrl, currentAuth.accessToken]);
+  }, [activeTab, apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep home feed fresh while app stays open on Home.
   useEffect(() => {
@@ -2305,7 +2313,7 @@ export default function HomeScreen({
       fetchFoods(apiUrl, { silent: true });
     }, 15000);
     return () => clearInterval(id);
-  }, [activeTab, apiUrl, currentAuth.accessToken]);
+  }, [activeTab, apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (activeTab !== 'home' || !apiUrl) return;
@@ -2323,7 +2331,7 @@ export default function HomeScreen({
       }
       unsubscribe();
     };
-  }, [activeTab, apiUrl, currentAuth.accessToken]);
+  }, [activeTab, apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let cancelled = false;
@@ -2357,7 +2365,7 @@ export default function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, [authSnapshot, handleAuthRefresh]);
+  }, [apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!authSnapshot.accessToken) return;
@@ -2383,7 +2391,7 @@ export default function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, [authSnapshot.accessToken, authSnapshot.refreshToken, authSnapshot.userId, authSnapshot.userType, authSnapshot.email, handleAuthRefresh]);
+  }, [apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleFavorite = useCallback(async (foodId: string) => {
     if (!foodId || favoritePendingIds[foodId]) return;
