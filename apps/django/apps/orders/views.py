@@ -1275,4 +1275,124 @@ class BuyerConfirmTermsView(APIView):
                     ],
                 )
 
+
+class OrderNotesView(APIView):
+    """GET /v1/orders/:order_id/notes  — list notes
+       POST /v1/orders/:order_id/notes — add a note"""
+
+    NOTEABLE_STATUSES = {
+        'pending_seller_approval', 'pending_buyer_confirmation',
+        'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready',
+    }
+
+    def _get_order_parties(self, order_id_str):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT buyer_id, seller_id, status FROM orders WHERE id = %s",
+                [order_id_str],
+            )
+            return _dictfetchone(cursor)
+
+    def get(self, request, order_id):
+        user, err = _check_app_auth(request)
+        if err:
+            return err
+
+        user_id = str(user.id)
+        order_id_str = str(order_id)
+        order = self._get_order_parties(order_id_str)
+
+        if order is None:
+            return Response({"error": {"code": "NOT_FOUND", "message": "Sipariş bulunamadı."}}, status=status.HTTP_404_NOT_FOUND)
+
+        if user_id not in (str(order['buyer_id']), str(order['seller_id'])):
+            return Response({"error": {"code": "FORBIDDEN", "message": "Erişim reddedildi."}}, status=status.HTTP_403_FORBIDDEN)
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT oe.id, oe.event_type, oe.actor_user_id, oe.payload_json, oe.created_at,
+                       u.display_name AS sender_name
+                FROM order_events oe
+                LEFT JOIN users u ON u.id = oe.actor_user_id
+                WHERE oe.order_id = %s AND oe.event_type IN ('buyer_note', 'seller_note')
+                ORDER BY oe.created_at ASC
+                """,
+                [order_id_str],
+            )
+            rows = _dictfetchall(cursor)
+
+        data = []
+        for row in rows:
+            payload = row['payload_json'] or {}
+            data.append({
+                'id': str(row['id']),
+                'senderRole': 'buyer' if row['event_type'] == 'buyer_note' else 'seller',
+                'senderName': row['sender_name'] or '',
+                'message': payload.get('message', ''),
+                'createdAt': row['created_at'].isoformat() if row['created_at'] else None,
+            })
+
+        return Response({'data': data})
+
+    def post(self, request, order_id):
+        user, err = _check_app_auth(request)
+        if err:
+            return err
+
+        user_id = str(user.id)
+        order_id_str = str(order_id)
+        message = (request.data.get('message') or '').strip()
+
+        if not message:
+            return Response({"error": {"code": "VALIDATION_ERROR", "message": "Mesaj boş olamaz."}}, status=status.HTTP_400_BAD_REQUEST)
+        if len(message) > 500:
+            return Response({"error": {"code": "VALIDATION_ERROR", "message": "Mesaj en fazla 500 karakter olabilir."}}, status=status.HTTP_400_BAD_REQUEST)
+
+        order = self._get_order_parties(order_id_str)
+        if order is None:
+            return Response({"error": {"code": "NOT_FOUND", "message": "Sipariş bulunamadı."}}, status=status.HTTP_404_NOT_FOUND)
+
+        buyer_id = str(order['buyer_id'])
+        seller_id = str(order['seller_id'])
+
+        if user_id == buyer_id:
+            event_type = 'buyer_note'
+            sender_role = 'buyer'
+        elif user_id == seller_id:
+            event_type = 'seller_note'
+            sender_role = 'seller'
+        else:
+            return Response({"error": {"code": "FORBIDDEN", "message": "Erişim reddedildi."}}, status=status.HTTP_403_FORBIDDEN)
+
+        if order['status'] not in self.NOTEABLE_STATUSES:
+            return Response({"error": {"code": "INVALID_STATE", "message": "Bu sipariş için not gönderilemez."}}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+        note_id = str(uuid.uuid4())
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO order_events
+                        (id, order_id, event_type, actor_user_id, payload_json, created_at)
+                    VALUES (%s, %s, %s, %s, %s, now())
+                    """,
+                    [note_id, order_id_str, event_type, user_id, _json_dumps({'message': message})],
+                )
+                cursor.execute("SELECT display_name FROM users WHERE id = %s", [user_id])
+                user_row = _dictfetchone(cursor)
+
+        sender_name = (user_row or {}).get('display_name', '')
+
+        import datetime
+        return Response({
+            'data': {
+                'id': note_id,
+                'senderRole': sender_role,
+                'senderName': sender_name or '',
+                'message': message,
+                'createdAt': datetime.datetime.utcnow().isoformat() + 'Z',
+            }
+        }, status=status.HTTP_201_CREATED)
+
         return Response({"data": {"orderId": order_id_str, "status": new_status}})

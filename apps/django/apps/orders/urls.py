@@ -11,4 +11,5 @@ urlpatterns = [
     path("<uuid:order_id>/review", views.OrderReviewView.as_view()),
     path("<uuid:order_id>/seller-decision", views.SellerDecisionView.as_view()),
     path("<uuid:order_id>/buyer-confirm-terms", views.BuyerConfirmTermsView.as_view()),
+    path("<uuid:order_id>/notes", views.OrderNotesView.as_view()),
 ]

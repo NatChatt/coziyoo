@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, StatusBar, Alert, TouchableOpacity, Linking, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, StatusBar, Alert, TouchableOpacity, Linking, Platform, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/colors';
 import { type AuthSession } from '../utils/auth';
@@ -253,6 +253,10 @@ export default function OrderDetailScreen({
   const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const orderRef = useRef<OrderDetail | null>(null);
   const pinAutoOpenedRef = useRef(false);
+  const [orderNotes, setOrderNotes] = useState<Array<{id: string; senderRole: string; senderName: string; message: string; createdAt: string | null}>>([]);
+  const [noteInput, setNoteInput] = useState('');
+  const [noteSending, setNoteSending] = useState(false);
+  const notesScrollRef = useRef<ScrollView | null>(null);
 
   useEffect(() => {
     setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
@@ -457,6 +461,55 @@ export default function OrderDetailScreen({
       Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.orderDetail.confirmTermsFailed'));
     } finally {
       setUpdating(false);
+    }
+  }
+
+  type OrderNote = {id: string; senderRole: string; senderName: string; message: string; createdAt: string | null};
+
+  async function fetchNotes() {
+    if (!order?.id) return;
+    const result = await apiRequest<OrderNote[]>(
+      `/v1/orders/${order.id}/notes`,
+      currentAuth,
+      { actorRole: 'buyer' },
+      handleAuthRefresh,
+    );
+    if (result.ok && Array.isArray(result.data)) {
+      setOrderNotes(result.data);
+    }
+  }
+
+  useEffect(() => {
+    if (order?.id) {
+      void fetchNotes();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id]);
+
+  async function sendNote() {
+    const msg = noteInput.trim();
+    if (!msg || noteSending || !order?.id) return;
+    setNoteSending(true);
+    try {
+      const result = await apiRequest<OrderNote>(
+        `/v1/orders/${order.id}/notes`,
+        currentAuth,
+        { method: 'POST', body: { message: msg }, actorRole: 'buyer' },
+        handleAuthRefresh,
+      );
+      if (!result.ok) {
+        Alert.alert(t('headline.common.error'), result.message ?? t('error.orderNotes.sendFailed'));
+        return;
+      }
+      if (result.data) {
+        setOrderNotes(prev => [...prev, result.data!]);
+      }
+      setNoteInput('');
+      setTimeout(() => notesScrollRef.current?.scrollToEnd({ animated: true }), 80);
+    } catch {
+      Alert.alert(t('headline.common.error'), t('error.orderNotes.sendFailed'));
+    } finally {
+      setNoteSending(false);
     }
   }
 
@@ -716,6 +769,64 @@ export default function OrderDetailScreen({
           </View>
         ) : null}
 
+        {(order.status === 'pending_buyer_confirmation' || order.status === 'pending_seller_approval') ? (
+          <View style={styles.notesCard}>
+            <Text style={styles.notesSectionTitle}>{t('headline.orderNotes.title')}</Text>
+            {orderNotes.length === 0 ? (
+              <Text style={styles.notesEmpty}>{t('helper.orderNotes.empty')}</Text>
+            ) : (
+              <ScrollView
+                ref={notesScrollRef}
+                style={styles.notesScroll}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+              >
+                {orderNotes.map(note => (
+                  <View
+                    key={note.id}
+                    style={[
+                      styles.noteBubble,
+                      note.senderRole === 'buyer' ? styles.noteBubbleSelf : styles.noteBubbleOther,
+                    ]}
+                  >
+                    <Text style={styles.noteSenderName}>
+                      {note.senderRole === 'buyer' ? t('label.orderNotes.you') : note.senderName}
+                    </Text>
+                    <Text style={styles.noteText}>{note.message}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+            <TextInput
+              style={styles.noteTextInput}
+              value={noteInput}
+              onChangeText={setNoteInput}
+              placeholder={t('placeholder.orderNotes.input')}
+              placeholderTextColor="#9C8E81"
+              multiline
+              maxLength={500}
+            />
+            <View style={styles.noteActions}>
+              <TouchableOpacity
+                style={[styles.noteSendBtn, (noteSending || !noteInput.trim()) && styles.noteDisabled]}
+                disabled={noteSending || !noteInput.trim()}
+                onPress={() => void sendNote()}
+              >
+                <Text style={styles.noteSendText}>{t('cta.orderNotes.send')}</Text>
+              </TouchableOpacity>
+              {order.status === 'pending_buyer_confirmation' ? (
+                <TouchableOpacity
+                  style={[styles.noteApproveBtn, (updating || noteSending) && styles.noteDisabled]}
+                  disabled={updating || noteSending}
+                  onPress={() => void confirmTerms(true)}
+                >
+                  <Text style={styles.noteApproveText}>{t('cta.orderNotes.approve')}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
         {/* Timeline */}
         <View style={styles.section}>
           <SectionDivider icon="time-outline" label="Sipariş Durumu" />
@@ -959,4 +1070,20 @@ const styles = StyleSheet.create({
   },
   proposalDeclineText: { color: '#71685F', fontSize: 15, fontWeight: '700' },
   proposalActionDisabled: { opacity: 0.45 },
+  notesCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#E5DDCF', padding: 12, marginBottom: 10 },
+  notesSectionTitle: { color: '#2E241C', fontWeight: '800', marginBottom: 8, fontSize: 15 },
+  notesEmpty: { color: '#8A7D72', fontSize: 13, marginBottom: 8 },
+  notesScroll: { maxHeight: 200, marginBottom: 8 },
+  noteBubble: { borderRadius: 10, padding: 10, marginBottom: 6, maxWidth: '85%' },
+  noteBubbleSelf: { backgroundColor: '#EAF5EE', alignSelf: 'flex-end', borderWidth: 1, borderColor: '#C3E0CC' },
+  noteBubbleOther: { backgroundColor: '#F6F1E8', alignSelf: 'flex-start', borderWidth: 1, borderColor: '#E5DDCF' },
+  noteSenderName: { fontSize: 11, fontWeight: '700', color: '#8A7D72', marginBottom: 2 },
+  noteText: { fontSize: 14, color: '#2E241C', lineHeight: 20 },
+  noteTextInput: { borderWidth: 1, borderColor: '#E5DDCF', borderRadius: 10, padding: 10, fontSize: 14, color: '#2E241C', backgroundColor: '#FDFAF6', minHeight: 72, textAlignVertical: 'top', marginTop: 8 },
+  noteActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  noteSendBtn: { flex: 1, borderRadius: 10, borderWidth: 1, borderColor: '#DCCFBF', backgroundColor: '#F6F1E8', paddingVertical: 11, alignItems: 'center' },
+  noteSendText: { color: '#5B4F43', fontWeight: '700', fontSize: 14 },
+  noteApproveBtn: { flex: 1, borderRadius: 10, backgroundColor: '#3F855C', borderWidth: 1, borderColor: '#3F855C', paddingVertical: 11, alignItems: 'center' },
+  noteApproveText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  noteDisabled: { opacity: 0.45 },
 });
