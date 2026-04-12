@@ -781,6 +781,162 @@ class BuyerDeliveryRequestView(APIView):
         )
 
 
+class SellerDeliveryRequestResolveView(APIView):
+    """POST /v1/orders/:order_id/seller-delivery-request-response"""
+
+    def post(self, request, order_id):
+        user, err = _check_app_auth(request)
+        if err:
+            return err
+
+        order_id_str = str(order_id)
+        user_id = str(user.id)
+        delivery_type = str(request.data.get("deliveryType") or "").strip().lower()
+        note = str(request.data.get("note") or "").strip()
+        eta_minutes = request.data.get("etaMinutes")
+
+        if delivery_type not in ("pickup", "delivery"):
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "deliveryType must be pickup or delivery"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        seller_eta_minutes = None
+        if eta_minutes not in (None, ""):
+            try:
+                seller_eta_minutes = int(eta_minutes)
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": {"code": "VALIDATION_ERROR", "message": "etaMinutes must be an integer"}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if seller_eta_minutes < 0:
+                return Response(
+                    {"error": {"code": "VALIDATION_ERROR", "message": "etaMinutes must be >= 0"}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, status, buyer_id, seller_id, requested_delivery_type, active_delivery_type
+                FROM orders
+                WHERE id = %s
+                """,
+                [order_id_str],
+            )
+            order = _dictfetchone(cursor)
+
+        if order is None:
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if str(order["seller_id"]) != user_id:
+            return Response(
+                {"error": {"code": "FORBIDDEN", "message": "Only the seller can resolve this request"}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        current_status = str(order.get("status") or "")
+        if current_status != "seller_approved":
+            return Response(
+                {"error": {"code": "INVALID_STATE", "message": "Delivery request can only be resolved after seller approval"}},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        if str(order.get("requested_delivery_type") or "") != "delivery" or str(order.get("active_delivery_type") or "") == "delivery":
+            return Response(
+                {"error": {"code": "INVALID_STATE", "message": "There is no pending delivery request to resolve"}},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        event_type = "seller_delivery_request_accepted" if delivery_type == "delivery" else "seller_delivery_request_declined"
+        buyer_body = (
+            "Satici teslimat istegini kabul etti."
+            if delivery_type == "delivery"
+            else "Satici teslimat istegini kabul etmedi. Siparis gel al olarak devam ediyor."
+        )
+
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE orders
+                    SET delivery_type = %s,
+                        requested_delivery_type = %s,
+                        active_delivery_type = %s,
+                        seller_delivery_note = %s,
+                        seller_eta_minutes = COALESCE(%s, seller_eta_minutes),
+                        seller_promised_at = CASE
+                            WHEN %s IS NOT NULL THEN now() + (%s * INTERVAL '1 minute')
+                            ELSE seller_promised_at
+                        END,
+                        updated_at = now()
+                    WHERE id = %s
+                    RETURNING delivery_type, requested_delivery_type, active_delivery_type, seller_promised_at
+                    """,
+                    [
+                        delivery_type,
+                        delivery_type,
+                        delivery_type,
+                        note or None,
+                        seller_eta_minutes,
+                        seller_eta_minutes,
+                        seller_eta_minutes,
+                        order_id_str,
+                    ],
+                )
+                updated = cursor.fetchone()
+
+                cursor.execute(
+                    """
+                    INSERT INTO order_events (id, order_id, event_type, actor_user_id, from_status, to_status, payload_json)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        str(uuid.uuid4()),
+                        order_id_str,
+                        event_type,
+                        user_id,
+                        current_status,
+                        current_status,
+                        _json_dumps({
+                            "deliveryType": delivery_type,
+                            "note": note,
+                            "etaMinutes": seller_eta_minutes,
+                        }),
+                    ],
+                )
+
+                _create_notification(
+                    cursor,
+                    str(order["buyer_id"]),
+                    "order_update",
+                    "Teslimat istegin yanitlandi",
+                    buyer_body,
+                    {
+                        "orderId": order_id_str,
+                        "deliveryType": delivery_type,
+                        "note": note,
+                    },
+                )
+
+        return Response(
+            {
+                "data": {
+                    "orderId": order_id_str,
+                    "status": current_status,
+                    "deliveryType": str(updated[0] or delivery_type),
+                    "requestedDeliveryType": str(updated[1] or delivery_type),
+                    "activeDeliveryType": str(updated[2] or delivery_type),
+                    "sellerPromisedAt": updated[3].isoformat() if updated[3] else None,
+                }
+            }
+        )
+
+
 class OrderReviewView(APIView):
     """POST /v1/orders/:order_id/review"""
 

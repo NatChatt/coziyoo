@@ -392,6 +392,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     ),
     [order]
   );
+  const canResolveApprovedDeliveryRequest = Boolean(order && order.status === "seller_approved" && buyerRequestedDelivery);
 
   useEffect(() => {
     if (!shouldCheckPinBeforeComplete) {
@@ -431,6 +432,35 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       );
     } catch (e) {
       Alert.alert(t("headline.common.error"), e instanceof Error ? e.message : t("error.seller.orderDetail.decisionSave"));
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function resolveApprovedDeliveryRequest() {
+    if (!order || !canResolveApprovedDeliveryRequest) return;
+    setUpdating(true);
+    try {
+      const etaMinutes = Number(decisionEtaMinutes);
+      const res = await authedFetch(`/v1/orders/${order.id}/seller-delivery-request-response`, {
+        method: "POST",
+        body: JSON.stringify({
+          deliveryType: decisionDeliveryType,
+          etaMinutes,
+          note: decisionNote.trim(),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error?.message ?? t("error.seller.orderDetail.deliveryRequestResolve"));
+      await loadOrder();
+      Alert.alert(
+        t("headline.common.success"),
+        decisionDeliveryType === "delivery"
+          ? t("status.seller.orderDetail.deliveryRequestAccepted")
+          : t("status.seller.orderDetail.deliveryRequestKeptPickup"),
+      );
+    } catch (e) {
+      Alert.alert(t("headline.common.error"), e instanceof Error ? e.message : t("error.seller.orderDetail.deliveryRequestResolve"));
     } finally {
       setUpdating(false);
     }
@@ -654,6 +684,58 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               </View>
             </View>
           ) : null}
+          {canResolveApprovedDeliveryRequest ? (
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.deliveryRequestDecision")}</Text>
+              <Text style={styles.meta}>{t("helper.seller.orderDetail.deliveryRequestResolveBody")}</Text>
+
+              <Text style={styles.inlineFieldLabel}>{t("label.seller.orderDetail.deliveryType")}</Text>
+              <View style={styles.choiceRow}>
+                <TouchableOpacity
+                  style={[styles.choiceChip, decisionDeliveryType === "pickup" && styles.choiceChipActive]}
+                  activeOpacity={0.85}
+                  onPress={() => setDecisionDeliveryType("pickup")}
+                >
+                  <Text style={[styles.choiceChipText, decisionDeliveryType === "pickup" && styles.choiceChipTextActive]}>
+                    {t('cta.seller.orderDetail.keepPickup')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.choiceChip, decisionDeliveryType === "delivery" && styles.choiceChipActive]}
+                  activeOpacity={0.85}
+                  onPress={() => setDecisionDeliveryType("delivery")}
+                >
+                  <Text style={[styles.choiceChipText, decisionDeliveryType === "delivery" && styles.choiceChipTextActive]}>
+                    {t('cta.seller.orderDetail.canDeliver')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.inlineFieldLabel}>
+                {decisionDeliveryType === "delivery" ? t("label.seller.orderDetail.etaDelivery") : t("label.seller.orderDetail.etaPickup")}
+              </Text>
+              <TextInput
+                style={styles.pinInput}
+                value={decisionEtaMinutes}
+                onChangeText={(value) => setDecisionEtaMinutes(value.replace(/[^0-9]/g, "").slice(0, 4))}
+                keyboardType="number-pad"
+                placeholder={t("helper.seller.orderDetail.etaPlaceholder")}
+                placeholderTextColor="#9C8E81"
+              />
+
+              <Text style={styles.inlineFieldLabel}>{t("label.seller.orderDetail.noteDecision")}</Text>
+              <TextInput
+                style={[styles.pinInput, styles.noteInput]}
+                value={decisionNote}
+                onChangeText={setDecisionNote}
+                multiline
+                placeholder={decisionDeliveryType === "delivery"
+                  ? t("helper.seller.orderDetail.noteDecisionDeliveryPlaceholder")
+                  : t("helper.seller.orderDetail.noteDecisionPickupPlaceholder")}
+                placeholderTextColor="#9C8E81"
+              />
+            </View>
+          ) : null}
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.products")}</Text>
             {(order.items ?? []).map((item, index) => (
@@ -730,6 +812,22 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                     ? t('cta.seller.orderDetail.approveDelivery')
                     : t('cta.seller.orderDetail.approvePickup'))
                   : t("cta.seller.orderDetail.approveAndCapture")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : canResolveApprovedDeliveryRequest ? (
+        <View style={styles.stickyActionBar}>
+          <TouchableOpacity
+            style={[styles.actionBtn, updating && styles.actionDisabled]}
+            disabled={updating}
+            onPress={() => { void resolveApprovedDeliveryRequest(); }}
+          >
+            <Text style={styles.actionText}>
+              {updating
+                ? t("status.seller.orderDetail.processing")
+                : decisionDeliveryType === "delivery"
+                  ? t('cta.seller.orderDetail.approveDelivery')
+                  : t('cta.seller.orderDetail.approvePickup')}
             </Text>
           </TouchableOpacity>
         </View>
