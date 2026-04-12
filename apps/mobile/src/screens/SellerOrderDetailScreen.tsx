@@ -402,14 +402,6 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     }
   }, [shouldCheckPinBeforeComplete]);
 
-  useEffect(() => {
-    if (!hasStickyActionBar || keyboardInset <= 0) return;
-    const timer = setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 60);
-    return () => clearTimeout(timer);
-  }, [hasStickyActionBar, keyboardInset]);
-
   async function submitSellerDecision(decision: "approve" | "revise" | "reject") {
     if (!order) return;
     setUpdating(true);
