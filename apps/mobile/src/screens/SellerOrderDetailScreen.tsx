@@ -528,8 +528,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="always"
-        keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets
+        keyboardDismissMode="interactive"
       >
       {loading || !order ? (
         <ActivityIndicator size="large" color={theme.primary} />
