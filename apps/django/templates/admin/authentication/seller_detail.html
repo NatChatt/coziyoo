@@ -1,5 +1,5 @@
 {% extends "admin/base.html" %}
-{% load i18n %}
+{% load i18n tz %}
 
 {% block content %}
 <div class="space-y-4" x-data="{
@@ -257,7 +257,7 @@
                   x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
                   @click="openOrder('{{ o.id }}')"
                   class="hover:bg-base-100/40 dark:hover:bg-base-700/30 transition-colors cursor-pointer">
-                <td class="py-2 pr-4 font-mono text-xs">{{ o.id|slice:":8" }}…</td>
+                <td class="py-2 pr-4 font-mono text-xs break-all">{{ o.id }}</td>
                 <td class="py-2 pr-4">{{ o.buyer_name|default:"—" }}</td>
                 <td class="py-2 pr-4 text-base-600 dark:text-base-300">
                   {% if o.gross_amount %}₺{{ o.gross_amount }}{% else %}<span class="text-base-300 dark:text-base-600">—</span>{% endif %}
@@ -277,7 +277,7 @@
                     {{ o.status_tr }}
                   </span>
                 </td>
-                <td class="py-2 text-base-400 text-xs">{{ o.created_at|date:"d.m.Y H:i" }}</td>
+                <td class="py-2 text-base-400 text-xs">{{ o.created_at|localtime|date:"d.m.Y H:i" }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -731,7 +731,7 @@
           </div>
           <div>
             <div class="text-white/60 text-xs">{% trans "Sipariş No" %}</div>
-            <div class="text-white font-bold font-mono text-sm" x-text="orderModal.order ? '#' + orderModal.order.id.slice(0,8).toUpperCase() : '…'"></div>
+            <div class="text-white font-bold font-mono text-sm break-all" x-text="orderModal.order?.id || '…'"></div>
           </div>
           <span x-show="orderModal.order"
                 class="px-2.5 py-1 rounded-lg text-xs font-semibold"
@@ -786,6 +786,12 @@
             <span class="material-symbols-outlined text-sm text-base-400">local_shipping</span>
             <span class="text-xs text-base-600 dark:text-base-300" x-text="orderModal.order?.delivery_type || '—'"></span>
           </div>
+          <template x-if="orderModal.order?.requested_delivery_type === 'delivery' && orderModal.order?.active_delivery_type !== 'delivery'">
+            <div class="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-1.5">
+              <span class="material-symbols-outlined text-sm text-amber-500">local_shipping</span>
+              <span class="text-xs font-medium text-amber-700 dark:text-amber-300">{% trans "Alıcı teslimat istedi" %}</span>
+            </div>
+          </template>
           <div class="flex items-center gap-1.5 rounded-lg px-3 py-1.5"
                :class="orderModal.order?.payment_completed ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-rose-50 dark:bg-rose-950/30'">
             <span class="material-symbols-outlined text-sm"
@@ -795,6 +801,12 @@
                   x-text="orderModal.order?.payment_completed ? '{% trans "Ödendi" %}' : '{% trans "Ödenmedi" %}'"></span>
           </div>
         </div>
+
+        <template x-if="orderModal.order?.requested_delivery_type === 'delivery' && orderModal.order?.active_delivery_type !== 'delivery'">
+          <div class="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+            Bu sipariş önce gel al açıldı. Alıcı sonradan teslimat talebi bıraktı.
+          </div>
+        </template>
 
         {# Address / note #}
         <template x-if="orderModal.order?.address || orderModal.order?.delivery_note">

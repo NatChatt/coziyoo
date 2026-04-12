@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
@@ -352,6 +353,7 @@ class BuyerUsersAdmin(ModelAdmin):
                 SELECT
                     o.id, o.status, o.delivery_type, o.total_price, o.created_at,
                     o.delivery_address_json, o.seller_delivery_note, o.payment_completed,
+                    o.requested_delivery_type, o.active_delivery_type, o.seller_decision_state,
                     o.buyer_id, o.seller_id,
                     b.display_name AS buyer_name, b.email AS buyer_email,
                     s.display_name AS seller_name, s.email AS seller_email,
@@ -379,6 +381,7 @@ class BuyerUsersAdmin(ModelAdmin):
 
         (oid, status, delivery_type, total_price, created_at,
          addr_json, delivery_note, payment_completed,
+         requested_delivery_type, active_delivery_type, seller_decision_state,
          buyer_id, seller_id,
          buyer_name, buyer_email, seller_name, seller_email,
          items_json, payments_json) = row
@@ -405,8 +408,11 @@ class BuyerUsersAdmin(ModelAdmin):
             "status_tr": _humanize_status(status),
             "delivery_type": delivery_type,
             "total_price": str(total_price),
-            "created_at": created_at.strftime("%d.%m.%Y %H:%M") if created_at else None,
+            "created_at": timezone.localtime(created_at).strftime("%d.%m.%Y %H:%M") if created_at else None,
             "payment_completed": payment_completed,
+            "requested_delivery_type": requested_delivery_type,
+            "active_delivery_type": active_delivery_type,
+            "seller_decision_state": seller_decision_state,
             "buyer_name": buyer_name,
             "buyer_email": buyer_email,
             "buyer_admin_url": reverse("admin:authentication_buyerusers_buyer_detail", args=[str(buyer_id)]) if buyer_id else None,
@@ -907,7 +913,7 @@ class SellerUsersAdmin(ModelAdmin):
         # Parse JSON results
         orders = [{"id": str(r["id"]), "buyer_name": r["buyer_name"], "total_price": r["total_price"],
                    "status": r["status"], "status_tr": STATUS_TR.get(r["status"], r["status"]),
-                   "created_at": r["created_at"],
+                   "created_at": timezone.localtime(r["created_at"]) if r.get("created_at") else None,
                    "gross_amount": r.get("gross_amount"),
                    "commission_amount": r.get("commission_amount"),
                    "seller_net_amount": r.get("seller_net_amount"),

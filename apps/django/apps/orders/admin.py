@@ -31,7 +31,7 @@ class OrderEventsInline(TabularInline):
 @admin.register(Orders)
 class OrdersAdmin(ModelAdmin):
     list_display = [
-        "short_id", "status_badge", "buyer", "seller",
+        "full_order_id", "status_badge", "buyer", "seller",
         "total_price", "delivery_type", "payment_completed", "created_at",
     ]
     list_select_related = ["buyer", "seller"]
@@ -60,9 +60,9 @@ class OrdersAdmin(ModelAdmin):
     def has_add_permission(self, request):
         return False
 
-    @display(description="ID", ordering="id")
-    def short_id(self, obj):
-        return str(obj.id)[:8] + "…"
+    @display(description="Sipariş No", ordering="id")
+    def full_order_id(self, obj):
+        return str(obj.id)
 
     @display(description="Status", ordering="status")
     def status_badge(self, obj):
