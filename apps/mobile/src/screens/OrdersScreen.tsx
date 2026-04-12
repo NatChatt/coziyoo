@@ -131,6 +131,7 @@ function cardTone(status: string, deliveryType?: string) {
   const normalized = normalizeDisplayStatus(status, deliveryType);
   const info = getStatusInfo(normalized, deliveryType);
   const borders: Record<string, string> = {
+    pending_buyer_confirmation: '#C4B5FD',
     pending_seller_approval: '#F0C37E',
     seller_approved: '#E7C88F',
     awaiting_payment: '#ECD98C',
