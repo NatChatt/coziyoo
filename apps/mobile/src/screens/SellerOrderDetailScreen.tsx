@@ -527,14 +527,10 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       <ScreenHeader title={t("headline.seller.orderDetail.title")} onBack={onBack} />
       <ScrollView
         ref={scrollRef}
+        style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          showStickyActionBar ? styles.contentWithStickyAction : null,
-          {
-            paddingBottom:
-              (showStickyActionBar ? 132 : 24)
-              + (shouldCheckPinBeforeComplete ? 96 : 0),
-          },
+          shouldCheckPinBeforeComplete ? styles.contentWithPinCheck : null,
         ]}
         keyboardShouldPersistTaps="always"
         keyboardDismissMode="on-drag"
@@ -905,8 +901,9 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F4EF" },
-  content: { padding: 16, paddingBottom: 36, gap: 10 },
-  contentWithStickyAction: { paddingBottom: 132 },
+  scrollView: { flex: 1 },
+  content: { padding: 16, paddingBottom: 24, gap: 10 },
+  contentWithPinCheck: { paddingBottom: 96 },
   card: { backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#E5DDCF", padding: 12 },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   orderNo: { fontSize: 17, fontWeight: "800", color: "#2E241C" },
@@ -995,10 +992,6 @@ const styles = StyleSheet.create({
   actionDisabled: { opacity: 0.45 },
   actionText: { color: "#fff", fontWeight: "700" },
   stickyActionBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: Platform.OS === "ios" ? 28 : 16,
