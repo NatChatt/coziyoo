@@ -1094,7 +1094,7 @@ class SellerDecisionView(APIView):
         current_status = order["status"]
         new_status = self.DECISION_STATUS_MAP[decision]
 
-        if decision == "revised" and current_status not in ("pending", "pending_seller_approval", "pending_buyer_confirmation"):
+        if decision == "revised" and current_status not in ("pending", "pending_seller_approval"):
             return Response(
                 {
                     "error": {
