@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -204,7 +203,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   const [updating, setUpdating] = useState(false);
   const [pinCode, setPinCode] = useState("");
   const [pinModalVisible, setPinModalVisible] = useState(false);
-  const [keyboardInset, setKeyboardInset] = useState(0);
+
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [decisionDeliveryType, setDecisionDeliveryType] = useState<"pickup" | "delivery">("pickup");
   const [decisionEtaMinutes, setDecisionEtaMinutes] = useState("30");
@@ -305,22 +304,6 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     setDecisionReason("");
   }, [order?.id, order?.activeDeliveryType, order?.requestedDeliveryType, order?.sellerEtaMinutes, order?.sellerDeliveryNote]);
 
-  useEffect(() => {
-    const handleShow = (event: { endCoordinates?: { height?: number } }) => {
-      setKeyboardInset(event?.endCoordinates?.height ?? 0);
-    };
-    const handleHide = () => setKeyboardInset(0);
-    const willShowSub = Keyboard.addListener("keyboardWillShow", handleShow);
-    const didShowSub = Keyboard.addListener("keyboardDidShow", handleShow);
-    const willHideSub = Keyboard.addListener("keyboardWillHide", handleHide);
-    const didHideSub = Keyboard.addListener("keyboardDidHide", handleHide);
-    return () => {
-      willShowSub.remove();
-      didShowSub.remove();
-      willHideSub.remove();
-      didHideSub.remove();
-    };
-  }, []);
 
   const action = useMemo(() => {
     if (!order) return null;
@@ -341,12 +324,12 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   );
 
   useEffect(() => {
-    if (!shouldCheckPinBeforeComplete || keyboardInset <= 0) return;
+    if (!shouldCheckPinBeforeComplete) return;
     const timer = setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 40);
     return () => clearTimeout(timer);
-  }, [shouldCheckPinBeforeComplete, keyboardInset]);
+  }, [shouldCheckPinBeforeComplete]);
   const isPinReady = pinCode.trim().length >= 4 && pinCode.trim().length <= 8;
   const deliveryAddressText = useMemo(() => {
     if (!order) return "";
@@ -394,7 +377,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   );
   const canResolveApprovedDeliveryRequest = Boolean(order && order.status === "seller_approved" && buyerRequestedDelivery);
   const hasStickyActionBar = Boolean(action || isDecisionStage || canResolveApprovedDeliveryRequest);
-  const showStickyActionBar = hasStickyActionBar && keyboardInset <= 0;
+  const showStickyActionBar = hasStickyActionBar;
 
   useEffect(() => {
     if (!shouldCheckPinBeforeComplete) {
@@ -537,7 +520,10 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       <ScreenHeader title={t("headline.seller.orderDetail.title")} onBack={onBack} />
       <ScrollView
         ref={scrollRef}
@@ -547,7 +533,6 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           {
             paddingBottom:
               (showStickyActionBar ? 132 : 24)
-              + (keyboardInset > 0 ? keyboardInset : 0)
               + (shouldCheckPinBeforeComplete ? 96 : 0),
           },
         ]}
@@ -812,7 +797,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       </ScrollView>
 
       {showStickyActionBar && isDecisionStage ? (
-        <View style={[styles.stickyActionBar, keyboardInset > 0 ? { bottom: Math.max(0, keyboardInset - 6) } : null]}>
+        <View style={styles.stickyActionBar}>
           <TouchableOpacity
             style={[styles.actionBtn, updating && styles.actionDisabled]}
             disabled={updating}
@@ -830,7 +815,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           </TouchableOpacity>
         </View>
       ) : showStickyActionBar && canResolveApprovedDeliveryRequest ? (
-        <View style={[styles.stickyActionBar, keyboardInset > 0 ? { bottom: Math.max(0, keyboardInset - 6) } : null]}>
+        <View style={styles.stickyActionBar}>
           <TouchableOpacity
             style={[styles.actionBtn, updating && styles.actionDisabled]}
             disabled={updating}
@@ -846,7 +831,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           </TouchableOpacity>
         </View>
       ) : showStickyActionBar && action ? (
-        <View style={[styles.stickyActionBar, keyboardInset > 0 ? { bottom: Math.max(0, keyboardInset - 6) } : null]}>
+        <View style={styles.stickyActionBar}>
           <TouchableOpacity
             style={[
               styles.actionBtn,
@@ -914,7 +899,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
