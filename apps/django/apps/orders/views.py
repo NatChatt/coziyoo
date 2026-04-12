@@ -488,11 +488,13 @@ class OrderDetailView(APIView):
         return Response(
             {
                 "data": {
+                    "id": str(order["id"]),
                     "orderId": str(order["id"]),
                     "status": order["status"],
                     "totalPrice": float(order["total_price"]),
                     "deliveryType": order["delivery_type"],
                     "note": order["seller_delivery_note"],
+                    "sellerDeliveryNote": order["seller_delivery_note"],
                     "requestedDeliveryType": order["requested_delivery_type"],
                     "activeDeliveryType": order["active_delivery_type"],
                     "sellerDecisionState": order["seller_decision_state"],

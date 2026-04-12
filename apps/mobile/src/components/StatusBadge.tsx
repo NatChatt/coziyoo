@@ -4,6 +4,7 @@ import { t, type BrandCopyKey } from '../copy/brandCopy';
 
 const STATUS_MAP: Record<string, { labelKey: BrandCopyKey; color: string; bg: string }> = {
   pending_seller_approval: { labelKey: 'status.common.badge.pendingSellerApproval', color: '#B86A00', bg: '#FFF3E0' },
+  pending_buyer_confirmation: { labelKey: 'status.common.badge.pendingBuyerConfirmation', color: '#7C3AED', bg: '#F5F0FF' },
   seller_approved: { labelKey: 'status.common.badge.sellerApproved', color: '#A16207', bg: '#FFF8EB' },
   confirmed: { labelKey: 'status.common.badge.confirmed', color: '#9A3412', bg: '#FFF1EB' },
   awaiting_payment: { labelKey: 'status.common.badge.awaitingPayment', color: '#7C5D00', bg: '#FFF7D6' },
