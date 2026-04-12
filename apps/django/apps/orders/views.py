@@ -441,7 +441,7 @@ class OrderDetailView(APIView):
                 SELECT o.id, o.status, o.total_price, o.delivery_type, o.seller_delivery_note,
                        o.requested_delivery_type, o.active_delivery_type, o.seller_decision_state,
                        o.seller_eta_minutes, o.seller_promised_at, o.approved_at, o.payment_captured_at,
-                       o.created_at, o.updated_at,
+                       o.created_at, o.updated_at, o.delivery_address_json,
                        o.buyer_id, o.seller_id,
                        ub.display_name AS buyer_name,
                        us.display_name AS seller_name
@@ -501,6 +501,7 @@ class OrderDetailView(APIView):
                     "paymentCapturedAt": order["payment_captured_at"].isoformat() if order["payment_captured_at"] else None,
                     "createdAt": order["created_at"].isoformat() if order["created_at"] else None,
                     "updatedAt": order["updated_at"].isoformat() if order["updated_at"] else None,
+                    "deliveryAddress": order["delivery_address_json"],
                     "buyerId": str(order["buyer_id"]),
                     "sellerId": str(order["seller_id"]),
                     "buyerName": order["buyer_name"],
@@ -863,10 +864,30 @@ class SellerDeliveryRequestResolveView(APIView):
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
+                    SELECT title, address_line
+                    FROM user_addresses
+                    WHERE user_id = %s
+                    ORDER BY is_default DESC, updated_at DESC, created_at DESC
+                    LIMIT 1
+                    """,
+                    [str(order["buyer_id"])],
+                )
+                address_row = cursor.fetchone()
+                delivery_address_snapshot = None
+                if address_row and any(address_row):
+                    delivery_address_snapshot = {
+                        "title": address_row[0],
+                        "addressLine": address_row[1],
+                        "line": address_row[1],
+                    }
+
+                cursor.execute(
+                    """
                     UPDATE orders
                     SET delivery_type = %s,
                         requested_delivery_type = %s,
                         active_delivery_type = %s,
+                        delivery_address_json = COALESCE(%s, delivery_address_json),
                         seller_delivery_note = %s,
                         seller_eta_minutes = COALESCE(%s, seller_eta_minutes),
                         seller_promised_at = CASE
@@ -881,6 +902,7 @@ class SellerDeliveryRequestResolveView(APIView):
                         delivery_type,
                         delivery_type,
                         delivery_type,
+                        _json_dumps(delivery_address_snapshot) if delivery_address_snapshot else None,
                         note or None,
                         seller_eta_minutes,
                         seller_eta_minutes,
