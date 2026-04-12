@@ -2441,10 +2441,10 @@ export default function HomeScreen({
     try {
       const maxRetries = 3;
       for (let attempt = 0; attempt < maxRetries; attempt += 1) {
-        const response = await authedJsonFetch(`${url}/v1/foods`, {
-          headers: {
-            'x-actor-role': 'buyer',
-          },
+          const response = await authedJsonFetch(`${url}/v1/foods/`, {
+            headers: {
+              'x-actor-role': 'buyer',
+            },
         });
         const json = await readJsonSafe<{
           data?: ApiFoodItem[];
