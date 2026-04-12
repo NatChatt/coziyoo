@@ -576,6 +576,7 @@ class SellerOrdersView(APIView):
         sql = """
             SELECT o.id, o.seller_id, o.status, o.total_price, o.created_at, o.updated_at, o.buyer_id,
                    u.display_name AS buyer_name, o.delivery_type,
+                   o.requested_delivery_type, o.active_delivery_type, o.seller_decision_state,
                    (
                        SELECT f.name
                        FROM order_items oi
@@ -611,6 +612,9 @@ class SellerOrdersView(APIView):
                     "itemCount": int(order["item_count"]) if order.get("item_count") is not None else 0,
                     "status": order.get("status"),
                     "deliveryType": order.get("delivery_type"),
+                    "requestedDeliveryType": order.get("requested_delivery_type"),
+                    "activeDeliveryType": order.get("active_delivery_type"),
+                    "sellerDecisionState": order.get("seller_decision_state"),
                     "totalPrice": float(order["total_price"]) if order.get("total_price") is not None else 0,
                     "createdAt": order["created_at"].isoformat() if order.get("created_at") else None,
                     "updatedAt": order["updated_at"].isoformat() if order.get("updated_at") else None,

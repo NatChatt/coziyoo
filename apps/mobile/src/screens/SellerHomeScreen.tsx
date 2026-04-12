@@ -31,6 +31,9 @@ type SellerOrder = {
   itemCount?: number | null;
   status: string;
   deliveryType?: "pickup" | "delivery" | string;
+  requestedDeliveryType?: "pickup" | "delivery" | string;
+  activeDeliveryType?: "pickup" | "delivery" | string;
+  sellerDecisionState?: "pending" | "revised" | "approved" | "rejected" | string;
   totalPrice: number;
   createdAt?: string;
   updatedAt?: string;
@@ -251,6 +254,9 @@ function sellerOrdersSignature(items: SellerOrder[]): string {
       order.buyerProgressAt ?? "",
       order.totalPrice ?? "",
       order.deliveryType ?? "",
+      order.requestedDeliveryType ?? "",
+      order.activeDeliveryType ?? "",
+      order.sellerDecisionState ?? "",
     ].join("|"))
     .join("||");
 }
@@ -266,6 +272,18 @@ function normalizeSellerOrder(raw: Record<string, unknown>): SellerOrder {
     itemCount: Number(raw.itemCount ?? raw.item_count ?? 0),
     status: String(raw.status ?? ""),
     deliveryType: typeof raw.deliveryType === "string" ? raw.deliveryType : (typeof raw.delivery_type === "string" ? raw.delivery_type : undefined),
+    requestedDeliveryType:
+      typeof raw.requestedDeliveryType === "string"
+        ? raw.requestedDeliveryType
+        : (typeof raw.requested_delivery_type === "string" ? raw.requested_delivery_type : undefined),
+    activeDeliveryType:
+      typeof raw.activeDeliveryType === "string"
+        ? raw.activeDeliveryType
+        : (typeof raw.active_delivery_type === "string" ? raw.active_delivery_type : undefined),
+    sellerDecisionState:
+      typeof raw.sellerDecisionState === "string"
+        ? raw.sellerDecisionState
+        : (typeof raw.seller_decision_state === "string" ? raw.seller_decision_state : undefined),
     totalPrice: Number(raw.totalPrice ?? raw.total_price ?? 0),
     createdAt: typeof raw.createdAt === "string" ? raw.createdAt : (typeof raw.created_at === "string" ? raw.created_at : undefined),
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : (typeof raw.updated_at === "string" ? raw.updated_at : undefined),
@@ -830,6 +848,8 @@ export default function SellerHomeScreen({
               const isDoorStep = normalizedStatus === "at_door";
               const isNewOrder = (newOrderUntilById[item.id] ?? 0) > clockMs;
               const isLastInSection = index === section.data.length - 1;
+              const buyerRequestedDelivery = item.requestedDeliveryType === "delivery" && item.activeDeliveryType !== "delivery";
+              const shouldOpenDecisionScreen = buyerRequestedDelivery && item.status === "pending_seller_approval";
               return (
                 <View style={[styles.orderCard, isLastInSection && styles.orderCardLast]}>
                   {isDoorStep ? (
@@ -889,6 +909,12 @@ export default function SellerHomeScreen({
                         {showSmallThumb ? <Text style={styles.orderThumbSmall}>👍</Text> : null}
                       </View>
                     </View>
+                    {buyerRequestedDelivery ? (
+                      <View style={styles.deliveryRequestInlineBanner}>
+                        <Text style={styles.deliveryRequestInlineTitle}>{t('helper.seller.orderDetail.deliveryRequestTitle')}</Text>
+                        <Text style={styles.deliveryRequestInlineText}>{t('helper.seller.home.deliveryRequestHint')}</Text>
+                      </View>
+                    ) : null}
                   </TouchableOpacity>
                   {resolvedTone ? (
                     <View style={styles.cardActionRow}>
@@ -940,7 +966,9 @@ export default function SellerHomeScreen({
                         ]}
                         disabled={isUpdating || (!canRunAction && !isDoorStep)}
                         onPress={() => {
-                          if (action) {
+                          if (shouldOpenDecisionScreen) {
+                            onOpenOrder(item.id);
+                          } else if (action) {
                             void runCardAction(item.id, action);
                           } else if (isDoorStep) {
                             onOpenOrder(item.id);
@@ -948,7 +976,13 @@ export default function SellerHomeScreen({
                         }}
                       >
                         <Text style={styles.cardActionBtnText}>
-                          {isUpdating ? t('status.seller.home.processing') : isDoorStep && !action ? t('cta.seller.home.verifyPin') : (action?.label ?? statusText)}
+                          {isUpdating
+                            ? t('status.seller.home.processing')
+                            : shouldOpenDecisionScreen
+                              ? t('cta.seller.home.reviewDeliveryRequest')
+                              : isDoorStep && !action
+                                ? t('cta.seller.home.verifyPin')
+                                : (action?.label ?? statusText)}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -1215,6 +1249,17 @@ const styles = StyleSheet.create({
   orderBuyerFlowMeta: { color: "#0F766E", fontSize: 12, fontWeight: "800", marginTop: 4 },
   orderMeta: { color: "#6C6055", marginTop: 3 },
   orderElapsedText: { color: "#7A6C5E", fontSize: 12, fontWeight: "700" },
+  deliveryRequestInlineBanner: {
+    marginTop: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#CFE4D5",
+    backgroundColor: "#F3FAF5",
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+  },
+  deliveryRequestInlineTitle: { color: "#2F6F4A", fontWeight: "800" },
+  deliveryRequestInlineText: { color: "#456957", marginTop: 2, lineHeight: 18 },
   newBadge: {
     borderRadius: 999,
     backgroundColor: "#157347",

@@ -24,6 +24,9 @@ type SellerOrder = {
   primaryFoodName?: string | null;
   itemCount?: number | null;
   status: string;
+  deliveryType?: "pickup" | "delivery" | string;
+  requestedDeliveryType?: "pickup" | "delivery" | string;
+  activeDeliveryType?: "pickup" | "delivery" | string;
   totalPrice: number;
   createdAt?: string;
   updatedAt?: string;
@@ -43,6 +46,15 @@ function normalizeSellerOrder(raw: Record<string, unknown>): SellerOrder {
     primaryFoodName: typeof raw.primaryFoodName === "string" ? raw.primaryFoodName : (typeof raw.primary_food_name === "string" ? raw.primary_food_name : null),
     itemCount: Number(raw.itemCount ?? raw.item_count ?? 0),
     status: String(raw.status ?? ""),
+    deliveryType: typeof raw.deliveryType === "string" ? raw.deliveryType : (typeof raw.delivery_type === "string" ? raw.delivery_type : undefined),
+    requestedDeliveryType:
+      typeof raw.requestedDeliveryType === "string"
+        ? raw.requestedDeliveryType
+        : (typeof raw.requested_delivery_type === "string" ? raw.requested_delivery_type : undefined),
+    activeDeliveryType:
+      typeof raw.activeDeliveryType === "string"
+        ? raw.activeDeliveryType
+        : (typeof raw.active_delivery_type === "string" ? raw.active_delivery_type : undefined),
     totalPrice: Number(raw.totalPrice ?? raw.total_price ?? 0),
     createdAt: typeof raw.createdAt === "string" ? raw.createdAt : (typeof raw.created_at === "string" ? raw.created_at : undefined),
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : (typeof raw.updated_at === "string" ? raw.updated_at : undefined),
@@ -278,6 +290,12 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
                   {(item.updatedAt || item.createdAt) ? (
                     <Text style={styles.meta}>{formatOrderDate(item.updatedAt ?? item.createdAt)}</Text>
                   ) : null}
+                  {item.requestedDeliveryType === "delivery" && item.activeDeliveryType !== "delivery" ? (
+                    <View style={styles.deliveryRequestBanner}>
+                      <Text style={styles.deliveryRequestTitle}>{t('helper.seller.orderDetail.deliveryRequestTitle')}</Text>
+                      <Text style={styles.deliveryRequestText}>{t('helper.seller.home.deliveryRequestHint')}</Text>
+                    </View>
+                  ) : null}
                   <Text style={styles.total}>{Number(item.totalPrice ?? 0).toFixed(2)} TL</Text>
                 </TouchableOpacity>
               )}
@@ -320,6 +338,17 @@ const styles = StyleSheet.create({
   orderNo: { color: "#6C6055", fontWeight: "800", fontSize: 13 },
   foodName: { color: "#2E241C", fontWeight: "700", fontSize: 14, flex: 1, marginRight: 8 },
   meta: { color: "#6C6055", marginTop: 3 },
+  deliveryRequestBanner: {
+    marginTop: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#CFE4D5",
+    backgroundColor: "#F3FAF5",
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+  },
+  deliveryRequestTitle: { color: "#2F6F4A", fontWeight: "800" },
+  deliveryRequestText: { color: "#456957", marginTop: 2, lineHeight: 18 },
   total: { marginTop: 8, color: "#2E241C", fontWeight: "800" },
   emptyWrap: {
     marginHorizontal: 14,
