@@ -386,12 +386,6 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     }
   }, [shouldCheckPinBeforeComplete]);
 
-  function ensureDecisionNoteVisible() {
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 140);
-  }
-
   async function submitSellerDecision(decision: "approve" | "revise" | "reject") {
     if (!order) return;
     setUpdating(true);
@@ -522,7 +516,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior="height"
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScreenHeader title={t("headline.seller.orderDetail.title")} onBack={onBack} />
       <ScrollView
@@ -532,8 +526,9 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           styles.content,
           shouldCheckPinBeforeComplete ? styles.contentWithPinCheck : null,
         ]}
-        keyboardShouldPersistTaps="always"
+        keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
       >
       {loading || !order ? (
         <ActivityIndicator size="large" color={theme.primary} />
@@ -633,7 +628,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 style={[styles.pinInput, styles.noteInput]}
                 value={decisionNote}
                 onChangeText={setDecisionNote}
-                onFocus={ensureDecisionNoteVisible}
+
                 multiline
                 placeholder={buyerRequestedDelivery
                   ? (decisionDeliveryType === "delivery"
@@ -650,7 +645,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 style={[styles.pinInput, styles.noteInput]}
                 value={decisionReason}
                 onChangeText={setDecisionReason}
-                onFocus={ensureDecisionNoteVisible}
+
                 multiline
                 placeholder={t("helper.seller.orderDetail.cancelReasonPlaceholder")}
                 placeholderTextColor="#9C8E81"
@@ -722,7 +717,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 style={[styles.pinInput, styles.noteInput]}
                 value={decisionNote}
                 onChangeText={setDecisionNote}
-                onFocus={ensureDecisionNoteVisible}
+
                 multiline
                 placeholder={decisionDeliveryType === "delivery"
                   ? t("helper.seller.orderDetail.noteDecisionDeliveryPlaceholder")
