@@ -678,6 +678,109 @@ class OrderCancelView(APIView):
         return Response({"data": {"orderId": order_id_str, "status": "cancelled"}})
 
 
+class BuyerDeliveryRequestView(APIView):
+    """POST /v1/orders/:order_id/buyer-delivery-request"""
+
+    def post(self, request, order_id):
+        user, err = _check_app_auth(request)
+        if err:
+            return err
+
+        requested_delivery_type = request.data.get("requestedDeliveryType")
+        if requested_delivery_type != "delivery":
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "requestedDeliveryType must be delivery"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user_id = str(user.id)
+        order_id_str = str(order_id)
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, status, buyer_id, seller_id, requested_delivery_type, active_delivery_type
+                FROM orders
+                WHERE id = %s
+                """,
+                [order_id_str],
+            )
+            order = _dictfetchone(cursor)
+
+        if order is None:
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if str(order["buyer_id"]) != user_id:
+            return Response(
+                {"error": {"code": "FORBIDDEN", "message": "Only the buyer can request delivery"}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        current_status = str(order["status"] or "")
+        if current_status != "pending_seller_approval":
+            return Response(
+                {"error": {"code": "INVALID_STATE", "message": "Delivery can only be requested while seller approval is pending"}},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        if str(order.get("active_delivery_type") or "") == "delivery":
+            return Response({"data": {"orderId": order_id_str, "requestedDeliveryType": "delivery", "activeDeliveryType": "delivery"}})
+
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE orders
+                    SET requested_delivery_type = 'delivery',
+                        updated_at = now()
+                    WHERE id = %s
+                    RETURNING requested_delivery_type, active_delivery_type
+                    """,
+                    [order_id_str],
+                )
+                updated = cursor.fetchone()
+
+                cursor.execute(
+                    """
+                    INSERT INTO order_events (id, order_id, event_type, actor_user_id, payload_json)
+                    VALUES (%s, %s, 'buyer_delivery_requested', %s, %s)
+                    """,
+                    [
+                        str(uuid.uuid4()),
+                        order_id_str,
+                        user_id,
+                        _json_dumps({"requestedDeliveryType": "delivery"}),
+                    ],
+                )
+
+                _create_notification(
+                    cursor,
+                    str(order["seller_id"]),
+                    "buyer_delivery_requested",
+                    "Alıcı teslimat istedi",
+                    "Bu sipariş için alıcı gel al yerine teslimat talebi bıraktı.",
+                    {
+                        "orderId": order_id_str,
+                        "buyerId": user_id,
+                        "sellerId": str(order["seller_id"]),
+                        "requestedDeliveryType": "delivery",
+                    },
+                )
+
+        return Response(
+            {
+                "data": {
+                    "orderId": order_id_str,
+                    "requestedDeliveryType": str(updated[0] or "delivery"),
+                    "activeDeliveryType": str(updated[1] or "pickup"),
+                }
+            }
+        )
+
+
 class OrderReviewView(APIView):
     """POST /v1/orders/:order_id/review"""
 
