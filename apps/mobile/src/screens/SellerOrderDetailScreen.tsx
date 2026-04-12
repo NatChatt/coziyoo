@@ -522,7 +522,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior="height"
     >
       <ScreenHeader title={t("headline.seller.orderDetail.title")} onBack={onBack} />
       <ScrollView
