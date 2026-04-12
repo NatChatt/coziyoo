@@ -156,6 +156,7 @@ async function openAddressInMapsWithCoordinates(
 
 function normalizeFlowStatus(status: string): string {
   if (status === "completed") return "delivered";
+  if (status === "pending_buyer_confirmation") return "pending_buyer_confirmation";
   return status;
 }
 
@@ -310,6 +311,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     return getNextAction(order.status, order.deliveryType);
   }, [order?.status, order?.deliveryType]);
   const isDecisionStage = Boolean(order && normalizeFlowStatus(order.status) === "pending_seller_approval");
+  const isPendingBuyerConfirmation = Boolean(order && normalizeFlowStatus(order.status) === "pending_buyer_confirmation");
   const actionColors = action ? actionTone(action.toStatus) : null;
   const shouldCheckPinBeforeComplete = useMemo(
     () =>
@@ -376,7 +378,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     [order]
   );
   const canResolveApprovedDeliveryRequest = Boolean(order && order.status === "seller_approved" && buyerRequestedDelivery);
-  const hasStickyActionBar = Boolean(action || isDecisionStage || canResolveApprovedDeliveryRequest);
+  const hasStickyActionBar = Boolean(action || (isDecisionStage && !isPendingBuyerConfirmation) || canResolveApprovedDeliveryRequest);
   const showStickyActionBar = hasStickyActionBar;
 
   useEffect(() => {
@@ -673,6 +675,15 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               </View>
             </View>
           ) : null}
+          {isPendingBuyerConfirmation ? (
+            <View style={styles.pendingBuyerCard}>
+              <Text style={styles.pendingBuyerTitle}>{t('status.seller.orderDetail.pendingBuyerConfirmation')}</Text>
+              <Text style={styles.pendingBuyerBody}>{t('helper.seller.orderDetail.pendingBuyerConfirmationBody')}</Text>
+              {order.sellerDeliveryNote ? (
+                <Text style={styles.pendingBuyerNote}>{order.sellerDeliveryNote}</Text>
+              ) : null}
+            </View>
+          ) : null}
           {canResolveApprovedDeliveryRequest ? (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.deliveryRequestDecision")}</Text>
@@ -787,7 +798,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       )}
       </ScrollView>
 
-      {showStickyActionBar && isDecisionStage ? (
+      {showStickyActionBar && isDecisionStage && !isPendingBuyerConfirmation ? (
         <View style={styles.stickyActionBar}>
           <TouchableOpacity
             style={[styles.actionBtn, updating && styles.actionDisabled]}
@@ -1028,4 +1039,14 @@ const styles = StyleSheet.create({
   pinModalConfirmBtn: { backgroundColor: "#3F855C", borderColor: "#3F855C" },
   pinModalCancelText: { color: "#5B4F43", fontWeight: "700" },
   pinModalConfirmText: { color: "#fff", fontWeight: "700" },
+  pendingBuyerCard: {
+    backgroundColor: "#F3FAF5",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#CFE4D5",
+    padding: 12,
+  },
+  pendingBuyerTitle: { color: "#1F6F43", fontWeight: "800", marginBottom: 4 },
+  pendingBuyerBody: { color: "#3D6B4F", lineHeight: 18 },
+  pendingBuyerNote: { marginTop: 6, color: "#456957", lineHeight: 18 },
 });

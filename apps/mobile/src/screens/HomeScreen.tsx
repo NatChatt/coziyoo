@@ -501,6 +501,7 @@ type HomeOrderSummary = {
 
 const HOME_ACTIONABLE_ORDER_STATUSES = new Set([
   'pending_seller_approval',
+  'pending_buyer_confirmation',
   'seller_approved',
   'awaiting_payment',
   'paid',
@@ -511,6 +512,7 @@ const HOME_ACTIONABLE_ORDER_STATUSES = new Set([
 function formatOrderStatusLabel(status: string): string {
   const normalized = status.trim().toLowerCase();
   if (!normalized) return '-';
+  if (normalized === 'pending_buyer_confirmation') return t('status.home.orderStatus.pending_buyer_confirmation');
   if (normalized === 'pending_seller_approval') return t('status.home.orderStatus.pending_seller_approval');
   if (normalized === 'seller_approved') return t('status.home.orderStatus.seller_approved');
   if (normalized === 'awaiting_payment') return t('status.home.orderStatus.awaiting_payment');
@@ -579,7 +581,7 @@ function summarizeHomeOrderItems(items: HomeOrderSummary['items']): string {
 
 function latestHomeOrderHint(status: string): string {
   const normalized = status.trim().toLowerCase();
-  if (normalized === 'pending_seller_approval' || normalized === 'seller_approved' || normalized === 'awaiting_payment' || normalized === 'paid') {
+  if (normalized === 'pending_seller_approval' || normalized === 'pending_buyer_confirmation' || normalized === 'seller_approved' || normalized === 'awaiting_payment' || normalized === 'paid') {
     return t('helper.orders.quickPendingSubtitle');
   }
   return t('helper.orders.quickPreparingSubtitle');

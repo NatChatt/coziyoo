@@ -10,4 +10,5 @@ urlpatterns = [
     path("<uuid:order_id>/cancel", views.OrderCancelView.as_view()),
     path("<uuid:order_id>/review", views.OrderReviewView.as_view()),
     path("<uuid:order_id>/seller-decision", views.SellerDecisionView.as_view()),
+    path("<uuid:order_id>/buyer-confirm-terms", views.BuyerConfirmTermsView.as_view()),
 ]

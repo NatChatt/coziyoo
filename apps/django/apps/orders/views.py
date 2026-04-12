@@ -12,7 +12,8 @@ from rest_framework import status
 
 TRANSITIONS = {
     "pending":     ["preparing", "cancelled", "rejected"],
-    "pending_seller_approval": ["seller_approved", "cancelled", "rejected"],
+    "pending_seller_approval": ["seller_approved", "pending_buyer_confirmation", "cancelled", "rejected"],
+    "pending_buyer_confirmation": ["seller_approved", "awaiting_payment", "cancelled"],
     "seller_approved": ["awaiting_payment", "paid", "preparing", "cancelled"],
     "awaiting_payment": ["paid", "cancelled"],
     "paid": ["preparing", "cancelled"],
@@ -1044,7 +1045,7 @@ class SellerDecisionView(APIView):
     DECISION_STATUS_MAP = {
         "approved": "seller_approved",
         "rejected": "rejected",
-        "revised": "pending_seller_approval",
+        "revised": "pending_buyer_confirmation",
     }
 
     def post(self, request, order_id):
@@ -1093,7 +1094,7 @@ class SellerDecisionView(APIView):
         current_status = order["status"]
         new_status = self.DECISION_STATUS_MAP[decision]
 
-        if decision == "revised" and current_status not in ("pending", "pending_seller_approval"):
+        if decision == "revised" and current_status not in ("pending", "pending_seller_approval", "pending_buyer_confirmation"):
             return Response(
                 {
                     "error": {
@@ -1195,3 +1196,83 @@ class SellerDecisionView(APIView):
                 }
             }
         )
+
+
+class BuyerConfirmTermsView(APIView):
+    """POST /v1/orders/:order_id/buyer-confirm-terms"""
+
+    def post(self, request, order_id):
+        user, err = _check_app_auth(request)
+        if err:
+            return err
+
+        confirm = request.data.get("confirm")
+        if confirm is None:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "confirm field is required (true or false)"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user_id = str(user.id)
+        order_id_str = str(order_id)
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, status, buyer_id FROM orders WHERE id = %s",
+                [order_id_str],
+            )
+            order = _dictfetchone(cursor)
+
+        if order is None:
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Sipariş bulunamadı."}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if str(order["buyer_id"]) != user_id:
+            return Response(
+                {"error": {"code": "FORBIDDEN", "message": "Only the buyer can confirm terms"}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if order["status"] != "pending_buyer_confirmation":
+            return Response(
+                {"error": {"code": "INVALID_STATE", "message": "Bu sipariş onay beklemiyor."}},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        if confirm:
+            new_status = "seller_approved"
+            event_type = "buyer_confirmed_terms"
+        else:
+            new_status = "cancelled"
+            event_type = "buyer_declined_terms"
+
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE orders
+                    SET status = %s,
+                        updated_at = now()
+                    WHERE id = %s
+                    """,
+                    [new_status, order_id_str],
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO order_events (id, order_id, event_type, actor_user_id, from_status, to_status, payload_json)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        str(uuid.uuid4()),
+                        order_id_str,
+                        event_type,
+                        user_id,
+                        "pending_buyer_confirmation",
+                        new_status,
+                        _json_dumps({"confirm": bool(confirm)}),
+                    ],
+                )
+
+        return Response({"data": {"orderId": order_id_str, "status": new_status}})

@@ -155,7 +155,7 @@ type Props = {
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
-const CANCELLABLE = ['pending_seller_approval', 'seller_approved', 'awaiting_payment', 'paid'];
+const CANCELLABLE = ['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid'];
 const COMPLETABLE = ['delivered'];
 const DELIVERY_FLOW_STEPS = ['preparing', 'in_delivery', 'approaching', 'at_door', 'delivered'] as const;
 const PICKUP_FLOW_STEPS = ['preparing', 'ready'] as const;
@@ -172,14 +172,14 @@ function normalizeBuyerFlowStatus(
 ): BuyerFlowStep | 'cancelled' | 'rejected' {
   const normalized = String(status ?? '').trim().toLowerCase();
   if (deliveryType === 'pickup') {
-    if (['pending_seller_approval', 'seller_approved', 'awaiting_payment', 'paid', 'preparing'].includes(normalized)) return 'preparing';
+    if (['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid', 'preparing'].includes(normalized)) return 'preparing';
     if (['ready', 'in_delivery', 'approaching', 'at_door', 'delivered', 'completed'].includes(normalized)) return 'ready';
     if (normalized === 'cancelled') return 'cancelled';
     if (normalized === 'rejected') return 'rejected';
     return 'preparing';
   }
 
-  if (['pending_seller_approval', 'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready'].includes(normalized)) return 'preparing';
+  if (['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready'].includes(normalized)) return 'preparing';
   if (normalized === 'in_delivery') return 'in_delivery';
   if (normalized === 'approaching') return 'approaching';
   if (normalized === 'at_door') return 'at_door';
@@ -247,6 +247,7 @@ export default function OrderDetailScreen({
   const [loading, setLoading] = useState(() => !ORDER_DETAIL_CACHE.has(orderId));
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [cancelModal, setCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -430,6 +431,33 @@ export default function OrderDetailScreen({
       return;
     }
     Alert.alert(t('headline.common.error'), result.message ?? t('error.orderDetail.statusUpdate'));
+  }
+
+  async function confirmTerms(confirm: boolean) {
+    if (!order) return;
+    setUpdating(true);
+    try {
+      const result = await apiRequest(
+        `/v1/orders/${order.id}/buyer-confirm-terms`,
+        currentAuth,
+        { method: 'POST', body: { confirm }, actorRole: 'buyer' },
+        handleAuthRefresh,
+      );
+      if (!result.ok) throw new Error(result.message ?? t('error.orderDetail.confirmTermsFailed'));
+
+      if (confirm) {
+        Alert.alert(t('headline.common.success'), t('status.orderDetail.proposalAccepted'));
+        void fetchOrder({ silent: true });
+        if (onOpenPayment) onOpenPayment(order.id);
+      } else {
+        Alert.alert(t('headline.common.success'), t('status.orderDetail.proposalDeclined'));
+        void fetchOrder({ silent: true });
+      }
+    } catch (e) {
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.orderDetail.confirmTermsFailed'));
+    } finally {
+      setUpdating(false);
+    }
   }
 
   function formatEventDate(iso: string): string {
@@ -646,6 +674,48 @@ export default function OrderDetailScreen({
           </View>
         ) : null}
 
+        {/* Seller Proposal (pending_buyer_confirmation) */}
+        {order.status === 'pending_buyer_confirmation' ? (
+          <View style={styles.proposalCard}>
+            <Text style={styles.proposalTitle}>{t('headline.orderDetail.sellerProposal')}</Text>
+            <Text style={styles.proposalBody}>{t('helper.orderDetail.sellerProposalBody')}</Text>
+            {order.sellerDeliveryNote ? (
+              <>
+                <Text style={styles.proposalLabel}>{t('label.orderDetail.sellerNote')}</Text>
+                <Text style={styles.proposalValue}>{order.sellerDeliveryNote}</Text>
+              </>
+            ) : null}
+            {order.sellerEtaMinutes ? (
+              <>
+                <Text style={styles.proposalLabel}>{t('label.orderDetail.sellerEta')}</Text>
+                <Text style={styles.proposalValue}>{order.sellerEtaMinutes} dk</Text>
+              </>
+            ) : null}
+            {order.activeDeliveryType ? (
+              <>
+                <Text style={styles.proposalLabel}>{t('label.orderDetail.sellerDeliveryType')}</Text>
+                <Text style={styles.proposalValue}>{order.activeDeliveryType === 'delivery' ? 'Teslimat' : 'Gel Al'}</Text>
+              </>
+            ) : null}
+            <View style={styles.proposalActions}>
+              <TouchableOpacity
+                style={[styles.proposalAcceptBtn, updating && styles.proposalActionDisabled]}
+                disabled={updating}
+                onPress={() => void confirmTerms(true)}
+              >
+                <Text style={styles.proposalAcceptText}>{t('cta.orderDetail.acceptProposal')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.proposalDeclineBtn, updating && styles.proposalActionDisabled]}
+                disabled={updating}
+                onPress={() => void confirmTerms(false)}
+              >
+                <Text style={styles.proposalDeclineText}>{t('cta.orderDetail.declineProposal')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+
         {/* Timeline */}
         <View style={styles.section}>
           <SectionDivider icon="time-outline" label="Sipariş Durumu" />
@@ -855,4 +925,38 @@ const styles = StyleSheet.create({
   cancelTitle: { color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 6 },
   cancelSubtitle: { color: '#71685F', fontSize: 14, marginBottom: 16 },
   cancelActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 8 },
+  proposalCard: {
+    marginBottom: 18,
+    backgroundColor: '#F3FAF5',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#CFE4D5',
+    padding: 16,
+  },
+  proposalTitle: { color: '#1F6F43', fontSize: 16, fontWeight: '800', marginBottom: 6 },
+  proposalBody: { color: '#3D6B4F', fontSize: 14, lineHeight: 20, marginBottom: 12 },
+  proposalLabel: { color: '#5B7A65', fontSize: 12.5, fontWeight: '700', marginTop: 8, textTransform: 'uppercase', letterSpacing: 0.4 },
+  proposalValue: { color: theme.text, fontSize: 15, fontWeight: '600', marginTop: 2 },
+  proposalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  proposalAcceptBtn: {
+    flex: 1,
+    backgroundColor: '#3F855C',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#3F855C',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  proposalAcceptText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  proposalDeclineBtn: {
+    flex: 1,
+    backgroundColor: '#F7F4EF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5DDCF',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  proposalDeclineText: { color: '#71685F', fontSize: 15, fontWeight: '700' },
+  proposalActionDisabled: { opacity: 0.45 },
 });
