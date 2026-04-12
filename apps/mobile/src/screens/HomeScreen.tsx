@@ -2920,7 +2920,7 @@ export default function HomeScreen({
         const timeoutId = setTimeout(() => controller.abort(), CHECKOUT_REQUEST_TIMEOUT_MS);
         let orderRes: Response;
         try {
-          orderRes = await authedJsonFetch(`${effectiveApiUrl}/v1/orders`, {
+          orderRes = await authedJsonFetch(`${effectiveApiUrl}/v1/orders/`, {
             method: 'POST',
             headers: {
               'x-actor-role': 'buyer',
