@@ -426,7 +426,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     [order]
   );
   const canResolveApprovedDeliveryRequest = Boolean(order && order.status === "seller_approved" && buyerRequestedDelivery);
-  const hasStickyActionBar = Boolean(action || (isDecisionStage && !isPendingBuyerConfirmation) || canResolveApprovedDeliveryRequest);
+  const hasStickyActionBar = Boolean(action || canResolveApprovedDeliveryRequest);
   const showStickyActionBar = hasStickyActionBar;
 
   useEffect(() => {
@@ -721,6 +721,22 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                style={[styles.approveInlineBtn, updating && styles.actionDisabled]}
+                disabled={updating}
+                onPress={() => { void submitSellerDecision("approve"); }}
+              >
+                <Text style={styles.approveInlineText}>
+                  {updating
+                    ? t("status.seller.orderDetail.processing")
+                    : buyerRequestedDelivery
+                      ? (decisionDeliveryType === "delivery"
+                        ? t('cta.seller.orderDetail.approveDelivery')
+                        : t('cta.seller.orderDetail.approvePickup'))
+                      : t("cta.seller.orderDetail.approveAndCapture")}
+                </Text>
+              </TouchableOpacity>
             </View>
           ) : null}
           {isPendingBuyerConfirmation ? (
@@ -903,25 +919,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       )}
       </ScrollView>
 
-      {showStickyActionBar && isDecisionStage && !isPendingBuyerConfirmation ? (
-        <View style={styles.stickyActionBar}>
-          <TouchableOpacity
-            style={[styles.actionBtn, updating && styles.actionDisabled]}
-            disabled={updating}
-            onPress={() => { void submitSellerDecision("approve"); }}
-          >
-            <Text style={styles.actionText}>
-              {updating
-                ? t("status.seller.orderDetail.processing")
-                : buyerRequestedDelivery
-                  ? (decisionDeliveryType === "delivery"
-                    ? t('cta.seller.orderDetail.approveDelivery')
-                    : t('cta.seller.orderDetail.approvePickup'))
-                  : t("cta.seller.orderDetail.approveAndCapture")}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : showStickyActionBar && canResolveApprovedDeliveryRequest ? (
+      {showStickyActionBar && canResolveApprovedDeliveryRequest ? (
         <View style={styles.stickyActionBar}>
           <TouchableOpacity
             style={[styles.actionBtn, updating && styles.actionDisabled]}
@@ -1077,6 +1075,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   rejectActionText: { color: "#A1261A", fontWeight: "700" },
+  approveInlineBtn: {
+    marginTop: 10,
+    backgroundColor: "#3F855C",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#2f6b48",
+    paddingVertical: 13,
+    alignItems: "center" as const,
+  },
+  approveInlineText: { color: "#fff", fontWeight: "700" as const, fontSize: 15 },
   productsTotalRow: {
     marginTop: 10,
     paddingTop: 10,
