@@ -371,10 +371,11 @@ class OrderListCreateView(APIView):
                 for item in normalized_items:
                     cursor.execute(
                         """
-                        INSERT INTO order_items (order_id, lot_id, food_id, quantity, unit_price, line_total, selected_addons_json)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO order_items (id, order_id, lot_id, food_id, quantity, unit_price, line_total, selected_addons_json)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         [
+                            str(uuid.uuid4()),
                             order_id,
                             item["lotId"],
                             item["foodId"],
