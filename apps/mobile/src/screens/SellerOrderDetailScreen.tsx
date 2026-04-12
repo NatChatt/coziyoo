@@ -603,16 +603,22 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               />
 
               <Text style={styles.inlineFieldLabel}>
-                {decisionDeliveryType === "delivery" ? t("label.seller.orderDetail.noteDelivery") : t("label.seller.orderDetail.notePickup")}
+                {buyerRequestedDelivery
+                  ? t("label.seller.orderDetail.noteDecision")
+                  : (decisionDeliveryType === "delivery" ? t("label.seller.orderDetail.noteDelivery") : t("label.seller.orderDetail.notePickup"))}
               </Text>
               <TextInput
                 style={[styles.pinInput, styles.noteInput]}
                 value={decisionNote}
                 onChangeText={setDecisionNote}
                 multiline
-                placeholder={decisionDeliveryType === "delivery"
-                  ? t("helper.seller.orderDetail.noteDeliveryPlaceholder")
-                  : t("helper.seller.orderDetail.notePickupPlaceholder")}
+                placeholder={buyerRequestedDelivery
+                  ? (decisionDeliveryType === "delivery"
+                    ? t("helper.seller.orderDetail.noteDecisionDeliveryPlaceholder")
+                    : t("helper.seller.orderDetail.noteDecisionPickupPlaceholder"))
+                  : (decisionDeliveryType === "delivery"
+                    ? t("helper.seller.orderDetail.noteDeliveryPlaceholder")
+                    : t("helper.seller.orderDetail.notePickupPlaceholder"))}
                 placeholderTextColor="#9C8E81"
               />
 
@@ -632,14 +638,18 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                   disabled={updating}
                   onPress={() => { void submitSellerDecision("revise"); }}
                 >
-                  <Text style={styles.secondaryActionText}>{t("cta.seller.orderDetail.revise")}</Text>
+                  <Text style={styles.secondaryActionText}>
+                    {buyerRequestedDelivery ? t("cta.seller.orderDetail.sendExplanation") : t("cta.seller.orderDetail.revise")}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.rejectActionBtn, updating && styles.actionDisabled]}
                   disabled={updating}
                   onPress={() => { void submitSellerDecision("reject"); }}
                 >
-                  <Text style={styles.rejectActionText}>{t("cta.seller.orderDetail.reject")}</Text>
+                  <Text style={styles.rejectActionText}>
+                    {buyerRequestedDelivery ? t("cta.seller.orderDetail.rejectOrderRequest") : t("cta.seller.orderDetail.reject")}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>

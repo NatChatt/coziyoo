@@ -22,6 +22,7 @@ type NotificationItem = {
 
 const TYPE_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string }> = {
   delivery_pin: { icon: 'key-outline', color: '#6B4FA2', bg: '#EDE8F5' },
+  buyer_delivery_requested: { icon: 'car-outline', color: '#2F6F4A', bg: '#E7F5EA' },
   order_update: { icon: 'receipt-outline', color: '#5D7394', bg: '#E8EDF3' },
   order_received: { icon: 'receipt-outline', color: '#5D7394', bg: '#E8EDF3' },
   order_preparing: { icon: 'restaurant-outline', color: '#B7791F', bg: '#FEF3C7' },
@@ -110,6 +111,8 @@ export default function NotificationsScreen({ auth, onBack, onOpenOrderDetail, o
 
   function renderItem({ item }: { item: NotificationItem }) {
     const typeInfo = TYPE_ICONS[item.type] ?? { icon: 'notifications-outline' as const, color: '#71685F', bg: '#F0ECE6' };
+    const orderId = extractOrderId(item.dataJson);
+    const hasOrderAction = Boolean(orderId && onOpenOrderDetail);
 
     return (
       <TouchableOpacity
@@ -123,6 +126,15 @@ export default function NotificationsScreen({ auth, onBack, onOpenOrderDetail, o
         <View style={styles.notifBody}>
           <Text style={styles.notifTitle} numberOfLines={1}>{item.title}</Text>
           <Text style={styles.notifText} numberOfLines={2}>{item.body}</Text>
+          {hasOrderAction ? (
+            <View style={styles.notifActionRow}>
+              <Text style={styles.notifActionText}>
+                {item.type === 'buyer_delivery_requested'
+                  ? t('cta.notifications.openDeliveryRequest')
+                  : t('cta.notifications.openOrder')}
+              </Text>
+            </View>
+          ) : null}
           <Text style={styles.notifTime}>{formatTime(item.createdAt)}</Text>
         </View>
         {!item.isRead && <View style={styles.unreadDot} />}
@@ -187,6 +199,17 @@ const styles = StyleSheet.create({
   notifBody: { flex: 1 },
   notifTitle: { color: theme.text, fontSize: 14, fontWeight: '700' },
   notifText: { color: '#71685F', fontSize: 13, marginTop: 2, lineHeight: 19 },
+  notifActionRow: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#BFD9C6',
+    backgroundColor: '#F3FAF5',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  notifActionText: { color: '#2F6F4A', fontSize: 12, fontWeight: '800' },
   notifTime: { color: '#9B8E80', fontSize: 11, marginTop: 6 },
   unreadDot: {
     width: 8,
