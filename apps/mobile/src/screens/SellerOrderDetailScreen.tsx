@@ -527,7 +527,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           shouldCheckPinBeforeComplete ? styles.contentWithPinCheck : null,
         ]}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
       >
