@@ -394,6 +394,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   );
   const canResolveApprovedDeliveryRequest = Boolean(order && order.status === "seller_approved" && buyerRequestedDelivery);
   const hasStickyActionBar = Boolean(action || isDecisionStage || canResolveApprovedDeliveryRequest);
+  const showStickyActionBar = hasStickyActionBar && keyboardInset <= 0;
 
   useEffect(() => {
     if (!shouldCheckPinBeforeComplete) {
@@ -542,15 +543,13 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
         ref={scrollRef}
         contentContainerStyle={[
           styles.content,
-          hasStickyActionBar ? styles.contentWithStickyAction : null,
-          keyboardInset > 0
-            ? {
-              paddingBottom:
-                (hasStickyActionBar ? 184 : 36)
-                + keyboardInset
-                + (shouldCheckPinBeforeComplete ? 96 : 0),
-            }
-            : null,
+          showStickyActionBar ? styles.contentWithStickyAction : null,
+          {
+            paddingBottom:
+              (showStickyActionBar ? 132 : 24)
+              + (keyboardInset > 0 ? keyboardInset : 0)
+              + (shouldCheckPinBeforeComplete ? 96 : 0),
+          },
         ]}
         keyboardShouldPersistTaps="always"
         keyboardDismissMode="on-drag"
@@ -812,7 +811,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       )}
       </ScrollView>
 
-      {isDecisionStage ? (
+      {showStickyActionBar && isDecisionStage ? (
         <View style={[styles.stickyActionBar, keyboardInset > 0 ? { bottom: Math.max(0, keyboardInset - 6) } : null]}>
           <TouchableOpacity
             style={[styles.actionBtn, updating && styles.actionDisabled]}
@@ -830,7 +829,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
             </Text>
           </TouchableOpacity>
         </View>
-      ) : canResolveApprovedDeliveryRequest ? (
+      ) : showStickyActionBar && canResolveApprovedDeliveryRequest ? (
         <View style={[styles.stickyActionBar, keyboardInset > 0 ? { bottom: Math.max(0, keyboardInset - 6) } : null]}>
           <TouchableOpacity
             style={[styles.actionBtn, updating && styles.actionDisabled]}
@@ -846,7 +845,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
             </Text>
           </TouchableOpacity>
         </View>
-      ) : action ? (
+      ) : showStickyActionBar && action ? (
         <View style={[styles.stickyActionBar, keyboardInset > 0 ? { bottom: Math.max(0, keyboardInset - 6) } : null]}>
           <TouchableOpacity
             style={[
