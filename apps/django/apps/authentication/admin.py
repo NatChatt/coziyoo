@@ -592,6 +592,12 @@ class BuyerUsersAdmin(ModelAdmin):
             "tags": tags,
             "active_tab": request.GET.get("tab", "general"),
             "raw_json": json.dumps(raw_data, indent=2, default=str),
+            "tags_json": json.dumps([{"tag": t["tag"], "style": t["style"]} for t in tags]),
+            "notes_json": json.dumps([{
+                "id": n["id"], "note": n["note"],
+                "creator_name": n["creator_name"],
+                "created_at": n["created_at"].strftime("%d.%m.%Y %H:%M") if hasattr(n["created_at"], "strftime") else str(n["created_at"] or ""),
+            } for n in notes]),
             "opts": self.model._meta,
         }
         return TemplateResponse(request, "admin/authentication/buyer_detail.html", context)
@@ -599,38 +605,57 @@ class BuyerUsersAdmin(ModelAdmin):
     def buyer_add_note_view(self, request, user_id):
         if request.method != "POST":
             return JsonResponse({"error": "Method not allowed"}, status=405)
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
         note = (request.POST.get("note") or "").strip()
         if not note:
+            if is_ajax:
+                return JsonResponse({"ok": False, "message": "Not boş olamaz."}, status=400)
             messages.error(request, "Not bos olamaz.")
             return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
 
         admin_actor = _resolve_admin_actor(request)
         if not admin_actor:
+            if is_ajax:
+                return JsonResponse({"ok": False, "message": "Admin kullanıcısı eşleştirilemedi."}, status=400)
             messages.error(request, "Admin kullanicisi eslestirilemedi.")
             return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
 
+        note_id = str(uuid.uuid4())
         with connection.cursor() as cur:
             cur.execute(
                 """
                 INSERT INTO buyer_notes (id, buyer_id, admin_id, note, created_at)
                 VALUES (%s, %s, %s, %s, now())
+                RETURNING created_at
                 """,
-                [str(uuid.uuid4()), str(user_id), admin_actor["id"], note],
+                [note_id, str(user_id), admin_actor["id"], note],
             )
+            created_at = cur.fetchone()[0]
 
+        if is_ajax:
+            return JsonResponse({"ok": True, "note": {
+                "id": note_id, "note": note,
+                "creator_name": admin_actor["creator_name"],
+                "created_at": created_at.strftime("%d.%m.%Y %H:%M") if created_at else "",
+            }})
         messages.success(request, "Not eklendi.")
         return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
 
     def buyer_add_tag_view(self, request, user_id):
         if request.method != "POST":
             return JsonResponse({"error": "Method not allowed"}, status=405)
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
         tag = (request.POST.get("tag") or "").strip()
         if not tag:
+            if is_ajax:
+                return JsonResponse({"ok": False, "message": "Etiket boş olamaz."}, status=400)
             messages.error(request, "Etiket bos olamaz.")
             return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
         if len(tag) > 100:
+            if is_ajax:
+                return JsonResponse({"ok": False, "message": "Etiket en fazla 100 karakter."}, status=400)
             messages.error(request, "Etiket en fazla 100 karakter olabilir.")
             return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
 
@@ -646,6 +671,10 @@ class BuyerUsersAdmin(ModelAdmin):
             )
             row = cur.fetchone()
 
+        if is_ajax:
+            if row:
+                return JsonResponse({"ok": True, "tag": tag, "style": _tag_chip_style(tag)})
+            return JsonResponse({"ok": False, "message": "Bu etiket zaten var."}, status=409)
         if row:
             messages.success(request, "Etiket eklendi.")
         else:
@@ -655,9 +684,12 @@ class BuyerUsersAdmin(ModelAdmin):
     def buyer_delete_tag_view(self, request, user_id):
         if request.method != "POST":
             return JsonResponse({"error": "Method not allowed"}, status=405)
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
         tag = (request.POST.get("tag") or "").strip()
         if not tag:
+            if is_ajax:
+                return JsonResponse({"ok": False, "message": "Etiket bulunamadı."}, status=400)
             messages.error(request, "Silinecek etiket bulunamadi.")
             return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
 
@@ -668,6 +700,8 @@ class BuyerUsersAdmin(ModelAdmin):
             )
             deleted = cur.rowcount
 
+        if is_ajax:
+            return JsonResponse({"ok": True, "deleted": deleted > 0})
         if deleted:
             messages.success(request, "Etiket silindi.")
         else:
