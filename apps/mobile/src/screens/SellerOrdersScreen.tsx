@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Alert, AppState, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import type { AuthSession } from "../utils/auth";
 import { refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { getSellerMeCache } from "../utils/sellerProfileCache";
+import { subscribeSellerOrdersRealtime } from "../utils/realtime";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
@@ -35,6 +36,8 @@ type SellerOrder = {
 type StatusFilter = "all" | "pending_seller_approval" | "awaiting_payment" | "paid" | "preparing" | "ready" | "in_delivery" | "at_door" | "delivered" | "completed" | "cancelled";
 const BUSINESS_DAY_RESET_HOUR = 5;
 const TURKEY_TIMEZONE = "Europe/Istanbul";
+const SELLER_FAST_REFRESH_MS = 5_000;
+const SELLER_IDLE_REFRESH_MS = 20_000;
 
 function normalizeSellerOrder(raw: Record<string, unknown>): SellerOrder {
   const id = String(raw.id ?? "");
@@ -134,6 +137,7 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
   const [toDate, setToDate] = useState("");
   const [clockMs, setClockMs] = useState(() => Date.now());
   const [sellerCountryCode, setSellerCountryCode] = useState<string>(() => normalizeCountryCode(getSellerMeCache()?.countryCode ?? ""));
+  const appStateRef = useRef(AppState.currentState);
 
   useEffect(() => {
     setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
@@ -160,9 +164,12 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
     });
   }
 
-  async function loadOrders() {
-    setLoading(true);
-    setErrorText(null);
+  const loadOrders = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+    if (!silent) {
+      setLoading(true);
+      setErrorText(null);
+    }
     try {
       const settings = await loadSettings();
       const baseUrl = settings.apiUrl;
@@ -197,20 +204,41 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
     } catch (e) {
       const message = e instanceof Error ? e.message : t('error.seller.orders.load');
       setErrorText(message);
-      Alert.alert(t('headline.common.error'), message);
+      if (!silent) {
+        Alert.alert(t('headline.common.error'), message);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  }
+  }, [apiUrl, currentAuth, currentAuth.userId, onAuthRefresh]);
 
   useEffect(() => {
     void loadOrders();
-  }, []);
+  }, [loadOrders]);
 
   useEffect(() => {
     const id = setInterval(() => setClockMs(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeSellerOrdersRealtime(currentAuth.userId, () => {
+      void loadOrders({ silent: true });
+    });
+    return unsubscribe;
+  }, [currentAuth.userId, loadOrders]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      appStateRef.current = nextState;
+      if (nextState === "active") {
+        void loadOrders({ silent: true });
+      }
+    });
+    return () => sub.remove();
+  }, [loadOrders]);
 
   const filteredOrders = useMemo(() => {
     const now = new Date(clockMs);
@@ -231,6 +259,18 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
       return true;
     });
   }, [orders, statusFilter, fromDate, toDate, clockMs, sellerCountryCode]);
+  const hasUrgentSellerOrders = useMemo(() => orders.some((order) => (
+    order.status === "pending_seller_approval" ||
+    (order.requestedDeliveryType === "delivery" && order.activeDeliveryType !== "delivery")
+  )), [orders]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (appStateRef.current !== "active") return;
+      void loadOrders({ silent: true });
+    }, hasUrgentSellerOrders ? SELLER_FAST_REFRESH_MS : SELLER_IDLE_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [hasUrgentSellerOrders, loadOrders]);
 
   return (
     <View style={styles.container}>

@@ -56,6 +56,8 @@ type ActiveFood = {
 };
 const BUSINESS_DAY_RESET_HOUR = 5;
 const TURKEY_TIMEZONE = "Europe/Istanbul";
+const SELLER_FAST_REFRESH_MS = 5_000;
+const SELLER_IDLE_REFRESH_MS = 20_000;
 
 function toBool(value: unknown): boolean {
   if (typeof value === "boolean") return value;
@@ -574,17 +576,6 @@ export default function SellerHomeScreen({
     return () => sub.remove();
   }, []);
 
-  // Polling fallback: refresh less aggressively and only while the orders page is visible.
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (appStateRef.current !== "active") return;
-      if (activePage !== 0) return;
-      if (updatingOrderId) return;
-      void refreshOrdersOnlyRef.current();
-    }, 20_000);
-    return () => clearInterval(id);
-  }, [activePage, updatingOrderId]);
-
   const todayOrders = useMemo(() => {
     const now = new Date();
     const useTurkeyTime = sellerCountryCode === "TR";
@@ -602,6 +593,21 @@ export default function SellerHomeScreen({
     // Sadece tarih parse edilemeyen edge-case durumda fallback uygula.
     return datedScopedCount === 0 ? scoped : filtered;
   }, [orders, currentAuth.userId, clockMs, sellerCountryCode]);
+  const hasUrgentSellerOrders = useMemo(() => todayOrders.some((order) => (
+    order.status === "pending_seller_approval" ||
+    (order.requestedDeliveryType === "delivery" && order.activeDeliveryType !== "delivery")
+  )), [todayOrders]);
+
+  // Polling fallback: refresh more aggressively while seller action is pending.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (appStateRef.current !== "active") return;
+      if (activePage !== 0) return;
+      if (updatingOrderId) return;
+      void refreshOrdersOnlyRef.current();
+    }, hasUrgentSellerOrders ? SELLER_FAST_REFRESH_MS : SELLER_IDLE_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [activePage, updatingOrderId, hasUrgentSellerOrders]);
 
   const groupedOrders = useMemo(() => {
     const preparing: SellerOrder[] = [];
