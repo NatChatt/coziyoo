@@ -635,6 +635,7 @@ class OrderCancelView(APIView):
 
         user_id = str(user.id)
         order_id_str = str(order_id)
+        cancel_reason = str(request.data.get("reason") or "").strip()
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -688,8 +689,30 @@ class OrderCancelView(APIView):
                     INSERT INTO order_events (id, order_id, event_type, actor_user_id, payload_json)
                     VALUES (%s, %s, 'order_cancelled', %s, %s)
                     """,
-                    [str(uuid.uuid4()), order_id_str, user_id, _json_dumps({"cancelledBy": "buyer" if user_id == buyer_id else "seller"})],
+                    [
+                        str(uuid.uuid4()),
+                        order_id_str,
+                        user_id,
+                        _json_dumps({
+                            "cancelledBy": "buyer" if user_id == buyer_id else "seller",
+                            "reason": cancel_reason or None,
+                        }),
+                    ],
                 )
+                if cancel_reason:
+                    cursor.execute(
+                        """
+                        INSERT INTO order_events (id, order_id, event_type, actor_user_id, payload_json, created_at)
+                        VALUES (%s, %s, %s, %s, %s, now())
+                        """,
+                        [
+                            str(uuid.uuid4()),
+                            order_id_str,
+                            "buyer_note" if user_id == buyer_id else "seller_note",
+                            user_id,
+                            _json_dumps({"message": cancel_reason}),
+                        ],
+                    )
 
         return Response({"data": {"orderId": order_id_str, "status": "cancelled"}})
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -221,6 +221,8 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
   }, [auth.accessToken]);
 
+  type OrderNote = {id: string; senderRole: string; senderName: string; message: string; createdAt: string | null};
+
   async function authedFetch(path: string, init?: RequestInit, baseUrl = apiUrl): Promise<Response> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -244,6 +246,17 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     });
   }
 
+  const fetchNotes = useCallback(async (targetOrderId?: string, baseUrl?: string) => {
+    const resolvedOrderId = String(targetOrderId ?? order?.id ?? "").trim();
+    if (!resolvedOrderId) return;
+    const res = await authedFetch(`/v1/orders/${resolvedOrderId}/notes`, undefined, baseUrl);
+    if (!res.ok) return;
+    const json = await res.json().catch(() => ({}));
+    if (Array.isArray(json?.data)) {
+      setOrderNotes(json.data);
+    }
+  }, [order?.id, currentAuth, apiUrl]);
+
   async function loadOrder() {
     setLoading(true);
     try {
@@ -253,7 +266,9 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       const res = await authedFetch(`/v1/orders/${orderId}`, undefined, baseUrl);
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error?.message ?? t("error.seller.orderDetail.load"));
-      setOrder(normalizeOrderDetail(json?.data, orderId));
+      const normalizedOrder = normalizeOrderDetail(json?.data, orderId);
+      setOrder(normalizedOrder);
+      await fetchNotes(normalizedOrder?.id, baseUrl);
     } catch (e) {
       Alert.alert(t("headline.common.error"), e instanceof Error ? e.message : t("error.seller.orderDetail.load"));
     } finally {
@@ -265,22 +280,11 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     void loadOrder();
   }, [orderId]);
 
-  async function fetchNotes() {
-    if (!order) return;
-    const res = await authedFetch(`/v1/orders/${order.id}/notes`);
-    if (!res.ok) return;
-    const json = await res.json().catch(() => ({}));
-    if (Array.isArray(json?.data)) {
-      setOrderNotes(json.data);
-    }
-  }
-
   useEffect(() => {
     if (order?.id) {
-      void fetchNotes();
+      void fetchNotes(order.id);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.id]);
+  }, [order?.id, fetchNotes]);
 
   async function sendNote() {
     const msg = noteInput.trim();
@@ -313,7 +317,11 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     try {
       const res = await authedFetch(`/v1/orders/${orderId}`);
       const json = await res.json();
-      if (res.ok) setOrder(normalizeOrderDetail(json?.data, orderId));
+      if (res.ok) {
+        const normalizedOrder = normalizeOrderDetail(json?.data, orderId);
+        setOrder(normalizedOrder);
+        await fetchNotes(normalizedOrder?.id);
+      }
     } catch {
       // silent refresh — don't alert
     }
