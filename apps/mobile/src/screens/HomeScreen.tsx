@@ -2103,7 +2103,7 @@ export default function HomeScreen({
   const fetchRecentBuyerOrders = useCallback(async () => {
     const auth = currentAuthRef.current;
     let result = await apiRequest<HomeOrdersApiItem[]>(
-      '/v1/orders?pageSize=100&sortDir=desc&role=buyer',
+      '/v1/orders/?pageSize=100&sortDir=desc&role=buyer',
       auth,
       { actorRole: 'buyer' },
       handleAuthRefresh,
@@ -2111,7 +2111,7 @@ export default function HomeScreen({
 
     if (!result.ok) {
       result = await apiRequest<HomeOrdersApiItem[]>(
-        '/v1/orders?page=1&pageSize=100&sortDir=desc&role=buyer',
+        '/v1/orders/?page=1&pageSize=100&sortDir=desc&role=buyer',
         auth,
         { actorRole: 'buyer' },
         handleAuthRefresh,

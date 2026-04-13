@@ -175,7 +175,7 @@ export default function OrdersScreen({
     setError(null);
 
     let result = await apiRequest<ApiOrder[]>(
-      '/v1/orders?pageSize=100&sortDir=desc',
+      '/v1/orders/?pageSize=100&sortDir=desc&role=buyer',
       auth,
       { actorRole: 'buyer' },
       onAuthRefresh,
@@ -183,7 +183,7 @@ export default function OrdersScreen({
 
     if (!result.ok) {
       result = await apiRequest<ApiOrder[]>(
-        '/v1/orders?page=1&pageSize=100&sortDir=desc',
+        '/v1/orders/?page=1&pageSize=100&sortDir=desc&role=buyer',
         auth,
         { actorRole: 'buyer' },
         onAuthRefresh,
