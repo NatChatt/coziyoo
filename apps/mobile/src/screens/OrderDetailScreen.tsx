@@ -155,7 +155,8 @@ type Props = {
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
-const CANCELLABLE = ['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid'];
+const CANCELLABLE = ['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready', 'in_delivery', 'approaching', 'at_door'];
+const MESSAGEABLE = ['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready', 'in_delivery', 'approaching', 'at_door', 'delivered'];
 const COMPLETABLE = ['delivered'];
 const DELIVERY_FLOW_STEPS = ['preparing', 'in_delivery', 'approaching', 'at_door', 'delivered'] as const;
 const PICKUP_FLOW_STEPS = ['preparing', 'ready'] as const;
@@ -389,11 +390,15 @@ export default function OrderDetailScreen({
 
   async function handleCancel() {
     if (!order) return;
+    if (!cancelReason.trim()) {
+      Alert.alert(t('headline.common.error'), t('error.orderDetail.cancelReasonRequired'));
+      return;
+    }
     setActionLoading(true);
     const result = await apiRequest(
       `/v1/orders/${order.id}/cancel`,
       currentAuth,
-      { method: 'POST', body: { reason: cancelReason || undefined }, actorRole: 'buyer' },
+      { method: 'POST', body: { reason: cancelReason.trim() }, actorRole: 'buyer' },
       handleAuthRefresh,
     );
     setActionLoading(false);
@@ -560,6 +565,7 @@ export default function OrderDetailScreen({
   const pickupMapCoordinates = extractAddressCoordinates(order.sellerAddress);
 
   const canCancel = isBuyer && CANCELLABLE.includes(order.status);
+  const canSendMessages = MESSAGEABLE.includes(order.status);
   const canComplete = false;
   const canPay = false;
   const canReview = isBuyer && ['delivered', 'completed'].includes(order.status);
@@ -656,7 +662,7 @@ export default function OrderDetailScreen({
                 <TouchableOpacity
                   style={[styles.proposalDeclineBtn, updating && styles.proposalActionDisabled]}
                   disabled={updating}
-                  onPress={() => void confirmTerms(false)}
+                  onPress={() => setCancelModal(true)}
                 >
                   <Text style={styles.proposalDeclineText}>{t('cta.orderDetail.declineProposal')}</Text>
                 </TouchableOpacity>
@@ -698,11 +704,15 @@ export default function OrderDetailScreen({
                 placeholderTextColor="#9C8E81"
                 multiline
                 maxLength={500}
+                editable={canSendMessages}
               />
+              {!canSendMessages ? (
+                <Text style={styles.notesLockedHint}>{t('helper.orderDetail.cancelLocked')}</Text>
+              ) : null}
               <View style={styles.noteActions}>
                 <TouchableOpacity
-                  style={[styles.noteSendBtn, (noteSending || !noteInput.trim()) && styles.noteDisabled]}
-                  disabled={noteSending || !noteInput.trim()}
+                  style={[styles.noteSendBtn, (!canSendMessages || noteSending || !noteInput.trim()) && styles.noteDisabled]}
+                  disabled={!canSendMessages || noteSending || !noteInput.trim()}
                   onPress={() => void sendNote()}
                 >
                   <Text style={styles.noteSendText}>{t('cta.orderNotes.send')}</Text>
@@ -846,7 +856,7 @@ export default function OrderDetailScreen({
         ) : null}
 
         {/* Notes section for pending_seller_approval — still shown here for buyer to message seller */}
-        {order.status === 'pending_seller_approval' ? (
+        {order.status !== 'pending_buyer_confirmation' ? (
           <View style={styles.notesCard}>
             <Text style={styles.notesSectionTitle}>{t('headline.orderNotes.title')}</Text>
             {orderNotes.length === 0 ? (
@@ -882,11 +892,15 @@ export default function OrderDetailScreen({
               placeholderTextColor="#9C8E81"
               multiline
               maxLength={500}
+              editable={canSendMessages}
             />
+            {!canSendMessages ? (
+              <Text style={styles.notesLockedHint}>{t('helper.orderDetail.cancelLocked')}</Text>
+            ) : null}
             <View style={styles.noteActions}>
               <TouchableOpacity
-                style={[styles.noteSendBtn, (noteSending || !noteInput.trim()) && styles.noteDisabled]}
-                disabled={noteSending || !noteInput.trim()}
+                style={[styles.noteSendBtn, (!canSendMessages || noteSending || !noteInput.trim()) && styles.noteDisabled]}
+                disabled={!canSendMessages || noteSending || !noteInput.trim()}
                 onPress={() => void sendNote()}
               >
                 <Text style={styles.noteSendText}>{t('cta.orderNotes.send')}</Text>
@@ -1007,7 +1021,7 @@ export default function OrderDetailScreen({
         <Text style={styles.cancelTitle}>Siparişi İptal Et</Text>
         <Text style={styles.cancelSubtitle}>İptal etmek istediğine emin misin?</Text>
         <TextInputField
-          label="İptal sebebi (opsiyonel)"
+          label="İptal sebebi"
           value={cancelReason}
           onChangeText={setCancelReason}
           placeholder="Sebebini kısaca yaz..."
@@ -1154,4 +1168,5 @@ const styles = StyleSheet.create({
   noteApproveBtn: { flex: 1, borderRadius: 10, backgroundColor: '#3F855C', borderWidth: 1, borderColor: '#3F855C', paddingVertical: 11, alignItems: 'center' },
   noteApproveText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   noteDisabled: { opacity: 0.45 },
+  notesLockedHint: { color: '#8A7D72', fontSize: 12, marginTop: 8, lineHeight: 18 },
 });

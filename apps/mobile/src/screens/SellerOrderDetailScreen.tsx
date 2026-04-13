@@ -197,6 +197,9 @@ function actionTone(toStatus: string): { bg: string; border: string } {
   return { bg: "#3F855C", border: "#3F855C" };
 }
 
+const CANCELLABLE_STATUSES = ["pending_seller_approval", "pending_buyer_confirmation", "seller_approved", "awaiting_payment", "paid", "preparing", "ready", "in_delivery", "approaching", "at_door"];
+const MESSAGEABLE_STATUSES = ["pending_seller_approval", "pending_buyer_confirmation", "seller_approved", "awaiting_payment", "paid", "preparing", "ready", "in_delivery", "approaching", "at_door", "delivered"];
+
 export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthRefresh }: Props) {
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
@@ -204,6 +207,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   const [updating, setUpdating] = useState(false);
   const [pinCode, setPinCode] = useState("");
   const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [decisionDeliveryType, setDecisionDeliveryType] = useState<"pickup" | "delivery">("pickup");
@@ -313,6 +317,31 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     }
   }
 
+  async function handleCancelOrder() {
+    if (!order) return;
+    const reason = decisionReason.trim();
+    if (!reason) {
+      Alert.alert(t("headline.common.error"), t("error.seller.orderDetail.cancelReasonRequired"));
+      return;
+    }
+    setUpdating(true);
+    try {
+      const res = await authedFetch(`/v1/orders/${order.id}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error?.message ?? t("error.seller.orderDetail.cancel"));
+      setCancelModalVisible(false);
+      setDecisionReason("");
+      await loadOrder();
+    } catch (e) {
+      Alert.alert(t("headline.common.error"), e instanceof Error ? e.message : t("error.seller.orderDetail.cancel"));
+    } finally {
+      setUpdating(false);
+    }
+  }
+
   async function refreshOrderStatus() {
     try {
       const res = await authedFetch(`/v1/orders/${orderId}`);
@@ -368,6 +397,8 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   }, [order?.status, order?.deliveryType]);
   const isDecisionStage = Boolean(order && normalizeFlowStatus(order.status) === "pending_seller_approval");
   const isPendingBuyerConfirmation = Boolean(order && normalizeFlowStatus(order.status) === "pending_buyer_confirmation");
+  const canCancelOrder = Boolean(order && CANCELLABLE_STATUSES.includes(String(order.status ?? "")));
+  const canSendMessages = Boolean(order && MESSAGEABLE_STATUSES.includes(String(order.status ?? "")));
   const actionColors = action ? actionTone(action.toStatus) : null;
   const shouldCheckPinBeforeComplete = useMemo(
     () =>
@@ -722,7 +753,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 <TouchableOpacity
                   style={[styles.rejectActionBtn, updating && styles.actionDisabled]}
                   disabled={updating}
-                  onPress={() => { void submitSellerDecision("reject"); }}
+                  onPress={() => setCancelModalVisible(true)}
                 >
                   <Text style={styles.rejectActionText}>
                     {buyerRequestedDelivery ? t("cta.seller.orderDetail.rejectOrderRequest") : t("cta.seller.orderDetail.reject")}
@@ -756,7 +787,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               ) : null}
             </View>
           ) : null}
-          {(isDecisionStage || isPendingBuyerConfirmation) ? (
+          {order ? (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t('headline.orderNotes.title')}</Text>
               {orderNotes.length === 0 ? (
@@ -792,11 +823,15 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 placeholderTextColor="#9C8E81"
                 multiline
                 maxLength={500}
+                editable={canSendMessages}
               />
+              {!canSendMessages ? (
+                <Text style={styles.meta}>{t('helper.orderDetail.cancelLocked')}</Text>
+              ) : null}
               <View style={styles.noteActions}>
                 <TouchableOpacity
-                  style={[styles.noteSendBtn, (noteSending || !noteInput.trim()) && styles.actionDisabled]}
-                  disabled={noteSending || !noteInput.trim()}
+                  style={[styles.noteSendBtn, (!canSendMessages || noteSending || !noteInput.trim()) && styles.actionDisabled]}
+                  disabled={!canSendMessages || noteSending || !noteInput.trim()}
                   onPress={() => void sendNote()}
                 >
                   <Text style={styles.noteSendText}>{t('cta.orderNotes.send')}</Text>
@@ -864,6 +899,19 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                   : t("helper.seller.orderDetail.noteDecisionPickupPlaceholder")}
                 placeholderTextColor="#9C8E81"
               />
+            </View>
+          ) : null}
+          {canCancelOrder ? (
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.cancel")}</Text>
+              <Text style={styles.meta}>{t("helper.seller.orderDetail.cancelBody")}</Text>
+              <TouchableOpacity
+                style={[styles.rejectActionBtn, updating && styles.actionDisabled, { marginTop: 10 }]}
+                disabled={updating}
+                onPress={() => setCancelModalVisible(true)}
+              >
+                <Text style={styles.rejectActionText}>{t("cta.seller.orderDetail.reject")}</Text>
+              </TouchableOpacity>
             </View>
           ) : null}
           <View style={styles.card}>
@@ -1007,6 +1055,49 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 disabled={updating || !isPinReady}
               >
                 <Text style={styles.pinModalConfirmText}>{updating ? t("status.seller.orderDetail.verifying") : t("cta.seller.orderDetail.confirmVerify")}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+      <Modal visible={cancelModalVisible} transparent animationType="fade" onRequestClose={() => setCancelModalVisible(false)}>
+        <KeyboardAvoidingView
+          style={styles.pinModalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <TouchableOpacity style={styles.pinModalBackdrop} activeOpacity={1} onPress={() => setCancelModalVisible(false)} />
+          <View style={styles.pinModalCard}>
+            <Text style={styles.pinModalTitle}>{t("headline.seller.orderDetail.cancel")}</Text>
+            <Text style={styles.pinModalSub}>{t("helper.seller.orderDetail.cancelBody")}</Text>
+            <TextInput
+              style={[styles.pinInput, styles.noteInput]}
+              value={decisionReason}
+              onChangeText={setDecisionReason}
+              multiline
+              maxLength={500}
+              placeholder={t("helper.seller.orderDetail.cancelReasonPlaceholder")}
+              placeholderTextColor="#9C8E81"
+              editable={!updating}
+              autoFocus
+            />
+            <View style={styles.pinModalActions}>
+              <TouchableOpacity
+                style={[styles.pinModalBtn, styles.pinModalCancelBtn]}
+                onPress={() => setCancelModalVisible(false)}
+                disabled={updating}
+              >
+                <Text style={styles.pinModalCancelText}>{t("cta.common.cancel")}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.pinModalBtn,
+                  styles.pinModalConfirmBtn,
+                  (updating || !decisionReason.trim()) && styles.actionDisabled,
+                ]}
+                onPress={() => { void handleCancelOrder(); }}
+                disabled={updating || !decisionReason.trim()}
+              >
+                <Text style={styles.pinModalConfirmText}>{updating ? t("status.seller.orderDetail.processing") : t("cta.seller.orderDetail.reject")}</Text>
               </TouchableOpacity>
             </View>
           </View>

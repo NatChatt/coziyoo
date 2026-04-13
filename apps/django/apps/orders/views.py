@@ -636,6 +636,16 @@ class OrderCancelView(APIView):
         user_id = str(user.id)
         order_id_str = str(order_id)
         cancel_reason = str(request.data.get("reason") or "").strip()
+        if not cancel_reason:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "İptal sebebi zorunludur."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(cancel_reason) > 500:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "İptal sebebi en fazla 500 karakter olabilir."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -661,6 +671,19 @@ class OrderCancelView(APIView):
 
         with transaction.atomic():
             with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO order_events (id, order_id, event_type, actor_user_id, payload_json, created_at)
+                    VALUES (%s, %s, %s, %s, %s, now())
+                    """,
+                    [
+                        str(uuid.uuid4()),
+                        order_id_str,
+                        "buyer_note" if user_id == buyer_id else "seller_note",
+                        user_id,
+                        _json_dumps({"message": cancel_reason}),
+                    ],
+                )
                 cursor.execute(
                     """
                     UPDATE orders
@@ -695,24 +718,21 @@ class OrderCancelView(APIView):
                         user_id,
                         _json_dumps({
                             "cancelledBy": "buyer" if user_id == buyer_id else "seller",
-                            "reason": cancel_reason or None,
+                            "reason": cancel_reason,
                         }),
                     ],
                 )
-                if cancel_reason:
-                    cursor.execute(
-                        """
-                        INSERT INTO order_events (id, order_id, event_type, actor_user_id, payload_json, created_at)
-                        VALUES (%s, %s, %s, %s, %s, now())
-                        """,
-                        [
-                            str(uuid.uuid4()),
-                            order_id_str,
-                            "buyer_note" if user_id == buyer_id else "seller_note",
-                            user_id,
-                            _json_dumps({"message": cancel_reason}),
-                        ],
-                    )
+                _create_notification(
+                    cursor,
+                    seller_id if user_id == buyer_id else buyer_id,
+                    "order_cancelled",
+                    "Siparis iptal edildi",
+                    cancel_reason,
+                    {
+                        "orderId": order_id_str,
+                        "cancelledBy": "buyer" if user_id == buyer_id else "seller",
+                    },
+                )
 
         return Response({"data": {"orderId": order_id_str, "status": "cancelled"}})
 
@@ -1346,6 +1366,7 @@ class OrderNotesView(APIView):
     NOTEABLE_STATUSES = {
         'pending_seller_approval', 'pending_buyer_confirmation',
         'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready',
+        'in_delivery', 'approaching', 'at_door', 'delivered',
     }
 
     def _get_order_parties(self, order_id_str):
