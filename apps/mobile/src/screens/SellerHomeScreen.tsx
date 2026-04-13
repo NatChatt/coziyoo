@@ -187,7 +187,7 @@ function normalizeDisplayStatus(status: string, deliveryType?: string): string {
   if (status === "delivered" || status === "at_door") return status;
   if (status === "in_delivery") return "in_delivery";
   if (status === "ready") return deliveryType === "pickup" ? "ready" : "in_delivery";
-  if (["pending_seller_approval", "seller_approved", "awaiting_payment", "paid", "preparing"].includes(status)) return status;
+  if (["pending_seller_approval", "pending_buyer_confirmation", "seller_approved", "awaiting_payment", "paid", "preparing"].includes(status)) return status;
   return status;
 }
 
@@ -229,6 +229,7 @@ function cardActionByStatus(status: string, deliveryType?: string): SellerAction
 
 function toneFromStatus(status: string, deliveryType?: string): SellerAction["tone"] | null {
   if (status === "pending_seller_approval") return "approve";
+  if (status === "pending_buyer_confirmation") return "preparing";
   const normalized = normalizeDisplayStatus(status, deliveryType);
   if (normalized === "preparing") return "preparing";
   if (normalized === "ready") return "ready";
@@ -581,7 +582,7 @@ export default function SellerHomeScreen({
     const useTurkeyTime = sellerCountryCode === "TR";
     const scoped = orders.filter((o) => {
       if (o.sellerId && o.sellerId !== currentAuth.userId) return false;
-      if (!["pending_seller_approval", "seller_approved", "awaiting_payment", "paid", "preparing", "ready", "in_delivery", "approaching", "at_door", "delivered", "completed", "cancelled", "rejected"].includes(o.status)) return false;
+      if (!["pending_seller_approval", "pending_buyer_confirmation", "seller_approved", "awaiting_payment", "paid", "preparing", "ready", "in_delivery", "approaching", "at_door", "delivered", "completed", "cancelled", "rejected"].includes(o.status)) return false;
       return true;
     });
     const datedScopedCount = scoped.filter((o) => Boolean(parseApiDate(o.createdAt) ?? parseApiDate(o.updatedAt))).length;
@@ -595,6 +596,7 @@ export default function SellerHomeScreen({
   }, [orders, currentAuth.userId, clockMs, sellerCountryCode]);
   const hasUrgentSellerOrders = useMemo(() => todayOrders.some((order) => (
     order.status === "pending_seller_approval" ||
+    order.status === "pending_buyer_confirmation" ||
     (order.requestedDeliveryType === "delivery" && order.activeDeliveryType !== "delivery")
   )), [todayOrders]);
 
@@ -970,9 +972,9 @@ export default function SellerHomeScreen({
                           isDoorStep && styles.cardActionBtnKapidaPulse,
                           isUpdating && styles.cardActionBtnDisabled,
                         ]}
-                        disabled={isUpdating || (!canRunAction && !isDoorStep)}
+                        disabled={isUpdating || (!canRunAction && !isDoorStep && item.status !== "pending_buyer_confirmation")}
                         onPress={() => {
-                          if (shouldOpenDecisionScreen) {
+                          if (shouldOpenDecisionScreen || item.status === "pending_buyer_confirmation") {
                             onOpenOrder(item.id);
                           } else if (action) {
                             void runCardAction(item.id, action);
