@@ -191,18 +191,24 @@ export default function OrdersScreen({
     }
 
     if (result.ok) {
-      const mapped = (result.data as unknown as ApiOrder[]).map((order: ApiOrder) => ({
-        id: order.id,
-        orderNo: order.orderNo,
-        status: order.status,
-        sellerName: order.sellerName ?? t('status.orders.sellerFallback'),
-        items: order.items.map((item) => ({ name: item.name, quantity: item.quantity })),
-        totalPrice: Number(order.totalPrice ?? 0),
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt,
-        deliveryType: order.deliveryType,
-      }));
-      setOrders(mapped);
+      try {
+        const mapped = (result.data as unknown as ApiOrder[]).map((order: ApiOrder) => ({
+          id: order.id,
+          orderNo: order.orderNo,
+          status: order.status,
+          sellerName: order.sellerName ?? t('status.orders.sellerFallback'),
+          items: Array.isArray(order.items)
+            ? order.items.map((item) => ({ name: item.name, quantity: item.quantity }))
+            : [],
+          totalPrice: Number(order.totalPrice ?? 0),
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          deliveryType: order.deliveryType,
+        }));
+        setOrders(mapped);
+      } catch {
+        setError(t('error.orders.load'));
+      }
     } else {
       setError(result.message ?? t('error.orders.load'));
     }

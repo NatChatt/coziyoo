@@ -165,7 +165,18 @@ class OrderListCreateView(APIView):
                    o.requested_delivery_type, o.active_delivery_type, o.seller_decision_state,
                    o.buyer_id, o.seller_id,
                    ub.display_name AS buyer_name,
-                   us.display_name AS seller_name
+                   us.display_name AS seller_name,
+                   (
+                       SELECT json_agg(json_build_object(
+                           'name', f.name,
+                           'quantity', oi.quantity,
+                           'unitPrice', oi.unit_price,
+                           'lineTotal', oi.line_total
+                       ) ORDER BY oi.created_at)
+                       FROM order_items oi
+                       JOIN foods f ON f.id = oi.food_id
+                       WHERE oi.order_id = o.id
+                   ) AS items_json
             FROM orders o
             JOIN users ub ON ub.id = o.buyer_id
             JOIN users us ON us.id = o.seller_id
@@ -194,6 +205,7 @@ class OrderListCreateView(APIView):
                 "sellerId": str(r["seller_id"]),
                 "buyerName": r["buyer_name"],
                 "sellerName": r["seller_name"],
+                "items": r["items_json"] or [],
             }
             for r in rows
         ]
