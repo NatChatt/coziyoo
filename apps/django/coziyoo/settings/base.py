@@ -148,7 +148,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LANGUAGE_CODE = "tr"
-TIME_ZONE = "UTC"
+TIME_ZONE = config("TIME_ZONE", default="Europe/London")
 USE_I18N = True
 USE_TZ = True
 
