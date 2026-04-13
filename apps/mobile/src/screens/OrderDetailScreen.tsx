@@ -272,6 +272,22 @@ export default function OrderDetailScreen({
     onAuthRefresh?.(session);
   }, [onAuthRefresh]);
 
+  type OrderNote = {id: string; senderRole: string; senderName: string; message: string; createdAt: string | null};
+
+  const fetchNotes = useCallback(async (targetOrderId?: string) => {
+    const resolvedOrderId = String(targetOrderId ?? orderRef.current?.id ?? '').trim();
+    if (!resolvedOrderId) return;
+    const result = await apiRequest<OrderNote[]>(
+      `/v1/orders/${resolvedOrderId}/notes`,
+      currentAuth,
+      { actorRole: 'buyer' },
+      handleAuthRefresh,
+    );
+    if (result.ok && Array.isArray(result.data)) {
+      setOrderNotes(result.data);
+    }
+  }, [currentAuth, handleAuthRefresh]);
+
   const fetchOrder = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
     const hasVisibleData = Boolean(orderRef.current);
@@ -289,6 +305,7 @@ export default function OrderDetailScreen({
       setOrder(result.data);
       ORDER_DETAIL_CACHE.set(orderId, result.data);
       setError(null);
+      await fetchNotes(result.data.id);
     } else {
       if (!hasVisibleData) {
         setError(result.message ?? 'Sipariş yüklenemedi');
@@ -297,7 +314,7 @@ export default function OrderDetailScreen({
     if (!silent || !hasVisibleData) {
       setLoading(false);
     }
-  }, [orderId, currentAuth, handleAuthRefresh]);
+  }, [orderId, currentAuth, handleAuthRefresh, fetchNotes]);
 
   useEffect(() => {
     const cached = ORDER_DETAIL_CACHE.get(orderId) ?? null;
@@ -312,17 +329,8 @@ export default function OrderDetailScreen({
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchOrder({ silent: true });
-    if (order?.id) {
-      const notesResult = await apiRequest<Array<{id: string; senderRole: string; senderName: string; message: string; createdAt: string | null}>>(
-        `/v1/orders/${order.id}/notes`,
-        currentAuth,
-        { actorRole: 'buyer' },
-        handleAuthRefresh,
-      );
-      if (notesResult.ok && Array.isArray(notesResult.data)) setOrderNotes(notesResult.data);
-    }
     setRefreshing(false);
-  }, [fetchOrder, order?.id, currentAuth, handleAuthRefresh]);
+  }, [fetchOrder]);
 
   const refreshOrderStatus = useCallback(async () => {
     const result = await apiRequest<OrderDetail>(
@@ -333,8 +341,10 @@ export default function OrderDetailScreen({
     );
     if (result.ok) {
       setOrder(result.data);
+      ORDER_DETAIL_CACHE.set(orderId, result.data);
+      await fetchNotes(result.data.id);
     }
-  }, [orderId, currentAuth, handleAuthRefresh]);
+  }, [orderId, currentAuth, handleAuthRefresh, fetchNotes]);
 
   const isBuyer = order?.buyerId === currentAuth.userId;
   useEffect(() => {
@@ -480,27 +490,11 @@ export default function OrderDetailScreen({
     }
   }
 
-  type OrderNote = {id: string; senderRole: string; senderName: string; message: string; createdAt: string | null};
-
-  async function fetchNotes() {
-    if (!order?.id) return;
-    const result = await apiRequest<OrderNote[]>(
-      `/v1/orders/${order.id}/notes`,
-      currentAuth,
-      { actorRole: 'buyer' },
-      handleAuthRefresh,
-    );
-    if (result.ok && Array.isArray(result.data)) {
-      setOrderNotes(result.data);
-    }
-  }
-
   useEffect(() => {
     if (order?.id) {
-      void fetchNotes();
+      void fetchNotes(order.id);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.id]);
+  }, [order?.id, fetchNotes]);
 
   async function sendNote() {
     const msg = noteInput.trim();

@@ -946,6 +946,19 @@ class SellerDeliveryRequestResolveView(APIView):
                         }),
                     ],
                 )
+                if note:
+                    cursor.execute(
+                        """
+                        INSERT INTO order_events (id, order_id, event_type, actor_user_id, payload_json, created_at)
+                        VALUES (%s, %s, 'seller_note', %s, %s, now())
+                        """,
+                        [
+                            str(uuid.uuid4()),
+                            order_id_str,
+                            user_id,
+                            _json_dumps({"message": note}),
+                        ],
+                    )
 
                 _create_notification(
                     cursor,
@@ -1200,6 +1213,19 @@ class SellerDecisionView(APIView):
                     """,
                     [str(uuid.uuid4()), order_id_str, user_id, current_status, new_status, _json_dumps(metadata)],
                 )
+                if note:
+                    cursor.execute(
+                        """
+                        INSERT INTO order_events (id, order_id, event_type, actor_user_id, payload_json, created_at)
+                        VALUES (%s, %s, 'seller_note', %s, %s, now())
+                        """,
+                        [
+                            str(uuid.uuid4()),
+                            order_id_str,
+                            user_id,
+                            _json_dumps({"message": note}),
+                        ],
+                    )
 
         return Response(
             {
