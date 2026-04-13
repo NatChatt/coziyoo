@@ -886,6 +886,11 @@ export default function App() {
       initialTab={homeTab}
       onOpenSettings={() => setScreen('settings')}
       onOpenOrders={() => setScreen('orders')}
+      onOpenOrderDetail={(id) => {
+        setSelectedOrderId(id);
+        setOrderDetailBackTarget('home');
+        setScreen('orderDetail');
+      }}
       onOpenChatList={() => setScreen('chatList')}
       onOpenFavorites={() => setScreen('favorites')}
       onOpenFoodDetail={(food: FoodItem) => { setSelectedFood(food); setScreen('foodDetail'); }}

@@ -82,6 +82,7 @@ export const brandCopy = {
   'status.orders.completedPill': 'Geçmiş',
   'status.orders.newBadge': 'Yeni',
   'cta.orders.viewAll': 'Tüm siparişlerimi göster',
+  'cta.home.viewProposal': 'Teklifi incele →',
   'cta.home.addresses': 'Adreslerim',
   'cta.home.deliveryAddressChange': 'Teslimat adresi değiştir',
   'helper.home.deliveryAddressHint': 'Siparişlerin bu adrese gider. Farklı yere geçtiysen buradan güncelle.',

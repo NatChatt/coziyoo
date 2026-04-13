@@ -178,6 +178,7 @@ type Props = {
   initialTab?: TabKey;
   onOpenSettings: () => void;
   onOpenOrders: () => void;
+  onOpenOrderDetail?: (orderId: string) => void;
   onOpenNotifications?: () => void;
   onOpenChatList?: () => void;
   onOpenFavorites?: () => void;
@@ -1780,6 +1781,7 @@ export default function HomeScreen({
   initialTab,
   onOpenSettings,
   onOpenOrders,
+  onOpenOrderDetail,
   onOpenNotifications,
   onOpenChatList,
   onOpenFavorites,
@@ -3388,12 +3390,17 @@ export default function HomeScreen({
         {actionableHomeOrders.map((order, index) => {
           const showRefresh = shouldShowQuickOrderRefresh(order.id);
 
+          const isPendingProposal = order.status === 'pending_buyer_confirmation';
+          const handleCardPress = isPendingProposal && onOpenOrderDetail
+            ? () => onOpenOrderDetail(order.id)
+            : onOpenOrders;
+
           return (
             <TouchableOpacity
               key={order.id}
               style={[wrapperStyle, cardStyle, index === actionableHomeOrders.length - 1 && styles.quickOrderScrollCardLast]}
               activeOpacity={0.9}
-              onPress={onOpenOrders}
+              onPress={handleCardPress}
             >
               <View style={styles.quickOrderTopRow}>
                 <View style={styles.quickOrderTitleBlock}>
@@ -3473,11 +3480,15 @@ export default function HomeScreen({
                       activeOpacity={0.88}
                       onPress={(event) => {
                         event.stopPropagation();
-                        onOpenOrders();
+                        if (isPendingProposal && onOpenOrderDetail) {
+                          onOpenOrderDetail(order.id);
+                        } else {
+                          onOpenOrders();
+                        }
                       }}
                     >
                       <Text style={styles.quickOrderPrimaryText} numberOfLines={1} ellipsizeMode="tail">
-                        {t('cta.orders.viewAll')}
+                        {isPendingProposal ? t('cta.home.viewProposal') : t('cta.orders.viewAll')}
                       </Text>
                     </TouchableOpacity>
                   </View>

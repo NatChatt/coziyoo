@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, StatusBar, Alert, TouchableOpacity, Linking, Platform, TextInput } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, StatusBar, Alert, TouchableOpacity, Linking, Platform, TextInput, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/colors';
 import { type AuthSession } from '../utils/auth';
@@ -253,6 +253,7 @@ export default function OrderDetailScreen({
   const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const orderRef = useRef<OrderDetail | null>(null);
   const pinAutoOpenedRef = useRef(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [orderNotes, setOrderNotes] = useState<Array<{id: string; senderRole: string; senderName: string; message: string; createdAt: string | null}>>([]);
   const [noteInput, setNoteInput] = useState('');
   const [noteSending, setNoteSending] = useState(false);
@@ -307,6 +308,21 @@ export default function OrderDetailScreen({
     setError(null);
     void fetchOrder({ silent: Boolean(cached) });
   }, [orderId]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchOrder({ silent: true });
+    if (order?.id) {
+      const notesResult = await apiRequest<Array<{id: string; senderRole: string; senderName: string; message: string; createdAt: string | null}>>(
+        `/v1/orders/${order.id}/notes`,
+        currentAuth,
+        { actorRole: 'buyer' },
+        handleAuthRefresh,
+      );
+      if (notesResult.ok && Array.isArray(notesResult.data)) setOrderNotes(notesResult.data);
+    }
+    setRefreshing(false);
+  }, [fetchOrder, order?.id, currentAuth, handleAuthRefresh]);
 
   const refreshOrderStatus = useCallback(async () => {
     const result = await apiRequest<OrderDetail>(
@@ -589,7 +605,17 @@ export default function OrderDetailScreen({
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
       <ScreenHeader title={t('headline.orderDetail.title')} onBack={onBack} />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { void handleRefresh(); }}
+            tintColor={theme.primary}
+          />
+        }
+      >
         {/* Status + Order No */}
         <View style={styles.topRow}>
           <StatusBadge
