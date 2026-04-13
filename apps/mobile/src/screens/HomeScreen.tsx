@@ -3425,6 +3425,12 @@ export default function HomeScreen({
               </View>
 
               <Text style={styles.quickOrderHint}>{latestHomeOrderHint(order.status)}</Text>
+              {isPendingProposal ? (
+                <View style={styles.quickOrderProposalPill}>
+                  <Ionicons name="time-outline" size={14} color="#7C3AED" />
+                  <Text style={styles.quickOrderProposalPillText}>{t('helper.orders.proposalPendingSubtitle')}</Text>
+                </View>
+              ) : null}
               {hasPendingBuyerDeliveryRequest(order) ? (
                 <View style={styles.quickOrderNotePill}>
                   <Ionicons name="bicycle-outline" size={14} color="#2F6F4A" />
@@ -5559,6 +5565,19 @@ const styles = StyleSheet.create({
   quickOrderMetaNo: { flexShrink: 1, marginTop: 0 },
   quickOrderMetaDate: { flexShrink: 0, marginTop: 0 },
   quickOrderHint: { color: '#5E5247', fontSize: 13, lineHeight: 18, marginTop: 6 },
+  quickOrderProposalPill: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DCCCF8',
+    backgroundColor: '#F7F2FF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  quickOrderProposalPillText: { flex: 1, color: '#6D28D9', fontSize: 12, fontWeight: '700', lineHeight: 18 },
   quickOrderNotePill: {
     marginTop: 6,
     alignSelf: 'flex-start',

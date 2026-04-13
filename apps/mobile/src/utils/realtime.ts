@@ -69,6 +69,11 @@ export function subscribeOrderRealtime(orderId: string, onChange: () => void): R
     )
     .on(
       "postgres_changes",
+      { event: "*", schema: "public", table: "order_events", filter: `order_id=eq.${normalizedOrderId}` },
+      onChange,
+    )
+    .on(
+      "postgres_changes",
       { event: "*", schema: "public", table: "order_delivery_tracking", filter: `order_id=eq.${normalizedOrderId}` },
       onChange,
     )

@@ -269,6 +269,7 @@ export default function OrdersScreen({
   function renderOrderCard(order: BuyerOrderSummary) {
     const tone = cardTone(order.status, order.deliveryType);
     const isNewest = order.id === newestActiveOrderId && orderGroupKey(order.status, order.deliveryType) !== 'done';
+    const isPendingProposal = order.status === 'pending_buyer_confirmation';
 
     return (
       <TouchableOpacity
@@ -303,6 +304,11 @@ export default function OrdersScreen({
         <View style={styles.orderBottomRow}>
           <View style={styles.orderBottomLeft}>
             <StatusBadge status={order.status} deliveryType={order.deliveryType} audience="buyer" />
+            {isPendingProposal ? (
+              <View style={styles.proposalPendingPill}>
+                <Text style={styles.proposalPendingPillText}>{t('status.orders.proposalPendingPill')}</Text>
+              </View>
+            ) : null}
             <Text style={styles.deliveryMeta}>
               {order.deliveryType === 'delivery'
                 ? t('status.orders.deliveryType.delivery')
@@ -311,6 +317,12 @@ export default function OrdersScreen({
           </View>
           <Text style={styles.orderTotal}>{formatPrice(order.totalPrice)}</Text>
         </View>
+        {isPendingProposal ? (
+          <View style={styles.proposalPendingBanner}>
+            <Ionicons name="time-outline" size={15} color="#7C3AED" />
+            <Text style={styles.proposalPendingBannerText}>{t('helper.orders.proposalPendingSubtitle')}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.cardActionRow}>
           <View
@@ -513,6 +525,28 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   orderBottomLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  proposalPendingPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#DCCCF8',
+    backgroundColor: '#F7F2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  proposalPendingPillText: { color: '#6D28D9', fontSize: 11, fontWeight: '800' },
+  proposalPendingBanner: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DCCCF8',
+    backgroundColor: '#F7F2FF',
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+  },
+  proposalPendingBannerText: { flex: 1, color: '#6D28D9', fontSize: 12, fontWeight: '700', lineHeight: 18 },
   deliveryMeta: { color: '#7A6C5E', fontSize: 12, fontWeight: '700' },
   orderTotal: { color: '#4A3B2F', fontWeight: '900', fontSize: 16 },
   cardActionRow: { marginTop: 14 },
