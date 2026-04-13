@@ -252,13 +252,17 @@ export default function OrderDetailScreen({
   const [cancelModal, setCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const notesPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const orderRef = useRef<OrderDetail | null>(null);
   const pinAutoOpenedRef = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
   const [orderNotes, setOrderNotes] = useState<Array<{id: string; senderRole: string; senderName: string; message: string; createdAt: string | null}>>([]);
+  const prevNotesLenRef = useRef(0);
   const [noteInput, setNoteInput] = useState('');
   const [noteSending, setNoteSending] = useState(false);
   const notesScrollRef = useRef<ScrollView | null>(null);
+  // Always keep a ref to the latest fetchNotes to avoid stale-closure issues in setInterval
+  const fetchNotesRef = useRef<((id?: string) => Promise<void>) | null>(null);
 
   useEffect(() => {
     setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
@@ -285,9 +289,29 @@ export default function OrderDetailScreen({
       handleAuthRefresh,
     );
     if (result.ok && Array.isArray(result.data)) {
-      setOrderNotes(result.data);
+      setOrderNotes(prev => {
+        if (result.data.length !== prev.length) {
+          return result.data;
+        }
+        return prev;
+      });
     }
   }, [currentAuth, handleAuthRefresh]);
+
+  // Keep ref always pointing to the latest fetchNotes
+  useEffect(() => {
+    fetchNotesRef.current = fetchNotes;
+  }, [fetchNotes]);
+
+  // Auto-scroll notes to end when new messages arrive
+  useEffect(() => {
+    if (orderNotes.length > prevNotesLenRef.current) {
+      prevNotesLenRef.current = orderNotes.length;
+      setTimeout(() => notesScrollRef.current?.scrollToEnd({ animated: true }), 80);
+    } else {
+      prevNotesLenRef.current = orderNotes.length;
+    }
+  }, [orderNotes.length]);
 
   const fetchOrder = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
@@ -371,6 +395,25 @@ export default function OrderDetailScreen({
       void refreshOrderStatus();
     });
   }, [order?.id, refreshOrderStatus]);
+
+  // Dedicated notes poll — independent of order status poll so notes always update
+  // Uses ref to avoid stale closure regardless of how long the interval runs
+  useEffect(() => {
+    if (!orderId) return;
+    if (notesPollRef.current) {
+      clearInterval(notesPollRef.current);
+      notesPollRef.current = null;
+    }
+    notesPollRef.current = setInterval(() => {
+      void fetchNotesRef.current?.(orderId);
+    }, 6_000);
+    return () => {
+      if (notesPollRef.current) {
+        clearInterval(notesPollRef.current);
+        notesPollRef.current = null;
+      }
+    };
+  }, [orderId]);
 
   // Auto-open PIN screen for buyer when order is at_door (including first load)
   useEffect(() => {
