@@ -698,7 +698,11 @@ export default function OrderDetailScreen({
         {order.status === 'pending_buyer_confirmation' ? (
           <View style={styles.proposalCard}>
             <Text style={styles.proposalTitle}>{t('headline.orderDetail.sellerProposal')}</Text>
-            <Text style={styles.proposalBody}>{t('helper.orderDetail.sellerProposalBody')}</Text>
+            <Text style={styles.proposalBody}>
+              {order.activeDeliveryType === 'delivery'
+                ? t('helper.orderDetail.sellerProposalBodyDelivery')
+                : t('helper.orderDetail.sellerProposalBodyPickup')}
+            </Text>
             {order.sellerDeliveryNote ? (
               <>
                 <Text style={styles.proposalLabel}>{t('label.orderDetail.sellerNote')}</Text>
@@ -886,6 +890,9 @@ export default function OrderDetailScreen({
           />
           {!canSendMessages ? (
             <Text style={styles.notesLockedHint}>{t('helper.orderDetail.cancelLocked')}</Text>
+          ) : null}
+          {order.status === 'pending_buyer_confirmation' ? (
+            <Text style={styles.notesConfirmHint}>{t('helper.orderDetail.proposalConfirmHint')}</Text>
           ) : null}
           <View style={styles.noteActions}>
             <TouchableOpacity
@@ -1177,5 +1184,6 @@ const styles = StyleSheet.create({
   noteRejectBtn: { flex: 1, borderRadius: 10, backgroundColor: '#FFF4F2', borderWidth: 1, borderColor: '#E59D94', paddingVertical: 11, alignItems: 'center' },
   noteRejectText: { color: '#C23B2A', fontWeight: '700', fontSize: 14 },
   noteDisabled: { opacity: 0.45 },
+  notesConfirmHint: { color: '#5F6F63', fontSize: 12.5, lineHeight: 18, marginTop: 8 },
   notesLockedHint: { color: '#8A7D72', fontSize: 12, marginTop: 8, lineHeight: 18 },
 });
