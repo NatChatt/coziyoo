@@ -94,6 +94,7 @@ type OrderDetail = {
 };
 
 type MapCoordinates = { lat: number; lng: number };
+type OrderNote = {id: string; senderRole: string; senderName: string; message: string; createdAt: string | null};
 
 function normalizeOrderDetail(value: unknown, fallbackOrderId: string): OrderDetail | null {
   if (!value || typeof value !== "object") return null;
@@ -197,6 +198,31 @@ function actionTone(toStatus: string): { bg: string; border: string } {
   return { bg: "#3F855C", border: "#3F855C" };
 }
 
+function areOrderNotesEqual(left: OrderNote[], right: OrderNote[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((note, index) => {
+    const other = right[index];
+    return Boolean(other)
+      && note.id === other.id
+      && note.message === other.message
+      && note.senderRole === other.senderRole
+      && note.createdAt === other.createdAt;
+  });
+}
+
+function mergeOrderNotes(notes: OrderNote[]): OrderNote[] {
+  const byId = new Map<string, OrderNote>();
+  notes.forEach((note) => {
+    if (!note?.id) return;
+    byId.set(note.id, note);
+  });
+  return Array.from(byId.values()).sort((a, b) => {
+    const left = a.createdAt ? Date.parse(a.createdAt) : 0;
+    const right = b.createdAt ? Date.parse(b.createdAt) : 0;
+    return left - right;
+  });
+}
+
 const CANCELLABLE_STATUSES = ["pending_seller_approval", "pending_buyer_confirmation", "seller_approved", "awaiting_payment", "paid", "preparing", "ready", "in_delivery", "approaching", "at_door"];
 const NON_MESSAGEABLE_STATUSES = ['cancelled', 'completed'];
 
@@ -217,7 +243,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const notesPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
-  const [orderNotes, setOrderNotes] = useState<Array<{id: string; senderRole: string; senderName: string; message: string; createdAt: string | null}>>([]);
+  const [orderNotes, setOrderNotes] = useState<OrderNote[]>([]);
   const prevNotesLenRef = useRef(0);
   const [noteInput, setNoteInput] = useState('');
   const [noteSending, setNoteSending] = useState(false);
@@ -262,8 +288,8 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     const json = await res.json().catch(() => ({}));
     if (Array.isArray(json?.data)) {
       setOrderNotes(prev => {
-        if ((json.data as unknown[]).length !== prev.length) return json.data as typeof prev;
-        return prev;
+        const merged = mergeOrderNotes(json.data as OrderNote[]);
+        return areOrderNotesEqual(prev, merged) ? prev : merged;
       });
     }
   }, [order?.id, currentAuth, apiUrl]);
@@ -328,7 +354,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       }
       const json = await res.json().catch(() => ({}));
       if (json?.data) {
-        setOrderNotes(prev => [...prev, json.data]);
+        setOrderNotes(prev => mergeOrderNotes([...prev, json.data as OrderNote]));
       }
       setNoteInput('');
       setTimeout(() => notesScrollRef.current?.scrollToEnd({ animated: true }), 80);

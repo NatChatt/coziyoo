@@ -155,6 +155,8 @@ type Props = {
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
+type OrderNote = {id: string; senderRole: string; senderName: string; message: string; createdAt: string | null};
+
 const CANCELLABLE = ['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready', 'in_delivery', 'approaching', 'at_door'];
 const NON_MESSAGEABLE = ['cancelled', 'completed'];
 const COMPLETABLE = ['delivered'];
@@ -240,6 +242,31 @@ function nextPickupProgressAction(
   return null;
 }
 
+function areOrderNotesEqual(left: OrderNote[], right: OrderNote[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((note, index) => {
+    const other = right[index];
+    return Boolean(other)
+      && note.id === other.id
+      && note.message === other.message
+      && note.senderRole === other.senderRole
+      && note.createdAt === other.createdAt;
+  });
+}
+
+function mergeOrderNotes(notes: OrderNote[]): OrderNote[] {
+  const byId = new Map<string, OrderNote>();
+  notes.forEach((note) => {
+    if (!note?.id) return;
+    byId.set(note.id, note);
+  });
+  return Array.from(byId.values()).sort((a, b) => {
+    const left = a.createdAt ? Date.parse(a.createdAt) : 0;
+    const right = b.createdAt ? Date.parse(b.createdAt) : 0;
+    return left - right;
+  });
+}
+
 export default function OrderDetailScreen({
   auth, orderId, onBack, onOpenPayment, onOpenDeliveryPin, onOpenReview, onOpenComplaint, onAuthRefresh,
 }: Props) {
@@ -277,8 +304,6 @@ export default function OrderDetailScreen({
     onAuthRefresh?.(session);
   }, [onAuthRefresh]);
 
-  type OrderNote = {id: string; senderRole: string; senderName: string; message: string; createdAt: string | null};
-
   const fetchNotes = useCallback(async (targetOrderId?: string) => {
     const resolvedOrderId = String(targetOrderId ?? orderRef.current?.id ?? '').trim();
     if (!resolvedOrderId) return;
@@ -290,10 +315,8 @@ export default function OrderDetailScreen({
     );
     if (result.ok && Array.isArray(result.data)) {
       setOrderNotes(prev => {
-        if (result.data.length !== prev.length) {
-          return result.data;
-        }
-        return prev;
+        const merged = mergeOrderNotes(result.data);
+        return areOrderNotesEqual(prev, merged) ? prev : merged;
       });
     }
   }, [currentAuth, handleAuthRefresh]);
@@ -561,7 +584,7 @@ export default function OrderDetailScreen({
         return;
       }
       if (result.data) {
-        setOrderNotes(prev => [...prev, result.data!]);
+        setOrderNotes(prev => mergeOrderNotes([...prev, result.data!]));
       }
       setNoteInput('');
       setTimeout(() => notesScrollRef.current?.scrollToEnd({ animated: true }), 80);
