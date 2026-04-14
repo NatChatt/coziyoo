@@ -673,104 +673,44 @@ export default function OrderDetailScreen({
 
         {/* Seller Proposal — shown at TOP for pending_buyer_confirmation */}
         {order.status === 'pending_buyer_confirmation' ? (
-          <>
-            <View style={styles.proposalCard}>
-              <Text style={styles.proposalTitle}>{t('headline.orderDetail.sellerProposal')}</Text>
-              <Text style={styles.proposalBody}>{t('helper.orderDetail.sellerProposalBody')}</Text>
-              {order.sellerDeliveryNote ? (
-                <>
-                  <Text style={styles.proposalLabel}>{t('label.orderDetail.sellerNote')}</Text>
-                  <Text style={styles.proposalValue}>{order.sellerDeliveryNote}</Text>
-                </>
-              ) : null}
-              {order.sellerEtaMinutes ? (
-                <>
-                  <Text style={styles.proposalLabel}>{t('label.orderDetail.sellerEta')}</Text>
-                  <Text style={styles.proposalValue}>{order.sellerEtaMinutes} dk</Text>
-                </>
-              ) : null}
-              {order.activeDeliveryType ? (
-                <>
-                  <Text style={styles.proposalLabel}>{t('label.orderDetail.sellerDeliveryType')}</Text>
-                  <Text style={styles.proposalValue}>{order.activeDeliveryType === 'delivery' ? 'Teslimat' : 'Gel Al'}</Text>
-                </>
-              ) : null}
-              <View style={styles.proposalActions}>
-                <TouchableOpacity
-                  style={[styles.proposalAcceptBtn, updating && styles.proposalActionDisabled]}
-                  disabled={updating}
-                  onPress={() => void confirmTerms(true)}
-                >
-                  <Text style={styles.proposalAcceptText}>{t('cta.orderDetail.acceptProposal')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.proposalDeclineBtn, updating && styles.proposalActionDisabled]}
-                  disabled={updating}
-                  onPress={() => setCancelModal(true)}
-                >
-                  <Text style={styles.proposalDeclineText}>{t('cta.orderDetail.declineProposal')}</Text>
-                </TouchableOpacity>
-              </View>
+          <View style={styles.proposalCard}>
+            <Text style={styles.proposalTitle}>{t('headline.orderDetail.sellerProposal')}</Text>
+            <Text style={styles.proposalBody}>{t('helper.orderDetail.sellerProposalBody')}</Text>
+            {order.sellerDeliveryNote ? (
+              <>
+                <Text style={styles.proposalLabel}>{t('label.orderDetail.sellerNote')}</Text>
+                <Text style={styles.proposalValue}>{order.sellerDeliveryNote}</Text>
+              </>
+            ) : null}
+            {order.sellerEtaMinutes ? (
+              <>
+                <Text style={styles.proposalLabel}>{t('label.orderDetail.sellerEta')}</Text>
+                <Text style={styles.proposalValue}>{order.sellerEtaMinutes} dk</Text>
+              </>
+            ) : null}
+            {order.activeDeliveryType ? (
+              <>
+                <Text style={styles.proposalLabel}>{t('label.orderDetail.sellerDeliveryType')}</Text>
+                <Text style={styles.proposalValue}>{order.activeDeliveryType === 'delivery' ? 'Teslimat' : 'Gel Al'}</Text>
+              </>
+            ) : null}
+            <View style={styles.proposalActions}>
+              <TouchableOpacity
+                style={[styles.proposalAcceptBtn, updating && styles.proposalActionDisabled]}
+                disabled={updating}
+                onPress={() => void confirmTerms(true)}
+              >
+                <Text style={styles.proposalAcceptText}>{t('cta.orderDetail.acceptProposal')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.proposalDeclineBtn, updating && styles.proposalActionDisabled]}
+                disabled={updating}
+                onPress={() => setCancelModal(true)}
+              >
+                <Text style={styles.proposalDeclineText}>{t('cta.orderDetail.declineProposal')}</Text>
+              </TouchableOpacity>
             </View>
-
-            <View style={styles.notesCard}>
-              <Text style={styles.notesSectionTitle}>{t('headline.orderNotes.title')}</Text>
-              {orderNotes.length === 0 ? (
-                <Text style={styles.notesEmpty}>{t('helper.orderNotes.empty')}</Text>
-              ) : (
-                <ScrollView
-                  ref={notesScrollRef}
-                  style={styles.notesScroll}
-                  showsVerticalScrollIndicator={false}
-                  nestedScrollEnabled
-                >
-                  {orderNotes.map(note => (
-                    <View
-                      key={note.id}
-                      style={[
-                        styles.noteBubble,
-                        note.senderRole === 'buyer' ? styles.noteBubbleSelf : styles.noteBubbleOther,
-                      ]}
-                    >
-                      <Text style={styles.noteSenderName}>
-                        {note.senderRole === 'buyer' ? t('label.orderNotes.you') : note.senderName}
-                      </Text>
-                      <Text style={styles.noteText}>{note.message}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
-              <TextInput
-                style={styles.noteTextInput}
-                value={noteInput}
-                onChangeText={setNoteInput}
-                placeholder={t('placeholder.orderNotes.input')}
-                placeholderTextColor="#9C8E81"
-                multiline
-                maxLength={500}
-                editable={canSendMessages}
-              />
-              {!canSendMessages ? (
-                <Text style={styles.notesLockedHint}>{t('helper.orderDetail.cancelLocked')}</Text>
-              ) : null}
-              <View style={styles.noteActions}>
-                <TouchableOpacity
-                  style={[styles.noteSendBtn, (!canSendMessages || noteSending || !noteInput.trim()) && styles.noteDisabled]}
-                  disabled={!canSendMessages || noteSending || !noteInput.trim()}
-                  onPress={() => void sendNote()}
-                >
-                  <Text style={styles.noteSendText}>{t('cta.orderNotes.send')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.noteApproveBtn, (updating || noteSending) && styles.noteDisabled]}
-                  disabled={updating || noteSending}
-                  onPress={() => void confirmTerms(true)}
-                >
-                  <Text style={styles.noteApproveText}>{t('cta.orderNotes.approve')}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </>
+          </View>
         ) : null}
 
         {/* Seller */}
@@ -899,59 +839,57 @@ export default function OrderDetailScreen({
           </View>
         ) : null}
 
-        {/* Notes section for pending_seller_approval — still shown here for buyer to message seller */}
-        {order.status !== 'pending_buyer_confirmation' ? (
-          <View style={styles.notesCard}>
-            <Text style={styles.notesSectionTitle}>{t('headline.orderNotes.title')}</Text>
-            {orderNotes.length === 0 ? (
-              <Text style={styles.notesEmpty}>{t('helper.orderNotes.empty')}</Text>
-            ) : (
-              <ScrollView
-                ref={notesScrollRef}
-                style={styles.notesScroll}
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled
-              >
-                {orderNotes.map(note => (
-                  <View
-                    key={note.id}
-                    style={[
-                      styles.noteBubble,
-                      note.senderRole === 'buyer' ? styles.noteBubbleSelf : styles.noteBubbleOther,
-                    ]}
-                  >
-                    <Text style={styles.noteSenderName}>
-                      {note.senderRole === 'buyer' ? t('label.orderNotes.you') : note.senderName}
-                    </Text>
-                    <Text style={styles.noteText}>{note.message}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-            <TextInput
-              style={styles.noteTextInput}
-              value={noteInput}
-              onChangeText={setNoteInput}
-              placeholder={t('placeholder.orderNotes.input')}
-              placeholderTextColor="#9C8E81"
-              multiline
-              maxLength={500}
-              editable={canSendMessages}
-            />
-            {!canSendMessages ? (
-              <Text style={styles.notesLockedHint}>{t('helper.orderDetail.cancelLocked')}</Text>
-            ) : null}
-            <View style={styles.noteActions}>
-              <TouchableOpacity
-                style={[styles.noteSendBtn, (!canSendMessages || noteSending || !noteInput.trim()) && styles.noteDisabled]}
-                disabled={!canSendMessages || noteSending || !noteInput.trim()}
-                onPress={() => void sendNote()}
-              >
-                <Text style={styles.noteSendText}>{t('cta.orderNotes.send')}</Text>
-              </TouchableOpacity>
-            </View>
+        {/* Notes/Chat — always shown for all active order statuses */}
+        <View style={styles.notesCard}>
+          <Text style={styles.notesSectionTitle}>{t('headline.orderNotes.title')}</Text>
+          {orderNotes.length === 0 ? (
+            <Text style={styles.notesEmpty}>{t('helper.orderNotes.empty')}</Text>
+          ) : (
+            <ScrollView
+              ref={notesScrollRef}
+              style={styles.notesScroll}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+            >
+              {orderNotes.map(note => (
+                <View
+                  key={note.id}
+                  style={[
+                    styles.noteBubble,
+                    note.senderRole === 'buyer' ? styles.noteBubbleSelf : styles.noteBubbleOther,
+                  ]}
+                >
+                  <Text style={styles.noteSenderName}>
+                    {note.senderRole === 'buyer' ? t('label.orderNotes.you') : note.senderName}
+                  </Text>
+                  <Text style={styles.noteText}>{note.message}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+          <TextInput
+            style={styles.noteTextInput}
+            value={noteInput}
+            onChangeText={setNoteInput}
+            placeholder={t('placeholder.orderNotes.input')}
+            placeholderTextColor="#9C8E81"
+            multiline
+            maxLength={500}
+            editable={canSendMessages}
+          />
+          {!canSendMessages ? (
+            <Text style={styles.notesLockedHint}>{t('helper.orderDetail.cancelLocked')}</Text>
+          ) : null}
+          <View style={styles.noteActions}>
+            <TouchableOpacity
+              style={[styles.noteSendBtn, (!canSendMessages || noteSending || !noteInput.trim()) && styles.noteDisabled]}
+              disabled={!canSendMessages || noteSending || !noteInput.trim()}
+              onPress={() => void sendNote()}
+            >
+              <Text style={styles.noteSendText}>{t('cta.orderNotes.send')}</Text>
+            </TouchableOpacity>
           </View>
-        ) : null}
+        </View>
 
         {/* Timeline */}
         <View style={styles.section}>
