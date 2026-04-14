@@ -457,6 +457,7 @@ export const brandCopy = {
   'placeholder.orderNotes.input': 'Not yaz...',
   'cta.orderNotes.send': 'Gönder',
   'cta.orderNotes.approve': 'Onayla',
+  'cta.orderNotes.reject': 'İptal Et',
   'error.orderNotes.sendFailed': 'Not gönderilemedi.',
   'label.orderNotes.you': 'Sen',
   'cta.orderDetail.acceptProposal': 'Teklifi kabul et',

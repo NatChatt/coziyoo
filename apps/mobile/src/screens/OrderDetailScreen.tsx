@@ -717,22 +717,6 @@ export default function OrderDetailScreen({
                 <Text style={styles.proposalValue}>{order.activeDeliveryType === 'delivery' ? 'Teslimat' : 'Gel Al'}</Text>
               </>
             ) : null}
-            <View style={styles.proposalActions}>
-              <TouchableOpacity
-                style={[styles.proposalAcceptBtn, updating && styles.proposalActionDisabled]}
-                disabled={updating}
-                onPress={() => void confirmTerms(true)}
-              >
-                <Text style={styles.proposalAcceptText}>{t('cta.orderDetail.acceptProposal')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.proposalDeclineBtn, updating && styles.proposalActionDisabled]}
-                disabled={updating}
-                onPress={() => setCancelModal(true)}
-              >
-                <Text style={styles.proposalDeclineText}>{t('cta.orderDetail.declineProposal')}</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         ) : null}
 
@@ -911,6 +895,24 @@ export default function OrderDetailScreen({
             >
               <Text style={styles.noteSendText}>{t('cta.orderNotes.send')}</Text>
             </TouchableOpacity>
+            {order.status === 'pending_buyer_confirmation' ? (
+              <TouchableOpacity
+                style={[styles.noteApproveBtn, updating && styles.noteDisabled]}
+                disabled={updating}
+                onPress={() => void confirmTerms(true)}
+              >
+                <Text style={styles.noteApproveText}>{t('cta.orderNotes.approve')}</Text>
+              </TouchableOpacity>
+            ) : null}
+            {order.status === 'pending_buyer_confirmation' ? (
+              <TouchableOpacity
+                style={[styles.noteRejectBtn, updating && styles.noteDisabled]}
+                disabled={updating}
+                onPress={() => setCancelModal(true)}
+              >
+                <Text style={styles.noteRejectText}>{t('cta.orderDetail.declineProposal')}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
 
@@ -1172,6 +1174,8 @@ const styles = StyleSheet.create({
   noteSendText: { color: '#5B4F43', fontWeight: '700', fontSize: 14 },
   noteApproveBtn: { flex: 1, borderRadius: 10, backgroundColor: '#3F855C', borderWidth: 1, borderColor: '#3F855C', paddingVertical: 11, alignItems: 'center' },
   noteApproveText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  noteRejectBtn: { flex: 1, borderRadius: 10, backgroundColor: '#FFF4F2', borderWidth: 1, borderColor: '#E59D94', paddingVertical: 11, alignItems: 'center' },
+  noteRejectText: { color: '#C23B2A', fontWeight: '700', fontSize: 14 },
   noteDisabled: { opacity: 0.45 },
   notesLockedHint: { color: '#8A7D72', fontSize: 12, marginTop: 8, lineHeight: 18 },
 });
