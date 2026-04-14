@@ -71,6 +71,18 @@ def _json_dumps(value):
     return json.dumps(value, ensure_ascii=False)
 
 
+def _json_object(value):
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
 def _selected_addons_total(selected_addons):
     if not isinstance(selected_addons, dict):
         return 0.0
@@ -1404,7 +1416,7 @@ class OrderNotesView(APIView):
 
         data = []
         for row in rows:
-            payload = row['payload_json'] or {}
+            payload = _json_object(row['payload_json'])
             data.append({
                 'id': str(row['id']),
                 'senderRole': 'buyer' if row['event_type'] == 'buyer_note' else 'seller',
