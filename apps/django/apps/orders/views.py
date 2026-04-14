@@ -1363,11 +1363,7 @@ class OrderNotesView(APIView):
     """GET /v1/orders/:order_id/notes  — list notes
        POST /v1/orders/:order_id/notes — add a note"""
 
-    NOTEABLE_STATUSES = {
-        'pending_seller_approval', 'pending_buyer_confirmation',
-        'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready',
-        'in_delivery', 'approaching', 'at_door', 'delivered',
-    }
+    NON_MESSAGEABLE_STATUSES = {'cancelled', 'completed'}
 
     def _get_order_parties(self, order_id_str):
         with connection.cursor() as cursor:
@@ -1449,7 +1445,7 @@ class OrderNotesView(APIView):
         else:
             return Response({"error": {"code": "FORBIDDEN", "message": "Erişim reddedildi."}}, status=status.HTTP_403_FORBIDDEN)
 
-        if order['status'] not in self.NOTEABLE_STATUSES:
+        if order['status'] in self.NON_MESSAGEABLE_STATUSES:
             return Response({"error": {"code": "INVALID_STATE", "message": "Bu sipariş için not gönderilemez."}}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         note_id = str(uuid.uuid4())

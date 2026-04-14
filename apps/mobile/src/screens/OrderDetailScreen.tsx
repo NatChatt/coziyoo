@@ -156,7 +156,7 @@ type Props = {
 };
 
 const CANCELLABLE = ['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready', 'in_delivery', 'approaching', 'at_door'];
-const MESSAGEABLE = ['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready', 'in_delivery', 'approaching', 'at_door', 'delivered'];
+const NON_MESSAGEABLE = ['cancelled', 'completed'];
 const COMPLETABLE = ['delivered'];
 const DELIVERY_FLOW_STEPS = ['preparing', 'in_delivery', 'approaching', 'at_door', 'delivered'] as const;
 const PICKUP_FLOW_STEPS = ['preparing', 'ready'] as const;
@@ -393,8 +393,9 @@ export default function OrderDetailScreen({
     if (!order?.id) return () => {};
     return subscribeOrderRealtime(order.id, () => {
       void refreshOrderStatus();
+      void fetchNotes(order.id);
     });
-  }, [order?.id, refreshOrderStatus]);
+  }, [order?.id, refreshOrderStatus, fetchNotes]);
 
   // Dedicated notes poll — independent of order status poll so notes always update
   // Uses ref to avoid stale closure regardless of how long the interval runs
@@ -608,7 +609,7 @@ export default function OrderDetailScreen({
   const pickupMapCoordinates = extractAddressCoordinates(order.sellerAddress);
 
   const canCancel = isBuyer && CANCELLABLE.includes(order.status);
-  const canSendMessages = MESSAGEABLE.includes(order.status);
+  const canSendMessages = !NON_MESSAGEABLE.includes(order.status);
   const canComplete = false;
   const canPay = false;
   const canReview = isBuyer && ['delivered', 'completed'].includes(order.status);

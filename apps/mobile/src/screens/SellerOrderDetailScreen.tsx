@@ -198,7 +198,7 @@ function actionTone(toStatus: string): { bg: string; border: string } {
 }
 
 const CANCELLABLE_STATUSES = ["pending_seller_approval", "pending_buyer_confirmation", "seller_approved", "awaiting_payment", "paid", "preparing", "ready", "in_delivery", "approaching", "at_door"];
-const MESSAGEABLE_STATUSES = ["pending_seller_approval", "pending_buyer_confirmation", "seller_approved", "awaiting_payment", "paid", "preparing", "ready", "in_delivery", "approaching", "at_door", "delivered"];
+const NON_MESSAGEABLE_STATUSES = ['cancelled', 'completed'];
 
 export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthRefresh }: Props) {
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
@@ -397,8 +397,11 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
 
   useEffect(() => {
     if (!order?.id) return () => {};
-    return subscribeOrderRealtime(order.id, () => { void refreshOrderStatus(); });
-  }, [order?.id]);
+    return subscribeOrderRealtime(order.id, () => {
+      void refreshOrderStatus();
+      void fetchNotes(order.id);
+    });
+  }, [order?.id, fetchNotes]);
 
   // Dedicated notes poll — independent of order status poll so messages always update
   // Uses ref to avoid stale closure regardless of how long the interval runs
@@ -439,7 +442,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   const isDecisionStage = Boolean(order && normalizeFlowStatus(order.status) === "pending_seller_approval");
   const isPendingBuyerConfirmation = Boolean(order && normalizeFlowStatus(order.status) === "pending_buyer_confirmation");
   const canCancelOrder = Boolean(order && CANCELLABLE_STATUSES.includes(String(order.status ?? "")));
-  const canSendMessages = Boolean(order && MESSAGEABLE_STATUSES.includes(String(order.status ?? "")));
+  const canSendMessages = Boolean(order && !NON_MESSAGEABLE_STATUSES.includes(String(order.status ?? "")));
   const actionColors = action ? actionTone(action.toStatus) : null;
   const shouldCheckPinBeforeComplete = useMemo(
     () =>
