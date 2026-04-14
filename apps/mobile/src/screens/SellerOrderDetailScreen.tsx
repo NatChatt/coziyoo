@@ -383,6 +383,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       setCancelModalVisible(false);
       setDecisionReason("");
       await loadOrder();
+      Alert.alert(t("headline.common.success"), t("status.seller.orderDetail.cancelled"));
     } catch (e) {
       Alert.alert(t("headline.common.error"), e instanceof Error ? e.message : t("error.seller.orderDetail.cancel"));
     } finally {
