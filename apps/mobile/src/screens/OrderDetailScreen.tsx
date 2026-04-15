@@ -640,6 +640,41 @@ export default function OrderDetailScreen({
     return `${formatDate(iso)} ${h}:${m}`;
   }
 
+  const autoOrderId = order?.id ?? null;
+  const autoNormalizedStatus = String(order?.status ?? '').trim().toLowerCase();
+  const autoIsTerminalStatus = TERMINAL_ORDER_STATUSES.includes(
+    autoNormalizedStatus as (typeof TERMINAL_ORDER_STATUSES)[number],
+  );
+  const autoHasDeliveryRequestSignal =
+    order?.requestedDeliveryType === 'delivery' ||
+    (order?.events ?? []).some((event) => {
+      const type = String(event.eventType ?? '').trim().toLowerCase();
+      return type === 'buyer_delivery_requested' || type.startsWith('seller_delivery_request_');
+    });
+
+  useEffect(() => {
+    if (!isBuyer || !onOpenPayment || !autoOrderId) return;
+    if (autoHasDeliveryRequestSignal || order?.paymentCompleted || autoIsTerminalStatus) return;
+    if (autoNormalizedStatus !== 'seller_approved' && autoNormalizedStatus !== 'awaiting_payment') return;
+
+    const decisionState = String(order?.sellerDecisionState ?? '').trim().toLowerCase();
+    if (autoNormalizedStatus === 'seller_approved' && decisionState && decisionState !== 'approved') return;
+
+    const autoKey = `${autoOrderId}:${autoNormalizedStatus}:${decisionState}:${order?.paymentCompleted ? 'paid' : 'unpaid'}`;
+    if (autoPaymentOpenedKeyRef.current === autoKey) return;
+    autoPaymentOpenedKeyRef.current = autoKey;
+    onOpenPayment(autoOrderId);
+  }, [
+    autoHasDeliveryRequestSignal,
+    autoIsTerminalStatus,
+    autoNormalizedStatus,
+    autoOrderId,
+    isBuyer,
+    onOpenPayment,
+    order?.paymentCompleted,
+    order?.sellerDecisionState,
+  ]);
+
   if (loading && !order) {
     return (
       <View style={styles.container}>
@@ -699,29 +734,6 @@ export default function OrderDetailScreen({
     isBuyer &&
     (order.deliveryType === 'delivery' || order.deliveryType === 'pickup') &&
     normalizedStatus === 'at_door';
-
-  useEffect(() => {
-    if (!isBuyer || !onOpenPayment || !order?.id) return;
-    if (hasDeliveryRequestSignal || order.paymentCompleted || isTerminalStatus) return;
-    if (normalizedStatus !== 'seller_approved' && normalizedStatus !== 'awaiting_payment') return;
-
-    const decisionState = String(order.sellerDecisionState ?? '').trim().toLowerCase();
-    if (normalizedStatus === 'seller_approved' && decisionState && decisionState !== 'approved') return;
-
-    const autoKey = `${order.id}:${normalizedStatus}:${decisionState}:${order.paymentCompleted ? 'paid' : 'unpaid'}`;
-    if (autoPaymentOpenedKeyRef.current === autoKey) return;
-    autoPaymentOpenedKeyRef.current = autoKey;
-    onOpenPayment(order.id);
-  }, [
-    hasDeliveryRequestSignal,
-    isBuyer,
-    isTerminalStatus,
-    normalizedStatus,
-    onOpenPayment,
-    order?.id,
-    order?.paymentCompleted,
-    order?.sellerDecisionState,
-  ]);
 
   const flowSteps = flowStepsByDeliveryType(order.deliveryType);
   const buyerFlowStatus = normalizeBuyerFlowStatus(order.status, order.deliveryType);
