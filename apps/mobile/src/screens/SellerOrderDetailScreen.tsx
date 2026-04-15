@@ -462,10 +462,15 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   }, [order?.id, order?.activeDeliveryType, order?.requestedDeliveryType, order?.sellerEtaMinutes, order?.sellerDeliveryNote]);
 
 
+  const effectiveDeliveryType = useMemo(() => {
+    if (!order) return undefined;
+    return order.activeDeliveryType ?? order.deliveryType;
+  }, [order?.activeDeliveryType, order?.deliveryType]);
+
   const action = useMemo(() => {
     if (!order) return null;
-    return getNextAction(order.status, order.deliveryType);
-  }, [order?.status, order?.deliveryType]);
+    return getNextAction(order.status, effectiveDeliveryType);
+  }, [order?.status, effectiveDeliveryType]);
   const isDecisionStage = Boolean(order && normalizeFlowStatus(order.status) === "pending_seller_approval");
   const isPendingBuyerConfirmation = Boolean(order && normalizeFlowStatus(order.status) === "pending_buyer_confirmation");
   const canCancelOrder = Boolean(order && CANCELLABLE_STATUSES.includes(String(order.status ?? "")));
@@ -476,11 +481,11 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       Boolean(
         order &&
           action &&
-          ((order.deliveryType === "delivery" && action.toStatus === "delivered") ||
-            (order.deliveryType === "pickup" && action.toStatus === "completed")) &&
+          ((effectiveDeliveryType === "delivery" && action.toStatus === "delivered") ||
+            (effectiveDeliveryType === "pickup" && action.toStatus === "completed")) &&
           normalizeFlowStatus(order.status) === "at_door"
       ),
-    [order, action]
+    [order, action, effectiveDeliveryType]
   );
 
   useEffect(() => {
@@ -501,7 +506,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     return extractAddressCoordinates(order.deliveryAddress);
   }, [order]);
   const deliveryFee = useMemo(() => {
-    if (!order || order.deliveryType !== "delivery") return 0;
+    if (!order || effectiveDeliveryType !== "delivery") return 0;
     const itemsSubtotal = (order.items ?? []).reduce((sum, item) => {
       const explicitLineTotal = Number(item.lineTotal ?? 0);
       if (explicitLineTotal > 0) return sum + explicitLineTotal;
@@ -513,15 +518,15 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       return sum + base + addons;
     }, 0);
     return Math.max(0, Number((Number(order.totalPrice ?? 0) - itemsSubtotal).toFixed(2)));
-  }, [order]);
+  }, [order, effectiveDeliveryType]);
   const sellerStatusBadgeKey = useMemo(() => {
     if (!order) return "";
     const normalized = normalizeFlowStatus(order.status);
-    if (order.deliveryType === "pickup" && normalized === "ready") {
+    if (effectiveDeliveryType === "pickup" && normalized === "ready") {
       return "pickup_ready_seller";
     }
     return normalized;
-  }, [order]);
+  }, [order, effectiveDeliveryType]);
   const orderLabel = useMemo(() => {
     if (!order) return "";
     const fallbackId = String(order.id || orderId).trim();
@@ -637,7 +642,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           const pin = pinCode.trim();
           if (!/^\d{4,8}$/.test(pin)) throw new Error(t("error.seller.orderDetail.pinInvalid"));
           await verifyPin(pin);
-          if (order.deliveryType === "delivery") {
+          if (effectiveDeliveryType === "delivery") {
             await changeStatus("delivered");
             await changeStatus("completed");
           }
@@ -700,12 +705,12 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               <StatusBadge
                 status={sellerStatusBadgeKey}
                 size="sm"
-                deliveryType={order.deliveryType === "pickup" ? undefined : order.deliveryType}
+                deliveryType={effectiveDeliveryType === "pickup" ? undefined : effectiveDeliveryType}
               />
             </View>
             <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.buyer", { name: order.buyerName || "-" })}</Text>
             <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.type", {
-              type: order.deliveryType === "delivery" ? t("cta.seller.orderDetail.delivery") : t("cta.seller.orderDetail.pickup"),
+              type: effectiveDeliveryType === "delivery" ? t("cta.seller.orderDetail.delivery") : t("cta.seller.orderDetail.pickup"),
             })}</Text>
             {buyerRequestedDelivery ? (
               <View style={styles.deliveryRequestBanner}>
@@ -714,11 +719,11 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               </View>
             ) : null}
             {order.createdAt ? <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.date", { date: formatOrderDate(order.createdAt) })}</Text> : null}
-            {order.deliveryType === "delivery" ? (
+            {effectiveDeliveryType === "delivery" ? (
               <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.deliveryFee", { amount: deliveryFee.toFixed(2) })}</Text>
             ) : null}
           </View>
-          {order.deliveryType === "delivery" ? (
+          {effectiveDeliveryType === "delivery" ? (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.address")}</Text>
               <TouchableOpacity
