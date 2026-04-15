@@ -705,8 +705,15 @@ class OrderStatusView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        current_status = order["status"]
-        if not can_transition(current_status, new_status):
+        current_status = str(order["status"])
+        normalized_new_status = str(new_status).strip().lower()
+        pickup_fast_start_allowed = (
+            effective_delivery_type == "pickup"
+            and user_id == buyer_id
+            and normalized_new_status == "in_delivery"
+            and current_status in {"paid", "preparing", "ready"}
+        )
+        if not pickup_fast_start_allowed and not can_transition(current_status, new_status):
             return Response(
                 {
                     "error": {
