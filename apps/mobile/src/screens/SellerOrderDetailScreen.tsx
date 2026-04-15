@@ -794,6 +794,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 placeholder={t("helper.seller.orderDetail.etaPlaceholder")}
                 placeholderTextColor="#9C8E81"
               />
+              <Text style={styles.etaHintText}>{t("helper.seller.orderDetail.etaHint")}</Text>
 
               <Text style={styles.inlineFieldLabel}>
                 {buyerRequestedDelivery
@@ -816,17 +817,6 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 placeholderTextColor="#9C8E81"
               />
 
-              <Text style={styles.inlineFieldLabel}>{t("label.seller.orderDetail.cancelReason")}</Text>
-              <TextInput
-                style={[styles.pinInput, styles.noteInput]}
-                value={decisionReason}
-                onChangeText={setDecisionReason}
-
-                multiline
-                placeholder={t("helper.seller.orderDetail.cancelReasonPlaceholder")}
-                placeholderTextColor="#9C8E81"
-              />
-
               <View style={styles.decisionActions}>
                 <TouchableOpacity
                   style={[styles.secondaryActionBtn, updating && styles.actionDisabled]}
@@ -836,6 +826,20 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                   <Text style={styles.secondaryActionText}>
                     {buyerRequestedDelivery ? t("cta.seller.orderDetail.sendExplanation") : t("cta.seller.orderDetail.revise")}
                   </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.approveActionBtn, updating && styles.actionDisabled]}
+                  disabled={updating}
+                  onPress={() => { void submitSellerDecision("approve"); }}
+                >
+                  <Text style={styles.approveActionText}>{t('cta.orderNotes.approve')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.rejectActionBtn, updating && styles.actionDisabled]}
+                  disabled={updating}
+                  onPress={() => setCancelModalVisible(true)}
+                >
+                  <Text style={styles.rejectActionText}>{t('cta.orderNotes.reject')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -898,24 +902,6 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 >
                   <Text style={styles.noteSendText}>{t('cta.orderNotes.send')}</Text>
                 </TouchableOpacity>
-                {isDecisionStage ? (
-                  <TouchableOpacity
-                    style={[styles.noteApproveBtn, updating && styles.actionDisabled]}
-                    disabled={updating}
-                    onPress={() => void submitSellerDecision('approve')}
-                  >
-                    <Text style={styles.noteApproveText}>{t('cta.orderNotes.approve')}</Text>
-                  </TouchableOpacity>
-                ) : null}
-                {isDecisionStage ? (
-                  <TouchableOpacity
-                    style={[styles.noteRejectBtn, updating && styles.actionDisabled]}
-                    disabled={updating}
-                    onPress={() => setCancelModalVisible(true)}
-                  >
-                    <Text style={styles.noteRejectText}>{t('cta.orderNotes.reject')}</Text>
-                  </TouchableOpacity>
-                ) : null}
               </View>
             </View>
           ) : null}
@@ -1277,6 +1263,22 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 1.5,
   },
+  etaHintText: {
+    marginTop: 6,
+    color: "#6C6055",
+    fontSize: 12.5,
+    lineHeight: 17,
+  },
+  approveActionBtn: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#2f6b48",
+    backgroundColor: "#3F855C",
+    paddingVertical: 11,
+    alignItems: "center",
+  },
+  approveActionText: { color: "#FFFFFF", fontWeight: "700" },
   actionBtn: { marginTop: 8, backgroundColor: "#3F855C", borderRadius: 10, borderWidth: 1, paddingVertical: 11, alignItems: "center" },
   actionDisabled: { opacity: 0.45 },
   actionText: { color: "#fff", fontWeight: "700" },
