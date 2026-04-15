@@ -115,38 +115,6 @@ async function openAddressInMaps(address: string): Promise<void> {
   throw new Error('Harita uygulaması açılamadı');
 }
 
-async function openDirectionsInMaps(
-  origin: MapCoordinates | string | null,
-  destination: MapCoordinates | string | null,
-): Promise<void> {
-  const destStr = destination
-    ? typeof destination === 'string'
-      ? destination.trim()
-      : `${destination.lat},${destination.lng}`
-    : '';
-  if (!destStr) return;
-  const origStr = origin
-    ? typeof origin === 'string'
-      ? origin.trim()
-      : `${origin.lat},${origin.lng}`
-    : '';
-  if (!origStr) {
-    return openAddressInMaps(destStr);
-  }
-  const encOrig = encodeURIComponent(origStr);
-  const encDest = encodeURIComponent(destStr);
-  const appleUrl = `maps://?saddr=${encOrig}&daddr=${encDest}&dirflg=d`;
-  const googleUrl = `https://www.google.com/maps/dir/?api=1&origin=${encOrig}&destination=${encDest}&travelmode=driving`;
-  const candidates = Platform.OS === 'ios' ? [appleUrl] : [googleUrl];
-  for (const url of candidates) {
-    const supported = await Linking.canOpenURL(url);
-    if (!supported) continue;
-    await Linking.openURL(url);
-    return;
-  }
-  return openAddressInMaps(destStr);
-}
-
 function toFiniteNumber(value: unknown): number | null {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   if (typeof value === 'string') {
@@ -895,9 +863,7 @@ export default function OrderDetailScreen({
               disabled={!pickupMapAddressText}
               onPress={() => {
                 if (!pickupMapAddressText) return;
-                const dest = pickupMapCoordinates ?? pickupMapAddressText;
-                // Keep origin empty so map apps use the buyer's live/current location.
-                openDirectionsInMaps(null, dest).catch((error) => {
+                openAddressInMapsWithCoordinates(pickupMapAddressText, pickupMapCoordinates).catch((error) => {
                   Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.common.mapOpenFailed'));
                 });
               }}
