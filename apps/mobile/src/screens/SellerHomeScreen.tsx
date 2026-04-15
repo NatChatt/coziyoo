@@ -947,15 +947,6 @@ export default function SellerHomeScreen({
                             </View>
                           ) : null}
                         </View>
-                        {isPickupOrder && pickupCurrentStepLabel ? (
-                          <View style={styles.pickupFlowChipRow}>
-                            <View style={[styles.pickupFlowChip, styles.pickupFlowChipActive]}>
-                              <Text style={[styles.pickupFlowChipText, styles.pickupFlowChipTextActive]}>
-                                {pickupCurrentStepLabel}
-                              </Text>
-                            </View>
-                          </View>
-                        ) : null}
                         <Text style={styles.orderMeta}>{formatCopy('status.seller.orders.buyer', { name: item.buyerName || "-" })}</Text>
                       </View>
                       <View style={styles.orderTopRight}>
@@ -1064,9 +1055,13 @@ export default function SellerHomeScreen({
                               ? t('cta.seller.home.deliveryMetricsLoading')
                             : shouldOpenDecisionScreen
                               ? t('cta.seller.home.reviewDeliveryRequest')
-                              : isDoorStep && !action
-                                ? t('cta.seller.home.verifyPin')
-                                : (action?.label ?? statusText)}
+                            : isDoorStep && !action
+                              ? t('cta.seller.home.verifyPin')
+                                : (
+                                  isPickupOrder && pickupCurrentStepLabel
+                                    ? pickupCurrentStepLabel
+                                    : (action?.label ?? statusText)
+                                )}
                         </Text>
                       </TouchableOpacity>
                     </View>
