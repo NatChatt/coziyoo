@@ -1585,8 +1585,22 @@ class BuyerConfirmTermsView(APIView):
 
         current_status = str(order.get("status") or "")
         requested_delivery_type = str(order.get("requested_delivery_type") or "")
+        has_delivery_request_event = False
+        if requested_delivery_type != "delivery":
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT EXISTS(
+                        SELECT 1 FROM order_events
+                        WHERE order_id = %s AND event_type = 'buyer_delivery_requested'
+                    )
+                    """,
+                    [order_id_str],
+                )
+                row = cursor.fetchone()
+                has_delivery_request_event = bool(row[0]) if row else False
         allow_delivery_confirmation = (
-            requested_delivery_type == "delivery"
+            (requested_delivery_type == "delivery" or has_delivery_request_event)
             and current_status not in ("completed", "cancelled", "rejected")
         )
 
