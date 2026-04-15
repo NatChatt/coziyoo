@@ -800,7 +800,17 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                     <Text style={styles.rejectActionText}>{t('cta.orderNotes.reject')}</Text>
                   </TouchableOpacity>
                 </View>
-              ) : null}
+              ) : (
+                <View style={styles.decisionActions}>
+                  <TouchableOpacity
+                    style={[styles.approveActionBtn, updating && styles.actionDisabled]}
+                    disabled={updating}
+                    onPress={() => { void submitSellerDecision("approve"); }}
+                  >
+                    <Text style={styles.approveActionText}>{t('cta.seller.orderDetail.sendProposalToBuyer')}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           ) : null}
           {isPendingBuyerConfirmation ? (
@@ -981,9 +991,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
             <Text style={styles.actionText}>
               {updating
                 ? t("status.seller.orderDetail.processing")
-                : decisionDeliveryType === "delivery"
-                  ? t('cta.seller.orderDetail.approveDelivery')
-                  : t('cta.seller.orderDetail.approvePickup')}
+                : t('cta.seller.orderDetail.sendProposalToBuyer')}
             </Text>
           </TouchableOpacity>
         </View>
