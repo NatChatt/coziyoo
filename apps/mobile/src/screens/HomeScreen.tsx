@@ -3415,8 +3415,9 @@ export default function HomeScreen({
           const showRefresh = shouldShowQuickOrderRefresh(order.id);
 
           const isPendingProposal = order.status === 'pending_buyer_confirmation';
-          const handleCardPress = isPendingProposal && onOpenOrderDetail
-            ? () => onOpenOrderDetail(order.id)
+          const openOrderFlowDetail = Boolean(onOpenOrderDetail);
+          const handleCardPress = openOrderFlowDetail
+            ? () => onOpenOrderDetail?.(order.id)
             : onOpenOrders;
 
           return (
@@ -3517,7 +3518,7 @@ export default function HomeScreen({
                       activeOpacity={0.88}
                       onPress={(event) => {
                         event.stopPropagation();
-                        if (isPendingProposal && onOpenOrderDetail) {
+                        if (onOpenOrderDetail) {
                           onOpenOrderDetail(order.id);
                         } else {
                           onOpenOrders();
