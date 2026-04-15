@@ -158,14 +158,15 @@ async function openAddressInMapsWithCoordinates(
 }
 
 function normalizeFlowStatus(status: string): string {
-  if (status === "completed") return "delivered";
-  if (status === "pending_buyer_confirmation") return "pending_buyer_confirmation";
-  return status;
+  const normalized = String(status ?? "").trim().toLowerCase();
+  if (normalized === "completed") return "delivered";
+  if (normalized === "pending_buyer_confirmation") return "pending_buyer_confirmation";
+  return normalized;
 }
 
 function getNextAction(status: string, deliveryType?: string): { label: string; toStatus: string } | null {
   const normalized = normalizeFlowStatus(status);
-  const pickup = deliveryType === "pickup";
+  const pickup = String(deliveryType ?? "").trim().toLowerCase() === "pickup";
   if (normalized === "paid") {
     return { label: t("cta.seller.home.startPreparing"), toStatus: "preparing" };
   }
@@ -524,7 +525,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   const sellerStatusBadgeKey = useMemo(() => {
     if (!order) return "";
     const normalized = normalizeFlowStatus(order.status);
-    if (effectiveDeliveryType === "pickup" && normalized === "ready") {
+    if (String(effectiveDeliveryType ?? "").trim().toLowerCase() === "pickup" && normalized === "ready") {
       return "pickup_ready_seller";
     }
     return normalized;
