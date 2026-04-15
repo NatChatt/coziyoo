@@ -81,6 +81,7 @@ type OrderDetail = {
     lng?: number | string;
     latitude?: number | string;
     longitude?: number | string;
+    distanceKm?: number | null;
   } | null;
   sellerAddress?: {
     title?: string;
@@ -723,7 +724,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.deliveryFee", { amount: deliveryFee.toFixed(2) })}</Text>
             ) : null}
           </View>
-          {effectiveDeliveryType === "delivery" ? (
+          {(effectiveDeliveryType === "delivery" || (buyerRequestedDelivery && Boolean(deliveryAddressText))) ? (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.address")}</Text>
               <TouchableOpacity
@@ -739,6 +740,9 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 <Text style={[styles.meta, mapAddressText ? styles.linkText : null]}>{order.deliveryAddress?.title || "-"}</Text>
                 <Text style={[styles.meta, mapAddressText ? styles.linkText : null]}>{order.deliveryAddress?.addressLine || order.deliveryAddress?.line || "-"}</Text>
               </TouchableOpacity>
+              {order.deliveryAddress?.distanceKm != null ? (
+                <Text style={styles.meta}>{formatCopy("helper.seller.orderDetail.deliveryDistance", { km: order.deliveryAddress.distanceKm.toFixed(1) })}</Text>
+              ) : null}
             </View>
           ) : null}
           {isDecisionStage ? (

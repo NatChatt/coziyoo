@@ -1,4 +1,5 @@
 import json
+import math
 import uuid
 
 from django.db import connection, transaction
@@ -103,6 +104,16 @@ def _selected_addons_total(selected_addons):
         if quantity > 0 and price > 0:
             total += price * quantity
     return total
+
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    """Great-circle distance in km between two (lat, lon) pairs."""
+    R = 6371.0
+    phi1, phi2 = math.radians(float(lat1)), math.radians(float(lat2))
+    dphi = math.radians(float(lat2) - float(lat1))
+    dlambda = math.radians(float(lon2) - float(lon1))
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(a))
 
 
 def _normalize_seller_decision(value):
@@ -810,15 +821,57 @@ class BuyerDeliveryRequestView(APIView):
 
         with transaction.atomic():
             with connection.cursor() as cursor:
+                # Capture buyer's default address
+                cursor.execute(
+                    """
+                    SELECT title, address_line
+                    FROM user_addresses
+                    WHERE user_id = %s
+                    ORDER BY is_default DESC, updated_at DESC, created_at DESC
+                    LIMIT 1
+                    """,
+                    [user_id],
+                )
+                address_row = cursor.fetchone()
+                delivery_address_snapshot = None
+                if address_row and any(address_row):
+                    delivery_address_snapshot = {
+                        "title": address_row[0],
+                        "addressLine": address_row[1],
+                        "line": address_row[1],
+                    }
+
+                # Compute buyer-to-seller distance using stored coordinates
+                cursor.execute(
+                    """
+                    SELECT b.latitude, b.longitude, s.latitude, s.longitude
+                    FROM users b, users s
+                    WHERE b.id = %s AND s.id = %s
+                    """,
+                    [user_id, str(order["seller_id"])],
+                )
+                coord_row = cursor.fetchone()
+                if coord_row and all(v is not None for v in coord_row):
+                    try:
+                        distance_km = _haversine_km(*coord_row)
+                        if delivery_address_snapshot is not None:
+                            delivery_address_snapshot["distanceKm"] = round(distance_km, 2)
+                    except (TypeError, ValueError):
+                        pass
+
                 cursor.execute(
                     """
                     UPDATE orders
                     SET requested_delivery_type = 'delivery',
+                        delivery_address_json = COALESCE(%s::jsonb, delivery_address_json),
                         updated_at = now()
                     WHERE id = %s
                     RETURNING requested_delivery_type, active_delivery_type
                     """,
-                    [order_id_str],
+                    [
+                        _json_dumps(delivery_address_snapshot) if delivery_address_snapshot else None,
+                        order_id_str,
+                    ],
                 )
                 updated = cursor.fetchone()
 
