@@ -186,6 +186,23 @@ function getNextAction(status: string, deliveryType?: string): { label: string; 
   return null;
 }
 
+const PICKUP_BUYER_FLOW_STEPS = ["in_delivery", "approaching", "at_door"] as const;
+type PickupBuyerFlowStep = (typeof PICKUP_BUYER_FLOW_STEPS)[number];
+
+function pickupBuyerStepLabel(step: PickupBuyerFlowStep): string {
+  if (step === "in_delivery") return "Yoldayım";
+  if (step === "approaching") return "Geliyorum";
+  return "Kapıdayım";
+}
+
+function pickupBuyerProgressIndex(status: string): number {
+  const normalized = String(status ?? "").trim().toLowerCase();
+  if (normalized === "in_delivery") return 0;
+  if (normalized === "approaching") return 1;
+  if (["at_door", "delivered", "completed"].includes(normalized)) return 2;
+  return -1;
+}
+
 function actionTone(toStatus: string): { bg: string; border: string } {
   if (toStatus === "preparing") return { bg: "#B86A00", border: "#B86A00" };
   if (toStatus === "ready") return { bg: "#166534", border: "#166534" };
@@ -959,6 +976,37 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               {order.sellerDeliveryTermsSnapshot ? <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.generalTerms", { terms: order.sellerDeliveryTermsSnapshot })}</Text> : null}
             </View>
           ) : null}
+          {String(effectiveDeliveryType ?? "").trim().toLowerCase() === "pickup" ? (
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Alıcı Akışı</Text>
+              <View style={styles.pickupBuyerFlowRow}>
+                {PICKUP_BUYER_FLOW_STEPS.map((step) => {
+                  const reached = pickupBuyerProgressIndex(order.status) >= PICKUP_BUYER_FLOW_STEPS.indexOf(step);
+                  return (
+                    <View
+                      key={step}
+                      style={[
+                        styles.pickupBuyerStepChip,
+                        reached && styles.pickupBuyerStepChipActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pickupBuyerStepText,
+                          reached && styles.pickupBuyerStepTextActive,
+                        ]}
+                      >
+                        {pickupBuyerStepLabel(step)}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+              {normalizedFlowStatus === "at_door" ? (
+                <Text style={styles.meta}>Alıcı kapıda. Kodu doğrulayıp siparişi tamamlayabilirsin.</Text>
+              ) : null}
+            </View>
+          ) : null}
 
           {effectiveAction ? (
             <View style={styles.card}>
@@ -1176,6 +1224,21 @@ const styles = StyleSheet.create({
   },
   productsTotalLabel: { color: "#2E241C", fontWeight: "700" },
   productsTotalValue: { color: "#2E241C", fontWeight: "800" },
+  pickupBuyerFlowRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 4 },
+  pickupBuyerStepChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#DCCFBF",
+    backgroundColor: "#FAF5EC",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  pickupBuyerStepChipActive: {
+    borderColor: "#8CC6A2",
+    backgroundColor: "#EAF7EE",
+  },
+  pickupBuyerStepText: { color: "#75695F", fontSize: 12.5, fontWeight: "700" },
+  pickupBuyerStepTextActive: { color: "#1F6F43" },
   pinInput: {
     marginTop: 8,
     borderWidth: 1,

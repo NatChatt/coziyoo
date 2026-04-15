@@ -198,6 +198,7 @@ const DELIVERY_FLOW_STEPS = ['preparing', 'in_delivery', 'approaching', 'at_door
 const PICKUP_FLOW_STEPS = ['preparing', 'ready'] as const;
 type BuyerFlowStep = (typeof DELIVERY_FLOW_STEPS)[number] | (typeof PICKUP_FLOW_STEPS)[number];
 const ORDER_DETAIL_CACHE = new Map<string, OrderDetail>();
+const AUTO_PAYMENT_OPENED_ORDERS = new Set<string>();
 
 function flowStepsByDeliveryType(deliveryType: 'pickup' | 'delivery'): readonly BuyerFlowStep[] {
   return deliveryType === 'pickup' ? PICKUP_FLOW_STEPS : DELIVERY_FLOW_STEPS;
@@ -654,15 +655,17 @@ export default function OrderDetailScreen({
 
   useEffect(() => {
     if (!isBuyer || !onOpenPayment || !autoOrderId) return;
+    if (AUTO_PAYMENT_OPENED_ORDERS.has(autoOrderId)) return;
     if (autoHasDeliveryRequestSignal || order?.paymentCompleted || autoIsTerminalStatus) return;
-    if (autoNormalizedStatus !== 'seller_approved' && autoNormalizedStatus !== 'awaiting_payment') return;
+    if (autoNormalizedStatus !== 'seller_approved') return;
 
     const decisionState = String(order?.sellerDecisionState ?? '').trim().toLowerCase();
-    if (autoNormalizedStatus === 'seller_approved' && decisionState && decisionState !== 'approved') return;
+    if (decisionState && decisionState !== 'approved') return;
 
     const autoKey = `${autoOrderId}:${autoNormalizedStatus}:${decisionState}:${order?.paymentCompleted ? 'paid' : 'unpaid'}`;
     if (autoPaymentOpenedKeyRef.current === autoKey) return;
     autoPaymentOpenedKeyRef.current = autoKey;
+    AUTO_PAYMENT_OPENED_ORDERS.add(autoOrderId);
     onOpenPayment(autoOrderId);
   }, [
     autoHasDeliveryRequestSignal,
