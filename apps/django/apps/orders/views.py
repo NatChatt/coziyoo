@@ -504,10 +504,15 @@ class OrderDetailView(APIView):
                        o.created_at, o.updated_at, o.delivery_address_json,
                        o.buyer_id, o.seller_id,
                        ub.display_name AS buyer_name,
-                       us.display_name AS seller_name
+                       us.display_name AS seller_name,
+                       sa.title AS seller_address_title,
+                       sa.address_line AS seller_address_line,
+                       us.latitude AS seller_lat,
+                       us.longitude AS seller_lng
                 FROM orders o
                 JOIN users ub ON ub.id = o.buyer_id
                 JOIN users us ON us.id = o.seller_id
+                LEFT JOIN user_addresses sa ON sa.user_id = o.seller_id AND sa.is_default = TRUE
                 WHERE o.id = %s AND (o.buyer_id = %s OR o.seller_id = %s)
                 """,
                 [order_id_str, user_id, user_id],
@@ -572,6 +577,23 @@ class OrderDetailView(APIView):
                     "sellerId": str(order["seller_id"]),
                     "buyerName": order["buyer_name"],
                     "sellerName": order["seller_name"],
+                    # Seller pickup address — shown to buyer once order is approved, never to seller
+                    "sellerAddress": (
+                        {
+                            "title": order["seller_address_title"],
+                            "addressLine": order["seller_address_line"],
+                            "line": order["seller_address_line"],
+                            "lat": float(order["seller_lat"]) if order["seller_lat"] is not None else None,
+                            "lng": float(order["seller_lng"]) if order["seller_lng"] is not None else None,
+                        }
+                        if (
+                            user_id == str(order["buyer_id"])
+                            and str(order.get("active_delivery_type") or "") != "delivery"
+                            and str(order.get("status") or "") != "pending_seller_approval"
+                            and (order["seller_address_title"] or order["seller_address_line"])
+                        )
+                        else None
+                    ),
                     "items": [
                         {
                             "id": str(i["id"]),
