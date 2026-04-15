@@ -59,6 +59,25 @@ def _order_admin_detail(order_id_str):
         )
         note_rows = cur.fetchall()
 
+        # Chat messages linked to this order (buyer <-> seller conversation)
+        cur.execute(
+            """
+            SELECT
+                COALESCE(NULLIF(m.sender_type, ''), '') AS sender_type,
+                m.message,
+                m.message_type,
+                m.created_at,
+                u.display_name
+            FROM chats c
+            JOIN messages m ON m.chat_id = c.id
+            LEFT JOIN users u ON u.id = m.sender_id
+            WHERE c.order_id = %s
+            ORDER BY m.created_at ASC
+            """,
+            [order_id_str],
+        )
+        chat_rows = cur.fetchall()
+
         # Status timeline from order_events
         cur.execute(
             """
@@ -89,8 +108,27 @@ def _order_admin_detail(order_id_str):
             "role": "buyer" if event_type == "buyer_note" else "seller",
             "sender": display_name or "",
             "message": payload.get("message", ""),
-            "createdAt": ts.strftime("%d.%m.%Y %H:%M") if ts else None,
+            "_ts": ts,
         })
+
+    for sender_type, message_text, message_type, ts, display_name in chat_rows:
+        normalized_sender_type = str(sender_type or "").strip().lower()
+        role = "seller" if normalized_sender_type == "seller" else "buyer"
+        text = (message_text or "").strip()
+        if not text:
+            mt = str(message_type or "").strip()
+            text = f"[{mt}]" if mt else ""
+        messages.append({
+            "role": role,
+            "sender": display_name or "",
+            "message": text,
+            "_ts": ts,
+        })
+
+    messages.sort(key=lambda item: item.get("_ts") or 0)
+    for item in messages:
+        ts = item.pop("_ts", None)
+        item["createdAt"] = ts.strftime("%d.%m.%Y %H:%M") if ts else None
 
     STATUS_STEPS = [
         ("preparing", "Hazırlanıyor"),
