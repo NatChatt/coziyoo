@@ -1583,7 +1583,13 @@ class BuyerConfirmTermsView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        if order["status"] != "pending_buyer_confirmation":
+        current_status = str(order.get("status") or "")
+        allow_legacy_delivery_confirmation = (
+            current_status == "seller_approved"
+            and str(order.get("requested_delivery_type") or "") == "delivery"
+        )
+
+        if current_status != "pending_buyer_confirmation" and not allow_legacy_delivery_confirmation:
             return Response(
                 {"error": {"code": "INVALID_STATE", "message": "Bu sipariş onay beklemiyor."}},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -1635,7 +1641,7 @@ class BuyerConfirmTermsView(APIView):
                         order_id_str,
                         event_type,
                         user_id,
-                        "pending_buyer_confirmation",
+                        current_status,
                         new_status,
                         _json_dumps({"confirm": bool(confirm)}),
                     ],

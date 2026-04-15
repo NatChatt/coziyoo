@@ -664,7 +664,12 @@ export default function OrderDetailScreen({
   const pickupMapAddressText = pickupSellerAddressText || null;
   const pickupMapCoordinates = extractAddressCoordinates(order.sellerAddress);
 
-  const isPendingBuyerProposal = order.status === 'pending_buyer_confirmation';
+  const isPendingBuyerProposal =
+    order.status === 'pending_buyer_confirmation' ||
+    (
+      order.status === 'seller_approved' &&
+      order.requestedDeliveryType === 'delivery'
+    );
   const canCancel = isBuyer && CANCELLABLE.includes(order.status);
   const canSendMessages = !NON_MESSAGEABLE.includes(order.status);
   const canComplete = false;
