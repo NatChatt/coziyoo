@@ -217,24 +217,11 @@ function cardActionByStatus(status: string, deliveryType?: string): SellerAction
   if (status === "pending_seller_approval") {
     return { label: t('cta.seller.home.approveOrder'), toStatus: "seller_approved", tone: "approve" };
   }
+  if (pickup) {
+    return null;
+  }
   if (status === "paid") {
     return { label: t('cta.seller.home.startPreparing'), toStatus: "preparing", tone: "preparing" };
-  }
-  if (pickup && status === "preparing") {
-    return { label: t('cta.seller.home.markReady'), toStatus: "ready", tone: "ready" };
-  }
-  if (pickup && status === "ready") {
-    return { label: t('cta.seller.home.onTheWay'), toStatus: "in_delivery", tone: "in_delivery" };
-  }
-  if (pickup && status === "in_delivery") {
-    return { label: t('cta.seller.home.approaching'), toStatus: "approaching", tone: "approaching" };
-  }
-  if (pickup && status === "approaching") {
-    return { label: t('cta.seller.home.atDoor'), toStatus: "at_door", tone: "at_door" };
-  }
-  if (pickup && status === "at_door") return null;
-  if (pickup && ["delivered", "completed"].includes(status)) {
-    return null;
   }
   if (!pickup && status === "preparing") {
     return { label: t('cta.seller.home.markReady'), toStatus: "ready", tone: "ready" };

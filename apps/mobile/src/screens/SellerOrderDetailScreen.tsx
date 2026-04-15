@@ -167,19 +167,14 @@ function normalizeFlowStatus(status: string): string {
 function getNextAction(status: string, deliveryType?: string): { label: string; toStatus: string } | null {
   const normalized = normalizeFlowStatus(status);
   const pickup = String(deliveryType ?? "").trim().toLowerCase() === "pickup";
+  if (pickup) {
+    return null;
+  }
   if (normalized === "paid") {
     return { label: t("cta.seller.home.startPreparing"), toStatus: "preparing" };
   }
   if (normalized === "preparing") {
     return { label: t("cta.seller.home.markReady"), toStatus: "ready" };
-  }
-  // Pickup: seller owns seller flow and can update in parallel with buyer flow.
-  if (pickup) {
-    if (normalized === "ready") return { label: t("cta.seller.home.onTheWay"), toStatus: "in_delivery" };
-    if (normalized === "in_delivery") return { label: t("cta.seller.home.approaching"), toStatus: "approaching" };
-    if (normalized === "approaching") return { label: t("cta.seller.home.atDoor"), toStatus: "at_door" };
-    if (normalized === "at_door") return { label: t("status.common.badge.delivered"), toStatus: "completed" };
-    return null;
   }
   // Delivery flow
   if (normalized === "ready") {

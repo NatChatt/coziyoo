@@ -672,7 +672,7 @@ class OrderStatusView(APIView):
 
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT id, status, buyer_id, seller_id FROM orders WHERE id = %s",
+                "SELECT id, status, buyer_id, seller_id, delivery_type, active_delivery_type FROM orders WHERE id = %s",
                 [order_id_str],
             )
             order = _dictfetchone(cursor)
@@ -685,10 +685,23 @@ class OrderStatusView(APIView):
 
         buyer_id = str(order["buyer_id"])
         seller_id = str(order["seller_id"])
+        effective_delivery_type = str(order.get("active_delivery_type") or order.get("delivery_type") or "").strip().lower()
 
         if user_id not in (buyer_id, seller_id):
             return Response(
                 {"error": {"code": "FORBIDDEN", "message": "You are not a participant in this order"}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        pickup_buyer_owned_statuses = {"preparing", "ready", "in_delivery", "approaching", "at_door", "delivered", "completed"}
+        if effective_delivery_type == "pickup" and user_id == seller_id and str(new_status).strip().lower() in pickup_buyer_owned_statuses:
+            return Response(
+                {
+                    "error": {
+                        "code": "FORBIDDEN",
+                        "message": "Gel al akışını alıcı ilerletir.",
+                    }
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
