@@ -664,10 +664,9 @@ export default function OrderDetailScreen({
   const pickupMapAddressText = pickupSellerAddressText || null;
   const pickupMapCoordinates = extractAddressCoordinates(order.sellerAddress);
 
-  const hasCapturedPayment = Boolean(order.paymentCompleted || order.paymentCapturedAt);
-  const isPendingBuyerProposal = order.status === 'pending_buyer_confirmation' && !hasCapturedPayment;
+  const isPendingBuyerProposal = order.status === 'pending_buyer_confirmation';
   const canCancel = isBuyer && CANCELLABLE.includes(order.status);
-  const canSendMessages = !NON_MESSAGEABLE.includes(order.status) && !hasCapturedPayment;
+  const canSendMessages = !NON_MESSAGEABLE.includes(order.status);
   const canComplete = false;
   const canPay = false;
   const canReview = isBuyer && ['delivered', 'completed'].includes(order.status);
