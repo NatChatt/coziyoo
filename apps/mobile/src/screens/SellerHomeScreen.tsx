@@ -59,6 +59,21 @@ const BUSINESS_DAY_RESET_HOUR = 5;
 const TURKEY_TIMEZONE = "Europe/Istanbul";
 const SELLER_FAST_REFRESH_MS = 3_000;
 const SELLER_IDLE_REFRESH_MS = 6_000;
+const PICKUP_BUYER_STEPS = ["in_delivery", "approaching", "at_door"] as const;
+
+function pickupBuyerStepLabel(step: (typeof PICKUP_BUYER_STEPS)[number]): string {
+  if (step === "in_delivery") return "Yoldayım";
+  if (step === "approaching") return "Geliyorum";
+  return "Kapıdayım";
+}
+
+function pickupBuyerProgressIndex(status: string): number {
+  const normalized = String(status ?? "").trim().toLowerCase();
+  if (normalized === "in_delivery") return 0;
+  if (normalized === "approaching") return 1;
+  if (["at_door", "delivered", "completed"].includes(normalized)) return 2;
+  return -1;
+}
 
 function toBool(value: unknown): boolean {
   if (typeof value === "boolean") return value;
@@ -858,6 +873,7 @@ export default function SellerHomeScreen({
               const buyerFlowText = buyerProgressLabel(
                 item.buyerProgressStatus || (item.deliveryType === "pickup" ? item.status : null),
               );
+              const isPickupOrder = String(item.deliveryType ?? "").trim().toLowerCase() === "pickup";
               const statusText = statusLabel(item.status, item.deliveryType);
               const passiveTone = toneFromStatus(item.status, item.deliveryType);
               const resolvedTone = action?.tone ?? passiveTone;
@@ -927,6 +943,31 @@ export default function SellerHomeScreen({
                           ) : null}
                         </View>
                         {buyerFlowText ? <Text style={styles.orderBuyerFlowMeta}>{buyerFlowText}</Text> : null}
+                        {isPickupOrder ? (
+                          <View style={styles.pickupFlowChipRow}>
+                            {PICKUP_BUYER_STEPS.map((step) => {
+                              const reached = pickupBuyerProgressIndex(item.status) >= PICKUP_BUYER_STEPS.indexOf(step);
+                              return (
+                                <View
+                                  key={`${item.id}-${step}`}
+                                  style={[
+                                    styles.pickupFlowChip,
+                                    reached && styles.pickupFlowChipActive,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.pickupFlowChipText,
+                                      reached && styles.pickupFlowChipTextActive,
+                                    ]}
+                                  >
+                                    {pickupBuyerStepLabel(step)}
+                                  </Text>
+                                </View>
+                              );
+                            })}
+                          </View>
+                        ) : null}
                         <Text style={styles.orderMeta}>{formatCopy('status.seller.orders.buyer', { name: item.buyerName || "-" })}</Text>
                       </View>
                       <View style={styles.orderTopRight}>
@@ -1302,6 +1343,21 @@ const styles = StyleSheet.create({
   orderIdText: { color: "#887766", fontSize: 12, fontWeight: "800" },
   orderDateText: { color: "#9A8A7A", fontSize: 11, fontWeight: "700", marginTop: 2 },
   orderBuyerFlowMeta: { color: "#0F766E", fontSize: 12, fontWeight: "800", marginTop: 4 },
+  pickupFlowChipRow: { flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 6 },
+  pickupFlowChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#DCCFBF",
+    backgroundColor: "#FAF5EC",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  pickupFlowChipActive: {
+    borderColor: "#8CC6A2",
+    backgroundColor: "#EAF7EE",
+  },
+  pickupFlowChipText: { color: "#75695F", fontSize: 11.5, fontWeight: "700" },
+  pickupFlowChipTextActive: { color: "#1F6F43" },
   orderMeta: { color: "#6C6055", marginTop: 3 },
   orderElapsedText: { color: "#7A6C5E", fontSize: 12, fontWeight: "700" },
   deliveryRequestInlineBanner: {

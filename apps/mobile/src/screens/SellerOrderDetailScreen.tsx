@@ -203,6 +203,15 @@ function pickupBuyerProgressIndex(status: string): number {
   return -1;
 }
 
+function pickupBuyerCurrentLabel(status: string): string {
+  const normalized = String(status ?? "").trim().toLowerCase();
+  if (normalized === "in_delivery") return "Yoldayım";
+  if (normalized === "approaching") return "Geliyorum";
+  if (normalized === "at_door") return "Kapıdayım";
+  if (normalized === "delivered" || normalized === "completed") return "Teslim tamamlandı";
+  return "Henüz yola çıkmadı";
+}
+
 function actionTone(toStatus: string): { bg: string; border: string } {
   if (toStatus === "preparing") return { bg: "#B86A00", border: "#B86A00" };
   if (toStatus === "ready") return { bg: "#166534", border: "#166534" };
@@ -979,6 +988,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           {String(effectiveDeliveryType ?? "").trim().toLowerCase() === "pickup" ? (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Alıcı Akışı</Text>
+              <Text style={styles.meta}>Alıcı şu an: {pickupBuyerCurrentLabel(order.status)}</Text>
               <View style={styles.pickupBuyerFlowRow}>
                 {PICKUP_BUYER_FLOW_STEPS.map((step) => {
                   const reached = pickupBuyerProgressIndex(order.status) >= PICKUP_BUYER_FLOW_STEPS.indexOf(step);
