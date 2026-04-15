@@ -643,10 +643,8 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           const pin = pinCode.trim();
           if (!/^\d{4,8}$/.test(pin)) throw new Error(t("error.seller.orderDetail.pinInvalid"));
           await verifyPin(pin);
-          if (effectiveDeliveryType === "delivery") {
-            await changeStatus("delivered");
-            await changeStatus("completed");
-          }
+          // Backend transitions at_door → delivered → completed atomically.
+          // No additional status calls needed here.
         } else {
           await changeStatus(action.toStatus);
         }

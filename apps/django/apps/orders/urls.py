@@ -14,4 +14,5 @@ urlpatterns = [
     path("<uuid:order_id>/notes", views.OrderNotesView.as_view()),
     path("<uuid:order_id>/delivery-proof", views.DeliveryProofView.as_view()),
     path("<uuid:order_id>/verify-delivery-pin", views.VerifyDeliveryPinView.as_view()),
+    path("<uuid:order_id>/delivery-proof/pin/verify", views.VerifyDeliveryPinView.as_view()),
 ]

@@ -1824,21 +1824,27 @@ class VerifyDeliveryPinView(APIView):
                         """,
                         [order_id_str],
                     )
+                    # Transition at_door → delivered → completed atomically so the
+                    # mobile only needs to refresh; no extra status calls required.
                     cursor.execute(
-                        "UPDATE orders SET status = 'delivered', updated_at = now() WHERE id = %s",
+                        "UPDATE orders SET status = 'completed', updated_at = now() WHERE id = %s",
                         [order_id_str],
                     )
                     cursor.execute(
                         """
                         INSERT INTO order_events (id, order_id, event_type, actor_user_id, from_status, to_status, payload_json)
-                        VALUES (%s, %s, 'delivery_pin_verified', %s, 'at_door', 'delivered', %s)
+                        VALUES (%s, %s, 'delivery_pin_verified', %s, 'at_door', 'delivered', %s),
+                               (%s, %s, 'status_changed_to_completed', %s, 'delivered', 'completed', %s)
                         """,
-                        [str(uuid.uuid4()), order_id_str, user_id, _json_dumps({"sellerId": user_id})],
+                        [
+                            str(uuid.uuid4()), order_id_str, user_id, _json_dumps({"sellerId": user_id}),
+                            str(uuid.uuid4()), order_id_str, user_id, _json_dumps({"sellerId": user_id}),
+                        ],
                     )
                     _create_notification(
                         cursor,
                         str(order["buyer_id"]),
-                        "order_delivered",
+                        "order_completed",
                         "Teslimat tamamlandı",
                         "Siparişin teslim edildi. Afiyet olsun!",
                         {"orderId": order_id_str},
@@ -1850,7 +1856,7 @@ class VerifyDeliveryPinView(APIView):
                     )
 
         if pin_valid:
-            return Response({"data": {"orderId": order_id_str, "status": "delivered", "verified": True}})
+            return Response({"data": {"orderId": order_id_str, "status": "completed", "verified": True}})
 
         remaining = self.MAX_ATTEMPTS - attempts - 1
         return Response(
