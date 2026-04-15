@@ -664,8 +664,10 @@ export default function OrderDetailScreen({
   const pickupMapAddressText = pickupSellerAddressText || null;
   const pickupMapCoordinates = extractAddressCoordinates(order.sellerAddress);
 
+  const hasCapturedPayment = Boolean(order.paymentCompleted || order.paymentCapturedAt);
+  const isPendingBuyerProposal = order.status === 'pending_buyer_confirmation' && !hasCapturedPayment;
   const canCancel = isBuyer && CANCELLABLE.includes(order.status);
-  const canSendMessages = !NON_MESSAGEABLE.includes(order.status);
+  const canSendMessages = !NON_MESSAGEABLE.includes(order.status) && !hasCapturedPayment;
   const canComplete = false;
   const canPay = false;
   const canReview = isBuyer && ['delivered', 'completed'].includes(order.status);
@@ -719,7 +721,7 @@ export default function OrderDetailScreen({
         {/* Status + Order No */}
         <View style={styles.topRow}>
           <StatusBadge
-            status={order.status === 'pending_buyer_confirmation' ? 'pending_buyer_confirmation' : buyerFlowStatus}
+            status={isPendingBuyerProposal ? 'pending_buyer_confirmation' : buyerFlowStatus}
             size="md"
             deliveryType={order.deliveryType}
             audience="buyer"
@@ -728,7 +730,7 @@ export default function OrderDetailScreen({
         </View>
 
         {/* Seller Proposal — shown at TOP for pending_buyer_confirmation */}
-        {order.status === 'pending_buyer_confirmation' ? (
+        {isPendingBuyerProposal ? (
           <View style={styles.proposalCard}>
             <Text style={styles.proposalTitle}>{t('headline.orderDetail.sellerProposal')}</Text>
             <Text style={styles.proposalBody}>
@@ -926,7 +928,7 @@ export default function OrderDetailScreen({
           {!canSendMessages ? (
             <Text style={styles.notesLockedHint}>{t('helper.orderDetail.cancelLocked')}</Text>
           ) : null}
-          {order.status === 'pending_buyer_confirmation' ? (
+          {isPendingBuyerProposal ? (
             <Text style={styles.notesConfirmHint}>{t('helper.orderDetail.proposalConfirmHint')}</Text>
           ) : null}
           <View style={styles.noteActions}>
@@ -937,7 +939,7 @@ export default function OrderDetailScreen({
             >
               <Text style={styles.noteSendText}>{t('cta.orderNotes.send')}</Text>
             </TouchableOpacity>
-            {order.status === 'pending_buyer_confirmation' ? (
+            {isPendingBuyerProposal ? (
               <TouchableOpacity
                 style={[styles.noteApproveBtn, updating && styles.noteDisabled]}
                 disabled={updating}
@@ -946,7 +948,7 @@ export default function OrderDetailScreen({
                 <Text style={styles.noteApproveText}>{t('cta.orderNotes.approve')}</Text>
               </TouchableOpacity>
             ) : null}
-            {order.status === 'pending_buyer_confirmation' ? (
+            {isPendingBuyerProposal ? (
               <TouchableOpacity
                 style={[styles.noteRejectBtn, updating && styles.noteDisabled]}
                 disabled={updating}
