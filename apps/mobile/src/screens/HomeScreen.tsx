@@ -483,6 +483,7 @@ type HomeOrdersApiItem = {
   sellerName?: string | null;
   orderNo?: string | null;
   items?: { name: string; quantity: number }[];
+  lastSellerNote?: string | null;
 };
 
 type HomeOrderSummary = {
@@ -498,6 +499,7 @@ type HomeOrderSummary = {
   requestedDeliveryType: 'pickup' | 'delivery';
   activeDeliveryType: 'pickup' | 'delivery';
   sellerDecisionState?: string | null;
+  lastSellerNote?: string | null;
 };
 
 const HOME_ACTIONABLE_ORDER_STATUSES = new Set([
@@ -2134,6 +2136,7 @@ export default function HomeScreen({
       requestedDeliveryType: order.requestedDeliveryType === 'delivery' ? 'delivery' : 'pickup',
       activeDeliveryType: order.activeDeliveryType === 'delivery' ? 'delivery' : (order.deliveryType === 'delivery' ? 'delivery' : 'pickup'),
       sellerDecisionState: order.sellerDecisionState ?? null,
+      lastSellerNote: order.lastSellerNote ?? null,
     }));
 
     setRecentBuyerOrders(mapped);
@@ -3445,7 +3448,14 @@ export default function HomeScreen({
                 />
               </View>
 
-              <Text style={styles.quickOrderHint}>{latestHomeOrderHint(order.status)}</Text>
+              {order.lastSellerNote ? (
+                <View style={styles.quickOrderSellerNoteRow}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={13} color="#7C3AED" />
+                  <Text style={styles.quickOrderSellerNoteText} numberOfLines={2}>{order.lastSellerNote}</Text>
+                </View>
+              ) : (
+                <Text style={styles.quickOrderHint}>{latestHomeOrderHint(order.status)}</Text>
+              )}
               {isPendingProposal ? (
                 <View style={styles.quickOrderProposalPill}>
                   <Ionicons name="time-outline" size={14} color="#7C3AED" />
@@ -5567,6 +5577,8 @@ const styles = StyleSheet.create({
   quickOrderMetaNo: { flexShrink: 1, marginTop: 0 },
   quickOrderMetaDate: { flexShrink: 0, marginTop: 0 },
   quickOrderHint: { color: '#5E5247', fontSize: 13, lineHeight: 18, marginTop: 6 },
+  quickOrderSellerNoteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 6 },
+  quickOrderSellerNoteText: { flex: 1, color: '#4B2E7A', fontSize: 13, lineHeight: 18, fontStyle: 'italic' },
   quickOrderProposalPill: {
     marginTop: 6,
     flexDirection: 'row',

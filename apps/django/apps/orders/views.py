@@ -188,7 +188,14 @@ class OrderListCreateView(APIView):
                        FROM order_items oi
                        JOIN foods f ON f.id = oi.food_id
                        WHERE oi.order_id = o.id
-                   ) AS items_json
+                   ) AS items_json,
+                   (
+                       SELECT oe.payload_json->>'message'
+                       FROM order_events oe
+                       WHERE oe.order_id = o.id AND oe.event_type = 'seller_note'
+                       ORDER BY oe.created_at DESC
+                       LIMIT 1
+                   ) AS last_seller_note
             FROM orders o
             JOIN users ub ON ub.id = o.buyer_id
             JOIN users us ON us.id = o.seller_id
@@ -218,6 +225,7 @@ class OrderListCreateView(APIView):
                 "buyerName": r["buyer_name"],
                 "sellerName": r["seller_name"],
                 "items": r["items_json"] or [],
+                "lastSellerNote": r["last_seller_note"],
             }
             for r in rows
         ]
@@ -1472,6 +1480,11 @@ class OrderNotesView(APIView):
                     VALUES (%s, %s, %s, %s, %s, now())
                     """,
                     [note_id, order_id_str, event_type, user_id, _json_dumps({'message': message})],
+                )
+                # Bump updated_at so realtime subscribers see the change immediately.
+                cursor.execute(
+                    "UPDATE orders SET updated_at = now() WHERE id = %s",
+                    [order_id_str],
                 )
                 cursor.execute("SELECT display_name FROM users WHERE id = %s", [user_id])
                 user_row = _dictfetchone(cursor)
