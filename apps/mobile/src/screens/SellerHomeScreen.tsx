@@ -59,20 +59,12 @@ const BUSINESS_DAY_RESET_HOUR = 5;
 const TURKEY_TIMEZONE = "Europe/Istanbul";
 const SELLER_FAST_REFRESH_MS = 3_000;
 const SELLER_IDLE_REFRESH_MS = 6_000;
-const PICKUP_BUYER_STEPS = ["in_delivery", "approaching", "at_door"] as const;
-
-function pickupBuyerStepLabel(step: (typeof PICKUP_BUYER_STEPS)[number]): string {
-  if (step === "in_delivery") return "Yoldayım";
-  if (step === "approaching") return "Geliyorum";
-  return "Kapıdayım";
-}
-
-function pickupBuyerProgressIndex(status: string): number {
+function pickupBuyerCurrentStepLabel(status?: string | null): string | null {
   const normalized = String(status ?? "").trim().toLowerCase();
-  if (normalized === "in_delivery") return 0;
-  if (normalized === "approaching") return 1;
-  if (["at_door", "delivered", "completed"].includes(normalized)) return 2;
-  return -1;
+  if (normalized === "in_delivery") return "Yoldayım";
+  if (normalized === "approaching") return "Geliyorum";
+  if (normalized === "at_door") return "Kapıdayım";
+  return null;
 }
 
 function toBool(value: unknown): boolean {
@@ -885,6 +877,9 @@ export default function SellerHomeScreen({
               const isLastInSection = index === section.data.length - 1;
               const buyerRequestedDelivery = item.requestedDeliveryType === "delivery" && item.activeDeliveryType !== "delivery";
               const shouldOpenDecisionScreen = buyerRequestedDelivery && item.status === "pending_seller_approval";
+              const pickupCurrentStepLabel = isPickupOrder
+                ? pickupBuyerCurrentStepLabel(item.buyerProgressStatus || item.status)
+                : null;
               const distanceKm = item.deliveryAddress?.distanceKm;
               const durationMinutes = item.deliveryAddress?.durationMinutes;
               const hasDeliveryDistance = typeof distanceKm === "number" && Number.isFinite(distanceKm);
@@ -943,29 +938,13 @@ export default function SellerHomeScreen({
                           ) : null}
                         </View>
                         {buyerFlowText ? <Text style={styles.orderBuyerFlowMeta}>{buyerFlowText}</Text> : null}
-                        {isPickupOrder ? (
+                        {isPickupOrder && pickupCurrentStepLabel ? (
                           <View style={styles.pickupFlowChipRow}>
-                            {PICKUP_BUYER_STEPS.map((step) => {
-                              const reached = pickupBuyerProgressIndex(item.status) >= PICKUP_BUYER_STEPS.indexOf(step);
-                              return (
-                                <View
-                                  key={`${item.id}-${step}`}
-                                  style={[
-                                    styles.pickupFlowChip,
-                                    reached && styles.pickupFlowChipActive,
-                                  ]}
-                                >
-                                  <Text
-                                    style={[
-                                      styles.pickupFlowChipText,
-                                      reached && styles.pickupFlowChipTextActive,
-                                    ]}
-                                  >
-                                    {pickupBuyerStepLabel(step)}
-                                  </Text>
-                                </View>
-                              );
-                            })}
+                            <View style={[styles.pickupFlowChip, styles.pickupFlowChipActive]}>
+                              <Text style={[styles.pickupFlowChipText, styles.pickupFlowChipTextActive]}>
+                                {pickupCurrentStepLabel}
+                              </Text>
+                            </View>
                           </View>
                         ) : null}
                         <Text style={styles.orderMeta}>{formatCopy('status.seller.orders.buyer', { name: item.buyerName || "-" })}</Text>
