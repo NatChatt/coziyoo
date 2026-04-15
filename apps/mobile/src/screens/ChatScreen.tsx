@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/colors';
 import { type AuthSession } from '../utils/auth';
 import { apiRequest } from '../utils/api';
+import { subscribeChatRealtime } from '../utils/realtime';
 import ScreenHeader from '../components/ScreenHeader';
 import LoadingState from '../components/LoadingState';
 import { t } from '../copy/brandCopy';
@@ -51,6 +52,8 @@ export default function ChatScreen({ auth, chatId, sellerName, onBack, onAuthRef
   }, [chatId, auth.accessToken, auth.userId, onAuthRefresh]);
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
+
+  useEffect(() => subscribeChatRealtime(chatId, fetchMessages), [chatId, fetchMessages]);
 
   async function handleSend() {
     const trimmed = text.trim();

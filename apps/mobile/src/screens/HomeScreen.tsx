@@ -3519,25 +3519,6 @@ export default function HomeScreen({
                       </Text>
                     </TouchableOpacity>
                   </View>
-                  {showRefresh ? (
-                    <TouchableOpacity
-                      style={[styles.quickOrderRefreshBtn, paymentLoading && styles.paymentRefreshBtnDisabled]}
-                      activeOpacity={0.88}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        void refreshPaymentStatus();
-                      }}
-                      disabled={paymentLoading}
-                    >
-                      {paymentLoading ? (
-                        <ActivityIndicator size="small" color="#5F5246" />
-                      ) : (
-                        <Text style={styles.quickOrderRefreshText} numberOfLines={1} ellipsizeMode="tail">
-                          {t('cta.home.paymentRefresh')}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  ) : null}
                 </View>
               </View>
             </TouchableOpacity>
@@ -5655,18 +5636,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickOrderRefreshBtn: {
-    minHeight: 36,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#DDD2C3',
-    backgroundColor: '#FFFDF9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 1,
-  },
-  quickOrderRefreshText: { color: '#5F5246', fontSize: 12, fontWeight: '700' },
   quickOrderSecondaryBtn: {
     paddingHorizontal: 12,
     borderWidth: 1,
