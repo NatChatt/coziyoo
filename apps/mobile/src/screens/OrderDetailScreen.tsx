@@ -681,7 +681,13 @@ export default function OrderDetailScreen({
     isBuyer &&
     !hasDeliveryRequestSignal &&
     !order.paymentCompleted &&
-    ['seller_approved', 'awaiting_payment'].includes(normalizedStatus);
+    (
+      normalizedStatus === 'awaiting_payment' ||
+      (
+        normalizedStatus === 'seller_approved' &&
+        (!order.sellerDecisionState || order.sellerDecisionState === 'approved')
+      )
+    );
   const canReview = isBuyer && ['delivered', 'completed'].includes(order.status);
   const canComplain = isBuyer && ['at_door', 'delivered', 'completed'].includes(order.status);
   const isPickupDeliveryRequestPending = order.deliveryType === 'pickup' && order.requestedDeliveryType === 'delivery';
