@@ -862,22 +862,25 @@ export default function SellerHomeScreen({
                 ? { label: t('cta.seller.home.rejectOrder'), toStatus: "rejected", tone: "reject" }
                 : null;
               const isUpdating = updatingOrderId === item.id || Boolean(actionInFlightRef.current[item.id]);
-              const buyerFlowText = buyerProgressLabel(
-                item.buyerProgressStatus || (item.deliveryType === "pickup" ? item.status : null),
-              );
               const isPickupOrder = String(item.deliveryType ?? "").trim().toLowerCase() === "pickup";
               const statusText = statusLabel(item.status, item.deliveryType);
               const passiveTone = toneFromStatus(item.status, item.deliveryType);
               const resolvedTone = action?.tone ?? passiveTone;
               const canRunAction = Boolean(action);
               const normalizedStatus = normalizeDisplayStatus(item.status, item.deliveryType);
+              const isTerminalCardStatus = ["delivered", "completed", "cancelled", "rejected"].includes(normalizedStatus);
+              const buyerFlowText = isTerminalCardStatus
+                ? null
+                : buyerProgressLabel(
+                  item.buyerProgressStatus || (item.deliveryType === "pickup" ? item.status : null),
+                );
               const showSmallThumb = normalizedStatus === "delivered";
               const isDoorStep = normalizedStatus === "at_door";
               const isNewOrder = (newOrderUntilById[item.id] ?? 0) > clockMs;
               const isLastInSection = index === section.data.length - 1;
               const buyerRequestedDelivery = item.requestedDeliveryType === "delivery" && item.activeDeliveryType !== "delivery";
               const shouldOpenDecisionScreen = buyerRequestedDelivery && item.status === "pending_seller_approval";
-              const pickupCurrentStepLabel = isPickupOrder
+              const pickupCurrentStepLabel = (isPickupOrder && !isTerminalCardStatus)
                 ? pickupBuyerCurrentStepLabel(item.buyerProgressStatus || item.status)
                 : null;
               const distanceKm = item.deliveryAddress?.distanceKm;
