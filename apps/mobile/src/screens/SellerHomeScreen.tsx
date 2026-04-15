@@ -57,8 +57,8 @@ type ActiveFood = {
 };
 const BUSINESS_DAY_RESET_HOUR = 5;
 const TURKEY_TIMEZONE = "Europe/Istanbul";
-const SELLER_FAST_REFRESH_MS = 5_000;
-const SELLER_IDLE_REFRESH_MS = 20_000;
+const SELLER_FAST_REFRESH_MS = 3_000;
+const SELLER_IDLE_REFRESH_MS = 6_000;
 
 function toBool(value: unknown): boolean {
   if (typeof value === "boolean") return value;

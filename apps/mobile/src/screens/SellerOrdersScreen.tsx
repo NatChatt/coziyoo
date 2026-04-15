@@ -36,8 +36,8 @@ type SellerOrder = {
 type StatusFilter = "all" | "pending_seller_approval" | "awaiting_payment" | "paid" | "preparing" | "ready" | "in_delivery" | "at_door" | "delivered" | "completed" | "cancelled";
 const BUSINESS_DAY_RESET_HOUR = 5;
 const TURKEY_TIMEZONE = "Europe/Istanbul";
-const SELLER_FAST_REFRESH_MS = 5_000;
-const SELLER_IDLE_REFRESH_MS = 20_000;
+const SELLER_FAST_REFRESH_MS = 3_000;
+const SELLER_IDLE_REFRESH_MS = 6_000;
 
 function normalizeSellerOrder(raw: Record<string, unknown>): SellerOrder {
   const id = String(raw.id ?? "");
