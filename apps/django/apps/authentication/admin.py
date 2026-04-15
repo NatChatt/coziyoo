@@ -339,7 +339,7 @@ class BuyerUsersAdmin(ModelAdmin):
         urls = super().get_urls()
         custom = [
             path("<uuid:user_id>/buyer-detail/", self.admin_site.admin_view(self.buyer_detail_view), name="authentication_buyerusers_buyer_detail"),
-            path("order/<uuid:order_id>/detail/", self.admin_site.admin_view(self.order_detail_view), name="authentication_order_detail"),
+            path("order/<str:order_id>/detail/", self.admin_site.admin_view(self.order_detail_view), name="authentication_order_detail"),
             path("<uuid:user_id>/buyer-detail/add-note/", self.admin_site.admin_view(self.buyer_add_note_view), name="authentication_buyerusers_add_note"),
             path("<uuid:user_id>/buyer-detail/add-tag/", self.admin_site.admin_view(self.buyer_add_tag_view), name="authentication_buyerusers_add_tag"),
             path("<uuid:user_id>/buyer-detail/delete-tag/", self.admin_site.admin_view(self.buyer_delete_tag_view), name="authentication_buyerusers_delete_tag"),
@@ -348,6 +348,10 @@ class BuyerUsersAdmin(ModelAdmin):
 
     def order_detail_view(self, request, order_id):
       try:
+        order_ref = str(order_id or "").strip()
+        if not order_ref:
+            return JsonResponse({"error": "Not found"}, status=404)
+
         with connection.cursor() as cur:
             cur.execute("""
                 SELECT
@@ -372,8 +376,13 @@ class BuyerUsersAdmin(ModelAdmin):
                 FROM orders o
                 LEFT JOIN users b ON b.id = o.buyer_id
                 LEFT JOIN users s ON s.id = o.seller_id
-                WHERE o.id = %s
-            """, [str(order_id)])
+                WHERE (
+                    o.id::text = %s
+                    OR upper(left(o.id::text, 8)) = upper(%s)
+                )
+                ORDER BY o.created_at DESC
+                LIMIT 1
+            """, [order_ref, order_ref])
             row = cur.fetchone()
 
         if not row:
