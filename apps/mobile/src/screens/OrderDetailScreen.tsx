@@ -246,21 +246,12 @@ function buyerFlowLabelByDeliveryType(step: BuyerFlowStep, deliveryType: 'pickup
 }
 
 type PickupProgressStatus = 'in_delivery' | 'approaching' | 'at_door';
-type PickupBuyerFlowStep = PickupProgressStatus;
-const PICKUP_BUYER_FLOW_STEPS: readonly PickupBuyerFlowStep[] = ['in_delivery', 'approaching', 'at_door'] as const;
-
-function pickupBuyerStepLabel(step: PickupBuyerFlowStep): string {
-  if (step === 'in_delivery') return 'Yoldayım';
-  if (step === 'approaching') return 'Geliyorum';
-  return 'Kapıdayım';
-}
-
-function pickupBuyerProgressIndex(status: string): number {
+function pickupBuyerCurrentChipLabel(status: string, fallbackActionLabel?: string | null): string {
   const normalized = String(status ?? '').trim().toLowerCase();
-  if (normalized === 'in_delivery') return 0;
-  if (normalized === 'approaching') return 1;
-  if (['at_door', 'delivered', 'completed'].includes(normalized)) return 2;
-  return -1;
+  if (normalized === 'in_delivery') return 'Yoldayım';
+  if (normalized === 'approaching') return 'Geliyorum';
+  if (['at_door', 'delivered', 'completed'].includes(normalized)) return 'Kapıdayım';
+  return String(fallbackActionLabel ?? 'Yoldayım');
 }
 
 function nextPickupProgressAction(
@@ -1057,27 +1048,11 @@ export default function OrderDetailScreen({
             <View style={styles.pickupBuyerFlowWrap}>
               <Text style={styles.pickupBuyerFlowTitle}>Alıcı Akışın</Text>
               <View style={styles.pickupBuyerFlowRow}>
-                {PICKUP_BUYER_FLOW_STEPS.map((step, idx) => {
-                  const reached = idx <= pickupBuyerProgressIndex(order.status);
-                  return (
-                    <View
-                      key={step}
-                      style={[
-                        styles.pickupBuyerStepChip,
-                        reached && styles.pickupBuyerStepChipActive,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.pickupBuyerStepText,
-                          reached && styles.pickupBuyerStepTextActive,
-                        ]}
-                      >
-                        {pickupBuyerStepLabel(step)}
-                      </Text>
-                    </View>
-                  );
-                })}
+                <View style={[styles.pickupBuyerStepChip, styles.pickupBuyerStepChipActive]}>
+                  <Text style={[styles.pickupBuyerStepText, styles.pickupBuyerStepTextActive]}>
+                    {pickupBuyerCurrentChipLabel(order.status, pickupProgressAction?.label)}
+                  </Text>
+                </View>
               </View>
               {pickupProgressAction ? (
                 <View style={styles.pickupBuyerAction}>
@@ -1198,7 +1173,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   pickupBuyerFlowTitle: { color: theme.text, fontSize: 14, fontWeight: '800', marginBottom: 8 },
-  pickupBuyerFlowRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  pickupBuyerFlowRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
   pickupBuyerStepChip: {
     borderWidth: 1,
     borderColor: '#D8CEC0',
