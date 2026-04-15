@@ -1,9 +1,145 @@
+import json
+
 from django.contrib import admin
+from django.db import connection
+from django.http import JsonResponse
+from django.urls import path
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 
 from .models import Orders, OrderItems, OrderEvents, Reviews
+
+
+def _order_admin_detail(order_id_str):
+    """Return a rich JSON dict for the admin order detail panel."""
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                o.id, o.status, o.delivery_type, o.total_price, o.created_at,
+                o.delivery_address_json, o.seller_delivery_note, o.payment_completed,
+                o.requested_delivery_type, o.active_delivery_type, o.seller_decision_state,
+                o.seller_eta_minutes, o.seller_promised_at,
+                o.buyer_id, o.seller_id,
+                b.display_name AS buyer_name,
+                s.display_name AS seller_name
+            FROM orders o
+            LEFT JOIN users b ON b.id = o.buyer_id
+            LEFT JOIN users s ON s.id = o.seller_id
+            WHERE o.id = %s
+            """,
+            [order_id_str],
+        )
+        row = cur.fetchone()
+
+    if not row:
+        return None
+
+    (oid, status, delivery_type, total_price, created_at,
+     addr_json, delivery_note, payment_completed,
+     requested_delivery_type, active_delivery_type, seller_decision_state,
+     seller_eta_minutes, seller_promised_at,
+     buyer_id, seller_id,
+     buyer_name, seller_name) = row
+
+    addr = addr_json if isinstance(addr_json, dict) else (json.loads(addr_json) if addr_json else {})
+
+    with connection.cursor() as cur:
+        # Messages/notes from order_events
+        cur.execute(
+            """
+            SELECT oe.event_type, oe.payload_json, oe.created_at, u.display_name
+            FROM order_events oe
+            LEFT JOIN users u ON u.id = oe.actor_user_id
+            WHERE oe.order_id = %s AND oe.event_type IN ('buyer_note', 'seller_note')
+            ORDER BY oe.created_at ASC
+            """,
+            [order_id_str],
+        )
+        note_rows = cur.fetchall()
+
+        # Status timeline from order_events
+        cur.execute(
+            """
+            SELECT to_status, created_at
+            FROM order_events
+            WHERE order_id = %s AND event_type LIKE 'status_changed_to_%%'
+            ORDER BY created_at ASC
+            """,
+            [order_id_str],
+        )
+        status_rows = cur.fetchall()
+
+        # PIN proof record
+        cur.execute(
+            """
+            SELECT status, verification_attempts, pin_sent_at, pin_verified_at
+            FROM delivery_proof_records
+            WHERE order_id = %s
+            """,
+            [order_id_str],
+        )
+        proof_row = cur.fetchone()
+
+    messages = []
+    for event_type, payload_json, ts, display_name in note_rows:
+        payload = payload_json if isinstance(payload_json, dict) else (json.loads(payload_json) if payload_json else {})
+        messages.append({
+            "role": "buyer" if event_type == "buyer_note" else "seller",
+            "sender": display_name or "",
+            "message": payload.get("message", ""),
+            "createdAt": ts.strftime("%d.%m.%Y %H:%M") if ts else None,
+        })
+
+    STATUS_STEPS = [
+        ("preparing", "Hazırlanıyor"),
+        ("ready", "Hazırladım"),
+        ("in_delivery", "Yoldayım"),
+        ("approaching", "Geliyorum"),
+        ("at_door", "Kapıdayım"),
+        ("delivered", "Teslim Edildi"),
+        ("completed", "Tamamlandı"),
+    ]
+    reached = {s for s, _ in status_rows}
+    timeline = [
+        {"status": s, "label": label, "reached": s in reached}
+        for s, label in STATUS_STEPS
+    ]
+
+    proof = None
+    if proof_row:
+        proof = {
+            "status": proof_row[0],
+            "verificationAttempts": proof_row[1],
+            "pinSentAt": proof_row[2].strftime("%d.%m.%Y %H:%M") if proof_row[2] else None,
+            "pinVerifiedAt": proof_row[3].strftime("%d.%m.%Y %H:%M") if proof_row[3] else None,
+        }
+
+    return {
+        "id": str(oid),
+        "status": status,
+        "deliveryType": delivery_type,
+        "requestedDeliveryType": requested_delivery_type,
+        "activeDeliveryType": active_delivery_type,
+        "sellerDecisionState": seller_decision_state,
+        "totalPrice": str(total_price),
+        "sellerEtaMinutes": seller_eta_minutes,
+        "sellerPromisedAt": seller_promised_at.strftime("%d.%m.%Y %H:%M") if seller_promised_at else None,
+        "paymentCompleted": payment_completed,
+        "buyerName": buyer_name,
+        "sellerName": seller_name,
+        "deliveryAddress": {
+            "title": addr.get("title"),
+            "addressLine": addr.get("addressLine") or addr.get("line"),
+            "distanceKm": addr.get("distanceKm"),
+        } if addr else None,
+        "deliveryNote": delivery_note,
+        "messages": messages,
+        "timeline": timeline,
+        "proof": proof,
+        "createdAt": created_at.strftime("%d.%m.%Y %H:%M") if created_at else None,
+    }
 
 
 class OrderItemsInline(TabularInline):
@@ -59,6 +195,23 @@ class OrdersAdmin(ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "<uuid:order_id>/live-detail/",
+                self.admin_site.admin_view(self._live_detail_view),
+                name="orders_orders_live_detail",
+            ),
+        ]
+        return custom + urls
+
+    def _live_detail_view(self, request, order_id):
+        data = _order_admin_detail(str(order_id))
+        if data is None:
+            return JsonResponse({"error": "Not found"}, status=404)
+        return JsonResponse(data)
 
     @display(description="Sipariş No", ordering="id")
     def full_order_id(self, obj):

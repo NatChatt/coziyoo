@@ -711,7 +711,11 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
             </View>
             <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.buyer", { name: order.buyerName || "-" })}</Text>
             <Text style={styles.meta}>{formatCopy("status.seller.orderDetail.type", {
-              type: effectiveDeliveryType === "delivery" ? t("cta.seller.orderDetail.delivery") : t("cta.seller.orderDetail.pickup"),
+              type: buyerRequestedDelivery
+                ? t("cta.seller.orderDetail.deliveryRequested")
+                : effectiveDeliveryType === "delivery"
+                  ? t("cta.seller.orderDetail.delivery")
+                  : t("cta.seller.orderDetail.pickup"),
             })}</Text>
             {buyerRequestedDelivery ? (
               <View style={styles.deliveryRequestBanner}>

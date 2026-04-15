@@ -1,6 +1,9 @@
 import json
 import math
+import secrets
 import uuid
+
+from django.contrib.auth.hashers import check_password, make_password
 
 from django.db import connection, transaction
 from rest_framework.views import APIView
@@ -104,6 +107,19 @@ def _selected_addons_total(selected_addons):
         if quantity > 0 and price > 0:
             total += price * quantity
     return total
+
+
+def _gated_delivery_address(address_json, *, caller_is_seller: bool, active_delivery_type: str):
+    """Return delivery address JSON, hiding street details from seller until delivery is confirmed."""
+    if not address_json:
+        return address_json
+    addr = _json_object(address_json) if isinstance(address_json, str) else address_json
+    if not addr:
+        return addr
+    # Seller only gets the full address once delivery is actively confirmed.
+    if caller_is_seller and active_delivery_type != "delivery":
+        return {"distanceKm": addr.get("distanceKm")}
+    return addr
 
 
 def _haversine_km(lat1, lon1, lat2, lon2):
@@ -547,7 +563,11 @@ class OrderDetailView(APIView):
                     "paymentCapturedAt": order["payment_captured_at"].isoformat() if order["payment_captured_at"] else None,
                     "createdAt": order["created_at"].isoformat() if order["created_at"] else None,
                     "updatedAt": order["updated_at"].isoformat() if order["updated_at"] else None,
-                    "deliveryAddress": order["delivery_address_json"],
+                    "deliveryAddress": _gated_delivery_address(
+                        order["delivery_address_json"],
+                        caller_is_seller=user_id == str(order["seller_id"]),
+                        active_delivery_type=str(order.get("active_delivery_type") or ""),
+                    ),
                     "buyerId": str(order["buyer_id"]),
                     "sellerId": str(order["seller_id"]),
                     "buyerName": order["buyer_name"],
@@ -652,6 +672,40 @@ class OrderStatusView(APIView):
                         _json_dumps({"actorRole": "buyer" if user_id == buyer_id else "seller"}),
                     ],
                 )
+
+                # Generate one-time delivery PIN when order reaches at_door.
+                if new_status == "at_door":
+                    plain_pin = f"{secrets.randbelow(1_000_000):06d}"
+                    hashed_pin = make_password(plain_pin)
+                    # Plain PIN stored in metadata_json for buyer retrieval via /delivery-proof.
+                    # It is cleared (set null) once verified.
+                    cursor.execute(
+                        """
+                        INSERT INTO delivery_proof_records
+                            (id, order_id, seller_id, buyer_id, proof_mode, pin_hash,
+                             pin_sent_at, pin_sent_channel, verification_attempts, status,
+                             metadata_json, created_at)
+                        VALUES (%s, %s, %s, %s, 'pin', %s, now(), 'app', 0, 'pending', %s, now())
+                        ON CONFLICT (order_id) DO UPDATE
+                            SET pin_hash = EXCLUDED.pin_hash,
+                                pin_sent_at = now(),
+                                verification_attempts = 0,
+                                status = 'pending',
+                                metadata_json = EXCLUDED.metadata_json
+                        """,
+                        [
+                            str(uuid.uuid4()), order_id_str, seller_id, buyer_id,
+                            hashed_pin, _json_dumps({"pin": plain_pin}),
+                        ],
+                    )
+                    _create_notification(
+                        cursor,
+                        buyer_id,
+                        "delivery_pin_ready",
+                        "Teslimat kodun hazır",
+                        "Satıcı kapıda. Uygulamadan teslimat kodunu al ve satıcıya ver.",
+                        {"orderId": order_id_str},
+                    )
 
         return Response({"data": {"orderId": order_id_str, "status": new_status}})
 
@@ -1217,7 +1271,7 @@ class SellerDecisionView(APIView):
 
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT id, status, seller_id FROM orders WHERE id = %s",
+                "SELECT id, status, seller_id, buyer_id, requested_delivery_type FROM orders WHERE id = %s",
                 [order_id_str],
             )
             order = _dictfetchone(cursor)
@@ -1236,6 +1290,15 @@ class SellerDecisionView(APIView):
 
         current_status = order["status"]
         new_status = self.DECISION_STATUS_MAP[decision]
+
+        # When seller approves with delivery and buyer already requested delivery →
+        # route to pending_buyer_confirmation so buyer can confirm the delivery proposal.
+        if (
+            decision == "approved"
+            and requested_delivery_type == "delivery"
+            and str(order.get("requested_delivery_type") or "") == "delivery"
+        ):
+            new_status = "pending_buyer_confirmation"
 
         if decision == "revised" and current_status not in ("pending", "pending_seller_approval"):
             return Response(
@@ -1343,6 +1406,17 @@ class SellerDecisionView(APIView):
                         ],
                     )
 
+                # Notify buyer when seller sends a delivery proposal (pending_buyer_confirmation)
+                if new_status == "pending_buyer_confirmation":
+                    _create_notification(
+                        cursor,
+                        str(order["buyer_id"]),
+                        "seller_delivery_proposal",
+                        "Satıcı teslimat teklifini gönderdi",
+                        "Satıcı teslimat yapabileceğini bildirdi. Onayla veya iptal et.",
+                        {"orderId": order_id_str, "sellerId": user_id},
+                    )
+
         return Response(
             {
                 "data": {
@@ -1374,7 +1448,7 @@ class BuyerConfirmTermsView(APIView):
 
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT id, status, buyer_id FROM orders WHERE id = %s",
+                "SELECT id, status, buyer_id, seller_id, requested_delivery_type FROM orders WHERE id = %s",
                 [order_id_str],
             )
             order = _dictfetchone(cursor)
@@ -1404,18 +1478,35 @@ class BuyerConfirmTermsView(APIView):
             new_status = "cancelled"
             event_type = "buyer_declined_terms"
 
+        # When buyer confirms a delivery proposal, activate delivery type so address becomes visible.
+        is_delivery_confirm = bool(confirm) and str(order.get("requested_delivery_type") or "") == "delivery"
+
         with transaction.atomic():
             with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    UPDATE orders
-                    SET status = %s,
-                        seller_decision_state = CASE WHEN %s THEN 'approved' ELSE seller_decision_state END,
-                        updated_at = now()
-                    WHERE id = %s
-                    """,
-                    [new_status, bool(confirm), order_id_str],
-                )
+                if is_delivery_confirm:
+                    cursor.execute(
+                        """
+                        UPDATE orders
+                        SET status = %s,
+                            seller_decision_state = 'approved',
+                            active_delivery_type = 'delivery',
+                            delivery_type = 'delivery',
+                            updated_at = now()
+                        WHERE id = %s
+                        """,
+                        [new_status, order_id_str],
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        UPDATE orders
+                        SET status = %s,
+                            seller_decision_state = CASE WHEN %s THEN 'approved' ELSE seller_decision_state END,
+                            updated_at = now()
+                        WHERE id = %s
+                        """,
+                        [new_status, bool(confirm), order_id_str],
+                    )
                 cursor.execute(
                     """
                     INSERT INTO order_events (id, order_id, event_type, actor_user_id, from_status, to_status, payload_json)
@@ -1431,6 +1522,15 @@ class BuyerConfirmTermsView(APIView):
                         _json_dumps({"confirm": bool(confirm)}),
                     ],
                 )
+                if bool(confirm):
+                    _create_notification(
+                        cursor,
+                        str(order["seller_id"]),
+                        "buyer_confirmed_delivery",
+                        "Alıcı teslimatı onayladı",
+                        "Teslimat anlaşması tamamlandı. Siparişi hazırlamaya başlayabilirsin.",
+                        {"orderId": order_id_str, "buyerId": user_id},
+                    )
 
         return Response({"data": {"status": new_status}}, status=status.HTTP_200_OK)
 
@@ -1439,7 +1539,12 @@ class OrderNotesView(APIView):
     """GET /v1/orders/:order_id/notes  — list notes
        POST /v1/orders/:order_id/notes — add a note"""
 
-    NON_MESSAGEABLE_STATUSES = {'cancelled', 'completed'}
+    # Messaging is only open during negotiation phases; closes once agreement is reached.
+    NON_MESSAGEABLE_STATUSES = {
+        'seller_approved', 'awaiting_payment', 'paid',
+        'preparing', 'ready', 'in_delivery', 'approaching',
+        'at_door', 'delivered', 'completed', 'cancelled',
+    }
 
     def _get_order_parties(self, order_id_str):
         with connection.cursor() as cursor:
@@ -1557,3 +1662,204 @@ class OrderNotesView(APIView):
         }, status=status.HTTP_201_CREATED)
 
         return Response({"data": {"orderId": order_id_str, "status": new_status}})
+
+
+class DeliveryProofView(APIView):
+    """GET /v1/orders/:order_id/delivery-proof — buyer retrieves their PIN"""
+
+    def get(self, request, order_id):
+        user, err = _check_app_auth(request)
+        if err:
+            return err
+
+        user_id = str(user.id)
+        order_id_str = str(order_id)
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, status, buyer_id FROM orders WHERE id = %s",
+                [order_id_str],
+            )
+            order = _dictfetchone(cursor)
+
+        if order is None:
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if str(order["buyer_id"]) != user_id:
+            return Response(
+                {"error": {"code": "FORBIDDEN", "message": "Only the buyer can view the delivery PIN"}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if order["status"] != "at_door":
+            return Response(
+                {"error": {"code": "INVALID_STATE", "message": "Delivery PIN is only available when order is at_door"}},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, proof_mode, pin_sent_at, pin_verified_at,
+                       verification_attempts, status, metadata_json
+                FROM delivery_proof_records
+                WHERE order_id = %s
+                """,
+                [order_id_str],
+            )
+            proof = _dictfetchone(cursor)
+
+        if proof is None:
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Delivery proof record not found"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        meta = _json_object(proof["metadata_json"])
+        plain_pin = meta.get("pin") if proof["status"] == "pending" else None
+
+        return Response({
+            "data": {
+                "orderId": order_id_str,
+                "proofMode": proof["proof_mode"],
+                "pin": plain_pin,
+                "pinSentAt": proof["pin_sent_at"].isoformat() if proof["pin_sent_at"] else None,
+                "pinVerifiedAt": proof["pin_verified_at"].isoformat() if proof["pin_verified_at"] else None,
+                "verificationAttempts": proof["verification_attempts"],
+                "status": proof["status"],
+            }
+        })
+
+
+class VerifyDeliveryPinView(APIView):
+    """POST /v1/orders/:order_id/verify-delivery-pin — seller submits PIN to confirm delivery"""
+
+    MAX_ATTEMPTS = 5
+
+    def post(self, request, order_id):
+        user, err = _check_app_auth(request)
+        if err:
+            return err
+
+        user_id = str(user.id)
+        order_id_str = str(order_id)
+        submitted_pin = str(request.data.get("pin") or "").strip()
+
+        if not submitted_pin:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "pin is required"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, status, seller_id, buyer_id FROM orders WHERE id = %s",
+                [order_id_str],
+            )
+            order = _dictfetchone(cursor)
+
+        if order is None:
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if str(order["seller_id"]) != user_id:
+            return Response(
+                {"error": {"code": "FORBIDDEN", "message": "Only the seller can verify the delivery PIN"}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if order["status"] != "at_door":
+            return Response(
+                {"error": {"code": "INVALID_STATE", "message": "PIN verification is only valid when order is at_door"}},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, pin_hash, verification_attempts, status FROM delivery_proof_records WHERE order_id = %s",
+                [order_id_str],
+            )
+            proof = _dictfetchone(cursor)
+
+        if proof is None:
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Delivery proof record not found"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if proof["status"] in ("verified", "failed"):
+            return Response(
+                {"error": {"code": "INVALID_STATE", "message": f"Delivery proof is already {proof['status']}"}},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        attempts = int(proof["verification_attempts"] or 0)
+
+        if attempts >= self.MAX_ATTEMPTS:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE delivery_proof_records SET status = 'failed', metadata_json = NULL WHERE order_id = %s",
+                    [order_id_str],
+                )
+            return Response(
+                {"error": {"code": "TOO_MANY_ATTEMPTS", "message": "Maximum PIN attempts exceeded"}},
+                status=status.HTTP_423_LOCKED,
+            )
+
+        pin_valid = check_password(submitted_pin, proof["pin_hash"])
+
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                if pin_valid:
+                    cursor.execute(
+                        """
+                        UPDATE delivery_proof_records
+                        SET status = 'verified', pin_verified_at = now(), metadata_json = NULL
+                        WHERE order_id = %s
+                        """,
+                        [order_id_str],
+                    )
+                    cursor.execute(
+                        "UPDATE orders SET status = 'delivered', updated_at = now() WHERE id = %s",
+                        [order_id_str],
+                    )
+                    cursor.execute(
+                        """
+                        INSERT INTO order_events (id, order_id, event_type, actor_user_id, from_status, to_status, payload_json)
+                        VALUES (%s, %s, 'delivery_pin_verified', %s, 'at_door', 'delivered', %s)
+                        """,
+                        [str(uuid.uuid4()), order_id_str, user_id, _json_dumps({"sellerId": user_id})],
+                    )
+                    _create_notification(
+                        cursor,
+                        str(order["buyer_id"]),
+                        "order_delivered",
+                        "Teslimat tamamlandı",
+                        "Siparişin teslim edildi. Afiyet olsun!",
+                        {"orderId": order_id_str},
+                    )
+                else:
+                    cursor.execute(
+                        "UPDATE delivery_proof_records SET verification_attempts = verification_attempts + 1 WHERE order_id = %s",
+                        [order_id_str],
+                    )
+
+        if pin_valid:
+            return Response({"data": {"orderId": order_id_str, "status": "delivered", "verified": True}})
+
+        remaining = self.MAX_ATTEMPTS - attempts - 1
+        return Response(
+            {
+                "error": {
+                    "code": "INVALID_PIN",
+                    "message": "Yanlış kod.",
+                    "remainingAttempts": max(0, remaining),
+                }
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
