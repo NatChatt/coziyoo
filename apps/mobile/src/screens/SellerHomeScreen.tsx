@@ -175,14 +175,6 @@ function statusLabel(status: string, deliveryType?: string): string {
   return getStatusInfo(normalized, deliveryType).label;
 }
 
-function buyerProgressLabel(status?: string | null): string | null {
-  const normalized = String(status ?? "").trim().toLowerCase();
-  if (normalized === "in_delivery") return t('status.seller.home.buyerOnWay');
-  if (normalized === "approaching") return t('status.seller.home.buyerComing');
-  if (normalized === "at_door") return t('status.seller.home.buyerAtDoor');
-  return null;
-}
-
 function statusTone(status: string, deliveryType?: string): { bg: string; border: string; text: string } {
   const normalized = normalizeDisplayStatus(status, deliveryType);
   const info = getStatusInfo(
@@ -869,11 +861,6 @@ export default function SellerHomeScreen({
               const canRunAction = Boolean(action);
               const normalizedStatus = normalizeDisplayStatus(item.status, item.deliveryType);
               const isTerminalCardStatus = ["delivered", "completed", "cancelled", "rejected"].includes(normalizedStatus);
-              const buyerFlowText = isTerminalCardStatus
-                ? null
-                : buyerProgressLabel(
-                  item.buyerProgressStatus || (item.deliveryType === "pickup" ? item.status : null),
-                );
               const showSmallThumb = normalizedStatus === "delivered";
               const isDoorStep = normalizedStatus === "at_door";
               const isNewOrder = (newOrderUntilById[item.id] ?? 0) > clockMs;
@@ -940,7 +927,6 @@ export default function SellerHomeScreen({
                             </View>
                           ) : null}
                         </View>
-                        {buyerFlowText ? <Text style={styles.orderBuyerFlowMeta}>{buyerFlowText}</Text> : null}
                         {isPickupOrder && pickupCurrentStepLabel ? (
                           <View style={styles.pickupFlowChipRow}>
                             <View style={[styles.pickupFlowChip, styles.pickupFlowChipActive]}>
@@ -1324,7 +1310,6 @@ const styles = StyleSheet.create({
   statusBadgeText: { color: "#5C4A3A", fontSize: 11, fontWeight: "700" },
   orderIdText: { color: "#887766", fontSize: 12, fontWeight: "800" },
   orderDateText: { color: "#9A8A7A", fontSize: 11, fontWeight: "700", marginTop: 2 },
-  orderBuyerFlowMeta: { color: "#0F766E", fontSize: 12, fontWeight: "800", marginTop: 4 },
   pickupFlowChipRow: { flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 6 },
   pickupFlowChip: {
     borderRadius: 999,
