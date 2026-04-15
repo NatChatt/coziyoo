@@ -591,7 +591,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   );
   const canResolveApprovedDeliveryRequest = Boolean(order && order.status === "seller_approved" && buyerRequestedDelivery);
   const hasStickyActionBar = Boolean(effectiveAction || canResolveApprovedDeliveryRequest);
-  const showStickyActionBar = hasStickyActionBar;
+  const showStickyActionBar = hasStickyActionBar && !pinModalVisible && !cancelModalVisible;
 
   useEffect(() => {
     if (!shouldCheckPinBeforeComplete) {
