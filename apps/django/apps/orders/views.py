@@ -118,7 +118,7 @@ def _gated_delivery_address(address_json, *, caller_is_seller: bool, active_deli
         return addr
     # Seller only gets the full address once delivery is actively confirmed.
     if caller_is_seller and active_delivery_type != "delivery":
-        return {"distanceKm": addr.get("distanceKm")}
+        return {"distanceKm": addr.get("distanceKm"), "durationMinutes": addr.get("durationMinutes")}
     return addr
 
 
@@ -910,6 +910,7 @@ class BuyerDeliveryRequestView(APIView):
                         distance_km = _haversine_km(*coord_row)
                         if delivery_address_snapshot is not None:
                             delivery_address_snapshot["distanceKm"] = round(distance_km, 2)
+                            delivery_address_snapshot["durationMinutes"] = max(5, round(distance_km / 30 * 60 + 5))
                     except (TypeError, ValueError):
                         pass
 
