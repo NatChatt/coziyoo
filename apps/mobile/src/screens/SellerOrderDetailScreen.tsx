@@ -23,6 +23,7 @@ import StatusBadge from "../components/StatusBadge";
 import { subscribeOrderRealtime } from "../utils/realtime";
 import { formatCopy, t } from "../copy/brandCopy";
 import { getCurrentLanguage } from "../utils/settings";
+import { getSellerOrdersCache, setSellerOrdersCache } from "../utils/sellerOrdersCache";
 
 type Props = {
   auth: AuthSession;
@@ -245,6 +246,27 @@ function mergeOrderNotes(notes: OrderNote[]): OrderNote[] {
     const right = b.createdAt ? Date.parse(b.createdAt) : 0;
     return left - right;
   });
+}
+
+function markOrderCompletedInSellerCache(orderId: string): void {
+  const cached = getSellerOrdersCache();
+  if (!Array.isArray(cached) || cached.length === 0) return;
+  const nowIso = new Date().toISOString();
+  let changed = false;
+  const next = cached.map((row) => {
+    const id = String((row as Record<string, unknown>).id ?? "");
+    if (id !== orderId) return row;
+    changed = true;
+    return {
+      ...(row as Record<string, unknown>),
+      status: "completed",
+      buyerProgressStatus: null,
+      buyer_progress_status: null,
+      updatedAt: nowIso,
+      updated_at: nowIso,
+    };
+  });
+  if (changed) setSellerOrdersCache(next);
 }
 
 const CANCELLABLE_STATUSES = ["pending_seller_approval", "pending_buyer_confirmation", "seller_approved", "awaiting_payment", "paid", "preparing", "ready", "in_delivery", "approaching", "at_door"];
@@ -665,6 +687,8 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           const pin = pinCode.trim();
           if (!/^\d{4,8}$/.test(pin)) throw new Error(t("error.seller.orderDetail.pinInvalid"));
           await verifyPin(pin);
+          markOrderCompletedInSellerCache(order.id);
+          setOrder((prev) => (prev ? { ...prev, status: "completed" } : prev));
           // Backend transitions at_door → delivered → completed atomically.
           // No additional status calls needed here.
         } else {
@@ -697,9 +721,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     if (!ok) return;
     setPinModalVisible(false);
     setPinCode("");
-    setTimeout(() => {
-      onBack();
-    }, 120);
+    onBack();
   }
 
   return (
