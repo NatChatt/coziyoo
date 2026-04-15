@@ -216,7 +216,7 @@ function cardActionByStatus(status: string, deliveryType?: string): SellerAction
     return null;
   }
   if (!pickup && status === "preparing") {
-    return { label: t('cta.seller.home.leftForDelivery'), toStatus: "in_delivery", tone: "in_delivery" };
+    return { label: t('cta.seller.home.markReady'), toStatus: "ready", tone: "ready" };
   }
   if (!pickup && status === "ready") {
     return { label: t('cta.seller.home.leftForDelivery'), toStatus: "in_delivery", tone: "in_delivery" };
@@ -681,7 +681,7 @@ export default function SellerHomeScreen({
     if (!(error instanceof Error)) return false;
     const message = error.message || "";
     if (!message.includes("Cannot transition")) return false;
-    return message.includes("preparing -> in_delivery");
+    return message.includes("preparing -> in_delivery") || message.includes("'preparing' to 'in_delivery'");
   }
 
   async function advanceStatusWithCompatibility(
