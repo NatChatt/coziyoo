@@ -1370,6 +1370,8 @@ class BuyerConfirmTermsView(APIView):
                     ],
                 )
 
+        return Response({"data": {"status": new_status}}, status=status.HTTP_200_OK)
+
 
 class OrderNotesView(APIView):
     """GET /v1/orders/:order_id/notes  — list notes
