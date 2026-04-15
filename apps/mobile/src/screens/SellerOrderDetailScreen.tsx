@@ -697,6 +697,9 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     if (!ok) return;
     setPinModalVisible(false);
     setPinCode("");
+    setTimeout(() => {
+      onBack();
+    }, 120);
   }
 
   return (
