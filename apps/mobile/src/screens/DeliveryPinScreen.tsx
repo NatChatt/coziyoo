@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/colors';
 import { type AuthSession } from '../utils/auth';
@@ -120,6 +120,14 @@ export default function DeliveryPinScreen({ auth, orderId, onBack, onVerified, o
               </Text>
             </View>
           )}
+
+          <TouchableOpacity
+            style={styles.refreshButton}
+            activeOpacity={0.86}
+            onPress={() => { void fetchProof(); }}
+          >
+            <Text style={styles.refreshButtonText}>{t('cta.payment.refresh')}</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -155,4 +163,14 @@ const styles = StyleSheet.create({
   pinCode: { color: theme.text, fontSize: 34, fontWeight: '900', letterSpacing: 4, marginTop: 8 },
   pinHint: { color: '#71685F', fontSize: 13, textAlign: 'center', lineHeight: 20 },
   pinAttempts: { color: theme.text, fontSize: 14, fontWeight: '700', marginTop: 8 },
+  refreshButton: {
+    marginTop: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#CFC3B4',
+    backgroundColor: '#F7F3EE',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  refreshButtonText: { color: '#4A3B2F', fontWeight: '700' },
 });

@@ -1807,12 +1807,6 @@ class DeliveryProofView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        if order["status"] != "at_door":
-            return Response(
-                {"error": {"code": "INVALID_STATE", "message": "Delivery PIN is only available when order is at_door"}},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
         with connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -1829,6 +1823,27 @@ class DeliveryProofView(APIView):
             return Response(
                 {"error": {"code": "NOT_FOUND", "message": "Delivery proof record not found"}},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Allow buyer screen to resolve gracefully after seller verification.
+        # If order moved forward (delivered/completed) and proof is verified,
+        # return verified payload so client can auto-close PIN screen.
+        if order["status"] != "at_door":
+            if str(proof.get("status") or "") == "verified" and str(order["status"] or "") in ("delivered", "completed"):
+                return Response({
+                    "data": {
+                        "orderId": order_id_str,
+                        "proofMode": proof["proof_mode"],
+                        "pin": None,
+                        "pinSentAt": proof["pin_sent_at"].isoformat() if proof["pin_sent_at"] else None,
+                        "pinVerifiedAt": proof["pin_verified_at"].isoformat() if proof["pin_verified_at"] else None,
+                        "verificationAttempts": proof["verification_attempts"],
+                        "status": "verified",
+                    }
+                })
+            return Response(
+                {"error": {"code": "INVALID_STATE", "message": "Delivery PIN is only available when order is at_door"}},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
         meta = _json_object(proof["metadata_json"])
