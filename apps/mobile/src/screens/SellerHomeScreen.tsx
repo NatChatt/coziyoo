@@ -150,6 +150,7 @@ function formatElapsed(value: string | undefined, nowMs: number): string {
 function statusLabel(status: string, deliveryType?: string): string {
   const normalized = normalizeDisplayStatus(status, deliveryType);
   if (normalized === "cancelled" || normalized === "rejected") return t('status.seller.home.cancelled');
+  if (deliveryType === "delivery" && normalized === "ready") return t('cta.seller.home.markReady');
   if (deliveryType === "pickup" && normalized === "ready") return t('status.seller.home.pickupReady');
   if (deliveryType === "pickup" && ["in_delivery", "approaching", "at_door"].includes(normalized)) {
     return getStatusInfo(normalized, undefined).label;
@@ -196,7 +197,7 @@ function normalizeDisplayStatus(status: string, deliveryType?: string): string {
   if (status === "completed") return "delivered";
   if (status === "delivered" || status === "at_door") return status;
   if (status === "in_delivery") return "in_delivery";
-  if (status === "ready") return deliveryType === "pickup" ? "ready" : "in_delivery";
+  if (status === "ready") return "ready";
   if (["pending_seller_approval", "pending_buyer_confirmation", "seller_approved", "awaiting_payment", "paid", "preparing"].includes(status)) return status;
   return status;
 }
