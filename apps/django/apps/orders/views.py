@@ -1357,10 +1357,11 @@ class BuyerConfirmTermsView(APIView):
                     """
                     UPDATE orders
                     SET status = %s,
+                        seller_decision_state = CASE WHEN %s THEN 'approved' ELSE seller_decision_state END,
                         updated_at = now()
                     WHERE id = %s
                     """,
-                    [new_status, order_id_str],
+                    [new_status, bool(confirm), order_id_str],
                 )
                 cursor.execute(
                     """
