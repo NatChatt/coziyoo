@@ -908,9 +908,10 @@ class BuyerDeliveryRequestView(APIView):
                 if coord_row and all(v is not None for v in coord_row):
                     try:
                         distance_km = _haversine_km(*coord_row)
-                        if delivery_address_snapshot is not None:
-                            delivery_address_snapshot["distanceKm"] = round(distance_km, 2)
-                            delivery_address_snapshot["durationMinutes"] = max(5, round(distance_km / 30 * 60 + 5))
+                        if delivery_address_snapshot is None:
+                            delivery_address_snapshot = {}
+                        delivery_address_snapshot["distanceKm"] = round(distance_km, 2)
+                        delivery_address_snapshot["durationMinutes"] = max(5, round(distance_km / 30 * 60 + 5))
                     except (TypeError, ValueError):
                         pass
 
