@@ -508,7 +508,9 @@ class OrderDetailView(APIView):
                        sa.title AS seller_address_title,
                        sa.address_line AS seller_address_line,
                        us.latitude AS seller_lat,
-                       us.longitude AS seller_lng
+                       us.longitude AS seller_lng,
+                       ub.latitude AS buyer_lat,
+                       ub.longitude AS buyer_lng
                 FROM orders o
                 JOIN users ub ON ub.id = o.buyer_id
                 JOIN users us ON us.id = o.seller_id
@@ -577,6 +579,17 @@ class OrderDetailView(APIView):
                     "sellerId": str(order["seller_id"]),
                     "buyerName": order["buyer_name"],
                     "sellerName": order["seller_name"],
+                    # Buyer coordinates — returned only to the buyer, used as origin for pickup directions
+                    "buyerCoordinates": (
+                        {
+                            "lat": float(order["buyer_lat"]),
+                            "lng": float(order["buyer_lng"]),
+                        }
+                        if user_id == str(order["buyer_id"])
+                        and order["buyer_lat"] is not None
+                        and order["buyer_lng"] is not None
+                        else None
+                    ),
                     # Seller pickup address — shown to buyer once order is approved, never to seller
                     "sellerAddress": (
                         {
