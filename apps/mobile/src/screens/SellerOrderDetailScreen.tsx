@@ -112,7 +112,7 @@ async function openAddressInMaps(address: string): Promise<void> {
   const query = address.trim();
   if (!query) return;
   const encoded = encodeURIComponent(query);
-  const appleDirectionsUrl = `http://maps.apple.com/?daddr=${encoded}&dirflg=d`;
+  const appleDirectionsUrl = `maps://?daddr=${encoded}&dirflg=d`;
   const googleNavUrl = `google.navigation:q=${encoded}&mode=d`;
   const googleDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=driving`;
   const candidates = Platform.OS === "ios"
