@@ -214,14 +214,6 @@ function buyerFlowLabelByDeliveryType(step: BuyerFlowStep, deliveryType: 'pickup
 }
 
 type PickupProgressStatus = 'in_delivery' | 'approaching' | 'at_door';
-function pickupBuyerCurrentChipLabel(status: string, fallbackActionLabel?: string | null): string {
-  const normalized = String(status ?? '').trim().toLowerCase();
-  if (normalized === 'in_delivery') return 'Yoldayım';
-  if (normalized === 'approaching') return 'Geliyorum';
-  if (['at_door', 'delivered', 'completed'].includes(normalized)) return 'Kapıdayım';
-  return String(fallbackActionLabel ?? 'Yoldayım');
-}
-
 function nextPickupProgressAction(
   status: string,
   deliveryType: 'pickup' | 'delivery',
@@ -1013,13 +1005,6 @@ export default function OrderDetailScreen({
           {isBuyer && order.deliveryType === 'pickup' && !isPickupDeliveryRequestPending ? (
             <View style={styles.pickupBuyerFlowWrap}>
               <Text style={styles.pickupBuyerFlowTitle}>Alıcı Akışın</Text>
-              <View style={styles.pickupBuyerFlowRow}>
-                <View style={[styles.pickupBuyerStepChip, styles.pickupBuyerStepChipActive]}>
-                  <Text style={[styles.pickupBuyerStepText, styles.pickupBuyerStepTextActive]}>
-                    {pickupBuyerCurrentChipLabel(order.status, pickupProgressAction?.label)}
-                  </Text>
-                </View>
-              </View>
               {pickupProgressAction ? (
                 <View style={styles.pickupBuyerAction}>
                   <ActionButton
@@ -1139,21 +1124,6 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   pickupBuyerFlowTitle: { color: theme.text, fontSize: 14, fontWeight: '800', marginBottom: 8 },
-  pickupBuyerFlowRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
-  pickupBuyerStepChip: {
-    borderWidth: 1,
-    borderColor: '#D8CEC0',
-    backgroundColor: '#F7F2EA',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  pickupBuyerStepChipActive: {
-    borderColor: '#5AA97A',
-    backgroundColor: '#EAF7EE',
-  },
-  pickupBuyerStepText: { color: '#75695F', fontSize: 12.5, fontWeight: '700' },
-  pickupBuyerStepTextActive: { color: '#1F6F43' },
   pickupBuyerAction: { marginTop: 10 },
   actions: { gap: 10, marginTop: 8 },
   completeNotice: {
