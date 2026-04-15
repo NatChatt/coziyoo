@@ -132,6 +132,24 @@ def _haversine_km(lat1, lon1, lat2, lon2):
     return 2 * R * math.asin(math.sqrt(a))
 
 
+def _to_finite_number(value):
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if math.isfinite(parsed) else None
+
+
+def _estimate_delivery_metrics_from_radius(radius_km):
+    """Return (distance_km, duration_minutes) estimate when precise coordinates are unavailable."""
+    radius = _to_finite_number(radius_km)
+    if radius is None or radius <= 0:
+        radius = 5.0
+    distance_km = round(max(0.5, min(radius, radius * 0.6)), 2)
+    duration_minutes = int(max(5, round(distance_km / 30 * 60 + 5)))
+    return distance_km, duration_minutes
+
+
 def _normalize_seller_decision(value):
     raw = str(value or "").strip().lower()
     if raw == "approve":
@@ -974,21 +992,29 @@ class BuyerDeliveryRequestView(APIView):
                                 LIMIT 1
                             )
                         ) AS seller_lng
+                        ,
+                        s.delivery_radius_km AS seller_delivery_radius_km
                     FROM users b, users s
                     WHERE b.id = %s AND s.id = %s
                     """,
                     [user_id, str(order["seller_id"])],
                 )
                 coord_row = cursor.fetchone()
-                if coord_row and all(v is not None for v in coord_row):
+                if coord_row and all(v is not None for v in coord_row[:4]):
                     try:
-                        distance_km = _haversine_km(*coord_row)
+                        distance_km = _haversine_km(*coord_row[:4])
                         if delivery_address_snapshot is None:
                             delivery_address_snapshot = {}
                         delivery_address_snapshot["distanceKm"] = round(distance_km, 2)
                         delivery_address_snapshot["durationMinutes"] = max(5, round(distance_km / 30 * 60 + 5))
                     except (TypeError, ValueError):
                         pass
+                elif coord_row:
+                    distance_km, duration_minutes = _estimate_delivery_metrics_from_radius(coord_row[4])
+                    if delivery_address_snapshot is None:
+                        delivery_address_snapshot = {}
+                    delivery_address_snapshot["distanceKm"] = distance_km
+                    delivery_address_snapshot["durationMinutes"] = duration_minutes
 
                 cursor.execute(
                     """
@@ -1082,7 +1108,7 @@ class SellerDeliveryRequestResolveView(APIView):
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT id, status, buyer_id, seller_id, requested_delivery_type, active_delivery_type
+                SELECT id, status, buyer_id, seller_id, requested_delivery_type, active_delivery_type, delivery_address_json
                 FROM orders
                 WHERE id = %s
                 """,
@@ -1142,6 +1168,16 @@ class SellerDeliveryRequestResolveView(APIView):
                         "addressLine": address_row[1],
                         "line": address_row[1],
                     }
+
+                existing_snapshot = _json_object(order.get("delivery_address_json"))
+                existing_distance = _to_finite_number(existing_snapshot.get("distanceKm")) if existing_snapshot else None
+                existing_duration = _to_finite_number(existing_snapshot.get("durationMinutes")) if existing_snapshot else None
+                if (existing_distance is not None or existing_duration is not None) and delivery_address_snapshot is None:
+                    delivery_address_snapshot = {}
+                if existing_distance is not None:
+                    delivery_address_snapshot["distanceKm"] = round(existing_distance, 2)
+                if existing_duration is not None:
+                    delivery_address_snapshot["durationMinutes"] = int(round(existing_duration))
 
                 cursor.execute(
                     """

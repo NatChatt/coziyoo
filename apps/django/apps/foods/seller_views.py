@@ -124,6 +124,16 @@ def _haversine_km(lat1, lon1, lat2, lon2):
     return 2 * radius_km * math.asin(math.sqrt(a))
 
 
+def _estimate_delivery_metrics_from_radius(radius_km):
+    """Return (distance_km, duration_minutes) estimate when precise coordinates are unavailable."""
+    radius = _to_finite_number(radius_km)
+    if radius is None or radius <= 0:
+        radius = 5.0
+    distance_km = round(max(0.5, min(radius, radius * 0.6)), 2)
+    duration_minutes = int(max(5, round(distance_km / 30 * 60 + 5)))
+    return distance_km, duration_minutes
+
+
 class SellerProfileView(APIView):
     """GET /v1/seller/profile — Fetch own seller profile.
     PUT /v1/seller/profile — Update seller profile fields."""
@@ -638,6 +648,7 @@ class SellerOrdersView(APIView):
                            LIMIT 1
                        )
                    ) AS seller_lng,
+                   us.delivery_radius_km AS seller_delivery_radius_km,
                    (
                        SELECT f.name
                        FROM order_items oi
@@ -681,6 +692,9 @@ class SellerOrdersView(APIView):
                         duration_minutes = max(5, round(distance_km / 30 * 60 + 5))
                     except (TypeError, ValueError):
                         pass
+
+            if distance_km is None or duration_minutes is None:
+                distance_km, duration_minutes = _estimate_delivery_metrics_from_radius(order.get("seller_delivery_radius_km"))
 
             delivery_address = (
                 {"distanceKm": distance_km, "durationMinutes": int(duration_minutes)}
