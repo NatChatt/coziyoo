@@ -812,7 +812,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               ) : null}
             </View>
           ) : null}
-          {order && !canResolveApprovedDeliveryRequest && !(isDecisionStage && buyerRequestedDelivery) ? (
+          {order && !canResolveApprovedDeliveryRequest ? (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t('headline.orderNotes.title')}</Text>
               {orderNotes.length === 0 ? (
