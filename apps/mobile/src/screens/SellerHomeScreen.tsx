@@ -94,6 +94,16 @@ function normalizeCountryCode(value: unknown): string {
   return raw;
 }
 
+function normalizeStatusValue(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function normalizeDeliveryTypeValue(value: unknown): "pickup" | "delivery" | undefined {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "pickup" || normalized === "delivery") return normalized;
+  return undefined;
+}
+
 function businessDayKey(date: Date, useTurkeyTime: boolean): string {
   const shifted = new Date(date.getTime() - (BUSINESS_DAY_RESET_HOUR * 60 * 60 * 1000));
   if (useTurkeyTime) {
@@ -284,20 +294,26 @@ function normalizeSellerOrder(raw: Record<string, unknown>): SellerOrder {
     buyerName: typeof raw.buyerName === "string" ? raw.buyerName : (typeof raw.buyer_name === "string" ? raw.buyer_name : null),
     primaryFoodName: typeof raw.primaryFoodName === "string" ? raw.primaryFoodName : (typeof raw.primary_food_name === "string" ? raw.primary_food_name : null),
     itemCount: Number(raw.itemCount ?? raw.item_count ?? 0),
-    status: String(raw.status ?? ""),
-    deliveryType: typeof raw.deliveryType === "string" ? raw.deliveryType : (typeof raw.delivery_type === "string" ? raw.delivery_type : undefined),
+    status: normalizeStatusValue(raw.status),
+    deliveryType: normalizeDeliveryTypeValue(typeof raw.deliveryType === "string" ? raw.deliveryType : raw.delivery_type),
     requestedDeliveryType:
-      typeof raw.requestedDeliveryType === "string"
-        ? raw.requestedDeliveryType
-        : (typeof raw.requested_delivery_type === "string" ? raw.requested_delivery_type : undefined),
+      normalizeDeliveryTypeValue(
+        typeof raw.requestedDeliveryType === "string"
+          ? raw.requestedDeliveryType
+          : raw.requested_delivery_type
+      ),
     activeDeliveryType:
-      typeof raw.activeDeliveryType === "string"
-        ? raw.activeDeliveryType
-        : (typeof raw.active_delivery_type === "string" ? raw.active_delivery_type : undefined),
+      normalizeDeliveryTypeValue(
+        typeof raw.activeDeliveryType === "string"
+          ? raw.activeDeliveryType
+          : raw.active_delivery_type
+      ),
     sellerDecisionState:
-      typeof raw.sellerDecisionState === "string"
-        ? raw.sellerDecisionState
-        : (typeof raw.seller_decision_state === "string" ? raw.seller_decision_state : undefined),
+      normalizeStatusValue(
+        typeof raw.sellerDecisionState === "string"
+          ? raw.sellerDecisionState
+          : raw.seller_decision_state
+      ) || undefined,
     totalPrice: Number(raw.totalPrice ?? raw.total_price ?? 0),
     createdAt: typeof raw.createdAt === "string" ? raw.createdAt : (typeof raw.created_at === "string" ? raw.created_at : undefined),
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : (typeof raw.updated_at === "string" ? raw.updated_at : undefined),
@@ -723,6 +739,12 @@ export default function SellerHomeScreen({
     try {
       setUpdatingOrderId(orderId);
       await advanceStatusWithCompatibility(orderId, action.toStatus);
+      const nowIso = new Date().toISOString();
+      setOrders((prev) => prev.map((item) => (
+        item.id === orderId
+          ? { ...item, status: action.toStatus, updatedAt: nowIso }
+          : item
+      )));
       if (action.toStatus === "delivered") {
         setCelebrationOrderId(orderId);
         deliveredEmojiScale.setValue(0.4);
