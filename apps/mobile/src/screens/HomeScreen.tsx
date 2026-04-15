@@ -86,7 +86,7 @@ try {
   // WebView native module is optional at runtime; fallback is external link.
 }
 import { loadSettings, saveSettings, subscribeSettings, type AppSettings } from '../utils/settings';
-import { subscribeBuyerFeedRealtime } from '../utils/realtime';
+import { subscribeBuyerFeedRealtime, subscribeBuyerOrdersRealtime } from '../utils/realtime';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { loadCachedProfileImageUrl, saveCachedProfileImageUrl } from '../utils/profileImage';
 import { apiRequest } from '../utils/api';
@@ -2085,6 +2085,7 @@ export default function HomeScreen({
   const mealsLoadedOnceRef = useRef(false);
   const recommendedMealsLoadedOnceRef = useRef(false);
   const buyerFeedRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const buyerOrdersRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Always-current auth ref — avoids stale closures without triggering re-renders.
   const currentAuthRef = useRef<AuthSession>(currentAuth);
   useEffect(() => { currentAuthRef.current = currentAuth; });
@@ -2336,6 +2337,26 @@ export default function HomeScreen({
       unsubscribe();
     };
   }, [activeTab, apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refresh home order card in real time when seller responds.
+  useEffect(() => {
+    const buyerId = currentAuthRef.current?.userId;
+    if ((activeTab !== 'home' && activeTab !== 'cart') || !buyerId) return;
+    const unsubscribe = subscribeBuyerOrdersRealtime(buyerId, () => {
+      if (buyerOrdersRefreshTimerRef.current) return;
+      buyerOrdersRefreshTimerRef.current = setTimeout(() => {
+        buyerOrdersRefreshTimerRef.current = null;
+        void fetchRecentBuyerOrders();
+      }, 800);
+    });
+    return () => {
+      if (buyerOrdersRefreshTimerRef.current) {
+        clearTimeout(buyerOrdersRefreshTimerRef.current);
+        buyerOrdersRefreshTimerRef.current = null;
+      }
+      unsubscribe();
+    };
+  }, [activeTab, fetchRecentBuyerOrders]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let cancelled = false;
