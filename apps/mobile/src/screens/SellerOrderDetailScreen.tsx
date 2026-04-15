@@ -228,6 +228,7 @@ function mergeOrderNotes(notes: OrderNote[]): OrderNote[] {
 
 const CANCELLABLE_STATUSES = ["pending_seller_approval", "pending_buyer_confirmation", "seller_approved", "awaiting_payment", "paid", "preparing", "ready", "in_delivery", "approaching", "at_door"];
 const NON_MESSAGEABLE_STATUSES = ['cancelled', 'completed'];
+const DEFAULT_SELLER_DECISION_ETA_MINUTES = 30;
 
 export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthRefresh }: Props) {
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
@@ -240,8 +241,6 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [decisionDeliveryType, setDecisionDeliveryType] = useState<"pickup" | "delivery">("pickup");
-  const [decisionEtaMinutes, setDecisionEtaMinutes] = useState("30");
-  const [decisionNote, setDecisionNote] = useState("");
   const [decisionReason, setDecisionReason] = useState("");
   const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const notesPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -459,10 +458,8 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
         ? "delivery"
         : "pickup"
     );
-    setDecisionEtaMinutes(order.sellerEtaMinutes ? String(order.sellerEtaMinutes) : "30");
-    setDecisionNote(order.sellerDeliveryNote?.trim() ?? "");
     setDecisionReason("");
-  }, [order?.id, order?.activeDeliveryType, order?.requestedDeliveryType, order?.sellerEtaMinutes, order?.sellerDeliveryNote]);
+  }, [order?.id, order?.activeDeliveryType, order?.requestedDeliveryType]);
 
 
   const effectiveDeliveryType = useMemo(() => {
@@ -558,14 +555,12 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     if (!order) return;
     setUpdating(true);
     try {
-      const etaMinutes = Number(decisionEtaMinutes);
       const body: Record<string, unknown> = { decision };
       if (decision === "reject") {
         body.reason = decisionReason.trim();
       } else {
         body.deliveryType = decisionDeliveryType;
-        body.etaMinutes = etaMinutes;
-        body.note = decisionNote.trim();
+        body.etaMinutes = Number(order.sellerEtaMinutes ?? DEFAULT_SELLER_DECISION_ETA_MINUTES);
       }
 
       const res = await authedFetch(`/v1/orders/${order.id}/seller-decision`, {
@@ -594,13 +589,11 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     if (!order || !canResolveApprovedDeliveryRequest) return;
     setUpdating(true);
     try {
-      const etaMinutes = Number(decisionEtaMinutes);
       const res = await authedFetch(`/v1/orders/${order.id}/seller-delivery-request-response`, {
         method: "POST",
         body: JSON.stringify({
           deliveryType: decisionDeliveryType,
-          etaMinutes,
-          note: decisionNote.trim(),
+          etaMinutes: Number(order.sellerEtaMinutes ?? DEFAULT_SELLER_DECISION_ETA_MINUTES),
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -783,40 +776,6 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.inlineFieldLabel}>
-                {decisionDeliveryType === "delivery" ? t("label.seller.orderDetail.etaDelivery") : t("label.seller.orderDetail.etaPickup")}
-              </Text>
-              <TextInput
-                style={styles.pinInput}
-                value={decisionEtaMinutes}
-                onChangeText={(value) => setDecisionEtaMinutes(value.replace(/[^0-9]/g, "").slice(0, 4))}
-                keyboardType="number-pad"
-                placeholder={t("helper.seller.orderDetail.etaPlaceholder")}
-                placeholderTextColor="#9C8E81"
-              />
-              <Text style={styles.etaHintText}>{t("helper.seller.orderDetail.etaHint")}</Text>
-
-              <Text style={styles.inlineFieldLabel}>
-                {buyerRequestedDelivery
-                  ? t("label.seller.orderDetail.noteDecision")
-                  : (decisionDeliveryType === "delivery" ? t("label.seller.orderDetail.noteDelivery") : t("label.seller.orderDetail.notePickup"))}
-              </Text>
-              <TextInput
-                style={[styles.pinInput, styles.noteInput]}
-                value={decisionNote}
-                onChangeText={setDecisionNote}
-
-                multiline
-                placeholder={buyerRequestedDelivery
-                  ? (decisionDeliveryType === "delivery"
-                    ? t("helper.seller.orderDetail.noteDecisionDeliveryPlaceholder")
-                    : t("helper.seller.orderDetail.noteDecisionPickupPlaceholder"))
-                  : (decisionDeliveryType === "delivery"
-                    ? t("helper.seller.orderDetail.noteDeliveryPlaceholder")
-                    : t("helper.seller.orderDetail.notePickupPlaceholder"))}
-                placeholderTextColor="#9C8E81"
-              />
-
               <View style={styles.decisionActions}>
                 <TouchableOpacity
                   style={[styles.secondaryActionBtn, updating && styles.actionDisabled]}
@@ -932,30 +891,6 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.inlineFieldLabel}>
-                {decisionDeliveryType === "delivery" ? t("label.seller.orderDetail.etaDelivery") : t("label.seller.orderDetail.etaPickup")}
-              </Text>
-              <TextInput
-                style={styles.pinInput}
-                value={decisionEtaMinutes}
-                onChangeText={(value) => setDecisionEtaMinutes(value.replace(/[^0-9]/g, "").slice(0, 4))}
-                keyboardType="number-pad"
-                placeholder={t("helper.seller.orderDetail.etaPlaceholder")}
-                placeholderTextColor="#9C8E81"
-              />
-
-              <Text style={styles.inlineFieldLabel}>{t("label.seller.orderDetail.noteDecision")}</Text>
-              <TextInput
-                style={[styles.pinInput, styles.noteInput]}
-                value={decisionNote}
-                onChangeText={setDecisionNote}
-
-                multiline
-                placeholder={decisionDeliveryType === "delivery"
-                  ? t("helper.seller.orderDetail.noteDecisionDeliveryPlaceholder")
-                  : t("helper.seller.orderDetail.noteDecisionPickupPlaceholder")}
-                placeholderTextColor="#9C8E81"
-              />
             </View>
           ) : null}
           {canCancelOrder ? (
@@ -1262,12 +1197,6 @@ const styles = StyleSheet.create({
     color: "#2E241C",
     fontWeight: "600",
     letterSpacing: 1.5,
-  },
-  etaHintText: {
-    marginTop: 6,
-    color: "#6C6055",
-    fontSize: 12.5,
-    lineHeight: 17,
   },
   approveActionBtn: {
     flex: 1,
