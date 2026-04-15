@@ -713,35 +713,12 @@ export default function SellerHomeScreen({
     if (!res.ok) throw new Error(body?.error?.message ?? "Durum güncellenemedi");
   }
 
-  function shouldFallbackViaReady(error: unknown): boolean {
-    if (!(error instanceof Error)) return false;
-    const message = error.message || "";
-    if (!message.includes("Cannot transition")) return false;
-    return message.includes("preparing -> in_delivery") || message.includes("'preparing' to 'in_delivery'");
-  }
-
-  async function advanceStatusWithCompatibility(
-    orderId: string,
-    toStatus: "ready" | "in_delivery" | "approaching" | "at_door" | "delivered" | "preparing" | "completed" | "seller_approved" | "rejected" | "cancelled",
-  ): Promise<void> {
-    try {
-      await changeStatus(orderId, toStatus);
-    } catch (error) {
-      if (toStatus === "in_delivery" && shouldFallbackViaReady(error)) {
-        await changeStatus(orderId, "ready");
-        await changeStatus(orderId, "in_delivery");
-        return;
-      }
-      throw error;
-    }
-  }
-
   async function runCardAction(orderId: string, action: SellerAction) {
     if (actionInFlightRef.current[orderId]) return;
     actionInFlightRef.current[orderId] = true;
     try {
       setUpdatingOrderId(orderId);
-      await advanceStatusWithCompatibility(orderId, action.toStatus);
+      await changeStatus(orderId, action.toStatus);
       const nowIso = new Date().toISOString();
       setOrders((prev) => prev.map((item) => (
         item.id === orderId
