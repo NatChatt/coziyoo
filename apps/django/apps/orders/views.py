@@ -933,7 +933,47 @@ class BuyerDeliveryRequestView(APIView):
                 # Compute buyer-to-seller distance using stored coordinates
                 cursor.execute(
                     """
-                    SELECT b.latitude, b.longitude, s.latitude, s.longitude
+                    SELECT
+                        COALESCE(
+                            b.latitude,
+                            (
+                                SELECT ull.latitude
+                                FROM user_login_locations ull
+                                WHERE ull.user_id = b.id
+                                ORDER BY ull.created_at DESC
+                                LIMIT 1
+                            )
+                        ) AS buyer_lat,
+                        COALESCE(
+                            b.longitude,
+                            (
+                                SELECT ull.longitude
+                                FROM user_login_locations ull
+                                WHERE ull.user_id = b.id
+                                ORDER BY ull.created_at DESC
+                                LIMIT 1
+                            )
+                        ) AS buyer_lng,
+                        COALESCE(
+                            s.latitude,
+                            (
+                                SELECT ull.latitude
+                                FROM user_login_locations ull
+                                WHERE ull.user_id = s.id
+                                ORDER BY ull.created_at DESC
+                                LIMIT 1
+                            )
+                        ) AS seller_lat,
+                        COALESCE(
+                            s.longitude,
+                            (
+                                SELECT ull.longitude
+                                FROM user_login_locations ull
+                                WHERE ull.user_id = s.id
+                                ORDER BY ull.created_at DESC
+                                LIMIT 1
+                            )
+                        ) AS seller_lng
                     FROM users b, users s
                     WHERE b.id = %s AND s.id = %s
                     """,

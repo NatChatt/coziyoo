@@ -5,6 +5,7 @@ but role enforcement is left to the JWT payload (role == 'seller').
 """
 import json
 import logging
+import math
 import uuid
 from datetime import datetime
 
@@ -102,6 +103,25 @@ def _resolve_lot_active_status():
 
 def _parse_iso(value):
     return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+
+def _to_finite_number(value):
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return None
+    return num if math.isfinite(num) else None
+
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    """Great-circle distance in km between two (lat, lon) pairs."""
+    radius_km = 6371.0
+    phi1 = math.radians(float(lat1))
+    phi2 = math.radians(float(lat2))
+    dphi = math.radians(float(lat2) - float(lat1))
+    dlambda = math.radians(float(lon2) - float(lon1))
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return 2 * radius_km * math.asin(math.sqrt(a))
 
 
 class SellerProfileView(APIView):
@@ -578,6 +598,46 @@ class SellerOrdersView(APIView):
                    u.display_name AS buyer_name, o.delivery_type,
                    o.requested_delivery_type, o.active_delivery_type, o.seller_decision_state,
                    o.delivery_address_json,
+                   COALESCE(
+                       ub.latitude,
+                       (
+                           SELECT ull.latitude
+                           FROM user_login_locations ull
+                           WHERE ull.user_id = o.buyer_id
+                           ORDER BY ull.created_at DESC
+                           LIMIT 1
+                       )
+                   ) AS buyer_lat,
+                   COALESCE(
+                       ub.longitude,
+                       (
+                           SELECT ull.longitude
+                           FROM user_login_locations ull
+                           WHERE ull.user_id = o.buyer_id
+                           ORDER BY ull.created_at DESC
+                           LIMIT 1
+                       )
+                   ) AS buyer_lng,
+                   COALESCE(
+                       us.latitude,
+                       (
+                           SELECT ull.latitude
+                           FROM user_login_locations ull
+                           WHERE ull.user_id = o.seller_id
+                           ORDER BY ull.created_at DESC
+                           LIMIT 1
+                       )
+                   ) AS seller_lat,
+                   COALESCE(
+                       us.longitude,
+                       (
+                           SELECT ull.longitude
+                           FROM user_login_locations ull
+                           WHERE ull.user_id = o.seller_id
+                           ORDER BY ull.created_at DESC
+                           LIMIT 1
+                       )
+                   ) AS seller_lng,
                    (
                        SELECT f.name
                        FROM order_items oi
@@ -593,6 +653,8 @@ class SellerOrdersView(APIView):
                    ) AS item_count
             FROM orders o
             JOIN users u ON u.id = o.buyer_id
+            LEFT JOIN users ub ON ub.id = o.buyer_id
+            LEFT JOIN users us ON us.id = o.seller_id
             WHERE o.seller_id = %s
             ORDER BY o.created_at DESC
             LIMIT 100
@@ -605,9 +667,25 @@ class SellerOrdersView(APIView):
         for order in orders:
             addr_json = order.get("delivery_address_json")
             addr = json.loads(addr_json) if isinstance(addr_json, str) else addr_json
+            distance_km = _to_finite_number(addr.get("distanceKm")) if isinstance(addr, dict) else None
+            duration_minutes = _to_finite_number(addr.get("durationMinutes")) if isinstance(addr, dict) else None
+
+            if distance_km is None or duration_minutes is None:
+                buyer_lat = _to_finite_number(order.get("buyer_lat"))
+                buyer_lng = _to_finite_number(order.get("buyer_lng"))
+                seller_lat = _to_finite_number(order.get("seller_lat"))
+                seller_lng = _to_finite_number(order.get("seller_lng"))
+                if None not in (buyer_lat, buyer_lng, seller_lat, seller_lng):
+                    try:
+                        distance_km = round(_haversine_km(buyer_lat, buyer_lng, seller_lat, seller_lng), 2)
+                        duration_minutes = max(5, round(distance_km / 30 * 60 + 5))
+                    except (TypeError, ValueError):
+                        pass
+
             delivery_address = (
-                {"distanceKm": addr.get("distanceKm"), "durationMinutes": addr.get("durationMinutes")}
-                if addr else None
+                {"distanceKm": distance_km, "durationMinutes": int(duration_minutes)}
+                if distance_km is not None and duration_minutes is not None
+                else None
             )
             result.append(
                 {
