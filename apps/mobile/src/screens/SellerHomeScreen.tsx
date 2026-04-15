@@ -377,11 +377,13 @@ export default function SellerHomeScreen({
         onMoveShouldSetPanResponder: (_, gestureState) =>
           Math.abs(gestureState.dx) > 14 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) + 6,
         onPanResponderRelease: (_, gestureState) => {
-          if (gestureState.dx <= -40 && activePage === 0) {
+          // Requested inverse gesture mapping:
+          // swipe right => active foods, swipe left => today orders
+          if (gestureState.dx >= 40 && activePage === 0) {
             setActivePage(1);
             return;
           }
-          if (gestureState.dx >= 40 && activePage === 1) {
+          if (gestureState.dx <= -40 && activePage === 1) {
             setActivePage(0);
           }
         },
