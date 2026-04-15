@@ -777,15 +777,15 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               </View>
 
               <View style={styles.decisionActions}>
-                <TouchableOpacity
-                  style={[styles.secondaryActionBtn, updating && styles.actionDisabled]}
-                  disabled={updating}
-                  onPress={() => { void submitSellerDecision("revise"); }}
-                >
-                  <Text style={styles.secondaryActionText}>
-                    {buyerRequestedDelivery ? t("cta.seller.orderDetail.sendExplanation") : t("cta.seller.orderDetail.revise")}
-                  </Text>
-                </TouchableOpacity>
+                {!buyerRequestedDelivery ? (
+                  <TouchableOpacity
+                    style={[styles.secondaryActionBtn, updating && styles.actionDisabled]}
+                    disabled={updating}
+                    onPress={() => { void submitSellerDecision("revise"); }}
+                  >
+                    <Text style={styles.secondaryActionText}>{t("cta.seller.orderDetail.revise")}</Text>
+                  </TouchableOpacity>
+                ) : null}
                 <TouchableOpacity
                   style={[styles.approveActionBtn, updating && styles.actionDisabled]}
                   disabled={updating}
@@ -812,7 +812,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
               ) : null}
             </View>
           ) : null}
-          {order && !canResolveApprovedDeliveryRequest ? (
+          {order && !canResolveApprovedDeliveryRequest && !(isDecisionStage && buyerRequestedDelivery) ? (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t('headline.orderNotes.title')}</Text>
               {orderNotes.length === 0 ? (
