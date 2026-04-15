@@ -46,13 +46,19 @@ def _order_admin_detail(order_id_str):
     addr = addr_json if isinstance(addr_json, dict) else (json.loads(addr_json) if addr_json else {})
 
     with connection.cursor() as cur:
-        # Messages/notes from order_events
+        # Messages/notes from order_events (capture all conversational payloads)
         cur.execute(
             """
             SELECT oe.event_type, oe.payload_json, oe.created_at, u.display_name
             FROM order_events oe
             LEFT JOIN users u ON u.id = oe.actor_user_id
-            WHERE oe.order_id = %s AND oe.event_type IN ('buyer_note', 'seller_note')
+            WHERE oe.order_id = %s
+              AND (
+                oe.event_type IN ('buyer_note', 'seller_note')
+                OR (oe.payload_json ? 'message')
+                OR (oe.payload_json ? 'note')
+                OR (oe.payload_json ? 'reason')
+              )
             ORDER BY oe.created_at ASC
             """,
             [order_id_str],
@@ -104,10 +110,25 @@ def _order_admin_detail(order_id_str):
     messages = []
     for event_type, payload_json, ts, display_name in note_rows:
         payload = payload_json if isinstance(payload_json, dict) else (json.loads(payload_json) if payload_json else {})
+        message_text = str(
+            payload.get("message")
+            or payload.get("note")
+            or payload.get("reason")
+            or ""
+        ).strip()
+        if not message_text:
+            continue
+        normalized_event = str(event_type or "").strip().lower()
+        if normalized_event.startswith("seller_"):
+            role = "seller"
+        elif normalized_event.startswith("buyer_"):
+            role = "buyer"
+        else:
+            role = "seller" if (display_name and display_name == seller_name) else "buyer"
         messages.append({
-            "role": "buyer" if event_type == "buyer_note" else "seller",
+            "role": role,
             "sender": display_name or "",
-            "message": payload.get("message", ""),
+            "message": message_text,
             "_ts": ts,
         })
 
@@ -157,6 +178,14 @@ def _order_admin_detail(order_id_str):
     return {
         "id": str(oid),
         "status": status,
+        "statusTr": (
+            "Order Onaylandı"
+            if status == "seller_approved"
+            else "Yoldayım" if status == "in_delivery"
+            else "Geliyorum" if status == "approaching"
+            else "Kapıdayım" if status == "at_door"
+            else None
+        ),
         "deliveryType": delivery_type,
         "requestedDeliveryType": requested_delivery_type,
         "activeDeliveryType": active_delivery_type,

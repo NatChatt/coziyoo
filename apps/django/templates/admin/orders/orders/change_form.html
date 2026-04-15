@@ -23,13 +23,13 @@
       const m = {
         pending_seller_approval: 'Satıcı Onayı Bekleniyor',
         pending_buyer_confirmation: 'Alıcı Onayı Bekleniyor',
-        seller_approved: 'Satıcı Onayladı',
+        seller_approved: 'Order Onaylandı',
         awaiting_payment: 'Ödeme Bekleniyor',
         paid: 'Ödendi',
         preparing: 'Hazırlanıyor',
         ready: 'Hazır',
-        in_delivery: 'Yolda',
-        approaching: 'Yaklaşıyor',
+        in_delivery: 'Yoldayım',
+        approaching: 'Geliyorum',
         at_door: 'Kapıda',
         delivered: 'Teslim Edildi',
         completed: 'Tamamlandı',
@@ -51,7 +51,7 @@
       <span class="material-symbols-outlined text-violet-500">shopping_bag</span>
       <div>
         <p class="text-xs text-base-500 dark:text-base-400">Sipariş Durumu</p>
-        <p class="font-semibold text-base-900 dark:text-white" x-text="detail ? statusLabel(detail.status) : '...'"></p>
+        <p class="font-semibold text-base-900 dark:text-white" x-text="detail ? (detail.statusTr || statusLabel(detail.status)) : '...'"></p>
       </div>
     </div>
     <div class="flex items-center gap-2">
