@@ -672,7 +672,10 @@ export default function OrderDetailScreen({
   const canPay = false;
   const canReview = isBuyer && ['delivered', 'completed'].includes(order.status);
   const canComplain = isBuyer && ['at_door', 'delivered', 'completed'].includes(order.status);
-  const pickupProgressAction = isBuyer ? nextPickupProgressAction(order.status, order.deliveryType) : null;
+  const isPickupDeliveryRequestPending = order.deliveryType === 'pickup' && order.requestedDeliveryType === 'delivery';
+  const pickupProgressAction = isBuyer && !isPickupDeliveryRequestPending
+    ? nextPickupProgressAction(order.status, order.deliveryType)
+    : null;
   const normalizedOrderStatus = String(order.status ?? '').trim().toLowerCase();
   const canOpenDeliveryPin =
     isBuyer &&
@@ -992,7 +995,7 @@ export default function OrderDetailScreen({
               ) : null}
             </View>
           ) : null}
-          {isBuyer && order.deliveryType === 'pickup' ? (
+          {isBuyer && order.deliveryType === 'pickup' && !isPickupDeliveryRequestPending ? (
             <View style={styles.pickupBuyerFlowWrap}>
               <Text style={styles.pickupBuyerFlowTitle}>Alıcı Akışın</Text>
               <View style={styles.pickupBuyerFlowRow}>
