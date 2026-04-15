@@ -39,6 +39,7 @@ type SellerOrder = {
   updatedAt?: string;
   buyerProgressStatus?: string | null;
   buyerProgressAt?: string | null;
+  deliveryAddress?: { distanceKm?: number | null; durationMinutes?: number | null } | null;
 };
 
 type SellerAction =
@@ -298,6 +299,14 @@ function normalizeSellerOrder(raw: Record<string, unknown>): SellerOrder {
       typeof raw.buyerProgressAt === "string"
         ? raw.buyerProgressAt
         : (typeof raw.buyer_progress_at === "string" ? raw.buyer_progress_at : null),
+    deliveryAddress: (() => {
+      const addr = raw.deliveryAddress ?? raw.delivery_address;
+      if (!addr || typeof addr !== "object") return null;
+      const a = addr as Record<string, unknown>;
+      const distanceKm = a.distanceKm != null ? Number(a.distanceKm) : null;
+      const durationMinutes = a.durationMinutes != null ? Number(a.durationMinutes) : null;
+      return { distanceKm, durationMinutes };
+    })(),
   };
 }
 
@@ -920,6 +929,18 @@ export default function SellerHomeScreen({
                     {buyerRequestedDelivery ? (
                       <View style={styles.deliveryRequestInlineBanner}>
                         <Text style={styles.deliveryRequestInlineTitle}>{t('helper.seller.orderDetail.deliveryRequestTitle')}</Text>
+                        {item.deliveryAddress?.distanceKm != null || item.deliveryAddress?.durationMinutes != null ? (
+                          <Text style={styles.deliveryRequestInlineText}>
+                            {[
+                              item.deliveryAddress.distanceKm != null
+                                ? formatCopy('helper.seller.orderDetail.deliveryDistance', { km: item.deliveryAddress.distanceKm.toFixed(1) })
+                                : null,
+                              item.deliveryAddress.durationMinutes != null
+                                ? formatCopy('helper.seller.orderDetail.deliveryDuration', { min: item.deliveryAddress.durationMinutes })
+                                : null,
+                            ].filter(Boolean).join('  ·  ')}
+                          </Text>
+                        ) : null}
                         <Text style={styles.deliveryRequestInlineText}>{t('helper.seller.home.deliveryRequestHint')}</Text>
                       </View>
                     ) : null}

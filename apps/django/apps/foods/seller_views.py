@@ -577,6 +577,7 @@ class SellerOrdersView(APIView):
             SELECT o.id, o.seller_id, o.status, o.total_price, o.created_at, o.updated_at, o.buyer_id,
                    u.display_name AS buyer_name, o.delivery_type,
                    o.requested_delivery_type, o.active_delivery_type, o.seller_decision_state,
+                   o.delivery_address_json,
                    (
                        SELECT f.name
                        FROM order_items oi
@@ -602,6 +603,12 @@ class SellerOrdersView(APIView):
 
         result = []
         for order in orders:
+            addr_json = order.get("delivery_address_json")
+            addr = json.loads(addr_json) if isinstance(addr_json, str) else addr_json
+            delivery_address = (
+                {"distanceKm": addr.get("distanceKm"), "durationMinutes": addr.get("durationMinutes")}
+                if addr else None
+            )
             result.append(
                 {
                     "id": str(order["id"]),
@@ -618,6 +625,7 @@ class SellerOrdersView(APIView):
                     "totalPrice": float(order["total_price"]) if order.get("total_price") is not None else 0,
                     "createdAt": order["created_at"].isoformat() if order.get("created_at") else None,
                     "updatedAt": order["updated_at"].isoformat() if order.get("updated_at") else None,
+                    "deliveryAddress": delivery_address,
                 }
             )
 
