@@ -840,9 +840,6 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                   ))}
                 </ScrollView>
               )}
-              {isDecisionStage && buyerRequestedDelivery ? (
-                <Text style={styles.meta}>{t('helper.seller.orderDetail.customerWillConfirmMessage')}</Text>
-              ) : null}
               <TextInput
                 style={styles.noteTextInput}
                 value={noteInput}
