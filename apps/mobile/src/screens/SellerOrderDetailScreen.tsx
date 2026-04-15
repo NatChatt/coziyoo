@@ -776,8 +776,8 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.decisionActions}>
-                {!buyerRequestedDelivery ? (
+              {!buyerRequestedDelivery ? (
+                <View style={styles.decisionActions}>
                   <TouchableOpacity
                     style={[styles.secondaryActionBtn, updating && styles.actionDisabled]}
                     disabled={updating}
@@ -785,22 +785,22 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                   >
                     <Text style={styles.secondaryActionText}>{t("cta.seller.orderDetail.revise")}</Text>
                   </TouchableOpacity>
-                ) : null}
-                <TouchableOpacity
-                  style={[styles.approveActionBtn, updating && styles.actionDisabled]}
-                  disabled={updating}
-                  onPress={() => { void submitSellerDecision("approve"); }}
-                >
-                  <Text style={styles.approveActionText}>{t('cta.orderNotes.approve')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.rejectActionBtn, updating && styles.actionDisabled]}
-                  disabled={updating}
-                  onPress={() => setCancelModalVisible(true)}
-                >
-                  <Text style={styles.rejectActionText}>{t('cta.orderNotes.reject')}</Text>
-                </TouchableOpacity>
-              </View>
+                  <TouchableOpacity
+                    style={[styles.approveActionBtn, updating && styles.actionDisabled]}
+                    disabled={updating}
+                    onPress={() => { void submitSellerDecision("approve"); }}
+                  >
+                    <Text style={styles.approveActionText}>{t('cta.orderNotes.approve')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.rejectActionBtn, updating && styles.actionDisabled]}
+                    disabled={updating}
+                    onPress={() => setCancelModalVisible(true)}
+                  >
+                    <Text style={styles.rejectActionText}>{t('cta.orderNotes.reject')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
             </View>
           ) : null}
           {isPendingBuyerConfirmation ? (
@@ -840,11 +840,18 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                   ))}
                 </ScrollView>
               )}
+              {isDecisionStage && buyerRequestedDelivery ? (
+                <Text style={styles.meta}>{t('helper.seller.orderDetail.customerWillConfirmMessage')}</Text>
+              ) : null}
               <TextInput
                 style={styles.noteTextInput}
                 value={noteInput}
                 onChangeText={setNoteInput}
-                placeholder={t('placeholder.orderNotes.input')}
+                placeholder={
+                  isDecisionStage && buyerRequestedDelivery
+                    ? t('placeholder.seller.orderDetail.deliveryDecisionMessage')
+                    : t('placeholder.orderNotes.input')
+                }
                 placeholderTextColor="#9C8E81"
                 multiline
                 maxLength={500}
