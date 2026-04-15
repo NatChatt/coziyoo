@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, AppState, Easing, FlatList, Platform, SectionList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, AppState, Easing, FlatList, PanResponder, Platform, SectionList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { AuthSession } from "../utils/auth";
 import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
@@ -371,6 +371,23 @@ export default function SellerHomeScreen({
   const hasSeenInitialOrdersRef = useRef(false);
   const refreshOrdersOnlyRef = useRef<(baseUrl?: string) => Promise<void>>(async () => {});
   const loadRef = useRef<() => Promise<void>>(async () => {});
+  const pageSwipeResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > 14 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) + 6,
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dx <= -40 && activePage === 0) {
+            setActivePage(1);
+            return;
+          }
+          if (gestureState.dx >= 40 && activePage === 1) {
+            setActivePage(0);
+          }
+        },
+      }),
+    [activePage],
+  );
 
   useEffect(() => {
     setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
@@ -789,6 +806,7 @@ export default function SellerHomeScreen({
         </TouchableOpacity>
       </View>
 
+      <View style={styles.pager} {...pageSwipeResponder.panHandlers}>
       {activePage === 0 ? (
         loading ? (
           <View style={[styles.ordersContent, styles.listContentGrow]}>
@@ -1139,6 +1157,7 @@ export default function SellerHomeScreen({
           )}
         />
       )}
+      </View>
     </View>
   );
 }
