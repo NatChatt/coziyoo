@@ -1142,8 +1142,9 @@ class SellerDeliveryRequestResolveView(APIView):
             )
 
         event_type = "seller_delivery_request_accepted" if delivery_type == "delivery" else "seller_delivery_request_declined"
+        next_status = "pending_buyer_confirmation" if delivery_type == "delivery" else current_status
         buyer_body = (
-            "Satici teslimat istegini kabul etti."
+            "Satici teslimat istegini kabul etti. Devam etmek icin teklifi onaylaman gerekiyor."
             if delivery_type == "delivery"
             else "Satici teslimat istegini kabul etmedi. Siparis gel al olarak devam ediyor."
         )
@@ -1185,6 +1186,8 @@ class SellerDeliveryRequestResolveView(APIView):
                     SET delivery_type = %s,
                         requested_delivery_type = %s,
                         active_delivery_type = %s,
+                        status = %s,
+                        seller_decision_state = CASE WHEN %s = 'pending_buyer_confirmation' THEN 'revised' ELSE seller_decision_state END,
                         delivery_address_json = COALESCE(%s, delivery_address_json),
                         seller_delivery_note = %s,
                         seller_eta_minutes = COALESCE(%s, seller_eta_minutes),
@@ -1200,6 +1203,8 @@ class SellerDeliveryRequestResolveView(APIView):
                         delivery_type,
                         delivery_type,
                         delivery_type,
+                        next_status,
+                        next_status,
                         _json_dumps(delivery_address_snapshot) if delivery_address_snapshot else None,
                         note or None,
                         seller_eta_minutes,
@@ -1221,7 +1226,7 @@ class SellerDeliveryRequestResolveView(APIView):
                         event_type,
                         user_id,
                         current_status,
-                        current_status,
+                        next_status,
                         _json_dumps({
                             "deliveryType": delivery_type,
                             "note": note,
@@ -1260,7 +1265,7 @@ class SellerDeliveryRequestResolveView(APIView):
             {
                 "data": {
                     "orderId": order_id_str,
-                    "status": current_status,
+                    "status": next_status,
                     "deliveryType": str(updated[0] or delivery_type),
                     "requestedDeliveryType": str(updated[1] or delivery_type),
                     "activeDeliveryType": str(updated[2] or delivery_type),
