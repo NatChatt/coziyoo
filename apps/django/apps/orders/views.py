@@ -1584,26 +1584,28 @@ class BuyerConfirmTermsView(APIView):
             )
 
         current_status = str(order.get("status") or "")
-        allow_legacy_delivery_confirmation = (
-            current_status == "seller_approved"
-            and str(order.get("requested_delivery_type") or "") == "delivery"
+        requested_delivery_type = str(order.get("requested_delivery_type") or "")
+        allow_delivery_confirmation = (
+            requested_delivery_type == "delivery"
+            and current_status not in ("pending_seller_approval", "completed", "cancelled", "rejected")
         )
 
-        if current_status != "pending_buyer_confirmation" and not allow_legacy_delivery_confirmation:
+        if current_status != "pending_buyer_confirmation" and not allow_delivery_confirmation:
             return Response(
                 {"error": {"code": "INVALID_STATE", "message": "Bu sipariş onay beklemiyor."}},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
         if confirm:
-            new_status = "seller_approved"
+            # Keep confirm idempotent for already-advanced delivery-request orders.
+            new_status = "seller_approved" if current_status in ("pending_buyer_confirmation", "seller_approved") else current_status
             event_type = "buyer_confirmed_terms"
         else:
             new_status = "cancelled"
             event_type = "buyer_declined_terms"
 
         # When buyer confirms a delivery proposal, activate delivery type so address becomes visible.
-        is_delivery_confirm = bool(confirm) and str(order.get("requested_delivery_type") or "") == "delivery"
+        is_delivery_confirm = bool(confirm) and requested_delivery_type == "delivery"
 
         with transaction.atomic():
             with connection.cursor() as cursor:

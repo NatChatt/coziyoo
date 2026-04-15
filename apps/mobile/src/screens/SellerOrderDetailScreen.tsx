@@ -800,17 +800,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                     <Text style={styles.rejectActionText}>{t('cta.orderNotes.reject')}</Text>
                   </TouchableOpacity>
                 </View>
-              ) : (
-                <View style={styles.decisionActions}>
-                  <TouchableOpacity
-                    style={[styles.approveActionBtn, updating && styles.actionDisabled]}
-                    disabled={updating}
-                    onPress={() => { void submitSellerDecision("approve"); }}
-                  >
-                    <Text style={styles.approveActionText}>{t('cta.seller.orderDetail.sendProposalToBuyer')}</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+              ) : null}
             </View>
           ) : null}
           {isPendingBuyerConfirmation ? (
@@ -981,21 +971,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       )}
       </ScrollView>
 
-      {showStickyActionBar && canResolveApprovedDeliveryRequest ? (
-        <View style={styles.stickyActionBar}>
-          <TouchableOpacity
-            style={[styles.actionBtn, updating && styles.actionDisabled]}
-            disabled={updating}
-            onPress={() => { void resolveApprovedDeliveryRequest(); }}
-          >
-            <Text style={styles.actionText}>
-              {updating
-                ? t("status.seller.orderDetail.processing")
-                : t('cta.seller.orderDetail.sendProposalToBuyer')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : showStickyActionBar && action ? (
+      {showStickyActionBar && action ? (
         <View style={styles.stickyActionBar}>
           <TouchableOpacity
             style={[

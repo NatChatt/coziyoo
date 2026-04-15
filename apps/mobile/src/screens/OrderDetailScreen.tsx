@@ -192,6 +192,7 @@ type OrderNote = {id: string; senderRole: string; senderName: string; message: s
 
 const CANCELLABLE = ['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready', 'in_delivery', 'approaching', 'at_door'];
 const NON_MESSAGEABLE = ['cancelled', 'completed'];
+const TERMINAL_ORDER_STATUSES = ['completed', 'cancelled', 'rejected'] as const;
 const COMPLETABLE = ['delivered'];
 const DELIVERY_FLOW_STEPS = ['preparing', 'in_delivery', 'approaching', 'at_door', 'delivered'] as const;
 const PICKUP_FLOW_STEPS = ['preparing', 'ready'] as const;
@@ -664,12 +665,9 @@ export default function OrderDetailScreen({
   const pickupMapAddressText = pickupSellerAddressText || null;
   const pickupMapCoordinates = extractAddressCoordinates(order.sellerAddress);
 
-  const isPendingBuyerProposal =
-    order.status === 'pending_buyer_confirmation' ||
-    (
-      order.status === 'seller_approved' &&
-      order.requestedDeliveryType === 'delivery'
-    );
+  const normalizedStatus = String(order.status ?? '').trim().toLowerCase();
+  const isTerminalStatus = TERMINAL_ORDER_STATUSES.includes(normalizedStatus as (typeof TERMINAL_ORDER_STATUSES)[number]);
+  const isPendingBuyerProposal = order.requestedDeliveryType === 'delivery' && !isTerminalStatus && normalizedStatus !== 'pending_seller_approval';
   const canCancel = isBuyer && CANCELLABLE.includes(order.status);
   const canSendMessages = !NON_MESSAGEABLE.includes(order.status);
   const canComplete = false;
@@ -680,11 +678,10 @@ export default function OrderDetailScreen({
   const pickupProgressAction = isBuyer && !isPickupDeliveryRequestPending
     ? nextPickupProgressAction(order.status, order.deliveryType)
     : null;
-  const normalizedOrderStatus = String(order.status ?? '').trim().toLowerCase();
   const canOpenDeliveryPin =
     isBuyer &&
     (order.deliveryType === 'delivery' || order.deliveryType === 'pickup') &&
-    normalizedOrderStatus === 'at_door';
+    normalizedStatus === 'at_door';
   const flowSteps = flowStepsByDeliveryType(order.deliveryType);
   const buyerFlowStatus = normalizeBuyerFlowStatus(order.status, order.deliveryType);
   const itemsSubtotal = order.items.reduce((sum, item) => {
