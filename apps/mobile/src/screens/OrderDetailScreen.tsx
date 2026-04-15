@@ -667,7 +667,7 @@ export default function OrderDetailScreen({
 
   const normalizedStatus = String(order.status ?? '').trim().toLowerCase();
   const isTerminalStatus = TERMINAL_ORDER_STATUSES.includes(normalizedStatus as (typeof TERMINAL_ORDER_STATUSES)[number]);
-  const isPendingBuyerProposal = order.requestedDeliveryType === 'delivery' && !isTerminalStatus && normalizedStatus !== 'pending_seller_approval';
+  const isPendingBuyerProposal = order.requestedDeliveryType === 'delivery' && !isTerminalStatus;
   const canCancel = isBuyer && CANCELLABLE.includes(order.status);
   const canSendMessages = !NON_MESSAGEABLE.includes(order.status);
   const canComplete = false;

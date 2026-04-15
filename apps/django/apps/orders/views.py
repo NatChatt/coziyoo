@@ -1587,7 +1587,7 @@ class BuyerConfirmTermsView(APIView):
         requested_delivery_type = str(order.get("requested_delivery_type") or "")
         allow_delivery_confirmation = (
             requested_delivery_type == "delivery"
-            and current_status not in ("pending_seller_approval", "completed", "cancelled", "rejected")
+            and current_status not in ("completed", "cancelled", "rejected")
         )
 
         if current_status != "pending_buyer_confirmation" and not allow_delivery_confirmation:
@@ -1597,8 +1597,9 @@ class BuyerConfirmTermsView(APIView):
             )
 
         if confirm:
-            # Keep confirm idempotent for already-advanced delivery-request orders.
-            new_status = "seller_approved" if current_status in ("pending_buyer_confirmation", "seller_approved") else current_status
+            # Buyer is the final approver in delivery-request flow.
+            # Keep confirm idempotent if order already advanced.
+            new_status = "seller_approved" if current_status in ("pending_seller_approval", "pending_buyer_confirmation", "seller_approved") else current_status
             event_type = "buyer_confirmed_terms"
         else:
             new_status = "cancelled"
