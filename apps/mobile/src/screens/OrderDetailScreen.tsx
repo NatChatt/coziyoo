@@ -842,9 +842,9 @@ export default function OrderDetailScreen({
               disabled={!pickupMapAddressText}
               onPress={() => {
                 if (!pickupMapAddressText) return;
-                const origin = order.buyerCoordinates ?? null;
                 const dest = pickupMapCoordinates ?? pickupMapAddressText;
-                openDirectionsInMaps(origin, dest).catch((error) => {
+                // Keep origin empty so map apps use the buyer's live/current location.
+                openDirectionsInMaps(null, dest).catch((error) => {
                   Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.common.mapOpenFailed'));
                 });
               }}

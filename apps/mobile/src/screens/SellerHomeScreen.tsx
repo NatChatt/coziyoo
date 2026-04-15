@@ -70,6 +70,15 @@ function toBool(value: unknown): boolean {
   return false;
 }
 
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 function parseApiDate(value?: string | null): Date | null {
   if (!value?.trim()) return null;
   const normalized = value.trim().replace(" ", "T").replace(/(\.\d+)?([+-]\d{2})$/, "$1$2:00");
@@ -303,8 +312,8 @@ function normalizeSellerOrder(raw: Record<string, unknown>): SellerOrder {
       const addr = raw.deliveryAddress ?? raw.delivery_address;
       if (!addr || typeof addr !== "object") return null;
       const a = addr as Record<string, unknown>;
-      const distanceKm = a.distanceKm != null ? Number(a.distanceKm) : null;
-      const durationMinutes = a.durationMinutes != null ? Number(a.durationMinutes) : null;
+      const distanceKm = toFiniteNumber(a.distanceKm);
+      const durationMinutes = toFiniteNumber(a.durationMinutes);
       return { distanceKm, durationMinutes };
     })(),
   };
@@ -867,6 +876,12 @@ export default function SellerHomeScreen({
               const isLastInSection = index === section.data.length - 1;
               const buyerRequestedDelivery = item.requestedDeliveryType === "delivery" && item.activeDeliveryType !== "delivery";
               const shouldOpenDecisionScreen = buyerRequestedDelivery && item.status === "pending_seller_approval";
+              const distanceKm = item.deliveryAddress?.distanceKm;
+              const durationMinutes = item.deliveryAddress?.durationMinutes;
+              const hasDeliveryDistance = typeof distanceKm === "number" && Number.isFinite(distanceKm);
+              const hasDeliveryDuration = typeof durationMinutes === "number" && Number.isFinite(durationMinutes);
+              const hasRequiredDeliveryMetrics = hasDeliveryDistance && hasDeliveryDuration;
+              const lockDeliveryDecision = shouldOpenDecisionScreen && !hasRequiredDeliveryMetrics;
               return (
                 <View style={[styles.orderCard, isLastInSection && styles.orderCardLast]}>
                   {isDoorStep ? (
@@ -897,7 +912,14 @@ export default function SellerHomeScreen({
                       ]}
                     />
                   ) : null}
-                  <TouchableOpacity activeOpacity={0.82} onPress={() => onOpenOrder(item.id)}>
+                  <TouchableOpacity
+                    activeOpacity={0.82}
+                    disabled={lockDeliveryDecision}
+                    onPress={() => {
+                      if (lockDeliveryDecision) return;
+                      onOpenOrder(item.id);
+                    }}
+                  >
                     <View style={styles.orderTopRow}>
                       <View style={styles.orderTitleWrap}>
                         <View style={styles.orderTitleRow}>
@@ -919,6 +941,28 @@ export default function SellerHomeScreen({
                         <Text style={styles.orderDateText}>{formatOrderDateTime(item.createdAt)}</Text>
                       </View>
                     </View>
+                    {buyerRequestedDelivery ? (
+                      <View style={styles.deliveryRequestInlineBanner}>
+                        <Text style={styles.deliveryRequestInlineTitle}>{t('helper.seller.orderDetail.deliveryRequestTitle')}</Text>
+                        {hasRequiredDeliveryMetrics ? (
+                          <Text style={styles.deliveryRequestInlineMetricText}>
+                            {[
+                              formatCopy('helper.seller.orderDetail.deliveryDistance', { km: Number(distanceKm).toFixed(1) }),
+                              formatCopy('helper.seller.orderDetail.deliveryDuration', { min: Math.round(Number(durationMinutes)) }),
+                            ].join('  ·  ')}
+                          </Text>
+                        ) : (
+                          <Text style={styles.deliveryRequestInlineWarningText}>
+                            {t('helper.seller.home.deliveryMetricsRequired')}
+                          </Text>
+                        )}
+                        <Text style={styles.deliveryRequestInlineText}>
+                          {hasRequiredDeliveryMetrics
+                            ? t('helper.seller.home.deliveryRequestHint')
+                            : t('helper.seller.home.deliveryMetricsPendingHint')}
+                        </Text>
+                      </View>
+                    ) : null}
                     <View style={styles.orderBottomRow}>
                       <Text style={styles.orderTotal}>{Number(item.totalPrice ?? 0).toFixed(2)} TL</Text>
                       <View style={styles.orderBottomRight}>
@@ -926,24 +970,6 @@ export default function SellerHomeScreen({
                         {showSmallThumb ? <Text style={styles.orderThumbSmall}>👍</Text> : null}
                       </View>
                     </View>
-                    {buyerRequestedDelivery ? (
-                      <View style={styles.deliveryRequestInlineBanner}>
-                        <Text style={styles.deliveryRequestInlineTitle}>{t('helper.seller.orderDetail.deliveryRequestTitle')}</Text>
-                        {item.deliveryAddress?.distanceKm != null || item.deliveryAddress?.durationMinutes != null ? (
-                          <Text style={styles.deliveryRequestInlineText}>
-                            {[
-                              item.deliveryAddress.distanceKm != null
-                                ? formatCopy('helper.seller.orderDetail.deliveryDistance', { km: item.deliveryAddress.distanceKm.toFixed(1) })
-                                : null,
-                              item.deliveryAddress.durationMinutes != null
-                                ? formatCopy('helper.seller.orderDetail.deliveryDuration', { min: item.deliveryAddress.durationMinutes })
-                                : null,
-                            ].filter(Boolean).join('  ·  ')}
-                          </Text>
-                        ) : null}
-                        <Text style={styles.deliveryRequestInlineText}>{t('helper.seller.home.deliveryRequestHint')}</Text>
-                      </View>
-                    ) : null}
                   </TouchableOpacity>
                   {resolvedTone ? (
                     <View style={styles.cardActionRow}>
@@ -993,8 +1019,9 @@ export default function SellerHomeScreen({
                           isDoorStep && styles.cardActionBtnKapidaPulse,
                           isUpdating && styles.cardActionBtnDisabled,
                         ]}
-                        disabled={isUpdating || (!canRunAction && !isDoorStep && item.status !== "pending_buyer_confirmation")}
+                        disabled={isUpdating || lockDeliveryDecision || (!canRunAction && !isDoorStep && item.status !== "pending_buyer_confirmation")}
                         onPress={() => {
+                          if (lockDeliveryDecision) return;
                           if (shouldOpenDecisionScreen || item.status === "pending_buyer_confirmation") {
                             onOpenOrder(item.id);
                           } else if (action) {
@@ -1007,6 +1034,8 @@ export default function SellerHomeScreen({
                         <Text style={styles.cardActionBtnText}>
                           {isUpdating
                             ? t('status.seller.home.processing')
+                            : lockDeliveryDecision
+                              ? t('cta.seller.home.deliveryMetricsLoading')
                             : shouldOpenDecisionScreen
                               ? t('cta.seller.home.reviewDeliveryRequest')
                               : isDoorStep && !action
@@ -1288,6 +1317,8 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   deliveryRequestInlineTitle: { color: "#2F6F4A", fontWeight: "800" },
+  deliveryRequestInlineMetricText: { color: "#1D5634", marginTop: 4, fontWeight: "800", fontSize: 13 },
+  deliveryRequestInlineWarningText: { color: "#A04D00", marginTop: 4, fontWeight: "800" },
   deliveryRequestInlineText: { color: "#456957", marginTop: 2, lineHeight: 18 },
   newBadge: {
     borderRadius: 999,
