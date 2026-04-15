@@ -470,18 +470,24 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   const isPendingBuyerConfirmation = Boolean(order && normalizeFlowStatus(order.status) === "pending_buyer_confirmation");
   const canCancelOrder = Boolean(order && CANCELLABLE_STATUSES.includes(String(order.status ?? "")));
   const canSendMessages = Boolean(order && !NON_MESSAGEABLE_STATUSES.includes(String(order.status ?? "")));
-  const actionColors = action ? actionTone(action.toStatus) : null;
+  const normalizedFlowStatus = normalizeFlowStatus(order?.status ?? "");
   const shouldCheckPinBeforeComplete = useMemo(
     () =>
       Boolean(
         order &&
-          action &&
-          ((effectiveDeliveryType === "delivery" && action.toStatus === "delivered") ||
-            (effectiveDeliveryType === "pickup" && action.toStatus === "completed")) &&
-          normalizeFlowStatus(order.status) === "at_door"
+          (effectiveDeliveryType === "delivery" || effectiveDeliveryType === "pickup") &&
+          normalizedFlowStatus === "at_door"
       ),
-    [order, action, effectiveDeliveryType]
+    [order, effectiveDeliveryType, normalizedFlowStatus]
   );
+  const effectiveAction = useMemo(() => {
+    if (action) return action;
+    if (shouldCheckPinBeforeComplete) {
+      return { label: t("cta.seller.orderDetail.verifyCode"), toStatus: "completed" } as const;
+    }
+    return null;
+  }, [action, shouldCheckPinBeforeComplete]);
+  const actionColors = effectiveAction ? actionTone(effectiveAction.toStatus) : null;
 
   useEffect(() => {
     if (!shouldCheckPinBeforeComplete) return;
@@ -536,7 +542,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     [order]
   );
   const canResolveApprovedDeliveryRequest = Boolean(order && order.status === "seller_approved" && buyerRequestedDelivery);
-  const hasStickyActionBar = Boolean(action || canResolveApprovedDeliveryRequest);
+  const hasStickyActionBar = Boolean(effectiveAction || canResolveApprovedDeliveryRequest);
   const showStickyActionBar = hasStickyActionBar;
 
   useEffect(() => {
@@ -660,8 +666,8 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   }
 
   async function handlePinVerifyFromModal() {
-    if (!action || !shouldCheckPinBeforeComplete) return;
-    const ok = await runAction(action);
+    if (!effectiveAction || !shouldCheckPinBeforeComplete) return;
+    const ok = await runAction(effectiveAction);
     if (!ok) return;
     setPinModalVisible(false);
     setPinCode("");
@@ -954,7 +960,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
             </View>
           ) : null}
 
-          {action ? (
+          {effectiveAction ? (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t("headline.seller.orderDetail.actions")}</Text>
               {shouldCheckPinBeforeComplete ? (
@@ -966,7 +972,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       )}
       </ScrollView>
 
-      {showStickyActionBar && action ? (
+      {showStickyActionBar && effectiveAction ? (
         <View style={styles.stickyActionBar}>
           <TouchableOpacity
             style={[
@@ -980,11 +986,11 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 setPinModalVisible(true);
                 return;
               }
-              void runAction(action);
+              void runAction(effectiveAction);
             }}
           >
             <Text style={styles.actionText}>
-              {shouldCheckPinBeforeComplete ? t("cta.seller.orderDetail.verifyCode") : action.label}
+              {shouldCheckPinBeforeComplete ? t("cta.seller.orderDetail.verifyCode") : effectiveAction.label}
             </Text>
           </TouchableOpacity>
         </View>

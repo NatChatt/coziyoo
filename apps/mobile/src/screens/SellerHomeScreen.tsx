@@ -855,7 +855,9 @@ export default function SellerHomeScreen({
                 ? { label: t('cta.seller.home.rejectOrder'), toStatus: "rejected", tone: "reject" }
                 : null;
               const isUpdating = updatingOrderId === item.id || Boolean(actionInFlightRef.current[item.id]);
-              const buyerFlowText = buyerProgressLabel(item.buyerProgressStatus);
+              const buyerFlowText = buyerProgressLabel(
+                item.buyerProgressStatus || (item.deliveryType === "pickup" ? item.status : null),
+              );
               const statusText = statusLabel(item.status, item.deliveryType);
               const passiveTone = toneFromStatus(item.status, item.deliveryType);
               const resolvedTone = action?.tone ?? passiveTone;
