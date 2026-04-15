@@ -179,6 +179,7 @@ type Props = {
   onOpenSettings: () => void;
   onOpenOrders: () => void;
   onOpenOrderDetail?: (orderId: string) => void;
+  onOpenPayment?: (orderId: string) => void;
   onOpenNotifications?: () => void;
   onOpenChatList?: () => void;
   onOpenFavorites?: () => void;
@@ -596,6 +597,18 @@ function hasPendingBuyerDeliveryRequest(order: HomeOrderSummary): boolean {
 
 function canRequestBuyerDelivery(order: HomeOrderSummary): boolean {
   return order.status === 'pending_seller_approval' && !hasPendingBuyerDeliveryRequest(order);
+}
+
+function canAutoOpenBuyerPickupPayment(order: HomeOrderSummary): boolean {
+  const normalizedStatus = String(order.status ?? '').trim().toLowerCase();
+  const normalizedDecisionState = String(order.sellerDecisionState ?? '').trim().toLowerCase();
+  const decisionAllowed = !normalizedDecisionState || normalizedDecisionState === 'approved';
+  return (
+    order.deliveryType === 'pickup'
+    && !hasPendingBuyerDeliveryRequest(order)
+    && decisionAllowed
+    && (normalizedStatus === 'seller_approved' || normalizedStatus === 'awaiting_payment')
+  );
 }
 
 function parseDistanceKm(distanceText: string): number | null {
@@ -1784,6 +1797,7 @@ export default function HomeScreen({
   onOpenSettings,
   onOpenOrders,
   onOpenOrderDetail,
+  onOpenPayment,
   onOpenNotifications,
   onOpenChatList,
   onOpenFavorites,
@@ -2088,6 +2102,7 @@ export default function HomeScreen({
   const recommendedMealsLoadedOnceRef = useRef(false);
   const buyerFeedRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const buyerOrdersRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoOpenedPaymentOrderIdsRef = useRef<Set<string>>(new Set());
   // Always-current auth ref — avoids stale closures without triggering re-renders.
   const currentAuthRef = useRef<AuthSession>(currentAuth);
   useEffect(() => { currentAuthRef.current = currentAuth; });
@@ -2190,6 +2205,24 @@ export default function HomeScreen({
     if (activeTab !== 'home' && activeTab !== 'cart') return;
     void fetchRecentBuyerOrders();
   }, [activeTab, fetchRecentBuyerOrders]);
+
+  useEffect(() => {
+    if (!onOpenPayment) return;
+
+    const currentOrderIds = new Set(actionableHomeOrders.map((order) => order.id));
+    autoOpenedPaymentOrderIdsRef.current.forEach((orderId) => {
+      if (!currentOrderIds.has(orderId)) {
+        autoOpenedPaymentOrderIdsRef.current.delete(orderId);
+      }
+    });
+
+    const targetOrder = actionableHomeOrders.find(canAutoOpenBuyerPickupPayment);
+    if (!targetOrder) return;
+    if (autoOpenedPaymentOrderIdsRef.current.has(targetOrder.id)) return;
+
+    autoOpenedPaymentOrderIdsRef.current.add(targetOrder.id);
+    onOpenPayment(targetOrder.id);
+  }, [actionableHomeOrders, onOpenPayment]);
 
   useEffect(() => {
     loadCachedProfileImageUrl().then((cached) => {

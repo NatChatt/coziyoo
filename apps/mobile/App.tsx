@@ -891,6 +891,11 @@ export default function App() {
         setOrderDetailBackTarget('home');
         setScreen('orderDetail');
       }}
+      onOpenPayment={(id) => {
+        setSelectedOrderId(id);
+        setOrderDetailBackTarget('home');
+        setScreen('payment');
+      }}
       onOpenChatList={() => setScreen('chatList')}
       onOpenFavorites={() => setScreen('favorites')}
       onOpenFoodDetail={(food: FoodItem) => { setSelectedFood(food); setScreen('foodDetail'); }}
