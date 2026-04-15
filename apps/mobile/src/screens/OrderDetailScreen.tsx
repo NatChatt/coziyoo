@@ -316,6 +316,7 @@ export default function OrderDetailScreen({
   const notesPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const orderRef = useRef<OrderDetail | null>(null);
   const pinAutoOpenedRef = useRef(false);
+  const autoPaymentOpenedKeyRef = useRef<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [orderNotes, setOrderNotes] = useState<Array<{id: string; senderRole: string; senderName: string; message: string; createdAt: string | null}>>([]);
   const prevNotesLenRef = useRef(0);
@@ -698,6 +699,30 @@ export default function OrderDetailScreen({
     isBuyer &&
     (order.deliveryType === 'delivery' || order.deliveryType === 'pickup') &&
     normalizedStatus === 'at_door';
+
+  useEffect(() => {
+    if (!isBuyer || !onOpenPayment || !order?.id) return;
+    if (hasDeliveryRequestSignal || order.paymentCompleted || isTerminalStatus) return;
+    if (normalizedStatus !== 'seller_approved' && normalizedStatus !== 'awaiting_payment') return;
+
+    const decisionState = String(order.sellerDecisionState ?? '').trim().toLowerCase();
+    if (normalizedStatus === 'seller_approved' && decisionState && decisionState !== 'approved') return;
+
+    const autoKey = `${order.id}:${normalizedStatus}:${decisionState}:${order.paymentCompleted ? 'paid' : 'unpaid'}`;
+    if (autoPaymentOpenedKeyRef.current === autoKey) return;
+    autoPaymentOpenedKeyRef.current = autoKey;
+    onOpenPayment(order.id);
+  }, [
+    hasDeliveryRequestSignal,
+    isBuyer,
+    isTerminalStatus,
+    normalizedStatus,
+    onOpenPayment,
+    order?.id,
+    order?.paymentCompleted,
+    order?.sellerDecisionState,
+  ]);
+
   const flowSteps = flowStepsByDeliveryType(order.deliveryType);
   const buyerFlowStatus = normalizeBuyerFlowStatus(order.status, order.deliveryType);
   const itemsSubtotal = order.items.reduce((sum, item) => {

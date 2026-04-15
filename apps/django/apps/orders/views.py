@@ -707,8 +707,17 @@ class OrderStatusView(APIView):
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "UPDATE orders SET status = %s, updated_at = now() WHERE id = %s",
-                    [new_status, order_id_str],
+                    """
+                    UPDATE orders
+                    SET status = %s,
+                        updated_at = now(),
+                        seller_decision_state = CASE
+                            WHEN %s = 'seller_approved' THEN 'approved'
+                            ELSE seller_decision_state
+                        END
+                    WHERE id = %s
+                    """,
+                    [new_status, new_status, order_id_str],
                 )
                 cursor.execute(
                     """
