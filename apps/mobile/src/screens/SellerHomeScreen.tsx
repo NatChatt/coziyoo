@@ -379,6 +379,7 @@ export default function SellerHomeScreen({
   const deliveredEmojiScale = useRef(new Animated.Value(0.4)).current;
   const deliveredEmojiOpacity = useRef(new Animated.Value(0)).current;
   const pulseValue = useRef(new Animated.Value(0)).current;
+  const actionInFlightRef = useRef<Record<string, boolean>>({});
   const lastOrdersSignatureRef = useRef<string>(sellerOrdersSignature(orders));
   const seenOrderIdsRef = useRef<Set<string>>(new Set());
   const hasSeenInitialOrdersRef = useRef(false);
@@ -736,6 +737,8 @@ export default function SellerHomeScreen({
   }
 
   async function runCardAction(orderId: string, action: SellerAction) {
+    if (actionInFlightRef.current[orderId]) return;
+    actionInFlightRef.current[orderId] = true;
     try {
       setUpdatingOrderId(orderId);
       await advanceStatusWithCompatibility(orderId, action.toStatus);
@@ -765,6 +768,7 @@ export default function SellerHomeScreen({
     } catch (error) {
       Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.seller.home.actionFailed'));
     } finally {
+      delete actionInFlightRef.current[orderId];
       setUpdatingOrderId(null);
     }
   }
@@ -886,7 +890,7 @@ export default function SellerHomeScreen({
               const rejectAction: SellerAction | null = item.status === "pending_seller_approval"
                 ? { label: t('cta.seller.home.rejectOrder'), toStatus: "rejected", tone: "reject" }
                 : null;
-              const isUpdating = updatingOrderId === item.id;
+              const isUpdating = updatingOrderId === item.id || Boolean(actionInFlightRef.current[item.id]);
               const buyerFlowText = buyerProgressLabel(item.buyerProgressStatus);
               const statusText = statusLabel(item.status, item.deliveryType);
               const passiveTone = toneFromStatus(item.status, item.deliveryType);
@@ -1015,7 +1019,10 @@ export default function SellerHomeScreen({
                           activeOpacity={0.86}
                           style={[styles.cardActionBtn, styles.cardActionBtnReject, isUpdating && styles.cardActionBtnDisabled]}
                           disabled={isUpdating}
-                          onPress={() => void runCardAction(item.id, rejectAction)}
+                          onPress={() => {
+                            if (actionInFlightRef.current[item.id]) return;
+                            void runCardAction(item.id, rejectAction);
+                          }}
                         >
                           <Text style={[styles.cardActionBtnText, styles.cardActionBtnRejectText]}>
                             {isUpdating ? t('status.seller.home.processing') : rejectAction.label}
@@ -1044,6 +1051,7 @@ export default function SellerHomeScreen({
                         ]}
                         disabled={isUpdating || lockDeliveryDecision || (!canRunAction && !isDoorStep && item.status !== "pending_buyer_confirmation")}
                         onPress={() => {
+                          if (actionInFlightRef.current[item.id]) return;
                           if (lockDeliveryDecision) return;
                           if (shouldOpenDecisionScreen || item.status === "pending_buyer_confirmation") {
                             onOpenOrder(item.id);
