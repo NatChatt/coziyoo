@@ -995,6 +995,12 @@ const DAILY_FLASH_MEALS = [
 ] as const;
 const SLOGAN_MARQUEE_GAP = 22;
 const PHOTO_TEXT_TONE_CACHE = new Map<string, 'light' | 'dark'>();
+const FOOD_CARD_RENDER_URI_CACHE = new Map<string, string>();
+
+function isInlineBase64ImageUri(value: string | null | undefined): value is string {
+  const raw = String(value ?? '').trim().toLocaleLowerCase('en-US');
+  return raw.startsWith('data:image/') && raw.includes(';base64,');
+}
 
 const CATEGORY_BG_COLORS: Record<string, string> = {
   Çorbalar: '#F1DED0',
@@ -1452,6 +1458,7 @@ function FoodCard({
   const [imageFrameHeight, setImageFrameHeight] = useState(155);
   const [photoTextTone, setPhotoTextTone] = useState<'light' | 'dark'>('light');
   const [sellerThumbFailed, setSellerThumbFailed] = useState(false);
+  const [renderableImageUri, setRenderableImageUri] = useState<string | null>(null);
   const textToneRequestRef = useRef(0);
   const primaryImageUrl = imageUrls[0];
   const activeImageUrl = imageUrls[imageIndex] ?? primaryImageUrl;
@@ -1591,6 +1598,52 @@ function FoodCard({
     setSellerThumbFailed(false);
   }, [meal.sellerImage]);
 
+  useEffect(() => {
+    if (!activeImageUrl) {
+      setRenderableImageUri(null);
+      return;
+    }
+
+    if (!isInlineBase64ImageUri(activeImageUrl) || !manipulateAsync || !ManipulatorSaveFormat) {
+      setRenderableImageUri(activeImageUrl);
+      return;
+    }
+
+    const cachedUri = FOOD_CARD_RENDER_URI_CACHE.get(activeImageUrl);
+    if (cachedUri) {
+      setRenderableImageUri(cachedUri);
+      return;
+    }
+
+    let cancelled = false;
+    setRenderableImageUri(activeImageUrl);
+
+    const materializeInlineImage = async () => {
+      try {
+        const format = activeImageUrl.startsWith('data:image/png')
+          ? ManipulatorSaveFormat.PNG
+          : ManipulatorSaveFormat.JPEG;
+        const result = await manipulateAsync(
+          activeImageUrl,
+          [],
+          { compress: 1, format, base64: false },
+        );
+        if (cancelled || !result?.uri) return;
+        FOOD_CARD_RENDER_URI_CACHE.set(activeImageUrl, result.uri);
+        setRenderableImageUri(result.uri);
+      } catch {
+        if (!cancelled) {
+          setRenderableImageUri(activeImageUrl);
+        }
+      }
+    };
+
+    void materializeInlineImage();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeImageUrl]);
+
   const allergens = Array.isArray(meal.allergens) ? meal.allergens : [];
   const mealDeliveryOptions = meal.deliveryOptions ?? { pickup: true, delivery: false };
   const timeDistanceParts = [
@@ -1643,9 +1696,9 @@ function FoodCard({
         >
           {/* Food image — full-width background layer */}
           <View style={styles.foodPhotoDishPanel}>
-            {activeImageUrl ? (
+            {renderableImageUri ? (
               <Image
-                source={{ uri: activeImageUrl }}
+                source={{ uri: renderableImageUri }}
                 style={styles.foodImage}
                 resizeMode="cover"
                 onError={() => {
