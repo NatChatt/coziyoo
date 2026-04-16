@@ -1851,7 +1851,7 @@ function FoodCard({
                 <View style={styles.foodInfoIconBubble}>
                   <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
                 </View>
-                <View style={styles.foodInfoTextWrap}>
+                <View style={[styles.foodInfoTextWrap, styles.foodInfoTextWrapCentered]}>
                   <Text style={styles.foodInfoTitle}>
                     {stockSummary || t('status.home.foodCard.preparingToday')}
                   </Text>
