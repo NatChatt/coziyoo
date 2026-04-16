@@ -1716,13 +1716,6 @@ function FoodCard({
   const hasAllergens = allergens.length > 0;
   const titleMetrics = resolveFoodPhotoTitleMetrics(meal.title);
   const sellerHandle = formatSellerIdentity(meal.seller, meal.sellerUsername);
-  const sellerMeta = (() => {
-    const locationBasis = String(meal.locationBasisLabel ?? '').trim();
-    if (locationBasis) return locationBasis;
-    const cuisineLabel = formatCuisineLabel(meal.cuisine);
-    if (cuisineLabel) return cuisineLabel;
-    return 'Ev yemekleri';
-  })();
   const ratingValue = Number(String(meal.rating ?? '').replace(',', '.'));
   const ratingBadgeText = Number.isFinite(ratingValue)
     ? Number(ratingValue).toFixed(1)
@@ -1926,9 +1919,6 @@ function FoodCard({
                 <View style={styles.foodFooterSellerText}>
                   <Text style={styles.foodFooterSellerHandle}>
                     {sellerHandle}
-                  </Text>
-                  <Text style={styles.foodFooterSellerMeta}>
-                    {sellerMeta}
                   </Text>
                 </View>
               </View>
@@ -6658,13 +6648,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     lineHeight: 16,
-  },
-  foodFooterSellerMeta: {
-    marginTop: 2,
-    color: '#7D695A',
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 15,
   },
   foodFooterFavoriteBtn: {
     width: 42,
