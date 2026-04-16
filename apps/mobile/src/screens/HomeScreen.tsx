@@ -1821,62 +1821,65 @@ function FoodCard({
           style={styles.foodInfo}
         >
           <View style={styles.foodInfoContent}>
-            {/* Two-column grid: left = stock info + prep time, right = allergen + distance */}
+            {/* Row 1: stock info (left) | allergen (right) — equal halves, no divider */}
             <View style={styles.foodInfoMainRow}>
-              <View style={styles.foodInfoLeadCol}>
-                <View style={styles.foodInfoRow}>
-                  <View style={styles.foodInfoIconBubble}>
-                    <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
-                  </View>
-                  <View style={styles.foodInfoTextWrap}>
-                    <Text style={styles.foodInfoTitle}>
-                      {stockSummary || 'Bugün hazırlanıyor'}
-                    </Text>
-                    <Text style={styles.foodInfoSubtitle}>
-                      {socialProofText}
-                    </Text>
-                  </View>
+              <View style={styles.foodInfoHalfCol}>
+                <View style={styles.foodInfoIconBubble}>
+                  <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
                 </View>
-                <View style={styles.foodInfoRow}>
-                  <View style={styles.foodInfoIconBubble}>
-                    <Ionicons name="time-outline" size={16} color="#4B372A" />
-                  </View>
-                  <View style={styles.foodInfoTextWrap}>
-                    <Text style={styles.foodInfoTitle}>
-                      {meal.time || 'Süre yakında'}
-                    </Text>
-                    <Text style={styles.foodInfoSubtitle}>
-                      Hazırlık süresi
-                    </Text>
-                  </View>
+                <View style={styles.foodInfoTextWrap}>
+                  <Text style={styles.foodInfoTitle}>
+                    {stockSummary || 'Bugün hazırlanıyor'}
+                  </Text>
+                  <Text style={styles.foodInfoSubtitle}>
+                    {socialProofText}
+                  </Text>
                 </View>
               </View>
-              <View style={styles.foodInfoColDivider} />
-              <View style={styles.foodInfoRightCol}>
-                <View style={styles.foodInfoRightItem}>
-                  <View style={[styles.foodInfoIconBubble, hasAllergens ? styles.foodInfoIconBubbleAlert : styles.foodInfoIconBubbleOk]}>
-                    <Ionicons name={hasAllergens ? 'warning-outline' : 'checkmark-circle-outline'} size={16} color={hasAllergens ? '#B13B2E' : '#2F6F4A'} />
-                  </View>
-                  <Text style={[styles.foodInfoInlineBadgeText, hasAllergens ? styles.foodInfoAlertTitle : styles.foodInfoOkTitle]}>
+              <View style={styles.foodInfoHalfCol}>
+                <View style={[styles.foodInfoIconBubble, hasAllergens ? styles.foodInfoIconBubbleAlert : styles.foodInfoIconBubbleOk]}>
+                  <Ionicons name={hasAllergens ? 'warning-outline' : 'checkmark-circle-outline'} size={16} color={hasAllergens ? '#B13B2E' : '#2F6F4A'} />
+                </View>
+                <View style={styles.foodInfoTextWrap}>
+                  <Text style={[styles.foodInfoTitle, hasAllergens ? styles.foodInfoAlertTitle : styles.foodInfoOkTitle]}>
                     {hasAllergens ? 'Alerjen içerir' : 'Alerjen yok'}
                   </Text>
                 </View>
-                {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
-                  <View style={styles.foodInfoRightItem}>
+              </View>
+            </View>
+            {/* Row 2: prep time | short divider | distance — equal halves */}
+            <View style={styles.foodStatsRow}>
+              <View style={styles.foodInfoHalfCol}>
+                <View style={styles.foodInfoIconBubble}>
+                  <Ionicons name="time-outline" size={16} color="#4B372A" />
+                </View>
+                <View style={styles.foodInfoTextWrap}>
+                  <Text style={styles.foodInfoTitle}>
+                    {meal.time || 'Süre yakında'}
+                  </Text>
+                  <Text style={styles.foodInfoSubtitle}>
+                    Hazırlık süresi
+                  </Text>
+                </View>
+              </View>
+              {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
+                <>
+                  <View style={styles.foodStatDivider} />
+                  <View style={styles.foodInfoHalfCol}>
                     <View style={styles.foodInfoIconBubble}>
                       <Ionicons name="location-outline" size={16} color="#4B372A" />
                     </View>
                     <View style={styles.foodInfoTextWrap}>
                       <Text style={styles.foodInfoTitle}>
-                        {meal.distance} km
+                        {meal.distance}
                       </Text>
                       <Text style={styles.foodInfoSubtitle}>
-                        Uzaklık
+                        Uzaklık (km)
                       </Text>
                     </View>
                   </View>
-                ) : null}
-              </View>
+                </>
+              ) : null}
             </View>
             <View style={styles.foodFooterRow}>
               <View style={styles.foodFooterSeller}>
@@ -6415,8 +6418,15 @@ const styles = StyleSheet.create({
   foodInfoMainRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: 21,
     marginBottom: 0,
+  },
+  foodInfoHalfCol: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    minWidth: 0,
   },
   foodInfoLeadCol: {
     flex: 1,
@@ -6511,6 +6521,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'stretch',
+    gap: 0,
   },
   foodStatItem: {
     flex: 1,
@@ -6553,6 +6564,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(112,88,68,0.16)',
     marginHorizontal: 10,
     alignSelf: 'stretch',
+    flexShrink: 0,
   },
   foodFooterRow: {
     borderTopWidth: 1,
