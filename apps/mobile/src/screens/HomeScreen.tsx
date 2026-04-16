@@ -6606,7 +6606,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
     overflow: 'visible',
   },
@@ -6642,6 +6642,8 @@ const styles = StyleSheet.create({
   foodFooterSellerText: {
     flex: 1,
     minWidth: 0,
+    justifyContent: 'flex-start',
+    paddingTop: 2,
   },
   foodFooterSellerHandle: {
     color: '#33241C',
