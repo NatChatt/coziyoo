@@ -469,6 +469,16 @@ type PaymentStatusSnapshot = {
   latestAttemptStatus?: string;
 };
 
+type DeliveryProofRecord = {
+  orderId: string;
+  proofMode: string;
+  pinSentAt: string | null;
+  pinVerifiedAt: string | null;
+  verificationAttempts: number;
+  status: 'pending' | 'verified' | 'failed' | 'expired';
+  pin?: string | null;
+};
+
 const CHECKOUT_REQUEST_TIMEOUT_MS = 15000;
 const DEFAULT_CART_BOTTOM_BAR_HEIGHT = 260;
 
@@ -512,6 +522,10 @@ const HOME_ACTIONABLE_ORDER_STATUSES = new Set([
   'paid',
   'preparing',
   'ready',
+  'in_delivery',
+  'approaching',
+  'at_door',
+  'delivered',
 ]);
 
 function formatOrderStatusLabel(status: string): string {
@@ -613,10 +627,10 @@ function quickOrderLiveStatus(status: string): { label: string; tone: 'soft' | '
     return { label: 'Hazırlandı', tone: 'soft' };
   }
   if (normalized === 'in_delivery') {
-    return { label: 'Yoldayım', tone: 'accent' };
+    return { label: 'Yola Çıktı', tone: 'accent' };
   }
   if (normalized === 'approaching') {
-    return { label: 'Geliyorum', tone: 'accent' };
+    return { label: 'Yaklaştı', tone: 'accent' };
   }
   if (normalized === 'at_door') {
     return { label: 'Kapıdayım', tone: 'accent' };
@@ -1890,6 +1904,11 @@ export default function HomeScreen({
   const [recentBuyerOrders, setRecentBuyerOrders] = useState<HomeOrderSummary[]>([]);
   const [deliveryRequestOrderIds, setDeliveryRequestOrderIds] = useState<Record<string, true>>({});
   const [deliveryRequestStarting, setDeliveryRequestStarting] = useState(false);
+  const [deliveryPinModalVisible, setDeliveryPinModalVisible] = useState(false);
+  const [deliveryPinOrderId, setDeliveryPinOrderId] = useState<string | null>(null);
+  const [deliveryPinRecord, setDeliveryPinRecord] = useState<DeliveryProofRecord | null>(null);
+  const [deliveryPinLoading, setDeliveryPinLoading] = useState(false);
+  const [deliveryPinError, setDeliveryPinError] = useState<string | null>(null);
   const [cartBottomBarHeight, setCartBottomBarHeight] = useState(DEFAULT_CART_BOTTOM_BAR_HEIGHT);
   const cartPaymentAnimationVisible = false;
   const setCartPaymentAnimationDone = (_value: boolean) => {};
@@ -2145,6 +2164,7 @@ export default function HomeScreen({
   const buyerFeedRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const buyerOrdersRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoOpenedPaymentOrderIdsRef = useRef<Set<string>>(new Set());
+  const autoOpenedDeliveryPinOrderIdsRef = useRef<Set<string>>(new Set());
   // Always-current auth ref — avoids stale closures without triggering re-renders.
   const currentAuthRef = useRef<AuthSession>(currentAuth);
   useEffect(() => { currentAuthRef.current = currentAuth; });
@@ -2198,6 +2218,32 @@ export default function HomeScreen({
 
     setRecentBuyerOrders(mapped);
   }, [handleAuthRefresh]); // handleAuthRefresh is stable (depends only on onAuthRefresh=setAuth)
+
+  const fetchDeliveryProof = useCallback(async (orderId: string, options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+    if (!silent) {
+      setDeliveryPinLoading(true);
+      setDeliveryPinError(null);
+    }
+    const result = await apiRequest<DeliveryProofRecord>(
+      `/v1/orders/${orderId}/delivery-proof`,
+      currentAuthRef.current,
+      { actorRole: 'buyer' },
+      handleAuthRefresh,
+    );
+    if (result.ok) {
+      setDeliveryPinRecord(result.data);
+      setDeliveryPinOrderId(orderId);
+      setDeliveryPinError(null);
+    } else if (result.status === 404 || result.status === 403) {
+      setDeliveryPinRecord(null);
+      setDeliveryPinOrderId(orderId);
+      if (!silent) setDeliveryPinError(null);
+    } else if (!silent) {
+      setDeliveryPinError(result.message ?? t('status.deliveryPin.loading'));
+    }
+    if (!silent) setDeliveryPinLoading(false);
+  }, [handleAuthRefresh]);
 
   const requestDeliveryForOrder = useCallback(async (order: HomeOrderSummary) => {
     if (!canRequestBuyerDelivery(order) || deliveryRequestOrderIds[order.id]) return;
@@ -2352,6 +2398,38 @@ export default function HomeScreen({
     if (activeTab !== 'home' && activeTab !== 'cart') return;
     void fetchRecentBuyerOrders();
   }, [activeTab, fetchRecentBuyerOrders]);
+
+  useEffect(() => {
+    const atDoorOrder = actionableHomeOrders.find((order) => String(order.status ?? '').trim().toLowerCase() === 'at_door');
+    if (!atDoorOrder) {
+      if (deliveryPinOrderId && !actionableHomeOrders.some((order) => order.id === deliveryPinOrderId)) {
+        setDeliveryPinModalVisible(false);
+        setDeliveryPinOrderId(null);
+        setDeliveryPinRecord(null);
+        setDeliveryPinError(null);
+      }
+      return;
+    }
+    if (activeTab !== 'home') return;
+    if (autoOpenedDeliveryPinOrderIdsRef.current.has(atDoorOrder.id)) return;
+    autoOpenedDeliveryPinOrderIdsRef.current.add(atDoorOrder.id);
+    setDeliveryPinModalVisible(true);
+    void fetchDeliveryProof(atDoorOrder.id);
+  }, [actionableHomeOrders, activeTab, deliveryPinOrderId, fetchDeliveryProof]);
+
+  useEffect(() => {
+    if (!deliveryPinModalVisible || !deliveryPinOrderId) return () => {};
+    if (deliveryPinRecord?.status === 'verified') {
+      setDeliveryPinModalVisible(false);
+      void fetchRecentBuyerOrders();
+      return () => {};
+    }
+    const interval = setInterval(() => {
+      void fetchDeliveryProof(deliveryPinOrderId, { silent: true });
+      void fetchRecentBuyerOrders();
+    }, 3_000);
+    return () => clearInterval(interval);
+  }, [deliveryPinModalVisible, deliveryPinOrderId, deliveryPinRecord?.status, fetchDeliveryProof, fetchRecentBuyerOrders]);
 
   useEffect(() => {
     if (!onOpenPayment) return;
@@ -3548,6 +3626,7 @@ export default function HomeScreen({
 
           const isPendingProposal = order.status === 'pending_buyer_confirmation';
           const liveStatus = quickOrderLiveStatus(order.status);
+          const canShowDeliveryPin = String(order.status ?? '').trim().toLowerCase() === 'at_door';
           const openOrderFlowDetail = Boolean(onOpenOrderDetail);
           const handleCardPress = openOrderFlowDetail
             ? () => onOpenOrderDetail?.(order.id)
@@ -3630,6 +3709,21 @@ export default function HomeScreen({
               <View style={styles.quickOrderFooter}>
                 <View style={styles.quickOrderActions}>
                   <View style={styles.quickOrderMainActionsRow}>
+                    {canShowDeliveryPin ? (
+                      <TouchableOpacity
+                        style={[styles.quickOrderMainActionBtn, styles.quickOrderSecondaryBtn]}
+                        activeOpacity={0.88}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          setDeliveryPinModalVisible(true);
+                          void fetchDeliveryProof(order.id);
+                        }}
+                      >
+                        <Text style={styles.quickOrderSecondaryText} numberOfLines={1} ellipsizeMode="tail">
+                          Teslimat Kodu
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
                     {canRequestBuyerDelivery(order) ? (
                       <TouchableOpacity
                         style={[
@@ -4423,6 +4517,72 @@ export default function HomeScreen({
           <Text style={styles.topErrorBannerText}>{paymentError}</Text>
         </View>
       ) : null}
+
+      <Modal
+        visible={deliveryPinModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeliveryPinModalVisible(false)}
+      >
+        <View style={styles.pinModalOverlay}>
+          <TouchableOpacity style={styles.pinModalBackdrop} activeOpacity={1} onPress={() => setDeliveryPinModalVisible(false)} />
+          <View style={styles.pinModalCard}>
+            <Text style={styles.pinModalTitle}>{t('headline.deliveryPin.title')}</Text>
+            {deliveryPinLoading ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : deliveryPinError ? (
+              <Text style={styles.pinModalError}>{deliveryPinError}</Text>
+            ) : !deliveryPinRecord ? (
+              <>
+                <Text style={styles.pinModalSub}>{t('headline.deliveryPin.emptyTitle')}</Text>
+                <Text style={styles.pinModalHint}>{t('helper.deliveryPin.emptySubtitle')}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.pinModalSub}>
+                  {deliveryPinRecord.status === 'verified'
+                    ? t('headline.deliveryPin.verified')
+                    : t('headline.deliveryPin.pending')}
+                </Text>
+                <Text style={styles.pinModalHint}>
+                  {deliveryPinRecord.status === 'verified'
+                    ? t('helper.deliveryPin.verified')
+                    : t('helper.deliveryPin.pending')}
+                </Text>
+                {deliveryPinRecord.status === 'pending' ? (
+                  <View style={styles.pinModalCodeBox}>
+                    <Text style={styles.pinModalCodeLabel}>{t('helper.deliveryPin.codeLabel')}</Text>
+                    <Text style={styles.pinModalCode}>{deliveryPinRecord.pin ?? '-'}</Text>
+                    <Text style={styles.pinModalAttempts}>
+                      {formatCopy('helper.deliveryPin.attemptsRemaining', {
+                        remaining: Math.max(0, 5 - Number(deliveryPinRecord.verificationAttempts ?? 0)),
+                      })}
+                    </Text>
+                  </View>
+                ) : null}
+              </>
+            )}
+            <View style={styles.pinModalActions}>
+              <TouchableOpacity
+                style={[styles.pinModalBtn, styles.pinModalCancelBtn]}
+                activeOpacity={0.86}
+                onPress={() => setDeliveryPinModalVisible(false)}
+              >
+                <Text style={styles.pinModalCancelText}>{t('cta.common.cancel')}</Text>
+              </TouchableOpacity>
+              {deliveryPinOrderId ? (
+                <TouchableOpacity
+                  style={[styles.pinModalBtn, styles.pinModalConfirmBtn]}
+                  activeOpacity={0.86}
+                  onPress={() => void fetchDeliveryProof(deliveryPinOrderId)}
+                >
+                  <Text style={styles.pinModalConfirmText}>{t('cta.payment.refresh')}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={locationModalVisible}
@@ -5829,6 +5989,93 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   quickOrderPrimaryText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+  pinModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  pinModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  pinModalCard: {
+    borderRadius: 20,
+    backgroundColor: '#FFFDF9',
+    borderWidth: 1,
+    borderColor: '#E2D7C8',
+    padding: 20,
+  },
+  pinModalTitle: {
+    color: '#2E241C',
+    fontWeight: '800',
+    fontSize: 19,
+    textAlign: 'center',
+  },
+  pinModalSub: {
+    color: '#2F6F4A',
+    fontWeight: '800',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  pinModalHint: {
+    color: '#6C6055',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 21,
+  },
+  pinModalError: {
+    color: '#B42318',
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 20,
+  },
+  pinModalCodeBox: {
+    marginTop: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2D7C8',
+    backgroundColor: '#FBF8F4',
+    padding: 16,
+    alignItems: 'center',
+  },
+  pinModalCodeLabel: {
+    color: '#71685F',
+    fontSize: 12.5,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  pinModalCode: {
+    color: '#2E241C',
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: 4,
+    marginTop: 8,
+  },
+  pinModalAttempts: {
+    color: '#4A3B2F',
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  pinModalActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+  },
+  pinModalBtn: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  pinModalCancelBtn: { backgroundColor: '#F6F1E8', borderColor: '#DCCFBF' },
+  pinModalConfirmBtn: { backgroundColor: '#3F855C', borderColor: '#3F855C' },
+  pinModalCancelText: { color: '#5B4F43', fontWeight: '700' },
+  pinModalConfirmText: { color: '#FFFFFF', fontWeight: '700' },
   secondaryOrdersBtn: {
     marginTop: 12,
     minHeight: 38,
