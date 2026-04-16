@@ -1739,7 +1739,7 @@ function FoodCard({
           <View pointerEvents="none" style={styles.foodPhotoSplitAccent} />
         </View>
         <TouchableOpacity
-          activeOpacity={1}
+          activeOpacity={0.96}
           onPress={onPress}
           style={styles.foodInfo}
         >
