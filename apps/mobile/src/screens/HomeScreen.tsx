@@ -6428,6 +6428,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     minWidth: 0,
+    maxWidth: '50%',
   },
   foodInfoIconBubble: {
     width: 34,
@@ -6448,7 +6449,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     alignItems: 'flex-start',
-    marginLeft: 29,
+    marginLeft: 36,
   },
   foodInfoInlineBadge: {
     flexDirection: 'row',
@@ -6462,7 +6463,7 @@ const styles = StyleSheet.create({
   },
   foodInfoTitle: {
     color: '#433126',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   foodInfoSubtitle: {
