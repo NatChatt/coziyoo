@@ -1836,17 +1836,22 @@ function FoodCard({
                 </View>
               </View>
               {hasAllergens ? (
-                <View style={styles.foodInfoAlertSlot}>
-                  <View style={styles.foodInfoInlineBadge}>
+                <>
+                  <View style={[styles.foodStatDivider, styles.foodInfoDividerGhost]} />
+                  <View style={styles.foodInfoAlertSlot}>
                     <View style={[styles.foodInfoIconBubble, styles.foodInfoIconBubbleAlert]}>
                       <Ionicons name="warning-outline" size={16} color="#B13B2E" />
                     </View>
-                    <Text style={[styles.foodInfoInlineBadgeText, styles.foodInfoAlertTitle]} numberOfLines={1}>
-                      Alerjen içerir
-                    </Text>
+                    <View style={styles.foodInfoAlertTextWrap}>
+                      <Text style={[styles.foodInfoInlineBadgeText, styles.foodInfoAlertTitle]} numberOfLines={1}>
+                        Alerjen içerir
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              ) : null}
+                </>
+              ) : (
+                <View style={styles.foodInfoAlertSpacer} />
+              )}
             </View>
             <View style={styles.foodStatsRow}>
               <View style={styles.foodStatItem}>
@@ -6428,7 +6433,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     minWidth: 0,
-    maxWidth: '50%',
   },
   foodInfoIconBubble: {
     width: 34,
@@ -6448,14 +6452,20 @@ const styles = StyleSheet.create({
   foodInfoAlertSlot: {
     flex: 1,
     minWidth: 0,
-    alignItems: 'flex-start',
-    marginLeft: 36,
-  },
-  foodInfoInlineBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+  },
+  foodInfoAlertTextWrap: {
+    flex: 1,
     minWidth: 0,
+  },
+  foodInfoAlertSpacer: {
+    flex: 1,
+    minWidth: 0,
+  },
+  foodInfoDividerGhost: {
+    opacity: 0,
   },
   foodInfoInlineBadgeText: {
     fontSize: 12,
