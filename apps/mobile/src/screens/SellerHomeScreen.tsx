@@ -830,14 +830,6 @@ export default function SellerHomeScreen({
           <TouchableOpacity style={styles.quickButton} activeOpacity={0.85} onPress={() => onOpenFoodsManager()}>
             <Text style={styles.quickButtonText}>{t('cta.seller.home.foodsManager')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickButton} activeOpacity={0.85} onPress={onOpenMessages}>
-            <Text style={styles.quickButtonText}>{t('cta.seller.home.messages')}</Text>
-            {chatUnreadCount > 0 ? (
-              <View style={styles.quickButtonBadge}>
-                <Text style={styles.quickButtonBadgeText}>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</Text>
-              </View>
-            ) : null}
-          </TouchableOpacity>
           <TouchableOpacity style={styles.quickLpiPill} activeOpacity={0.85} onPress={onOpenFinance}>
             <Text style={[styles.quickButtonText, styles.quickWalletButtonText]}>{t('cta.seller.home.wallet')}</Text>
           </TouchableOpacity>
