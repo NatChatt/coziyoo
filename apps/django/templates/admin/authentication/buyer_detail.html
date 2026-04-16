@@ -2,6 +2,15 @@
 {% load i18n %}
 
 {% block content %}
+<style>
+  .detail-hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .detail-hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+</style>
 <div class="space-y-4" x-data="{
   tab: '{{ active_tab|default:"general"|escapejs }}', search: '',
   autoResize(el) {
@@ -100,7 +109,7 @@
   {# ── Tab Bar ── #}
   <div class="bg-white dark:bg-base-900 rounded-xl border border-base-200 dark:border-base-700 overflow-hidden">
     <div class="flex flex-col border-b border-base-200 dark:border-base-700 lg:flex-row lg:items-center">
-      <div class="flex items-center overflow-x-auto flex-1">
+      <div class="detail-hide-scrollbar flex min-w-0 items-center overflow-x-auto lg:overflow-x-visible flex-1">
       {% for t_id, t_label in tabs %}
         <button @click="tab = '{{ t_id }}'; search = ''"
           class="px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors"
