@@ -664,6 +664,11 @@ export default function OrderDetailScreen({
       return type === 'buyer_delivery_requested' || type.startsWith('seller_delivery_request_');
     });
   const isPendingBuyerProposal = hasDeliveryRequestSignal && normalizedStatus === 'pending_buyer_confirmation';
+  const canResolveBuyerProposal =
+    isBuyer &&
+    hasDeliveryRequestSignal &&
+    !order.paymentCompleted &&
+    ['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment'].includes(normalizedStatus);
   const canCancel = isBuyer && CANCELLABLE.includes(order.status);
   const canSendMessages = !NON_MESSAGEABLE.includes(order.status);
   const canComplete = false;
@@ -937,7 +942,7 @@ export default function OrderDetailScreen({
             {!canSendMessages ? (
               <Text style={styles.notesLockedHint}>{t('helper.orderDetail.cancelLocked')}</Text>
             ) : null}
-            {isPendingBuyerProposal ? (
+            {canResolveBuyerProposal ? (
               <Text style={styles.notesConfirmHint}>{t('helper.orderDetail.proposalConfirmHint')}</Text>
             ) : null}
             <View style={styles.noteActions}>
@@ -948,7 +953,7 @@ export default function OrderDetailScreen({
               >
                 <Text style={styles.noteSendText}>{t('cta.orderNotes.send')}</Text>
               </TouchableOpacity>
-              {isPendingBuyerProposal ? (
+              {canResolveBuyerProposal ? (
                 <TouchableOpacity
                   style={[styles.noteApproveBtn, updating && styles.noteDisabled]}
                   disabled={updating}
@@ -957,7 +962,7 @@ export default function OrderDetailScreen({
                   <Text style={styles.noteApproveText}>{t('cta.orderNotes.approve')}</Text>
                 </TouchableOpacity>
               ) : null}
-              {isPendingBuyerProposal ? (
+              {canResolveBuyerProposal ? (
                 <TouchableOpacity
                   style={[styles.noteRejectBtn, updating && styles.noteDisabled]}
                   disabled={updating}
