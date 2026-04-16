@@ -1719,19 +1719,19 @@ function FoodCard({
   ].filter((value) => String(value ?? "").trim().length > 0);
   const timeDistanceText = timeDistanceParts.join(" · ");
   const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
-    ? `Son ${meal.stock} porsiyon`
+    ? t('status.home.foodCard.lastPortions').replace('{stock}', String(meal.stock))
     : '';
   const hasAllergens = allergens.length > 0;
   const titleMetrics = resolveFoodPhotoTitleMetrics(meal.title);
   const sellerHandle = formatSellerIdentity(meal.seller, meal.sellerUsername);
-  const sellerTagline = String(meal.sellerTagline ?? '').trim() || 'Tencereden çıktığı gibi, sıcacık.';
+  const sellerTagline = String(meal.sellerTagline ?? '').trim() || t('status.home.foodCard.sellerTaglineFallback');
   const ratingValue = Number(String(meal.rating ?? '').replace(',', '.'));
   const ratingBadgeText = Number.isFinite(ratingValue)
     ? Number(ratingValue).toFixed(1)
     : '0.0';
   const socialProofText = Number.isFinite(ratingValue) && ratingValue > 0
-    ? `${Number(ratingValue).toFixed(1)} puanla seviliyor.`
-    : 'Yoğun ilgi görüyor';
+    ? t('status.home.foodCard.socialProofRated').replace('{rating}', Number(ratingValue).toFixed(1))
+    : t('status.home.foodCard.socialProofPopular');
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -1856,7 +1856,7 @@ function FoodCard({
                 </View>
                 <View style={styles.foodInfoTextWrap}>
                   <Text style={styles.foodInfoTitle}>
-                    {stockSummary || 'Bugün hazırlanıyor'}
+                    {stockSummary || t('status.home.foodCard.preparingToday')}
                   </Text>
                   <Text style={styles.foodInfoSubtitle}>
                     {socialProofText}
@@ -1869,7 +1869,7 @@ function FoodCard({
                 </View>
                 <View style={[styles.foodInfoTextWrap, styles.foodInfoTextWrapCentered]}>
                   <Text style={[styles.foodInfoTitle, hasAllergens ? styles.foodInfoAlertTitle : styles.foodInfoOkTitle]}>
-                    {hasAllergens ? 'Alerjen içerir' : 'Alerjen yok'}
+                    {hasAllergens ? t('status.home.foodCard.hasAllergens') : t('status.home.foodCard.noAllergens')}
                   </Text>
                 </View>
               </View>
@@ -1882,10 +1882,10 @@ function FoodCard({
                 </View>
                 <View style={styles.foodInfoTextWrap}>
                   <Text style={styles.foodInfoTitle}>
-                    {meal.time || 'Süre yakında'}
+                    {meal.time || t('status.home.foodCard.timeSoon')}
                   </Text>
                   <Text style={styles.foodInfoSubtitle}>
-                    Hazırlık süresi
+                    {t('label.home.foodCard.prepTime')}
                   </Text>
                 </View>
               </View>
@@ -1901,7 +1901,7 @@ function FoodCard({
                         {meal.distance}
                       </Text>
                       <Text style={styles.foodInfoSubtitle}>
-                        Uzaklık (km)
+                        {t('label.home.foodCard.distance')}
                       </Text>
                     </View>
                   </View>
