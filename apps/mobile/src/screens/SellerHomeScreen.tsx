@@ -800,6 +800,7 @@ export default function SellerHomeScreen({
     .slice(0, 2)
     .map((w: string) => w[0]?.toUpperCase() ?? "")
     .join("");
+  const ratingSummary = rating ?? { avg: 0, count: 0 };
 
   return (
     <View style={styles.container}>
@@ -808,13 +809,11 @@ export default function SellerHomeScreen({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.title} numberOfLines={1}>{formatCopy('headline.seller.home.greeting', { name: displayName })}</Text>
-            {rating !== null && rating.count > 0 ? (
-              <View style={styles.ratingRow}>
-                <Text style={styles.ratingStar}>★</Text>
-                <Text style={styles.ratingAvg}>{rating.avg.toFixed(1)}</Text>
-                <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: rating.count })}</Text>
-              </View>
-            ) : null}
+            <View style={styles.ratingRow}>
+              <Text style={styles.ratingStar}>★</Text>
+              <Text style={styles.ratingAvg}>{ratingSummary.avg.toFixed(1)}</Text>
+              <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: ratingSummary.count })}</Text>
+            </View>
           </View>
           <TouchableOpacity style={styles.avatar} onPress={onOpenProfile} activeOpacity={0.8}>
             {loading ? (
@@ -833,6 +832,21 @@ export default function SellerHomeScreen({
           <TouchableOpacity style={styles.quickLpiPill} activeOpacity={0.85} onPress={onOpenFinance}>
             <Text style={[styles.quickButtonText, styles.quickWalletButtonText]}>{t('cta.seller.home.wallet')}</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.ratingSummaryCard}>
+          <View style={styles.ratingSummaryBlock}>
+            <Text style={styles.ratingSummaryLabel}>{t('headline.seller.reviews.average')}</Text>
+            <View style={styles.ratingSummaryValueRow}>
+              <Text style={styles.ratingSummaryStar}>★</Text>
+              <Text style={styles.ratingSummaryValue}>{ratingSummary.avg.toFixed(1)}</Text>
+            </View>
+          </View>
+          <View style={styles.ratingSummaryDivider} />
+          <View style={styles.ratingSummaryBlock}>
+            <Text style={styles.ratingSummaryLabel}>{t('headline.seller.reviews.total')}</Text>
+            <Text style={styles.ratingSummaryValue}>{ratingSummary.count}</Text>
+          </View>
         </View>
       </View>
 
@@ -1308,6 +1322,49 @@ const styles = StyleSheet.create({
     backgroundColor: "#F9E9D5",
     alignItems: "center",
     justifyContent: "center",
+  },
+  ratingSummaryCard: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "stretch",
+    backgroundColor: "#FFF9F1",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E6D8C8",
+    overflow: "hidden",
+  },
+  ratingSummaryBlock: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  ratingSummaryLabel: {
+    color: "#7A6B5C",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  ratingSummaryValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 6,
+  },
+  ratingSummaryStar: {
+    fontSize: 18,
+    color: "#D4860A",
+    lineHeight: 20,
+  },
+  ratingSummaryValue: {
+    color: "#3F3228",
+    fontSize: 24,
+    fontWeight: "900",
+    ...(Platform.OS === "ios"
+      ? { fontFamily: "AvenirNextCondensed-Bold" }
+      : { fontFamily: "sans-serif-condensed", includeFontPadding: false }),
+  },
+  ratingSummaryDivider: {
+    width: 1,
+    backgroundColor: "#E6D8C8",
   },
   ordersScroll: { flex: 1 },
   ordersContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 48 },
