@@ -1867,7 +1867,7 @@ function FoodCard({
               {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
                 <>
                   <View style={styles.foodStatDivider} />
-                  <View style={styles.foodStatItem}>
+                  <View style={[styles.foodStatItem, styles.foodStatItemRightCol]}>
                     <View style={styles.foodStatIconBubble}>
                       <Ionicons name="location-outline" size={16} color="#3F3025" />
                     </View>
@@ -6434,11 +6434,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   foodInfoRightCol: {
+    width: '40%',
     flexShrink: 0,
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
     gap: 10,
   },
   foodInfoRightItem: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -6514,6 +6516,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
+  },
+  foodStatItemRightCol: {
+    width: '40%',
+    flexGrow: 0,
+    flexShrink: 0,
   },
   foodStatIconBubble: {
     width: 34,
