@@ -92,7 +92,6 @@ import { loadCachedProfileImageUrl, saveCachedProfileImageUrl } from '../utils/p
 import { apiRequest } from '../utils/api';
 import { readJsonSafe } from '../utils/http';
 import { theme } from '../theme/colors';
-import StatusBadge from '../components/StatusBadge';
 import { formatPrice } from '../components/OrderCard';
 import ProfileEditScreen from './ProfileEditScreen';
 import AddressScreen from './AddressScreen';
@@ -591,6 +590,44 @@ function latestHomeOrderHint(status: string): string {
     return t('helper.orders.quickPendingSubtitle');
   }
   return t('helper.orders.quickPreparingSubtitle');
+}
+
+function quickOrderLiveStatus(status: string): { label: string; tone: 'soft' | 'warn' | 'accent' } {
+  const normalized = String(status ?? '').trim().toLowerCase();
+  if (normalized === 'pending_buyer_confirmation') {
+    return { label: 'Teklifini bekliyor', tone: 'warn' };
+  }
+  if (normalized === 'pending_seller_approval') {
+    return { label: 'Onay bekleniyor', tone: 'warn' };
+  }
+  if (normalized === 'seller_approved') {
+    return { label: 'Onaylandı', tone: 'soft' };
+  }
+  if (normalized === 'awaiting_payment') {
+    return { label: 'Ödeme alınıyor', tone: 'soft' };
+  }
+  if (normalized === 'paid' || normalized === 'preparing') {
+    return { label: 'Hazırlıyor', tone: 'soft' };
+  }
+  if (normalized === 'ready') {
+    return { label: 'Hazırlandı', tone: 'soft' };
+  }
+  if (normalized === 'in_delivery') {
+    return { label: 'Yoldayım', tone: 'accent' };
+  }
+  if (normalized === 'approaching') {
+    return { label: 'Geliyorum', tone: 'accent' };
+  }
+  if (normalized === 'at_door') {
+    return { label: 'Kapıdayım', tone: 'accent' };
+  }
+  if (normalized === 'delivered' || normalized === 'completed') {
+    return { label: 'Teslim edildi', tone: 'soft' };
+  }
+  if (normalized === 'cancelled' || normalized === 'rejected') {
+    return { label: 'İptal edildi', tone: 'warn' };
+  }
+  return { label: formatOrderStatusLabel(status), tone: 'soft' };
 }
 
 function hasPendingBuyerDeliveryRequest(order: HomeOrderSummary): boolean {
@@ -3510,6 +3547,7 @@ export default function HomeScreen({
           const showRefresh = shouldShowQuickOrderRefresh(order.id);
 
           const isPendingProposal = order.status === 'pending_buyer_confirmation';
+          const liveStatus = quickOrderLiveStatus(order.status);
           const openOrderFlowDetail = Boolean(onOpenOrderDetail);
           const handleCardPress = openOrderFlowDetail
             ? () => onOpenOrderDetail?.(order.id)
@@ -3537,33 +3575,40 @@ export default function HomeScreen({
                     </Text>
                   </View>
                 </View>
-                <StatusBadge
-                  status={order.status}
-                  deliveryType={order.deliveryType}
-                  audience="buyer"
-                />
+                <View
+                  style={[
+                    styles.quickOrderLiveChip,
+                    liveStatus.tone === 'warn' && styles.quickOrderLiveChipWarn,
+                    liveStatus.tone === 'accent' && styles.quickOrderLiveChipAccent,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.quickOrderLiveChipText,
+                      liveStatus.tone === 'warn' && styles.quickOrderLiveChipTextWarn,
+                      liveStatus.tone === 'accent' && styles.quickOrderLiveChipTextAccent,
+                    ]}
+                  >
+                    {liveStatus.label}
+                  </Text>
+                </View>
               </View>
 
-              {order.lastSellerNote ? (
-                <View style={styles.quickOrderSellerNoteRow}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={13} color="#7C3AED" />
-                  <Text style={styles.quickOrderSellerNoteText} numberOfLines={2}>{order.lastSellerNote}</Text>
+              <View style={styles.quickOrderMessageCard}>
+                <View style={styles.quickOrderMessageHeader}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={13} color="#2F6F4A" />
+                  <Text style={styles.quickOrderMessageLabel}>Ustadan mesaj</Text>
                 </View>
-              ) : (
-                <Text style={styles.quickOrderHint}>{latestHomeOrderHint(order.status)}</Text>
-              )}
-              {isPendingProposal ? (
-                <View style={styles.quickOrderProposalPill}>
-                  <Ionicons name="time-outline" size={14} color="#7C3AED" />
-                  <Text style={styles.quickOrderProposalPillText}>{t('helper.orders.proposalPendingSubtitle')}</Text>
-                </View>
-              ) : null}
-              {hasPendingBuyerDeliveryRequest(order) ? (
-                <View style={styles.quickOrderNotePill}>
-                  <Ionicons name="bicycle-outline" size={14} color="#2F6F4A" />
-                  <Text style={styles.quickOrderNotePillText}>{t('helper.home.deliveryRequestPending')}</Text>
-                </View>
-              ) : null}
+                <Text style={styles.quickOrderMessageText} numberOfLines={3}>
+                  {order.lastSellerNote
+                    ? order.lastSellerNote
+                    : isPendingProposal
+                      ? t('helper.orders.proposalPendingSubtitle')
+                      : hasPendingBuyerDeliveryRequest(order)
+                        ? t('helper.home.deliveryRequestPending')
+                        : latestHomeOrderHint(order.status)}
+                </Text>
+              </View>
               <View style={styles.quickOrderItemsRow}>
                 <Text style={styles.quickOrderItems} numberOfLines={1}>
                   {summarizeHomeOrderItems(order.items)}
@@ -5685,36 +5730,49 @@ const styles = StyleSheet.create({
   quickOrderMeta: { color: '#8B7D6F', fontSize: 12, fontWeight: '700', marginTop: 2 },
   quickOrderMetaNo: { flexShrink: 1, marginTop: 0 },
   quickOrderMetaDate: { flexShrink: 0, marginTop: 0 },
-  quickOrderHint: { color: '#5E5247', fontSize: 13, lineHeight: 18, marginTop: 6 },
-  quickOrderSellerNoteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 6 },
-  quickOrderSellerNoteText: { flex: 1, color: '#4B2E7A', fontSize: 13, lineHeight: 18, fontStyle: 'italic' },
-  quickOrderProposalPill: {
+  quickOrderLiveChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: '#F3FAF5',
+    borderWidth: 1,
+    borderColor: '#CFE4D5',
+  },
+  quickOrderLiveChipWarn: {
+    backgroundColor: '#FFF6E8',
+    borderColor: '#EFD5A6',
+  },
+  quickOrderLiveChipAccent: {
+    backgroundColor: '#EEF6FF',
+    borderColor: '#C8DBF6',
+  },
+  quickOrderLiveChipText: {
+    color: '#2F6F4A',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  quickOrderLiveChipTextWarn: {
+    color: '#9A5A00',
+  },
+  quickOrderLiveChipTextAccent: {
+    color: '#2A5C9A',
+  },
+  quickOrderMessageCard: {
     marginTop: 6,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCCCF8',
-    backgroundColor: '#F7F2FF',
+    borderColor: '#E2D7C8',
+    backgroundColor: '#FBF8F4',
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  quickOrderProposalPillText: { flex: 1, color: '#6D28D9', fontSize: 12, fontWeight: '700', lineHeight: 18 },
-  quickOrderNotePill: {
-    marginTop: 6,
-    alignSelf: 'flex-start',
+  quickOrderMessageHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#CFE4D5',
-    backgroundColor: '#F3FAF5',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
   },
-  quickOrderNotePillText: { color: '#2F6F4A', fontSize: 12, fontWeight: '700' },
+  quickOrderMessageLabel: { color: '#2F6F4A', fontSize: 12, fontWeight: '800' },
+  quickOrderMessageText: { color: '#5E5247', fontSize: 13, lineHeight: 18, marginTop: 6 },
   quickOrderItemsRow: {
     marginTop: 2,
     flexDirection: 'row',
