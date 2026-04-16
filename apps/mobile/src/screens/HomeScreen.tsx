@@ -1724,6 +1724,9 @@ function FoodCard({
     return 'Ev yemekleri';
   })();
   const ratingValue = Number(String(meal.rating ?? '').replace(',', '.'));
+  const ratingBadgeText = Number.isFinite(ratingValue) && ratingValue > 0
+    ? Number(ratingValue).toFixed(1)
+    : 'Yeni';
   const socialProofText = Number.isFinite(ratingValue) && ratingValue > 0
     ? `${Number(ratingValue).toFixed(1)} puanla seviliyor.`
     : 'Yoğun ilgi görüyor';
@@ -1809,14 +1812,12 @@ function FoodCard({
               </Text>
             ) : null}
           </View>
-          {Number.isFinite(ratingValue) && ratingValue > 0 ? (
-            <View style={styles.foodBadgesLeft}>
-              <View style={styles.foodRatingBadge}>
-                <Ionicons name="star" size={14} color="#F2B23A" />
-                <Text style={styles.foodRatingBadgeText}>{Number(ratingValue).toFixed(1)}</Text>
-              </View>
+          <View style={styles.foodBadgesLeft}>
+            <View style={styles.foodRatingBadge}>
+              <Ionicons name="star" size={14} color="#F2B23A" />
+              <Text style={styles.foodRatingBadgeText}>{ratingBadgeText}</Text>
             </View>
-          ) : null}
+          </View>
           <View style={styles.foodBadgesRight}>
             <View style={styles.foodPriceBadge}>
               <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
