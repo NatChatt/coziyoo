@@ -1631,11 +1631,6 @@ function FoodCard({
     if (!raw) return 'U';
     return raw.charAt(0).toLocaleUpperCase('tr-TR');
   })();
-  const sellerHeroSource = meal.sellerImage && !sellerThumbFailed
-    ? { uri: meal.sellerImage }
-    : null;
-  const hasSellerFigure = Boolean(sellerHeroSource);
-
   return (
     <View
       style={[
@@ -1687,7 +1682,7 @@ function FoodCard({
             ) : (
               <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
             )}
-            <View pointerEvents="none" style={[styles.foodPhotoTitleOverlay, hasSellerFigure && styles.foodPhotoTitleOverlayWithFigure]}>
+            <View pointerEvents="none" style={styles.foodPhotoTitleOverlay}>
               <Text
                 numberOfLines={2}
                 style={[
@@ -1718,21 +1713,6 @@ function FoodCard({
               </View>
             </View>
           </View>
-          {/* Seller figure — overlay on top of food background */}
-          {hasSellerFigure ? (
-            <View pointerEvents="none" style={styles.foodSellerFigureOverlay}>
-              <Image
-                source={sellerHeroSource!}
-                style={[styles.foodSellerFigureImage, styles.foodSellerPortraitImage]}
-                resizeMode="cover"
-                onError={() => setSellerThumbFailed(true)}
-              />
-            </View>
-          ) : (
-            <View pointerEvents="none" style={styles.foodSellerFigureFallback}>
-              <Text style={styles.foodSellerFigureFallbackEmoji}>👩‍🍳</Text>
-            </View>
-          )}
         </View>
         <TouchableOpacity
           activeOpacity={0.96}
@@ -6333,44 +6313,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.26)',
   },
   foodEmoji: { fontSize: 56 },
-  foodSellerFigureOverlay: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 200,
-    zIndex: 9,
-  },
-  foodSellerFigureImage: {
-    width: '100%',
-    height: '100%',
-  },
-  foodSellerPortraitImage: {
-    width: '100%',
-    height: '100%',
-  },
-  foodSellerFigureFallback: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  foodSellerFigureFallbackEmoji: {
-    fontSize: 84,
-  },
-  foodPhotoSplitAccent: {
-    position: 'absolute',
-    top: 10,
-    bottom: 8,
-    left: '41.5%',
-    marginLeft: -1.5,
-    width: 3,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.88)',
-    zIndex: 7,
-  },
   foodBadgesRight: {
     position: 'absolute',
     top: 16,
@@ -6385,11 +6327,6 @@ const styles = StyleSheet.create({
     right: 18,
     bottom: 18,
     zIndex: 7,
-  },
-  foodPhotoTitleOverlayWithFigure: {
-    left: 208,
-    right: 14,
-    bottom: 18,
   },
   foodPhotoLeftTextBlock: {
     position: 'absolute',
@@ -6475,9 +6412,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     minHeight: 196,
     overflow: 'visible',
-  },
-  foodInfoContentWithFigure: {
-    paddingLeft: 176,
   },
   foodInfoLine: {
     flexDirection: 'row',
