@@ -62,9 +62,9 @@ const SELLER_FAST_REFRESH_MS = 3_000;
 const SELLER_IDLE_REFRESH_MS = 6_000;
 function pickupBuyerCurrentStepLabel(status?: string | null): string | null {
   const normalized = String(status ?? "").trim().toLowerCase();
-  if (normalized === "in_delivery") return "Yoldayım";
-  if (normalized === "approaching") return "Geliyorum";
-  if (normalized === "at_door") return "Kapıdayım";
+  if (normalized === "in_delivery") return t('cta.buyer.orderDetail.onWay');
+  if (normalized === "approaching") return t('cta.buyer.orderDetail.coming');
+  if (normalized === "at_door") return t('cta.buyer.orderDetail.atDoor');
   return null;
 }
 

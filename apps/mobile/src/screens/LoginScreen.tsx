@@ -136,7 +136,7 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
   async function handleForgotPasswordRequest() {
     const trimmed = forgotEmail.trim().toLowerCase();
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setForgotError('Geçerli bir e-posta gir');
+      setForgotError(t('error.login.invalidEmail'));
       return;
     }
     setForgotError(null);
@@ -154,15 +154,15 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
       if (!response.ok) {
         const code = json?.error?.code;
         if (code === 'PASSWORD_RESET_TOO_FREQUENT') {
-          setForgotError(`Lütfen ${json.error?.retryAfterSeconds ?? 60} saniye bekleyin`);
+          setForgotError(t('error.login.retryAfterSeconds').replace('{seconds}', String(json.error?.retryAfterSeconds ?? 60)));
         } else {
-          setForgotError(json?.error?.message ?? 'Bir hata oluştu');
+          setForgotError(json?.error?.message ?? t('error.login.generic'));
         }
         return;
       }
       setForgotModal('code');
     } catch (err) {
-      setForgotError(err instanceof Error ? err.message : 'Bağlantı hatası');
+      setForgotError(err instanceof Error ? err.message : t('error.login.network'));
     } finally {
       setForgotLoading(false);
     }
@@ -170,15 +170,15 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
 
   async function handleForgotPasswordConfirm() {
     if (!/^\d{6}$/.test(forgotCode)) {
-      setForgotError('6 haneli kodu gir');
+      setForgotError(t('error.login.codeRequired'));
       return;
     }
     if (forgotNewPassword.length < 8) {
-      setForgotError('Şifre en az 8 karakter olmalı');
+      setForgotError(t('error.profileEdit.passwordMin'));
       return;
     }
     if (forgotNewPassword !== forgotNewPasswordConfirm) {
-      setForgotError('Şifreler eşleşmiyor');
+      setForgotError(t('error.profileEdit.passwordMismatch'));
       return;
     }
     setForgotError(null);
@@ -197,14 +197,14 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
       const json = await readJsonSafe<{ error?: { code?: string; message?: string } }>(response);
       if (!response.ok || json.error) {
         const code = json?.error?.code;
-        if (code === 'PASSWORD_RESET_CODE_INVALID') setForgotError('Kod geçersiz veya süresi dolmuş');
-        else setForgotError(json?.error?.message ?? 'Bir hata oluştu');
+        if (code === 'PASSWORD_RESET_CODE_INVALID') setForgotError(t('error.login.codeInvalid'));
+        else setForgotError(json?.error?.message ?? t('error.login.generic'));
         return;
       }
       closeForgotPassword();
-      Alert.alert('Başarılı', 'Şifren güncellendi. Yeni şifrenle giriş yapabilirsin.');
+      Alert.alert(t('headline.common.success'), t('status.login.passwordUpdated'));
     } catch (err) {
-      setForgotError(err instanceof Error ? err.message : 'Bağlantı hatası');
+      setForgotError(err instanceof Error ? err.message : t('error.login.network'));
     } finally {
       setForgotLoading(false);
     }
@@ -268,10 +268,10 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
 
           <View style={styles.forgotRow}>
             <TouchableOpacity onPress={() => setShowForgotEmailInfo(true)} activeOpacity={0.7}>
-              <Text style={styles.forgotText}>E-postamı unuttum</Text>
+              <Text style={styles.forgotText}>{t('cta.login.forgotEmail')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={openForgotPassword} activeOpacity={0.7}>
-              <Text style={styles.forgotText}>Şifremi unuttum</Text>
+              <Text style={styles.forgotText}>{t('cta.login.forgotPassword')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -305,7 +305,7 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
 
           {onGoToRegister && (
             <TouchableOpacity onPress={onGoToRegister} style={styles.registerLink} activeOpacity={0.7}>
-              <Text style={styles.registerLinkText}>Hesabın yok mu? <Text style={styles.registerLinkBold}>Kayıt ol</Text></Text>
+              <Text style={styles.registerLinkText}>{t('helper.login.noAccount')} <Text style={styles.registerLinkBold}>{t('cta.login.register')}</Text></Text>
             </TouchableOpacity>
           )}
         </View>
@@ -315,15 +315,11 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
       <Modal visible={showForgotEmailInfo} transparent animationType="fade" onRequestClose={() => setShowForgotEmailInfo(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>E-postanı mı unuttun?</Text>
-            <Text style={styles.modalDesc}>
-              Kayıt olurken kullandığın e-posta adresini hatırlamıyorsan, destek ekibimize ulaşabilirsin.
-            </Text>
-            <Text style={styles.modalDesc}>
-              E-posta: destek@coziyoo.com
-            </Text>
+            <Text style={styles.modalTitle}>{t('headline.login.forgotEmailTitle')}</Text>
+            <Text style={styles.modalDesc}>{t('helper.login.forgotEmailBody')}</Text>
+            <Text style={styles.modalDesc}>{t('helper.login.forgotEmailContact')}</Text>
             <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowForgotEmailInfo(false)}>
-              <Text style={styles.modalCloseBtnText}>Tamam</Text>
+              <Text style={styles.modalCloseBtnText}>{t('cta.login.ok')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -335,13 +331,13 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
           <View style={styles.modalCard}>
             {forgotModal === 'email' && (
               <>
-                <Text style={styles.modalTitle}>Şifreni Sıfırla</Text>
-                <Text style={styles.modalDesc}>Kayıtlı e-posta adresini gir, sana doğrulama kodu göndereceğiz.</Text>
+                <Text style={styles.modalTitle}>{t('headline.login.resetPassword')}</Text>
+                <Text style={styles.modalDesc}>{t('helper.login.resetEmailDesc')}</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={forgotEmail}
                   onChangeText={(v) => { setForgotEmail(v); setForgotError(null); }}
-                  placeholder="ornek@email.com"
+                  placeholder={t('helper.login.emailPlaceholder')}
                   placeholderTextColor={theme.textSecondary}
                   autoCapitalize="none"
                   keyboardType="email-address"
@@ -350,7 +346,7 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
                 {!!forgotError && <Text style={styles.modalError}>{forgotError}</Text>}
                 <View style={styles.modalActions}>
                   <TouchableOpacity style={styles.modalCancelBtn} onPress={closeForgotPassword}>
-                    <Text style={styles.modalCancelBtnText}>İptal</Text>
+                    <Text style={styles.modalCancelBtnText}>{t('cta.common.cancel')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modalPrimaryBtn, forgotLoading && styles.buttonDisabled]}
@@ -360,7 +356,7 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
                     {forgotLoading ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={styles.modalPrimaryBtnText}>Kod Gönder</Text>
+                      <Text style={styles.modalPrimaryBtnText}>{t('cta.profileEdit.sendResetCode')}</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -369,15 +365,15 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
 
             {forgotModal === 'code' && (
               <>
-                <Text style={styles.modalTitle}>Şifreni Sıfırla</Text>
+                <Text style={styles.modalTitle}>{t('headline.login.resetPassword')}</Text>
                 <Text style={styles.modalDesc}>
-                  {forgotEmail} adresine gönderilen 6 haneli kodu ve yeni şifreni gir.
+                  {t('helper.login.resetCodeDesc').replace('{email}', forgotEmail)}
                 </Text>
                 <TextInput
                   style={styles.modalInput}
                   value={forgotCode}
                   onChangeText={(v) => { setForgotCode(v.replace(/\D/g, '').slice(0, 6)); setForgotError(null); }}
-                  placeholder="6 haneli kod"
+                  placeholder={t('helper.profileEdit.codePlaceholder')}
                   placeholderTextColor={theme.textSecondary}
                   keyboardType="number-pad"
                   maxLength={6}
@@ -387,7 +383,7 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
                   style={styles.modalInput}
                   value={forgotNewPassword}
                   onChangeText={(v) => { setForgotNewPassword(v); setForgotError(null); }}
-                  placeholder="Yeni şifre (en az 8 karakter)"
+                  placeholder={t('helper.profileEdit.newPasswordPlaceholder')}
                   placeholderTextColor={theme.textSecondary}
                   secureTextEntry
                 />
@@ -395,14 +391,14 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
                   style={styles.modalInput}
                   value={forgotNewPasswordConfirm}
                   onChangeText={(v) => { setForgotNewPasswordConfirm(v); setForgotError(null); }}
-                  placeholder="Yeni şifre tekrar"
+                  placeholder={t('helper.profileEdit.newPasswordAgainPlaceholder')}
                   placeholderTextColor={theme.textSecondary}
                   secureTextEntry
                 />
                 {!!forgotError && <Text style={styles.modalError}>{forgotError}</Text>}
                 <View style={styles.modalActions}>
                   <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setForgotModal('email')}>
-                    <Text style={styles.modalCancelBtnText}>Geri</Text>
+                    <Text style={styles.modalCancelBtnText}>{t('cta.settings.back')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modalPrimaryBtn, forgotLoading && styles.buttonDisabled]}
@@ -412,7 +408,7 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
                     {forgotLoading ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={styles.modalPrimaryBtnText}>Şifreyi Güncelle</Text>
+                      <Text style={styles.modalPrimaryBtnText}>{t('cta.profileEdit.changePassword')}</Text>
                     )}
                   </TouchableOpacity>
                 </View>

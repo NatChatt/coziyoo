@@ -147,12 +147,12 @@ function normalizeBuyerFlowStatus(
 }
 
 function buyerFlowLabel(step: BuyerFlowStep): string {
-  if (step === 'preparing') return 'Hazırlanıyor';
-  if (step === 'ready') return 'Hazır';
-  if (step === 'in_delivery') return 'Yola Çıktı';
-  if (step === 'approaching') return 'Yaklaştı';
-  if (step === 'at_door') return 'Kapıda';
-  return 'Teslim Edildi';
+  if (step === 'preparing') return t('status.common.badge.preparing');
+  if (step === 'ready') return t('status.common.badge.ready');
+  if (step === 'in_delivery') return t('status.common.badge.inDelivery');
+  if (step === 'approaching') return t('status.common.badge.approaching');
+  if (step === 'at_door') return t('status.common.badge.atDoor');
+  return t('status.common.badge.delivered');
 }
 
 function buyerFlowLabelByDeliveryType(
@@ -161,9 +161,9 @@ function buyerFlowLabelByDeliveryType(
   currentStatus?: string,
 ): string {
   if (deliveryType === 'pickup') {
-    if (step === 'preparing') return 'Hazırlanıyor';
-    if (String(currentStatus ?? '').trim().toLowerCase() === 'completed') return 'Tamamlandı';
-    return 'Hazırlandı, seni bekliyor';
+    if (step === 'preparing') return t('status.common.badge.preparing');
+    if (String(currentStatus ?? '').trim().toLowerCase() === 'completed') return t('status.common.badge.delivered');
+    return t('status.common.badge.pickupReady');
   }
   return buyerFlowLabel(step);
 }
@@ -176,10 +176,10 @@ function nextPickupProgressAction(
   if (deliveryType !== 'pickup') return null;
   const normalized = String(status ?? '').trim().toLowerCase();
   if (normalized === 'paid' || normalized === 'preparing' || normalized === 'ready') {
-    return { label: 'Yoldayım', toStatus: 'in_delivery' };
+    return { label: t('cta.buyer.orderDetail.onWay'), toStatus: 'in_delivery' };
   }
-  if (normalized === 'in_delivery') return { label: 'Geliyorum', toStatus: 'approaching' };
-  if (normalized === 'approaching') return { label: 'Kapıdayım', toStatus: 'at_door' };
+  if (normalized === 'in_delivery') return { label: t('cta.buyer.orderDetail.coming'), toStatus: 'approaching' };
+  if (normalized === 'approaching') return { label: t('cta.buyer.orderDetail.atDoor'), toStatus: 'at_door' };
   return null;
 }
 
