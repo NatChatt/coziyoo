@@ -1821,6 +1821,24 @@ function FoodCard({
               <Text style={styles.foodRatingBadgeText}>{ratingBadgeText}</Text>
             </View>
           </View>
+          <TouchableOpacity
+            activeOpacity={0.82}
+            onPress={(event) => {
+              event.stopPropagation();
+              onFavoritePress();
+            }}
+            style={[
+              styles.foodPhotoFavoriteBtn,
+              isFavorite && styles.foodFooterFavoriteBtnActive,
+            ]}
+            disabled={favoritePending}
+          >
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={22}
+              color={isFavorite ? '#B8302C' : '#B85C58'}
+            />
+          </TouchableOpacity>
         </View>
         <TouchableOpacity
           activeOpacity={0.96}
@@ -1915,25 +1933,6 @@ function FoodCard({
                 </View>
               </View>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.82}
-              onPress={(event) => {
-                event.stopPropagation();
-                onFavoritePress();
-              }}
-              style={[
-                styles.foodFooterFavoriteBtn,
-                styles.foodFooterFavoriteBtnFloating,
-                isFavorite && styles.foodFooterFavoriteBtnActive,
-              ]}
-              disabled={favoritePending}
-            >
-              <Ionicons
-                name={isFavorite ? 'heart' : 'heart-outline'}
-                size={22}
-                color={isFavorite ? '#B8302C' : '#B85C58'}
-              />
-            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </View>
@@ -6425,6 +6424,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   foodPriceBadgeText: { color: '#FFFFFF', fontSize: 17, fontWeight: '900' },
+  foodPhotoFavoriteBtn: {
+    position: 'absolute',
+    right: 14,
+    bottom: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1.5,
+    borderColor: '#DFAEAB',
+    backgroundColor: 'rgba(255,247,245,0.96)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 7,
+  },
   foodInfo: {
     backgroundColor: '#FFF8F0',
     borderTopWidth: 1,
@@ -6433,9 +6446,8 @@ const styles = StyleSheet.create({
   },
   foodInfoContent: {
     paddingTop: 12,
-    paddingBottom: 14,
+    paddingBottom: 10,
     paddingHorizontal: 16,
-    position: 'relative',
     overflow: 'visible',
   },
   foodInfoMainRow: {
@@ -6594,10 +6606,9 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(112,88,68,0.16)',
     marginTop: 10,
     paddingTop: 8,
-    paddingRight: 58,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     gap: 8,
     overflow: 'visible',
   },
@@ -6664,11 +6675,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF7F5',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  foodFooterFavoriteBtnFloating: {
-    position: 'absolute',
-    right: 16,
-    bottom: 10,
   },
   foodFooterFavoriteBtnActive: {
     backgroundColor: '#FFE8E6',
