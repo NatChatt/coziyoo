@@ -1847,19 +1847,9 @@ function FoodCard({
                     {hasAllergens ? 'Alerjen içerir' : 'Alerjen yok'}
                   </Text>
                 </View>
-                {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
-                  <View style={styles.foodInfoRightItem}>
-                    <View style={styles.foodInfoIconBubble}>
-                      <Ionicons name="location-outline" size={16} color="#4B372A" />
-                    </View>
-                    <Text style={styles.foodInfoInlineBadgeText}>
-                      {meal.distance} km
-                    </Text>
-                  </View>
-                ) : null}
               </View>
             </View>
-            {/* Row 2: prep time */}
+            {/* Row 2: prep time | distance */}
             <View style={styles.foodStatsRow}>
               <View style={styles.foodStatItem}>
                 <View style={styles.foodStatIconBubble}>
@@ -1874,6 +1864,24 @@ function FoodCard({
                   </Text>
                 </View>
               </View>
+              {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
+                <>
+                  <View style={styles.foodStatDivider} />
+                  <View style={styles.foodStatItem}>
+                    <View style={styles.foodStatIconBubble}>
+                      <Ionicons name="location-outline" size={16} color="#3F3025" />
+                    </View>
+                    <View style={styles.foodStatTextWrap}>
+                      <Text style={styles.foodStatValue}>
+                        {meal.distance} km
+                      </Text>
+                      <Text style={styles.foodStatLabel}>
+                        Uzaklık
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              ) : null}
             </View>
             <View style={styles.foodFooterRow}>
               <View style={styles.foodFooterSeller}>
@@ -6542,7 +6550,8 @@ const styles = StyleSheet.create({
   foodStatDivider: {
     width: 1,
     backgroundColor: 'rgba(112,88,68,0.16)',
-    marginHorizontal: 4,
+    marginHorizontal: 10,
+    alignSelf: 'stretch',
   },
   foodFooterRow: {
     borderTopWidth: 1,
