@@ -862,12 +862,12 @@
           <div class="px-5 pb-2 pt-3">
             <button type="button"
                     @click="openMessages()"
-                    class="flex w-full items-center justify-between rounded-xl border border-base-200 bg-base-50 px-4 py-3 text-left transition-colors hover:bg-base-100 dark:border-base-700 dark:bg-base-800/70 dark:hover:bg-base-800">
+                    class="flex w-full items-center justify-between rounded-xl border border-base-200 bg-base-100 px-4 py-3 text-left transition-colors hover:bg-base-200/70 dark:border-base-700 dark:bg-base-800 dark:hover:bg-base-700/80">
               <div>
-                <div class="text-xs font-bold uppercase tracking-widest text-base-400">{% trans "Yazışmalar" %}</div>
-                <div class="mt-1 text-sm font-medium text-base-700 dark:text-base-200">
+                <div class="text-xs font-bold uppercase tracking-widest text-base-500 dark:text-base-300">{% trans "Yazışmalar" %}</div>
+                <div class="mt-1 text-sm font-medium text-base-800 dark:text-base-100">
                   <span>{% trans "Yazışmalar" %}</span>
-                  <span class="text-base-400">·</span>
+                  <span class="text-base-400 dark:text-base-500">·</span>
                   <span x-text="(orderModal.order?.messages || []).length + ' mesaj'"></span>
                 </div>
               </div>
