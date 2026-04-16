@@ -1971,7 +1971,7 @@ const brandCopyEn: Partial<Record<BrandCopyKey, string>> = {
   'status.home.foodCard.sellerTaglineFallback': 'Hot and fresh from the pot.',
   'status.home.foodCard.socialProofRated': 'Loved with {rating} stars.',
   'status.home.foodCard.socialProofPopular': 'Very popular right now',
-  'status.home.foodCard.hasAllergens': 'Contains allergens',
+  'status.home.foodCard.hasAllergens': 'Has allergens',
   'status.home.foodCard.noAllergens': 'Allergen free',
   'status.home.foodCard.timeSoon': 'Time TBD',
   'label.home.foodCard.prepTime': 'Prep time',

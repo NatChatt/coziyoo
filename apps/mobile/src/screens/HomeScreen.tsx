@@ -1862,7 +1862,7 @@ function FoodCard({
                   <Ionicons name={hasAllergens ? 'warning-outline' : 'checkmark-circle-outline'} size={16} color={hasAllergens ? '#B13B2E' : '#2F6F4A'} />
                 </View>
                 <View style={[styles.foodInfoTextWrap, styles.foodInfoTextWrapCentered]}>
-                  <Text style={[styles.foodInfoTitle, hasAllergens ? styles.foodInfoAlertTitle : styles.foodInfoOkTitle]}>
+                  <Text numberOfLines={1} style={[styles.foodInfoTitle, hasAllergens ? styles.foodInfoAlertTitle : styles.foodInfoOkTitle]}>
                     {hasAllergens ? t('status.home.foodCard.hasAllergens') : t('status.home.foodCard.noAllergens')}
                   </Text>
                 </View>
