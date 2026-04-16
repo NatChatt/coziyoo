@@ -1452,8 +1452,6 @@ function FoodCard({
   const [imageFrameHeight, setImageFrameHeight] = useState(155);
   const [photoTextTone, setPhotoTextTone] = useState<'light' | 'dark'>('light');
   const [sellerThumbFailed, setSellerThumbFailed] = useState(false);
-  const [sellerHomeCardImageFailed, setSellerHomeCardImageFailed] = useState(false);
-  const cardImageScrollRef = useRef<ScrollView | null>(null);
   const textToneRequestRef = useRef(0);
   const primaryImageUrl = imageUrls[0];
   const activeImageUrl = imageUrls[imageIndex] ?? primaryImageUrl;
@@ -1465,9 +1463,6 @@ function FoodCard({
       .slice(0, 5);
     setImageUrls(next);
     setImageIndex(0);
-    requestAnimationFrame(() => {
-      cardImageScrollRef.current?.scrollTo({ x: 0, y: 0, animated: false });
-    });
   }, [meal.imageUrl, meal.imageUrls]);
 
   useEffect(() => {
@@ -1595,10 +1590,6 @@ function FoodCard({
   useEffect(() => {
     setSellerThumbFailed(false);
   }, [meal.sellerImage]);
-
-  useEffect(() => {
-    setSellerHomeCardImageFailed(false);
-  }, [meal.sellerHomeCardImage]);
 
   const allergens = Array.isArray(meal.allergens) ? meal.allergens : [];
   const mealDeliveryOptions = meal.deliveryOptions ?? { pickup: true, delivery: false };
@@ -6225,54 +6216,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#B96C44',
   },
-  foodPhotoTopRow: {
-    width: '100%',
-    height: '100%',
-    flexDirection: 'row',
-  },
-  foodPhotoChefPanel: {
-    width: '41.5%',
-    position: 'relative',
-    backgroundColor: '#F4EBDD',
-  },
-  foodPhotoChefPanelBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F6EEE2',
-  },
   foodPhotoDishPanel: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
     backgroundColor: '#8E593C',
   },
-  foodPhotoImageLayer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  foodImageSliderWrap: { width: '100%', height: '100%' },
-  foodImageSlider: { width: '100%', height: '100%' },
-  foodImageSliderContent: { alignItems: 'stretch' },
-  foodImageTapArea: { height: '100%' },
   foodImageTapFallback: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
-  foodImageDotsRow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 8,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 5,
-  },
-  foodImageDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.55)',
-  },
-  foodImageDotActive: {
-    width: 14,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-  },
   foodImage: { width: '100%', height: '100%' },
   foodPhotoBottomGradient: {
     position: 'absolute',
@@ -6293,25 +6242,6 @@ const styles = StyleSheet.create({
     height: 118,
     backgroundColor: 'rgba(0,0,0,0.2)',
   },
-  foodPhotoRightShade: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: '72%',
-  },
-  foodPhotoRightShadeFill: {
-    width: '100%',
-    height: '100%',
-  },
-  foodPhotoRightShadeFallback: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: '72%',
-    backgroundColor: 'rgba(0,0,0,0.26)',
-  },
   foodEmoji: { fontSize: 56 },
   foodBadgesRight: {
     position: 'absolute',
@@ -6327,33 +6257,6 @@ const styles = StyleSheet.create({
     right: 18,
     bottom: 18,
     zIndex: 7,
-  },
-  foodPhotoLeftTextBlock: {
-    position: 'absolute',
-    left: 18,
-    right: 18,
-    bottom: 22,
-    zIndex: 7,
-  },
-  foodPhotoLeftTextBlockWithFigure: { left: 170, right: 16, bottom: 18 },
-  foodPhotoTextGlass: {
-    position: 'relative',
-    overflow: 'hidden',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(16,12,9,0.2)',
-  },
-  foodPhotoTextGlassBlur: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  foodPhotoTextGlassFallback: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  foodPhotoTextGlassContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
   },
   foodPhotoTitleText: {
     color: '#FFFFFF',
@@ -6389,17 +6292,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   foodPriceBadgeText: { color: '#FFFFFF', fontSize: 18, fontWeight: '900' },
-  ratingBadge: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingBadgeStar: { color: '#C4953A', fontSize: 13, fontWeight: '800' },
-  ratingBadgeText: { color: '#3D3229', fontSize: 13, fontWeight: '800' },
   foodInfo: {
     backgroundColor: '#FFF8F0',
     borderTopWidth: 1,
