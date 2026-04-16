@@ -1657,6 +1657,7 @@ function FoodCard({
             setImageFrameHeight((prev) => (prev === nextHeight ? prev : nextHeight));
           }}
         >
+          {/* Food image — full-width background layer */}
           <View style={styles.foodPhotoDishPanel}>
             {activeImageUrl ? (
               <Image
@@ -1717,6 +1718,7 @@ function FoodCard({
               </View>
             </View>
           </View>
+          {/* Seller figure — overlay on top of food background */}
           {hasSellerFigure ? (
             <View pointerEvents="none" style={styles.foodSellerFigureOverlay}>
               <Image
@@ -1727,7 +1729,7 @@ function FoodCard({
               />
             </View>
           ) : (
-            <View pointerEvents="none" style={styles.foodSellerFigureFallbackCard}>
+            <View pointerEvents="none" style={styles.foodSellerFigureFallback}>
               <Text style={styles.foodSellerFigureFallbackEmoji}>👩‍🍳</Text>
             </View>
           )}
@@ -1737,7 +1739,7 @@ function FoodCard({
           onPress={onPress}
           style={styles.foodInfo}
         >
-          <View style={[styles.foodInfoContent, hasSellerFigure && styles.foodInfoContentWithFigure]}>
+          <View style={styles.foodInfoContent}>
             <View style={styles.foodInfoLine}>
               <View style={styles.foodInfoIconBubble}>
                 <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
@@ -6240,14 +6242,25 @@ const styles = StyleSheet.create({
   foodPhoto: {
     width: '100%',
     height: 248,
-    alignItems: 'center',
-    justifyContent: 'center',
     overflow: 'hidden',
     backgroundColor: '#B96C44',
   },
+  foodPhotoTopRow: {
+    width: '100%',
+    height: '100%',
+    flexDirection: 'row',
+  },
+  foodPhotoChefPanel: {
+    width: '41.5%',
+    position: 'relative',
+    backgroundColor: '#F4EBDD',
+  },
+  foodPhotoChefPanelBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#F6EEE2',
+  },
   foodPhotoDishPanel: {
     ...StyleSheet.absoluteFillObject,
-    position: 'relative',
     overflow: 'hidden',
     backgroundColor: '#8E593C',
   },
@@ -6323,35 +6336,40 @@ const styles = StyleSheet.create({
   foodSellerFigureOverlay: {
     position: 'absolute',
     left: 0,
-    top: 10,
-    width: 194,
-    height: 430,
+    top: 0,
+    bottom: 0,
+    width: 200,
     zIndex: 9,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
   },
   foodSellerFigureImage: {
-    width: '112%',
-    height: '112%',
+    width: '100%',
+    height: '100%',
   },
   foodSellerPortraitImage: {
     width: '100%',
     height: '100%',
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
   },
-  foodSellerFigureFallbackCard: {
+  foodSellerFigureFallback: {
     position: 'absolute',
-    left: 12,
-    top: 22,
-    width: 170,
-    height: 290,
+    left: 0,
+    right: 0,
+    bottom: 26,
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    zIndex: 9,
+    justifyContent: 'center',
   },
   foodSellerFigureFallbackEmoji: {
     fontSize: 84,
+  },
+  foodPhotoSplitAccent: {
+    position: 'absolute',
+    top: 10,
+    bottom: 8,
+    left: '41.5%',
+    marginLeft: -1.5,
+    width: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    zIndex: 7,
   },
   foodBadgesRight: {
     position: 'absolute',
@@ -6369,8 +6387,9 @@ const styles = StyleSheet.create({
     zIndex: 7,
   },
   foodPhotoTitleOverlayWithFigure: {
-    left: 192,
-    right: 18,
+    left: 208,
+    right: 14,
+    bottom: 18,
   },
   foodPhotoLeftTextBlock: {
     position: 'absolute',
@@ -6458,7 +6477,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   foodInfoContentWithFigure: {
-    paddingLeft: 188,
+    paddingLeft: 176,
   },
   foodInfoLine: {
     flexDirection: 'row',
