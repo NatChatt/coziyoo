@@ -1827,10 +1827,10 @@ function FoodCard({
                   <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
                 </View>
                 <View style={styles.foodInfoTextWrap}>
-                  <Text style={styles.foodInfoTitle} numberOfLines={1}>
+                  <Text style={styles.foodInfoTitle}>
                     {stockSummary || 'Bugün hazırlanıyor'}
                   </Text>
-                  <Text style={styles.foodInfoSubtitle} numberOfLines={1}>
+                  <Text style={styles.foodInfoSubtitle}>
                     {socialProofText}
                   </Text>
                 </View>
