@@ -12,7 +12,8 @@
   async openOrder(id) {
     this.orderModal = { open: true, loading: true, order: null, error: null };
     try {
-      const r = await fetch('/admin/authentication/buyerusers/order/' + id + '/detail/');
+      const detailUrl = '{% url "admin:authentication_order_detail" "__ORDER_ID__" %}'.replace('__ORDER_ID__', id);
+      const r = await fetch(detailUrl);
       if (!r.ok) { this.orderModal.error = 'HTTP ' + r.status; return; }
       const ct = r.headers.get('content-type') || '';
       if (!ct.includes('application/json')) { this.orderModal.error = 'Sunucu JSON döndürmedi'; return; }
