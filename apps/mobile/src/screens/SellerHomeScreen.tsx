@@ -5,7 +5,7 @@ import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { getSellerFoodsCache, setSellerFoodsCache } from "../utils/sellerFoodsCache";
-import { getSellerOrdersCache, setSellerOrdersCache, getSellerDisplayNameCache, setSellerDisplayNameCache } from "../utils/sellerOrdersCache";
+import { getSellerOrdersCache, setSellerOrdersCache, getSellerDisplayNameCache, setSellerDisplayNameCache, updateSellerOrderCacheItem } from "../utils/sellerOrdersCache";
 import { getSellerMeCache } from "../utils/sellerProfileCache";
 import { normalizeSellerLotSnapshot, summarizeSellerLotsByFood } from "../utils/sellerLotSummary";
 import { subscribeSellerOrdersRealtime } from "../utils/realtime";
@@ -270,6 +270,30 @@ function sellerOrdersSignature(items: SellerOrder[]): string {
       order.sellerDecisionState ?? "",
     ].join("|"))
     .join("||");
+}
+
+function syncSellerOrderStatusCache(orderId: string, patch: Partial<SellerOrder>): void {
+  updateSellerOrderCacheItem(orderId, (row) => ({
+    ...row,
+    ...(patch.status ? { status: patch.status } : {}),
+    ...(patch.updatedAt ? { updatedAt: patch.updatedAt, updated_at: patch.updatedAt } : {}),
+    ...(patch.deliveryType ? { deliveryType: patch.deliveryType, delivery_type: patch.deliveryType } : {}),
+    ...(patch.requestedDeliveryType
+      ? { requestedDeliveryType: patch.requestedDeliveryType, requested_delivery_type: patch.requestedDeliveryType }
+      : {}),
+    ...(patch.activeDeliveryType
+      ? { activeDeliveryType: patch.activeDeliveryType, active_delivery_type: patch.activeDeliveryType }
+      : {}),
+    ...(patch.sellerDecisionState
+      ? { sellerDecisionState: patch.sellerDecisionState, seller_decision_state: patch.sellerDecisionState }
+      : {}),
+    ...(patch.buyerProgressStatus !== undefined
+      ? { buyerProgressStatus: patch.buyerProgressStatus, buyer_progress_status: patch.buyerProgressStatus }
+      : {}),
+    ...(patch.buyerProgressAt !== undefined
+      ? { buyerProgressAt: patch.buyerProgressAt, buyer_progress_at: patch.buyerProgressAt }
+      : {}),
+  }));
 }
 
 function normalizeSellerOrder(raw: Record<string, unknown>): SellerOrder {
@@ -745,6 +769,7 @@ export default function SellerHomeScreen({
           ? { ...item, status: action.toStatus, updatedAt: nowIso }
           : item
       )));
+      syncSellerOrderStatusCache(orderId, { status: action.toStatus, updatedAt: nowIso });
       if (action.toStatus === "delivered") {
         setCelebrationOrderId(orderId);
         deliveredEmojiScale.setValue(0.4);

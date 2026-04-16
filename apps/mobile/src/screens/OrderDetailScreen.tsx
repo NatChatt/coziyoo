@@ -663,7 +663,7 @@ export default function OrderDetailScreen({
       const type = String(event.eventType ?? '').trim().toLowerCase();
       return type === 'buyer_delivery_requested' || type.startsWith('seller_delivery_request_');
     });
-  const isPendingBuyerProposal = hasDeliveryRequestSignal && !isTerminalStatus;
+  const isPendingBuyerProposal = hasDeliveryRequestSignal && normalizedStatus === 'pending_buyer_confirmation';
   const canCancel = isBuyer && CANCELLABLE.includes(order.status);
   const canSendMessages = !NON_MESSAGEABLE.includes(order.status);
   const canComplete = false;

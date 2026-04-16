@@ -23,7 +23,7 @@ import StatusBadge from "../components/StatusBadge";
 import { subscribeOrderRealtime } from "../utils/realtime";
 import { formatCopy, t } from "../copy/brandCopy";
 import { getCurrentLanguage } from "../utils/settings";
-import { getSellerOrdersCache, setSellerOrdersCache } from "../utils/sellerOrdersCache";
+import { updateSellerOrderCacheItem } from "../utils/sellerOrdersCache";
 
 type Props = {
   auth: AuthSession;
@@ -50,6 +50,7 @@ type OrderDetail = {
   id: string;
   orderNo?: string;
   status: string;
+  updatedAt?: string | null;
   requestedDeliveryType?: 'pickup' | 'delivery' | string;
   activeDeliveryType?: 'pickup' | 'delivery' | string;
   sellerDecisionState?: 'pending' | 'revised' | 'approved' | 'rejected' | string;
@@ -94,6 +95,8 @@ type OrderDetail = {
     latitude?: number | string;
     longitude?: number | string;
   } | null;
+  buyerProgressStatus?: string | null;
+  buyerProgressAt?: string | null;
 };
 
 type MapCoordinates = { lat: number; lng: number };
@@ -106,6 +109,15 @@ function normalizeOrderDetail(value: unknown, fallbackOrderId: string): OrderDet
     ...(row as unknown as OrderDetail),
     id: String(row.id ?? fallbackOrderId ?? "").trim(),
     orderNo: typeof row.orderNo === "string" ? row.orderNo : undefined,
+    updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : (typeof row.updated_at === "string" ? row.updated_at : null),
+    buyerProgressStatus:
+      typeof row.buyerProgressStatus === "string"
+        ? row.buyerProgressStatus
+        : (typeof row.buyer_progress_status === "string" ? row.buyer_progress_status : null),
+    buyerProgressAt:
+      typeof row.buyerProgressAt === "string"
+        ? row.buyerProgressAt
+        : (typeof row.buyer_progress_at === "string" ? row.buyer_progress_at : null),
   };
 }
 
@@ -248,28 +260,38 @@ function mergeOrderNotes(notes: OrderNote[]): OrderNote[] {
   });
 }
 
-function markOrderCompletedInSellerCache(orderId: string): void {
-  const cached = getSellerOrdersCache();
-  if (!Array.isArray(cached) || cached.length === 0) return;
+function syncSellerOrderCache(order: OrderDetail | null, override?: Partial<OrderDetail>): void {
+  if (!order?.id) return;
   const nowIso = new Date().toISOString();
-  let changed = false;
-  const next = cached.map((row) => {
-    const id = String((row as Record<string, unknown>).id ?? "");
-    if (id !== orderId) return row;
-    changed = true;
-    return {
-      ...(row as Record<string, unknown>),
-      status: "completed",
-      buyerProgressStatus: null,
-      buyer_progress_status: null,
-      updatedAt: nowIso,
-      updated_at: nowIso,
-    };
-  });
-  if (changed) setSellerOrdersCache(next);
+  const nextStatus = override?.status ?? order.status;
+  const nextUpdatedAt = override?.updatedAt ?? order.updatedAt ?? nowIso;
+  const nextDeliveryType = override?.deliveryType ?? order.deliveryType;
+  const nextRequestedDeliveryType = override?.requestedDeliveryType ?? order.requestedDeliveryType;
+  const nextActiveDeliveryType = override?.activeDeliveryType ?? order.activeDeliveryType;
+  const nextSellerDecisionState = override?.sellerDecisionState ?? order.sellerDecisionState;
+  const nextBuyerProgressStatus = override?.buyerProgressStatus ?? order.buyerProgressStatus ?? null;
+  const nextBuyerProgressAt = override?.buyerProgressAt ?? order.buyerProgressAt ?? null;
+  updateSellerOrderCacheItem(order.id, (row) => ({
+    ...row,
+    status: nextStatus,
+    updatedAt: nextUpdatedAt,
+    updated_at: nextUpdatedAt,
+    deliveryType: nextDeliveryType,
+    delivery_type: nextDeliveryType,
+    requestedDeliveryType: nextRequestedDeliveryType,
+    requested_delivery_type: nextRequestedDeliveryType,
+    activeDeliveryType: nextActiveDeliveryType,
+    active_delivery_type: nextActiveDeliveryType,
+    sellerDecisionState: nextSellerDecisionState,
+    seller_decision_state: nextSellerDecisionState,
+    buyerProgressStatus: nextBuyerProgressStatus,
+    buyer_progress_status: nextBuyerProgressStatus,
+    buyerProgressAt: nextBuyerProgressAt,
+    buyer_progress_at: nextBuyerProgressAt,
+  }));
 }
 
-const CANCELLABLE_STATUSES = ["pending_seller_approval", "pending_buyer_confirmation", "seller_approved", "awaiting_payment", "paid", "preparing", "ready", "in_delivery", "approaching", "at_door"];
+const CANCELLABLE_STATUSES = ["pending_seller_approval", "pending_buyer_confirmation"];
 const NON_MESSAGEABLE_STATUSES = ['cancelled', 'completed'];
 const DEFAULT_SELLER_DECISION_ETA_MINUTES = 30;
 
@@ -365,6 +387,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       if (!res.ok) throw new Error(json?.error?.message ?? t("error.seller.orderDetail.load"));
       const normalizedOrder = normalizeOrderDetail(json?.data, orderId);
       setOrder(normalizedOrder);
+      syncSellerOrderCache(normalizedOrder);
       await fetchNotes(normalizedOrder?.id, baseUrl);
     } catch (e) {
       Alert.alert(t("headline.common.error"), e instanceof Error ? e.message : t("error.seller.orderDetail.load"));
@@ -443,6 +466,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       if (res.ok) {
         const normalizedOrder = normalizeOrderDetail(json?.data, orderId);
         setOrder(normalizedOrder);
+        syncSellerOrderCache(normalizedOrder);
         await fetchNotes(normalizedOrder?.id);
       }
     } catch {
@@ -687,12 +711,13 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
           const pin = pinCode.trim();
           if (!/^\d{4,8}$/.test(pin)) throw new Error(t("error.seller.orderDetail.pinInvalid"));
           await verifyPin(pin);
-          markOrderCompletedInSellerCache(order.id);
+          syncSellerOrderCache(order, { status: "completed", buyerProgressStatus: null, buyerProgressAt: null });
           setOrder((prev) => (prev ? { ...prev, status: "completed" } : prev));
           // Backend transitions at_door → delivered → completed atomically.
           // No additional status calls needed here.
         } else {
           await changeStatus(action.toStatus);
+          syncSellerOrderCache(order, { status: action.toStatus });
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "";
