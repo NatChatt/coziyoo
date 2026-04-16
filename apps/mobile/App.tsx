@@ -599,7 +599,7 @@ export default function App() {
         auth={auth}
         orderId={selectedOrderId}
         onBack={() => { setScreen('orderDetail'); }}
-        onPaymentComplete={() => { setScreen('orderDetail'); }}
+        onPaymentComplete={() => { goHome('home'); }}
         onAuthRefresh={setAuth}
       />
     );
