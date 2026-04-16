@@ -741,12 +741,18 @@ export default function OrderDetailScreen({
       >
         {/* Status + Order No */}
         <View style={styles.topRow}>
-          <StatusBadge
-            status={isPendingBuyerProposal ? 'pending_buyer_confirmation' : buyerFlowStatus}
-            size="md"
-            deliveryType={order.deliveryType}
-            audience="buyer"
-          />
+          {order.status === 'completed' ? (
+            <View style={styles.completedHeaderChip}>
+              <Text style={styles.completedHeaderChipText}>Sipariş tamamlandı</Text>
+            </View>
+          ) : (
+            <StatusBadge
+              status={isPendingBuyerProposal ? 'pending_buyer_confirmation' : buyerFlowStatus}
+              size="md"
+              deliveryType={order.deliveryType}
+              audience="buyer"
+            />
+          )}
           <Text style={styles.orderNo}>{orderNo(order.id)}</Text>
         </View>
 
@@ -779,12 +785,6 @@ export default function OrderDetailScreen({
             ) : null}
           </View>
         ) : null}
-
-        {/* Seller */}
-        <View style={styles.section}>
-          <SectionDivider icon="storefront-outline" label="Satıcı" />
-          <Text style={styles.sectionValue}>{order.sellerName}</Text>
-        </View>
 
         {/* Items */}
         <View style={styles.section}>
@@ -1101,6 +1101,17 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   orderNo: { color: '#9B8E80', fontSize: 14, fontWeight: '600' },
+  completedHeaderChip: {
+    backgroundColor: '#EAF7EE',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  completedHeaderChipText: {
+    color: '#1F8B4C',
+    fontSize: 15,
+    fontWeight: '800',
+  },
   section: {
     marginBottom: 18,
     backgroundColor: '#FCFBF9',
