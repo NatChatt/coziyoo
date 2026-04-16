@@ -323,6 +323,7 @@ def _serialize_food_row(row, category_map, request=None):
             "name": row.get("seller_name"),
             "username": row.get("seller_username"),
             "image": row.get("seller_image"),
+            "tagline": row.get("seller_tagline"),
             "homeCardImage": row.get("seller_home_card_image"),
         },
     }
@@ -403,6 +404,7 @@ class FoodListView(APIView):
                 u.display_name AS seller_name,
                 u.username AS seller_username,
                 u.profile_image_url AS seller_image,
+                u.kitchen_description AS seller_tagline,
                 {seller_home_card_image_sql},
                 {_stock_sql("f")} AS stock
             FROM foods f
@@ -527,6 +529,7 @@ class SellerFoodsView(APIView):
                 u.display_name AS seller_name,
                 u.username AS seller_username,
                 u.profile_image_url AS seller_image,
+                u.kitchen_description AS seller_tagline,
                 {seller_home_card_image_sql},
                 {_stock_sql("f")} AS stock
             FROM foods f

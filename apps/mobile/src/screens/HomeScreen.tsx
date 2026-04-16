@@ -255,7 +255,7 @@ type ApiFoodItem = {
   cuisine?: string | null;
   lotId?: string | null;
   stock: number;
-  seller: { id: string; name: string; username?: string | null; image: string | null; homeCardImage?: string | null };
+  seller: { id: string; name: string; username?: string | null; image: string | null; tagline?: string | null; homeCardImage?: string | null };
 };
 
 type MealCard = {
@@ -265,6 +265,7 @@ type MealCard = {
   seller: string;
   sellerUsername?: string | null;
   sellerImage?: string | null;
+  sellerTagline?: string | null;
   sellerHomeCardImage?: string | null;
   allergens: string[];
   ingredients: string[];
@@ -1206,6 +1207,7 @@ function apiToMealCard(item: ApiFoodItem): MealCard {
     seller: item.seller.name,
     sellerUsername: item.seller.username ?? null,
     sellerImage: item.seller.image,
+    sellerTagline: item.seller.tagline ?? null,
     sellerHomeCardImage: item.seller.homeCardImage ?? null,
     allergens: normalizedAllergens,
     ingredients: item.ingredients ?? [],
@@ -1716,7 +1718,7 @@ function FoodCard({
   const hasAllergens = allergens.length > 0;
   const titleMetrics = resolveFoodPhotoTitleMetrics(meal.title);
   const sellerHandle = formatSellerIdentity(meal.seller, meal.sellerUsername);
-  const sellerTagline = 'Tencereden çıktığı gibi, sıcacık.';
+  const sellerTagline = String(meal.sellerTagline ?? '').trim() || 'Tencereden çıktığı gibi, sıcacık.';
   const ratingValue = Number(String(meal.rating ?? '').replace(',', '.'));
   const ratingBadgeText = Number.isFinite(ratingValue)
     ? Number(ratingValue).toFixed(1)
