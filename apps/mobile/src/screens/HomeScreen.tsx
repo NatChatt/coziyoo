@@ -108,7 +108,7 @@ import { theme } from '../theme/colors';
 import { formatPrice } from '../components/OrderCard';
 import ProfileEditScreen from './ProfileEditScreen';
 import AddressScreen from './AddressScreen';
-import { formatCopy, randomHomeGreetingSubtitle, requestErrorLine, t } from '../copy/brandCopy';
+import { type BrandCopyKey, formatCopy, randomHomeGreetingSubtitle, requestErrorLine, t } from '../copy/brandCopy';
 import { HOME_FEED_CATEGORIES } from '../constants/foodCategories';
 
 const AnimatedTouchableOpacity: any = Animated.createAnimatedComponent(RNTouchableOpacity as any);
@@ -772,9 +772,9 @@ function sleep(ms: number): Promise<void> {
 
 function buildGreetingTitle(name: string, date = new Date()): { text: string; emoji: string } {
   const hour = date.getHours();
-  if (hour < 12) return { text: `Günaydın, ${name}`, emoji: '🌞' };
-  if (hour < 18) return { text: `Tünaydın, ${name}`, emoji: '🌤' };
-  return { text: `İyi akşamlar, ${name}`, emoji: '🌙' };
+  if (hour < 12) return { text: t('headline.home.greetingMorning').replace('{name}', name), emoji: '🌞' };
+  if (hour < 18) return { text: t('headline.home.greetingAfternoon').replace('{name}', name), emoji: '🌤' };
+  return { text: t('headline.home.greetingEvening').replace('{name}', name), emoji: '🌙' };
 }
 
 function firstNameFromText(value: string | null | undefined): string | null {
@@ -1058,8 +1058,14 @@ const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   İçecekler: 'cafe-outline',
 };
 
-const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
-  Salata: 'Salatalar',
+const CATEGORY_KEYS: Record<string, BrandCopyKey> = {
+  'Tümü': 'category.all',
+  'Çorbalar': 'category.soups',
+  'Ana Yemekler': 'category.mainDishes',
+  'Salata': 'category.salads',
+  'Meze': 'category.meze',
+  'Tatlılar': 'category.desserts',
+  'İçecekler': 'category.drinks',
 };
 
 const LOCAL_HOME_HEADER_FALLBACK = require('../../assets/images/home-header-fallback.png');
@@ -2116,7 +2122,7 @@ export default function HomeScreen({
     return subscribeSettings((settings) => setAppLanguage(settings.language));
   }, []);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
-  const [selectedLocationLabel, setSelectedLocationLabel] = useState('Kadıköy • 2.5 km çevre');
+  const [selectedLocationLabel, setSelectedLocationLabel] = useState(() => `Kadıköy • 2.5 km ${t('helper.home.locationRadius')}`);
   const [headerImageSource, setHeaderImageSource] = useState<ImageSourcePropType>(() => (
     { uri: HERO_AKCABAT_IMAGE_URL }
   ));
@@ -3090,17 +3096,18 @@ export default function HomeScreen({
   }
 
   function applyLocationSelection(type: 'current' | 'home' | 'work' | 'new') {
+    const radius = t('helper.home.locationRadius');
     if (type === 'current') {
-      setSelectedLocationLabel('Kadıköy • 2.5 km çevre');
+      setSelectedLocationLabel(`Kadıköy • 2.5 km ${radius}`);
       setNearbyOnly(true);
     } else if (type === 'home') {
-      setSelectedLocationLabel('Ev • 4.0 km çevre');
+      setSelectedLocationLabel(`Ev • 4.0 km ${radius}`);
       setNearbyOnly(false);
     } else if (type === 'work') {
-      setSelectedLocationLabel('İş • 3.0 km çevre');
+      setSelectedLocationLabel(`İş • 3.0 km ${radius}`);
       setNearbyOnly(false);
     } else {
-      setSelectedLocationLabel('Yeni adres • 5.0 km çevre');
+      setSelectedLocationLabel(`Yeni adres • 5.0 km ${radius}`);
       setNearbyOnly(false);
     }
     setLocationModalVisible(false);
@@ -4043,14 +4050,14 @@ export default function HomeScreen({
                   ref={searchInputRef}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  placeholder="Yemek ara..."
+                  placeholder={t('helper.home.searchPlaceholder')}
                   placeholderTextColor="#BDBDBD"
                   style={styles.floatingSearchInput}
                   returnKeyType="search"
                   autoFocus
                 />
               ) : (
-                <Text style={styles.floatingSearchPlaceholder}>Yemek ara...</Text>
+                <Text style={styles.floatingSearchPlaceholder}>{t('helper.home.searchPlaceholder')}</Text>
               )}
               {searchMode ? (
                 <TouchableOpacity
@@ -4087,7 +4094,7 @@ export default function HomeScreen({
                   style={{ marginRight: 6 }}
                 />
                 <Text style={[styles.chipText, activeCategory === cat && styles.chipTextActive]}>
-                  {CATEGORY_DISPLAY_NAMES[cat] || cat}
+                  {CATEGORY_KEYS[cat] ? t(CATEGORY_KEYS[cat]) : cat}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -4096,7 +4103,7 @@ export default function HomeScreen({
         {showHomeOrderPromo ? renderQuickOrderCard('home') : renderPromoFallbackCard('home')}
         <View onLayout={(e) => setFoodSectionOffsetY(e.nativeEvent.layout.y)} />
         <View style={styles.recommendationsSection}>
-          <Text style={styles.recommendationsSectionTitle}>Öneriler</Text>
+          <Text style={styles.recommendationsSectionTitle}>{t('status.home.recommendations')}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -4106,7 +4113,7 @@ export default function HomeScreen({
             {recommendedMealsLoading ? (
               <View style={styles.topSoldLoadingChip}>
                 <ActivityIndicator size="small" color="#4A7C59" />
-                <Text style={styles.topSoldLoadingText}>Öneriler hazırlanıyor...</Text>
+                <Text style={styles.topSoldLoadingText}>{t('status.home.recommendationsLoading')}</Text>
               </View>
             ) : null}
             {!recommendedMealsLoading && visibleRecommendedMeals.length === 0 ? (
