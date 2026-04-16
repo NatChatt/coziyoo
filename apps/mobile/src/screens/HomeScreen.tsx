@@ -1812,15 +1812,13 @@ function FoodCard({
               </Text>
             ) : null}
           </View>
-          <View style={styles.foodBadgesLeft}>
-            <View style={styles.foodRatingBadge}>
-              <Ionicons name="star" size={14} color="#F2B23A" />
-              <Text style={styles.foodRatingBadgeText}>{ratingBadgeText}</Text>
-            </View>
-          </View>
           <View style={styles.foodBadgesRight}>
             <View style={styles.foodPriceBadge}>
               <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
+            </View>
+            <View style={styles.foodRatingBadge}>
+              <Ionicons name="star" size={14} color="#F2B23A" />
+              <Text style={styles.foodRatingBadgeText}>{ratingBadgeText}</Text>
             </View>
           </View>
         </View>
@@ -6369,13 +6367,6 @@ const styles = StyleSheet.create({
     right: 14,
     alignItems: 'flex-end',
     gap: 8,
-    zIndex: 7,
-  },
-  foodBadgesLeft: {
-    position: 'absolute',
-    top: 14,
-    left: 14,
-    alignItems: 'flex-start',
     zIndex: 7,
   },
   foodRatingBadge: {
