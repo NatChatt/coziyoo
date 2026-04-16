@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, AppState, Easing, FlatList, PanResponder, Platform, SectionList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, AppState, Easing, KeyboardAvoidingView, Modal, FlatList, PanResponder, Platform, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import type { AuthSession } from "../utils/auth";
 import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
@@ -388,6 +388,10 @@ export default function SellerHomeScreen({
   const [newOrderUntilById, setNewOrderUntilById] = useState<Record<string, number>>({});
   const [clockMs, setClockMs] = useState(() => Date.now());
   const [sellerCountryCode, setSellerCountryCode] = useState<string>(() => normalizeCountryCode(getSellerMeCache()?.countryCode ?? ""));
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pinCode, setPinCode] = useState("");
+  const [pinOrderId, setPinOrderId] = useState<string | null>(null);
+  const [pinSubmitting, setPinSubmitting] = useState(false);
   const appStateRef = useRef(AppState.currentState);
   const deliveredEmojiScale = useRef(new Animated.Value(0.4)).current;
   const deliveredEmojiOpacity = useRef(new Animated.Value(0)).current;
@@ -795,6 +799,49 @@ export default function SellerHomeScreen({
     }
   }
 
+  async function verifyPinFromHome(): Promise<void> {
+    const activeOrderId = String(pinOrderId ?? "").trim();
+    const pin = pinCode.trim();
+    if (!activeOrderId) return;
+    if (!/^\d{4,8}$/.test(pin)) {
+      Alert.alert(t('headline.common.error'), t('error.seller.orderDetail.pinInvalid'));
+      return;
+    }
+    setPinSubmitting(true);
+    actionInFlightRef.current[activeOrderId] = true;
+    setUpdatingOrderId(activeOrderId);
+    try {
+      const res = await fetchWithAuthInit(
+        `/v1/orders/${activeOrderId}/delivery-proof/pin/verify`,
+        {
+          method: "POST",
+          body: JSON.stringify({ pin }),
+        },
+        apiUrl,
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error?.message ?? t('error.seller.orderDetail.pinVerify'));
+
+      const nowIso = new Date().toISOString();
+      setOrders((prev) => prev.map((item) => (
+        item.id === activeOrderId
+          ? { ...item, status: "completed", updatedAt: nowIso, buyerProgressStatus: null, buyerProgressAt: null }
+          : item
+      )));
+      syncSellerOrderStatusCache(activeOrderId, { status: "completed", updatedAt: nowIso });
+      setPinModalVisible(false);
+      setPinCode("");
+      setPinOrderId(null);
+      await load();
+    } catch (error) {
+      Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.seller.orderDetail.pinCheck'));
+    } finally {
+      delete actionInFlightRef.current[activeOrderId];
+      setUpdatingOrderId(null);
+      setPinSubmitting(false);
+    }
+  }
+
   const initials = displayName
     .split(" ")
     .slice(0, 2)
@@ -1098,7 +1145,9 @@ export default function SellerHomeScreen({
                           } else if (action) {
                             void runCardAction(item.id, action);
                           } else if (isDoorStep) {
-                            onOpenOrder(item.id);
+                            setPinOrderId(item.id);
+                            setPinCode("");
+                            setPinModalVisible(true);
                           }
                         }}
                       >
@@ -1209,6 +1258,51 @@ export default function SellerHomeScreen({
         />
       )}
       </View>
+      <Modal visible={pinModalVisible} transparent animationType="fade" onRequestClose={() => setPinModalVisible(false)}>
+        <KeyboardAvoidingView
+          style={styles.pinModalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <TouchableOpacity style={styles.pinModalBackdrop} activeOpacity={1} onPress={() => setPinModalVisible(false)} />
+          <View style={styles.pinModalCard}>
+            <Text style={styles.pinModalTitle}>{t("headline.seller.orderDetail.pinModalTitle")}</Text>
+            <Text style={styles.pinModalSub}>{t("helper.seller.orderDetail.pinModalSubtitle")}</Text>
+            <TextInput
+              style={styles.pinInput}
+              value={pinCode}
+              onChangeText={(value) => setPinCode(value.replace(/[^0-9]/g, "").slice(0, 8))}
+              keyboardType="number-pad"
+              maxLength={8}
+              placeholder={t("helper.seller.orderDetail.pinPlaceholder")}
+              placeholderTextColor="#9C8E81"
+              editable={!pinSubmitting}
+              autoFocus
+            />
+            <View style={styles.pinModalActions}>
+              <TouchableOpacity
+                style={[styles.pinModalBtn, styles.pinModalCancelBtn]}
+                onPress={() => setPinModalVisible(false)}
+                disabled={pinSubmitting}
+              >
+                <Text style={styles.pinModalCancelText}>{t("cta.common.cancel")}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.pinModalBtn,
+                  styles.pinModalConfirmBtn,
+                  (pinSubmitting || pinCode.trim().length < 4) && styles.cardActionBtnDisabled,
+                ]}
+                onPress={() => { void verifyPinFromHome(); }}
+                disabled={pinSubmitting || pinCode.trim().length < 4}
+              >
+                <Text style={styles.pinModalConfirmText}>
+                  {pinSubmitting ? t("status.seller.orderDetail.verifying") : t("cta.seller.orderDetail.confirmVerify")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -1508,6 +1602,52 @@ const styles = StyleSheet.create({
   cardActionBtnApprove: { backgroundColor: "#C8E6C9", borderColor: "#81C784" },
   cardActionBtnReject: { backgroundColor: "#FFCDD2", borderColor: "#E57373", flex: 0.7 },
   cardActionBtnRejectText: { color: "#B71C1C" },
+  pinModalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    backgroundColor: "rgba(20, 16, 12, 0.18)",
+  },
+  pinModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  pinModalCard: {
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 18,
+    backgroundColor: "#FFFDF9",
+    borderWidth: 1,
+    borderColor: "#E7DCCE",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  pinModalTitle: { color: "#2E241C", fontWeight: "800", fontSize: 17 },
+  pinModalSub: { color: "#6C6055", marginTop: 4 },
+  pinInput: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#DCCFBF",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: "#2E241C",
+    fontWeight: "600",
+    letterSpacing: 1.5,
+  },
+  pinModalActions: { flexDirection: "row", gap: 8, marginTop: 10 },
+  pinModalBtn: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinModalCancelBtn: { backgroundColor: "#F6F1E8", borderColor: "#DCCFBF" },
+  pinModalConfirmBtn: { backgroundColor: "#3F855C", borderColor: "#3F855C" },
+  pinModalCancelText: { color: "#5B4F43", fontWeight: "700" },
+  pinModalConfirmText: { color: "#fff", fontWeight: "700" },
   actions: { gap: 12, marginTop: 8 },
   switchRoleButton: {
     height: 48,
