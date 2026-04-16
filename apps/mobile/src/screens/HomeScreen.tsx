@@ -603,6 +603,10 @@ function latestHomeOrderHint(status: string): string {
   if (normalized === 'pending_seller_approval' || normalized === 'pending_buyer_confirmation' || normalized === 'seller_approved' || normalized === 'awaiting_payment' || normalized === 'paid') {
     return t('helper.orders.quickPendingSubtitle');
   }
+  if (normalized === 'ready') return t('helper.orders.quickReadySubtitle');
+  if (normalized === 'in_delivery') return t('helper.orders.quickInDeliverySubtitle');
+  if (normalized === 'approaching') return t('helper.orders.quickApproachingSubtitle');
+  if (normalized === 'at_door') return t('helper.orders.quickAtDoorSubtitle');
   return t('helper.orders.quickPreparingSubtitle');
 }
 
@@ -2627,7 +2631,7 @@ export default function HomeScreen({
     if (buyerOrdersPollRef.current) return; // already polling
     buyerOrdersPollRef.current = setInterval(() => {
       void fetchRecentBuyerOrders();
-    }, 8_000);
+    }, 2_000);
     return () => {
       if (buyerOrdersPollRef.current) {
         clearInterval(buyerOrdersPollRef.current);
