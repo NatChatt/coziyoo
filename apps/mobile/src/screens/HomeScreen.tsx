@@ -2105,17 +2105,7 @@ export default function HomeScreen({
   );
   const actionableHomeOrders = useMemo<HomeOrderSummary[]>(() => {
     const sortedOrders = [...recentBuyerOrders].sort((a, b) => homeOrderTime(b) - homeOrderTime(a));
-    const mappedActionable = sortedOrders
-      .filter((order) => isHomeActionableOrderStatus(order.status))
-      .map((order) => {
-        if (
-          paymentStatus?.orderId === order.id &&
-          isHomeActionableOrderStatus(paymentStatus.orderStatus)
-        ) {
-          return { ...order, status: paymentStatus.orderStatus };
-        }
-        return order;
-      });
+    const mappedActionable = sortedOrders.filter((order) => isHomeActionableOrderStatus(order.status));
 
     const fallbackOrderId = paymentStatus?.orderId || activeOrderIds[0] || activeOrderId;
     if (!fallbackOrderId) return mappedActionable;
