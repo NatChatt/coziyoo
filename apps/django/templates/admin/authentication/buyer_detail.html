@@ -126,32 +126,32 @@
     <div x-show="tab === 'general'" class="space-y-6 p-4 sm:p-6">
       {# Summary KPI cards #}
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl px-5 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-blue-500 dark:text-blue-400">shopping_bag</span>
+        <div class="bg-base-900/70 border border-base-600 rounded-xl px-5 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-sky-400">shopping_bag</span>
           <div>
-            <div class="text-xs font-medium text-blue-600 dark:text-blue-300 uppercase tracking-wide">{% trans "Toplam Sipariş" %}</div>
-            <div class="text-2xl font-bold text-blue-800 dark:text-blue-100">{{ summary.total_orders }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Toplam Sipariş" %}</div>
+            <div class="text-2xl font-bold text-white">{{ summary.total_orders }}</div>
           </div>
         </div>
-        <div class="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl px-5 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-emerald-500 dark:text-emerald-400">payments</span>
+        <div class="bg-base-900/70 border border-base-600 rounded-xl px-5 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-emerald-400">payments</span>
           <div>
-            <div class="text-xs font-medium text-emerald-600 dark:text-emerald-300 uppercase tracking-wide">{% trans "Toplam Harcama" %}</div>
-            <div class="text-2xl font-bold text-emerald-800 dark:text-emerald-100">₺{{ summary.total_spent|floatformat:2 }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Toplam Harcama" %}</div>
+            <div class="text-2xl font-bold text-white">₺{{ summary.total_spent|floatformat:2 }}</div>
           </div>
         </div>
-        <div class="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl px-5 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-rose-500 dark:text-rose-400">report</span>
+        <div class="bg-base-900/70 border border-base-600 rounded-xl px-5 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-rose-400">report</span>
           <div>
-            <div class="text-xs font-medium text-rose-600 dark:text-rose-300 uppercase tracking-wide">{% trans "Şikayetler" %}</div>
-            <div class="text-2xl font-bold text-rose-800 dark:text-rose-100">{{ summary.complaint_unresolved }} / {{ summary.complaint_total }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Şikayetler" %}</div>
+            <div class="text-2xl font-bold text-white">{{ summary.complaint_unresolved }} / {{ summary.complaint_total }}</div>
           </div>
         </div>
-        <div class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-amber-500 dark:text-amber-400">star</span>
+        <div class="bg-base-900/70 border border-base-600 rounded-xl px-5 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-amber-400">star</span>
           <div>
-            <div class="text-xs font-medium text-amber-600 dark:text-amber-300 uppercase tracking-wide">{% trans "Yorumlar" %}</div>
-            <div class="text-2xl font-bold text-amber-800 dark:text-amber-100">{{ summary.review_count }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Yorumlar" %}</div>
+            <div class="text-2xl font-bold text-white">{{ summary.review_count }}</div>
           </div>
         </div>
       </div>
