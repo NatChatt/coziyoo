@@ -1904,10 +1904,10 @@ function FoodCard({
                   </View>
                 </View>
                 <View style={styles.foodFooterSellerText}>
-                  <Text numberOfLines={1} style={styles.foodFooterSellerHandle}>
+                  <Text style={styles.foodFooterSellerHandle}>
                     {sellerHandle}
                   </Text>
-                  <Text numberOfLines={1} style={styles.foodFooterSellerMeta}>
+                  <Text style={styles.foodFooterSellerMeta}>
                     {sellerMeta}
                   </Text>
                 </View>
@@ -6312,14 +6312,14 @@ const styles = StyleSheet.create({
 
   /* --- Food card --- */
   foodCardWrap: {
-    marginBottom: 16,
+    marginBottom: 12,
     marginHorizontal: 10,
     borderRadius: 30,
     shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 6,
   },
   foodCard: {
     borderWidth: 1,
@@ -6329,7 +6329,7 @@ const styles = StyleSheet.create({
   },
   foodPhoto: {
     width: '100%',
-    height: 248,
+    height: 208,
     overflow: 'hidden',
     backgroundColor: '#B96C44',
   },
@@ -6345,7 +6345,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 128,
+    height: 110,
   },
   foodPhotoBottomGradientFill: {
     width: '100%',
@@ -6356,22 +6356,22 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 118,
+    height: 102,
     backgroundColor: 'rgba(0,0,0,0.2)',
   },
   foodBadgesRight: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 14,
+    right: 14,
     alignItems: 'flex-end',
     gap: 8,
     zIndex: 7,
   },
   foodPhotoTitleOverlay: {
     position: 'absolute',
-    left: 22,
-    right: 18,
-    bottom: 18,
+    left: 18,
+    right: 16,
+    bottom: 14,
     zIndex: 7,
   },
   foodPhotoTitleText: {
@@ -6404,10 +6404,10 @@ const styles = StyleSheet.create({
   foodPriceBadge: {
     backgroundColor: 'rgba(51,36,27,0.9)',
     borderRadius: 18,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
   },
-  foodPriceBadgeText: { color: '#FFFFFF', fontSize: 18, fontWeight: '900' },
+  foodPriceBadgeText: { color: '#FFFFFF', fontSize: 17, fontWeight: '900' },
   foodInfo: {
     backgroundColor: '#FFF8F0',
     borderTopWidth: 1,
@@ -6415,23 +6415,23 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   foodInfoContent: {
-    paddingTop: 18,
-    paddingBottom: 15,
-    paddingHorizontal: 18,
-    minHeight: 196,
+    paddingTop: 14,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    minHeight: 168,
     overflow: 'visible',
   },
   foodInfoLine: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 10,
   },
   foodInfoLead: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 8,
     minWidth: 0,
   },
   foodInfoIconBubble: {
@@ -6454,7 +6454,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 8,
+    justifyContent: 'flex-end',
   },
   foodInfoAlertTextWrap: {
     flex: 1,
@@ -6468,27 +6469,29 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   foodInfoInlineBadgeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
   },
   foodInfoTitle: {
     color: '#433126',
     fontSize: 13,
     fontWeight: '800',
+    lineHeight: 16,
   },
   foodInfoSubtitle: {
     marginTop: 2,
     color: '#7B6758',
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 15,
   },
   foodInfoAlertTitle: {
     color: '#B13B2E',
   },
   foodStatsRow: {
-    marginTop: 2,
-    paddingTop: 2,
-    paddingBottom: 14,
+    marginTop: 0,
+    paddingTop: 0,
+    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'stretch',
   },
@@ -6496,7 +6499,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 8,
   },
   foodStatIconBubble: {
     width: 34,
@@ -6514,26 +6517,28 @@ const styles = StyleSheet.create({
     color: '#3E3025',
     fontSize: 13,
     fontWeight: '800',
+    lineHeight: 16,
   },
   foodStatLabel: {
     marginTop: 2,
     color: '#8B7768',
     fontSize: 11,
     fontWeight: '600',
+    lineHeight: 14,
   },
   foodStatDivider: {
     width: 1,
     backgroundColor: 'rgba(112,88,68,0.16)',
-    marginHorizontal: 14,
+    marginHorizontal: 10,
   },
   foodFooterRow: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(112,88,68,0.16)',
-    paddingTop: 12,
+    paddingTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: 8,
     overflow: 'visible',
   },
   foodFooterSeller: {
@@ -6545,12 +6550,12 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   foodSellerThumbWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 46,
+    height: 46,
+    borderRadius: 12,
     position: 'relative',
     zIndex: 12,
-    transform: [{ translateY: -16 }],
+    transform: [{ translateY: -12 }],
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -6560,7 +6565,7 @@ const styles = StyleSheet.create({
   foodSellerThumb: {
     width: '100%',
     height: '100%',
-    borderRadius: 14,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 0.7,
     borderColor: 'rgba(141,128,114,0.24)',
@@ -6581,17 +6586,19 @@ const styles = StyleSheet.create({
     color: '#33241C',
     fontSize: 13,
     fontWeight: '900',
+    lineHeight: 16,
   },
   foodFooterSellerMeta: {
     marginTop: 2,
     color: '#7D695A',
     fontSize: 12,
     fontWeight: '600',
+    lineHeight: 15,
   },
   foodFooterFavoriteBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     borderWidth: 1.5,
     borderColor: '#DFAEAB',
     backgroundColor: '#FFF7F5',
