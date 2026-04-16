@@ -1914,25 +1914,26 @@ function FoodCard({
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                activeOpacity={0.82}
-                onPress={(event) => {
-                  event.stopPropagation();
-                  onFavoritePress();
-                }}
-                style={[
-                  styles.foodFooterFavoriteBtn,
-                  isFavorite && styles.foodFooterFavoriteBtnActive,
-                ]}
-                disabled={favoritePending}
-              >
-                <Ionicons
-                  name={isFavorite ? 'heart' : 'heart-outline'}
-                  size={22}
-                  color={isFavorite ? '#B8302C' : '#B85C58'}
-                />
-              </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              activeOpacity={0.82}
+              onPress={(event) => {
+                event.stopPropagation();
+                onFavoritePress();
+              }}
+              style={[
+                styles.foodFooterFavoriteBtn,
+                styles.foodFooterFavoriteBtnFloating,
+                isFavorite && styles.foodFooterFavoriteBtnActive,
+              ]}
+              disabled={favoritePending}
+            >
+              <Ionicons
+                name={isFavorite ? 'heart' : 'heart-outline'}
+                size={22}
+                color={isFavorite ? '#B8302C' : '#B85C58'}
+              />
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </View>
@@ -6432,8 +6433,9 @@ const styles = StyleSheet.create({
   },
   foodInfoContent: {
     paddingTop: 12,
-    paddingBottom: 10,
+    paddingBottom: 14,
     paddingHorizontal: 16,
+    position: 'relative',
     overflow: 'visible',
   },
   foodInfoMainRow: {
@@ -6592,9 +6594,10 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(112,88,68,0.16)',
     marginTop: 10,
     paddingTop: 8,
+    paddingRight: 58,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: 8,
     overflow: 'visible',
   },
@@ -6661,6 +6664,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF7F5',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  foodFooterFavoriteBtnFloating: {
+    position: 'absolute',
+    right: 16,
+    bottom: 10,
   },
   foodFooterFavoriteBtnActive: {
     backgroundColor: '#FFE8E6',
