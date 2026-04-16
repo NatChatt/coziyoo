@@ -74,6 +74,19 @@ try {
 } catch {
   // Optional at runtime; local-region sampling falls back to defaults when unavailable.
 }
+let fileSystemCacheDirectory: string | null = null;
+let fileSystemWriteAsStringAsync: null | ((fileUri: string, contents: string, options?: { encoding?: string }) => Promise<void>) = null;
+let fileSystemGetInfoAsync: null | ((fileUri: string) => Promise<{ exists: boolean }>) = null;
+let fileSystemEncodingTypeBase64: string | null = null;
+try {
+  const fileSystem = require('expo-file-system');
+  fileSystemCacheDirectory = fileSystem.cacheDirectory ?? null;
+  fileSystemWriteAsStringAsync = fileSystem.writeAsStringAsync ?? null;
+  fileSystemGetInfoAsync = fileSystem.getInfoAsync ?? null;
+  fileSystemEncodingTypeBase64 = fileSystem.EncodingType?.Base64 ?? 'base64';
+} catch {
+  // Optional at runtime; inline image files fall back when unavailable.
+}
 let PaymentWebView: React.ComponentType<{
   source: { uri: string };
   onNavigationStateChange?: (state: { url?: string }) => void;
@@ -1002,6 +1015,21 @@ function isInlineBase64ImageUri(value: string | null | undefined): value is stri
   return raw.startsWith('data:image/') && raw.includes(';base64,');
 }
 
+function hashInlineImageUri(value: string): string {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function inlineImageExtension(value: string): string {
+  const lower = value.toLocaleLowerCase('en-US');
+  if (lower.startsWith('data:image/png')) return 'png';
+  if (lower.startsWith('data:image/webp')) return 'webp';
+  return 'jpg';
+}
+
 const CATEGORY_BG_COLORS: Record<string, string> = {
   Çorbalar: '#F1DED0',
   'Ana Yemekler': '#D8E5D8',
@@ -1144,7 +1172,7 @@ function resolveSecondaryDishImage(title: string, category: string | null): stri
 
 function apiToMealCard(item: ApiFoodItem): MealCard {
   const uiCategory = inferUiCategory(item);
-  const normalizedImageUrls = [...(Array.isArray(item.imageUrls) ? item.imageUrls : []), item.imageUrl ?? '']
+  const normalizedImageUrls = [item.imageUrl ?? '', ...(Array.isArray(item.imageUrls) ? item.imageUrls : [])]
     .map((value) => String(value ?? '').trim())
     .filter(Boolean)
     .slice(0, 5);
@@ -1604,7 +1632,7 @@ function FoodCard({
       return;
     }
 
-    if (!isInlineBase64ImageUri(activeImageUrl) || !manipulateAsync || !ManipulatorSaveFormat) {
+    if (!isInlineBase64ImageUri(activeImageUrl)) {
       setRenderableImageUri(activeImageUrl);
       return;
     }
@@ -1620,17 +1648,48 @@ function FoodCard({
 
     const materializeInlineImage = async () => {
       try {
-        const format = activeImageUrl.startsWith('data:image/png')
-          ? ManipulatorSaveFormat.PNG
-          : ManipulatorSaveFormat.JPEG;
-        const result = await manipulateAsync(
-          activeImageUrl,
-          [],
-          { compress: 1, format, base64: false },
-        );
-        if (cancelled || !result?.uri) return;
-        FOOD_CARD_RENDER_URI_CACHE.set(activeImageUrl, result.uri);
-        setRenderableImageUri(result.uri);
+        const commaIndex = activeImageUrl.indexOf(',');
+        if (commaIndex <= 0) {
+          setRenderableImageUri(activeImageUrl);
+          return;
+        }
+        const base64Payload = activeImageUrl.slice(commaIndex + 1);
+        if (
+          fileSystemCacheDirectory &&
+          fileSystemWriteAsStringAsync &&
+          fileSystemGetInfoAsync &&
+          fileSystemEncodingTypeBase64
+        ) {
+          const extension = inlineImageExtension(activeImageUrl);
+          const fileUri = `${fileSystemCacheDirectory}food-card-${hashInlineImageUri(activeImageUrl)}.${extension}`;
+          const info = await fileSystemGetInfoAsync(fileUri);
+          if (!info.exists) {
+            await fileSystemWriteAsStringAsync(fileUri, base64Payload, {
+              encoding: fileSystemEncodingTypeBase64,
+            });
+          }
+          if (cancelled) return;
+          FOOD_CARD_RENDER_URI_CACHE.set(activeImageUrl, fileUri);
+          setRenderableImageUri(fileUri);
+          return;
+        }
+
+        if (manipulateAsync && ManipulatorSaveFormat) {
+          const format = activeImageUrl.startsWith('data:image/png')
+            ? ManipulatorSaveFormat.PNG
+            : ManipulatorSaveFormat.JPEG;
+          const result = await manipulateAsync(
+            activeImageUrl,
+            [],
+            { compress: 1, format, base64: false },
+          );
+          if (cancelled || !result?.uri) return;
+          FOOD_CARD_RENDER_URI_CACHE.set(activeImageUrl, result.uri);
+          setRenderableImageUri(result.uri);
+          return;
+        }
+
+        setRenderableImageUri(activeImageUrl);
       } catch {
         if (!cancelled) {
           setRenderableImageUri(null);

@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
+from apps.foods.views import FoodImageView
 from coziyoo.admin_search import admin_global_search
 from coziyoo.dashboard_views import dashboard_data
 
@@ -12,6 +13,7 @@ urlpatterns = [
     path("admin/global-search/", admin_global_search, name="admin_global_search"),
     path("admin/dashboard/data/", admin.site.admin_view(dashboard_data), name="admin_dashboard_data"),
     path("admin/", admin.site.urls),
+    path("food-images/<uuid:food_id>", FoodImageView.as_view(), name="food-public-image"),
     path("i18n/", include("django.conf.urls.i18n")),
 
     # REST API v1

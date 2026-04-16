@@ -2,9 +2,13 @@
 Public food browsing views for the app realm.
 All endpoints require a valid JWT with realm == 'app'.
 """
+import base64
+import binascii
 import json
 
 from django.db import connection
+from django.http import HttpResponse, HttpResponseRedirect
+from django.urls import reverse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -103,6 +107,33 @@ def _resolve_primary_food_image(image_urls_value, image_url_fallback):
         return image_urls[0]
     fallback = str(image_url_fallback or "").strip()
     return fallback if _is_supported_image_source(fallback) else None
+
+
+def _public_food_image_url(request, food_id):
+    if request is None or food_id is None:
+        return None
+    return request.build_absolute_uri(reverse("food-public-image", args=[food_id]))
+
+
+def _resolve_food_image_for_client(request, food_id, image_urls_value, image_url_fallback):
+    primary = _resolve_primary_food_image(image_urls_value, image_url_fallback)
+    if not primary:
+        return None
+    if primary.startswith("data:image/"):
+        return _public_food_image_url(request, food_id)
+    return primary
+
+
+def _decode_inline_image(data_uri):
+    raw = str(data_uri or "").strip()
+    if not raw.startswith("data:image/") or ";base64," not in raw:
+        return None, None
+    header, base64_payload = raw.split(",", 1)
+    content_type = header.split(";", 1)[0][5:] or "image/jpeg"
+    try:
+        return base64.b64decode(base64_payload), content_type
+    except (binascii.Error, ValueError):
+        return None, None
 
 
 def _parse_menu_items(value, category_map):
@@ -247,7 +278,7 @@ def _load_category_map(category_ids):
     }
 
 
-def _serialize_food_row(row, category_map):
+def _serialize_food_row(row, category_map, request=None):
     image_urls = _parse_image_urls(row.get("image_urls_json"))
     ingredients = _parse_text_list(row.get("ingredients_json"))
     allergens = _parse_text_list(row.get("allergens_json"))
@@ -260,7 +291,12 @@ def _serialize_food_row(row, category_map):
         "price": float(row.get("price") or 0),
         "deliveryFee": 0,
         "deliveryOptions": _seller_delivery_options(row.get("seller_delivery_enabled")),
-        "imageUrl": _resolve_primary_food_image(row.get("image_urls_json"), row.get("image_url")),
+        "imageUrl": _resolve_food_image_for_client(
+            request,
+            row.get("id"),
+            row.get("image_urls_json"),
+            row.get("image_url"),
+        ),
         "imageUrls": image_urls,
         "rating": f"{float(row['rating']):.1f}" if row.get("rating") is not None else None,
         "reviewCount": int(row.get("review_count") or 0),
@@ -384,7 +420,7 @@ class FoodListView(APIView):
             for secondary_id in _coerce_json(item.get("secondary_category_ids_json")) or []:
                 category_ids.append(secondary_id)
         category_map = _load_category_map(category_ids)
-        return Response({"data": [_serialize_food_row(item, category_map) for item in items]})
+        return Response({"data": [_serialize_food_row(item, category_map, request) for item in items]})
 
 
 class TopSoldFoodsView(APIView):
@@ -508,7 +544,44 @@ class SellerFoodsView(APIView):
             for secondary_id in _coerce_json(item.get("secondary_category_ids_json")) or []:
                 category_ids.append(secondary_id)
         category_map = _load_category_map(category_ids)
-        return Response({"data": [_serialize_food_row(item, category_map) for item in items]})
+        return Response({"data": [_serialize_food_row(item, category_map, request) for item in items]})
+
+
+class FoodImageView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request, food_id):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    SELECT image_url, image_urls_json
+                    FROM foods
+                    WHERE id = %s
+                    LIMIT 1
+                """,
+                [food_id],
+            )
+            row = cursor.fetchone()
+
+        if not row:
+            return HttpResponse(status=404)
+
+        image_url, image_urls_json = row
+        primary = _resolve_primary_food_image(image_urls_json, image_url)
+        if not primary:
+            return HttpResponse(status=404)
+
+        if primary.startswith(("http://", "https://")):
+            return HttpResponseRedirect(primary)
+
+        image_bytes, content_type = _decode_inline_image(primary)
+        if not image_bytes or not content_type:
+            return HttpResponse(status=404)
+
+        response = HttpResponse(image_bytes, content_type=content_type)
+        response["Cache-Control"] = "public, max-age=86400"
+        return response
 
 
 class SellerAddressView(APIView):
