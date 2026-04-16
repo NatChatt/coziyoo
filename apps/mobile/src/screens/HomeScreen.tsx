@@ -6378,7 +6378,7 @@ const styles = StyleSheet.create({
   },
   cartBottomBar: {
     paddingTop: 8,
-    paddingBottom: 86,
+    paddingBottom: 10,
     backgroundColor: '#F7F4EF',
   },
   cartDeliveryFeeRow: {
