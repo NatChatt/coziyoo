@@ -1729,9 +1729,6 @@ function FoodCard({
   const ratingBadgeText = Number.isFinite(ratingValue)
     ? Number(ratingValue).toFixed(1)
     : '0.0';
-  const socialProofText = Number.isFinite(ratingValue) && ratingValue > 0
-    ? t('status.home.foodCard.socialProofRated').replace('{rating}', Number(ratingValue).toFixed(1))
-    : t('status.home.foodCard.socialProofPopular');
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -1857,9 +1854,6 @@ function FoodCard({
                 <View style={styles.foodInfoTextWrap}>
                   <Text style={styles.foodInfoTitle}>
                     {stockSummary || t('status.home.foodCard.preparingToday')}
-                  </Text>
-                  <Text style={styles.foodInfoSubtitle}>
-                    {socialProofText}
                   </Text>
                 </View>
               </View>
