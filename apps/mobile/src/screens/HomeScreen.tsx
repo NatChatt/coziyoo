@@ -1601,9 +1601,7 @@ function FoodCard({
   const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
     ? `Son ${meal.stock} porsiyon`
     : '';
-  const allergenSummary = allergens.length > 0
-    ? `Alerjen: ${allergens.slice(0, 2).join(', ')}`
-    : '';
+  const hasAllergens = allergens.length > 0;
   const titleMetrics = resolveFoodPhotoTitleMetrics(meal.title);
   const sellerHandle = formatSellerIdentity(meal.seller, meal.sellerUsername);
   const sellerMeta = (() => {
@@ -1723,19 +1721,17 @@ function FoodCard({
                   {socialProofText}
                 </Text>
               </View>
-            </View>
-            {allergenSummary ? (
-              <View style={styles.foodInfoLine}>
-                <View style={[styles.foodInfoIconBubble, styles.foodInfoIconBubbleAlert]}>
-                  <Ionicons name="warning-outline" size={16} color="#B13B2E" />
-                </View>
-                <View style={styles.foodInfoTextWrap}>
-                  <Text style={[styles.foodInfoTitle, styles.foodInfoAlertTitle]} numberOfLines={1}>
-                    {allergenSummary}
+              {hasAllergens ? (
+                <View style={styles.foodInfoInlineBadge}>
+                  <View style={[styles.foodInfoIconBubble, styles.foodInfoIconBubbleAlert]}>
+                    <Ionicons name="warning-outline" size={16} color="#B13B2E" />
+                  </View>
+                  <Text style={[styles.foodInfoInlineBadgeText, styles.foodInfoAlertTitle]} numberOfLines={1}>
+                    Alerjen içerir
                   </Text>
                 </View>
-              </View>
-            ) : null}
+              ) : null}
+            </View>
             <View style={styles.foodStatsRow}>
               <View style={styles.foodStatItem}>
                 <View style={styles.foodStatIconBubble}>
@@ -6325,6 +6321,17 @@ const styles = StyleSheet.create({
   foodInfoTextWrap: {
     flex: 1,
     minWidth: 0,
+  },
+  foodInfoInlineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 10,
+    maxWidth: '48%',
+  },
+  foodInfoInlineBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   foodInfoTitle: {
     color: '#433126',
