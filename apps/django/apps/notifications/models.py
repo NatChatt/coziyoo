@@ -36,9 +36,9 @@ class UserDeviceTokens(models.Model):
 
 class Chats(models.Model):
     id = models.UUIDField(primary_key=True)
-    buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING)
-    seller = models.ForeignKey('authentication.Users', models.DO_NOTHING, related_name='chats_seller_set')
-    order = models.ForeignKey('orders.Orders', models.DO_NOTHING, blank=True, null=True)
+    buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING, related_name='buyer_chats')
+    seller = models.ForeignKey('authentication.Users', models.DO_NOTHING, related_name='seller_chats')
+    order = models.ForeignKey('orders.Orders', models.DO_NOTHING, blank=True, null=True, related_name='delivery_chats')
     last_message = models.TextField(blank=True, null=True)
     last_message_time = models.DateTimeField(blank=True, null=True)
     last_message_sender = models.CharField(max_length=50, blank=True, null=True)
@@ -56,8 +56,8 @@ class Chats(models.Model):
 
 class Messages(models.Model):
     id = models.UUIDField(primary_key=True)
-    chat = models.ForeignKey('notifications.Chats', models.DO_NOTHING)
-    sender = models.ForeignKey('authentication.Users', models.DO_NOTHING)
+    chat = models.ForeignKey('notifications.Chats', models.DO_NOTHING, related_name='messages')
+    sender = models.ForeignKey('authentication.Users', models.DO_NOTHING, related_name='sent_chat_messages')
     sender_type = models.CharField(max_length=20)
     message = models.TextField(blank=True, null=True)
     message_type = models.CharField(max_length=20)
@@ -68,5 +68,4 @@ class Messages(models.Model):
     class Meta:
         managed = False
         db_table = 'messages'
-
 

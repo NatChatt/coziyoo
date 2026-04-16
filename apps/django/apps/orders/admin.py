@@ -11,6 +11,46 @@ from unfold.decorators import display
 from .models import Orders, OrderItems, OrderEvents, Reviews
 
 
+def _is_delivery_order(delivery_type, requested_delivery_type, active_delivery_type):
+    values = {
+        str(delivery_type or "").strip().lower(),
+        str(requested_delivery_type or "").strip().lower(),
+        str(active_delivery_type or "").strip().lower(),
+    }
+    return "delivery" in values
+
+
+def _get_order_chat_messages(*, order_id, buyer_id, seller_id, delivery_type, requested_delivery_type, active_delivery_type):
+    from apps.notifications.models import Chats, Messages
+
+    direct_chat_qs = Chats.objects.filter(order_id=order_id).values_list("id", flat=True)
+    direct_chat_ids = list(direct_chat_qs)
+
+    if not direct_chat_ids and _is_delivery_order(delivery_type, requested_delivery_type, active_delivery_type):
+        fallback_chat = (
+            Chats.objects
+            .filter(order__isnull=True, buyer_id=buyer_id, seller_id=seller_id)
+            .order_by("-last_message_time", "-created_at")
+            .first()
+        )
+        if fallback_chat is not None:
+            fallback_chat.order_id = order_id
+            fallback_chat.save(update_fields=["order"])
+            direct_chat_ids = [fallback_chat.id]
+
+    if not direct_chat_ids:
+        return []
+
+    rows = (
+        Messages.objects
+        .filter(chat_id__in=direct_chat_ids)
+        .select_related("sender")
+        .order_by("created_at")
+        .values_list("sender_type", "message", "message_type", "created_at", "sender__display_name")
+    )
+    return list(rows)
+
+
 def _order_admin_detail(order_id_str):
     """Return a rich JSON dict for the admin order detail panel."""
     with connection.cursor() as cur:
@@ -65,25 +105,6 @@ def _order_admin_detail(order_id_str):
         )
         note_rows = cur.fetchall()
 
-        # Chat messages linked to this order (buyer <-> seller conversation)
-        cur.execute(
-            """
-            SELECT
-                COALESCE(NULLIF(m.sender_type, ''), '') AS sender_type,
-                m.message,
-                m.message_type,
-                m.created_at,
-                u.display_name
-            FROM chats c
-            JOIN messages m ON m.chat_id = c.id
-            LEFT JOIN users u ON u.id = m.sender_id
-            WHERE c.order_id = %s
-            ORDER BY m.created_at ASC
-            """,
-            [order_id_str],
-        )
-        chat_rows = cur.fetchall()
-
         # Status timeline from order_events
         cur.execute(
             """
@@ -106,6 +127,15 @@ def _order_admin_detail(order_id_str):
             [order_id_str],
         )
         proof_row = cur.fetchone()
+
+    chat_rows = _get_order_chat_messages(
+        order_id=oid,
+        buyer_id=buyer_id,
+        seller_id=seller_id,
+        delivery_type=delivery_type,
+        requested_delivery_type=requested_delivery_type,
+        active_delivery_type=active_delivery_type,
+    )
 
     messages = []
     for event_type, payload_json, ts, display_name in note_rows:
