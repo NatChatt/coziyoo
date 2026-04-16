@@ -109,18 +109,22 @@ def _resolve_primary_food_image(image_urls_value, image_url_fallback):
     return fallback if _is_supported_image_source(fallback) else None
 
 
-def _public_food_image_url(request, food_id):
+def _public_food_image_url(request, food_id, updated_at=None):
     if request is None or food_id is None:
         return None
-    return request.build_absolute_uri(reverse("food-public-image", args=[food_id]))
+    base_url = request.build_absolute_uri(reverse("food-public-image", args=[food_id]))
+    if updated_at is None:
+        return base_url
+    version = str(updated_at)
+    return f"{base_url}?v={version}"
 
 
-def _resolve_food_image_for_client(request, food_id, image_urls_value, image_url_fallback):
+def _resolve_food_image_for_client(request, food_id, image_urls_value, image_url_fallback, updated_at=None):
     primary = _resolve_primary_food_image(image_urls_value, image_url_fallback)
     if not primary:
         return None
     if primary.startswith("data:image/"):
-        return _public_food_image_url(request, food_id)
+        return _public_food_image_url(request, food_id, updated_at)
     return primary
 
 
@@ -296,6 +300,7 @@ def _serialize_food_row(row, category_map, request=None):
             row.get("id"),
             row.get("image_urls_json"),
             row.get("image_url"),
+            row.get("updated_at"),
         ),
         "imageUrls": image_urls,
         "rating": f"{float(row['rating']):.1f}" if row.get("rating") is not None else None,
@@ -379,6 +384,7 @@ class FoodListView(APIView):
                 f.price,
                 f.image_url,
                 f.image_urls_json,
+                f.updated_at,
                 f.rating,
                 f.review_count,
                 f.preparation_time_minutes,
@@ -502,6 +508,7 @@ class SellerFoodsView(APIView):
                 f.price,
                 f.image_url,
                 f.image_urls_json,
+                f.updated_at,
                 f.rating,
                 f.review_count,
                 f.preparation_time_minutes,
