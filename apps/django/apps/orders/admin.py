@@ -51,6 +51,82 @@ def _get_order_chat_messages(*, order_id, buyer_id, seller_id, delivery_type, re
     return list(rows)
 
 
+def _get_order_note_messages(order_id_str, seller_name):
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            SELECT oe.event_type, oe.payload_json, oe.created_at, u.display_name
+            FROM order_events oe
+            LEFT JOIN users u ON u.id = oe.actor_user_id
+            WHERE oe.order_id = %s
+              AND (
+                oe.event_type IN ('buyer_note', 'seller_note')
+                OR (oe.payload_json ? 'message')
+                OR (oe.payload_json ? 'note')
+                OR (oe.payload_json ? 'reason')
+              )
+            ORDER BY oe.created_at ASC
+            """,
+            [order_id_str],
+        )
+        rows = cur.fetchall()
+
+    messages = []
+    for event_type, payload_json, ts, display_name in rows:
+        payload = payload_json if isinstance(payload_json, dict) else (json.loads(payload_json) if payload_json else {})
+        message_text = str(
+            payload.get("message")
+            or payload.get("note")
+            or payload.get("reason")
+            or ""
+        ).strip()
+        if not message_text:
+            continue
+        normalized_event = str(event_type or "").strip().lower()
+        if normalized_event.startswith("seller_"):
+            role = "seller"
+        elif normalized_event.startswith("buyer_"):
+            role = "buyer"
+        else:
+            role = "seller" if (display_name and display_name == seller_name) else "buyer"
+        messages.append({
+            "role": role,
+            "sender": display_name or "",
+            "message": message_text,
+            "_ts": ts,
+        })
+    return messages
+
+
+def _get_order_conversation_messages(*, order_id, order_id_str, buyer_id, seller_id, seller_name, delivery_type, requested_delivery_type, active_delivery_type):
+    messages = _get_order_note_messages(order_id_str, seller_name)
+    chat_rows = _get_order_chat_messages(
+        order_id=order_id,
+        buyer_id=buyer_id,
+        seller_id=seller_id,
+        delivery_type=delivery_type,
+        requested_delivery_type=requested_delivery_type,
+        active_delivery_type=active_delivery_type,
+    )
+    for sender_type, message_text, message_type, ts, display_name in chat_rows:
+        normalized_sender_type = str(sender_type or "").strip().lower()
+        role = "seller" if normalized_sender_type == "seller" else "buyer"
+        text = (message_text or "").strip()
+        if not text:
+            mt = str(message_type or "").strip()
+            text = f"[{mt}]" if mt else ""
+        if not text:
+            continue
+        messages.append({
+            "role": role,
+            "sender": display_name or "",
+            "message": text,
+            "_ts": ts,
+        })
+    messages.sort(key=lambda item: item.get("_ts") or 0)
+    return messages
+
+
 def _order_admin_detail(order_id_str):
     """Return a rich JSON dict for the admin order detail panel."""
     with connection.cursor() as cur:
@@ -86,25 +162,6 @@ def _order_admin_detail(order_id_str):
     addr = addr_json if isinstance(addr_json, dict) else (json.loads(addr_json) if addr_json else {})
 
     with connection.cursor() as cur:
-        # Messages/notes from order_events (capture all conversational payloads)
-        cur.execute(
-            """
-            SELECT oe.event_type, oe.payload_json, oe.created_at, u.display_name
-            FROM order_events oe
-            LEFT JOIN users u ON u.id = oe.actor_user_id
-            WHERE oe.order_id = %s
-              AND (
-                oe.event_type IN ('buyer_note', 'seller_note')
-                OR (oe.payload_json ? 'message')
-                OR (oe.payload_json ? 'note')
-                OR (oe.payload_json ? 'reason')
-              )
-            ORDER BY oe.created_at ASC
-            """,
-            [order_id_str],
-        )
-        note_rows = cur.fetchall()
-
         # Status timeline from order_events
         cur.execute(
             """
@@ -128,55 +185,16 @@ def _order_admin_detail(order_id_str):
         )
         proof_row = cur.fetchone()
 
-    chat_rows = _get_order_chat_messages(
+    messages = _get_order_conversation_messages(
         order_id=oid,
+        order_id_str=order_id_str,
         buyer_id=buyer_id,
         seller_id=seller_id,
+        seller_name=seller_name,
         delivery_type=delivery_type,
         requested_delivery_type=requested_delivery_type,
         active_delivery_type=active_delivery_type,
     )
-
-    messages = []
-    for event_type, payload_json, ts, display_name in note_rows:
-        payload = payload_json if isinstance(payload_json, dict) else (json.loads(payload_json) if payload_json else {})
-        message_text = str(
-            payload.get("message")
-            or payload.get("note")
-            or payload.get("reason")
-            or ""
-        ).strip()
-        if not message_text:
-            continue
-        normalized_event = str(event_type or "").strip().lower()
-        if normalized_event.startswith("seller_"):
-            role = "seller"
-        elif normalized_event.startswith("buyer_"):
-            role = "buyer"
-        else:
-            role = "seller" if (display_name and display_name == seller_name) else "buyer"
-        messages.append({
-            "role": role,
-            "sender": display_name or "",
-            "message": message_text,
-            "_ts": ts,
-        })
-
-    for sender_type, message_text, message_type, ts, display_name in chat_rows:
-        normalized_sender_type = str(sender_type or "").strip().lower()
-        role = "seller" if normalized_sender_type == "seller" else "buyer"
-        text = (message_text or "").strip()
-        if not text:
-            mt = str(message_type or "").strip()
-            text = f"[{mt}]" if mt else ""
-        messages.append({
-            "role": role,
-            "sender": display_name or "",
-            "message": text,
-            "_ts": ts,
-        })
-
-    messages.sort(key=lambda item: item.get("_ts") or 0)
     for item in messages:
         ts = item.pop("_ts", None)
         item["createdAt"] = ts.strftime("%d.%m.%Y %H:%M") if ts else None

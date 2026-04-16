@@ -348,7 +348,7 @@ class BuyerUsersAdmin(ModelAdmin):
 
     def order_detail_view(self, request, order_id):
       try:
-        from apps.orders.admin import _get_order_chat_messages
+        from apps.orders.admin import _get_order_conversation_messages
 
         order_ref = str(order_id or "").strip()
         if not order_ref:
@@ -412,26 +412,23 @@ class BuyerUsersAdmin(ModelAdmin):
             addr.get("district") or addr.get("neighborhood"),
             addr.get("city"),
         ] if p]
-        chat_rows = _get_order_chat_messages(
+        conversation_messages = _get_order_conversation_messages(
             order_id=oid,
+            order_id_str=str(oid),
             buyer_id=buyer_id,
             seller_id=seller_id,
+            seller_name=seller_name,
             delivery_type=delivery_type,
             requested_delivery_type=requested_delivery_type,
             active_delivery_type=active_delivery_type,
         )
         chat_messages = []
-        for sender_type, message_text, message_type, created_ts, display_name in chat_rows:
-            normalized_sender_type = str(sender_type or "").strip().lower()
-            text = str(message_text or "").strip()
-            if not text:
-                text = f"[{str(message_type or '').strip()}]" if message_type else ""
-            if not text:
-                continue
+        for item in conversation_messages:
+            created_ts = item.get("_ts")
             chat_messages.append({
-                "role": "seller" if normalized_sender_type == "seller" else "buyer",
-                "sender": display_name or "",
-                "message": text,
+                "role": item.get("role") or "buyer",
+                "sender": item.get("sender") or "",
+                "message": item.get("message") or "",
                 "created_at": timezone.localtime(created_ts).strftime("%d.%m.%Y %H:%M") if created_ts else None,
             })
 
