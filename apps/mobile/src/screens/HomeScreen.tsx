@@ -1726,7 +1726,7 @@ function FoodCard({
   const ratingValue = Number(String(meal.rating ?? '').replace(',', '.'));
   const socialProofText = Number.isFinite(ratingValue) && ratingValue > 0
     ? `${Number(ratingValue).toFixed(1)} puanla seviliyor.`
-    : 'Yoğun ilgi görüyor.';
+    : 'Yoğun ilgi görüyor';
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -1827,10 +1827,20 @@ function FoodCard({
                   <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
                 </View>
                 <View style={styles.foodInfoTextWrap}>
-                  <Text style={styles.foodInfoTitle}>
+                  <Text
+                    style={styles.foodInfoTitle}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.9}
+                  >
                     {stockSummary || 'Bugün hazırlanıyor'}
                   </Text>
-                  <Text style={styles.foodInfoSubtitle}>
+                  <Text
+                    style={styles.foodInfoSubtitle}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.92}
+                  >
                     {socialProofText}
                   </Text>
                 </View>
