@@ -1821,60 +1821,54 @@ function FoodCard({
           style={styles.foodInfo}
         >
           <View style={styles.foodInfoContent}>
-            <View style={styles.foodInfoLine}>
-              <View style={styles.foodInfoLead}>
-                <View style={styles.foodInfoIconBubble}>
-                  <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
+            <View style={styles.foodInfoMainRow}>
+              {/* Left: stock summary + prep time */}
+              <View style={styles.foodInfoLeadCol}>
+                <View style={styles.foodInfoRow}>
+                  <View style={styles.foodInfoIconBubble}>
+                    <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
+                  </View>
+                  <View style={styles.foodInfoTextWrap}>
+                    <Text style={styles.foodInfoTitle}>
+                      {stockSummary || 'Bugün hazırlanıyor'}
+                    </Text>
+                    <Text style={styles.foodInfoSubtitle}>
+                      {socialProofText}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.foodInfoTextWrap}>
-                  <Text style={styles.foodInfoTitle}>
-                    {stockSummary || 'Bugün hazırlanıyor'}
-                  </Text>
-                  <Text style={styles.foodInfoSubtitle}>
-                    {socialProofText}
-                  </Text>
+                <View style={styles.foodInfoRow}>
+                  <View style={styles.foodStatIconBubble}>
+                    <Ionicons name="time-outline" size={16} color="#3F3025" />
+                  </View>
+                  <View style={styles.foodStatTextWrap}>
+                    <Text style={styles.foodStatValue}>
+                      {meal.time || 'Süre yakında'}
+                    </Text>
+                    <Text style={styles.foodStatLabel}>
+                      Hazırlık süresi
+                    </Text>
+                  </View>
                 </View>
               </View>
-              {hasAllergens ? (
-                <>
-                  <View style={[styles.foodStatDivider, styles.foodInfoDividerGhost]} />
-                  <View style={styles.foodInfoAlertSlot}>
+              {/* Right: allergen + distance */}
+              <View style={styles.foodInfoRightCol}>
+                {hasAllergens ? (
+                  <View style={styles.foodInfoRightItem}>
                     <View style={[styles.foodInfoIconBubble, styles.foodInfoIconBubbleAlert]}>
                       <Ionicons name="warning-outline" size={16} color="#B13B2E" />
                     </View>
-                    <View style={styles.foodInfoAlertTextWrap}>
-                      <Text style={[styles.foodInfoInlineBadgeText, styles.foodInfoAlertTitle]}>
-                        Alerjen içerir
-                      </Text>
-                    </View>
+                    <Text style={[styles.foodInfoInlineBadgeText, styles.foodInfoAlertTitle]}>
+                      Alerjen içerir
+                    </Text>
                   </View>
-                </>
-              ) : (
-                <View style={styles.foodInfoAlertSpacer} />
-              )}
-            </View>
-            <View style={styles.foodStatsRow}>
-              <View style={styles.foodStatItem}>
-                <View style={styles.foodStatIconBubble}>
-                  <Ionicons name="time-outline" size={16} color="#3F3025" />
-                </View>
-                <View style={styles.foodStatTextWrap}>
-                  <Text style={styles.foodStatValue}>
-                    {meal.time || 'Süre yakında'}
-                  </Text>
-                  <Text style={styles.foodStatLabel}>
-                    Hazırlık süresi
-                  </Text>
-                </View>
-              </View>
-              {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
-                <>
-                  <View style={styles.foodStatDivider} />
-                  <View style={styles.foodStatItem}>
+                ) : null}
+                {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
+                  <View style={styles.foodInfoRightItem}>
                     <View style={styles.foodStatIconBubble}>
                       <Ionicons name="location-outline" size={16} color="#3F3025" />
                     </View>
-                    <View style={styles.foodStatTextWrap}>
+                    <View>
                       <Text style={styles.foodStatValue}>
                         {meal.distance}
                       </Text>
@@ -1883,8 +1877,8 @@ function FoodCard({
                       </Text>
                     </View>
                   </View>
-                </>
-              ) : null}
+                ) : null}
+              </View>
             </View>
             <View style={styles.foodFooterRow}>
               <View style={styles.foodFooterSeller}>
@@ -6329,7 +6323,7 @@ const styles = StyleSheet.create({
   },
   foodPhoto: {
     width: '100%',
-    height: 208,
+    height: 180,
     overflow: 'hidden',
     backgroundColor: '#B96C44',
   },
@@ -6415,24 +6409,36 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   foodInfoContent: {
-    paddingTop: 14,
-    paddingBottom: 12,
+    paddingTop: 12,
+    paddingBottom: 10,
     paddingHorizontal: 16,
-    minHeight: 168,
     overflow: 'visible',
   },
-  foodInfoLine: {
+  foodInfoMainRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
-    marginBottom: 10,
+    gap: 12,
+    marginBottom: 0,
   },
-  foodInfoLead: {
+  foodInfoLeadCol: {
     flex: 1,
+    minWidth: 0,
+    gap: 10,
+  },
+  foodInfoRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    minWidth: 0,
+  },
+  foodInfoRightCol: {
+    flexShrink: 0,
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  foodInfoRightItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   foodInfoIconBubble: {
     width: 34,
@@ -6534,7 +6540,8 @@ const styles = StyleSheet.create({
   foodFooterRow: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(112,88,68,0.16)',
-    paddingTop: 10,
+    marginTop: 10,
+    paddingTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
