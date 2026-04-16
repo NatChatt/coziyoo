@@ -1616,7 +1616,7 @@ function FoodCard({
     }
 
     let cancelled = false;
-    setRenderableImageUri(activeImageUrl);
+    setRenderableImageUri(null);
 
     const materializeInlineImage = async () => {
       try {
@@ -1633,7 +1633,7 @@ function FoodCard({
         setRenderableImageUri(result.uri);
       } catch {
         if (!cancelled) {
-          setRenderableImageUri(activeImageUrl);
+          setRenderableImageUri(null);
         }
       }
     };
@@ -1702,6 +1702,10 @@ function FoodCard({
                 style={styles.foodImage}
                 resizeMode="cover"
                 onError={() => {
+                  if (isInlineBase64ImageUri(activeImageUrl)) {
+                    setRenderableImageUri(null);
+                    return;
+                  }
                   setImageUrls((prev) => prev.slice(1));
                   setImageIndex(0);
                 }}
