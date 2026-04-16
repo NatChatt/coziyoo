@@ -1847,24 +1847,9 @@ function FoodCard({
                     {hasAllergens ? 'Alerjen içerir' : 'Alerjen yok'}
                   </Text>
                 </View>
-                {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
-                  <View style={styles.foodInfoRightItem}>
-                    <View style={styles.foodStatIconBubble}>
-                      <Ionicons name="location-outline" size={16} color="#3F3025" />
-                    </View>
-                    <View style={styles.foodStatTextWrap}>
-                      <Text style={styles.foodStatValue}>
-                        {meal.distance}
-                      </Text>
-                      <Text style={styles.foodStatLabel}>
-                        Uzaklık
-                      </Text>
-                    </View>
-                  </View>
-                ) : null}
               </View>
             </View>
-            {/* Row 2: prep time */}
+            {/* Row 2: prep time | distance */}
             <View style={styles.foodStatsRow}>
               <View style={styles.foodStatItem}>
                 <View style={styles.foodStatIconBubble}>
@@ -1879,6 +1864,24 @@ function FoodCard({
                   </Text>
                 </View>
               </View>
+              {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
+                <>
+                  <View style={styles.foodStatDivider} />
+                  <View style={[styles.foodStatItem, styles.foodStatItemRightCol]}>
+                    <View style={styles.foodStatIconBubble}>
+                      <Ionicons name="location-outline" size={16} color="#3F3025" />
+                    </View>
+                    <View style={styles.foodStatTextWrap}>
+                      <Text style={styles.foodStatValue}>
+                        {meal.distance}
+                      </Text>
+                      <Text style={styles.foodStatLabel}>
+                        Uzaklık
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              ) : null}
             </View>
             <View style={styles.foodFooterRow}>
               <View style={styles.foodFooterSeller}>
@@ -6515,7 +6518,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   foodStatItemRightCol: {
-    width: '30%',
+    width: '34%',
     flexGrow: 0,
     flexShrink: 0,
   },
