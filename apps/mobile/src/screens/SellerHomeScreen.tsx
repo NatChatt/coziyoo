@@ -899,11 +899,11 @@ export default function SellerHomeScreen({
 
       {/* Stats header */}
       <View style={styles.ordersHead}>
-        <TouchableOpacity style={styles.statBlock} activeOpacity={0.75} onPress={() => setActivePage(0)}>
+        <TouchableOpacity style={[styles.statBlock, activePage === 0 && styles.statBlockActive]} activeOpacity={0.75} onPress={() => setActivePage(0)}>
           <Text style={[styles.statCount, activePage === 0 && styles.statCountActive]}>{loading ? "—" : todayOrders.length}</Text>
           <Text style={[styles.statLabel, activePage === 0 && styles.statLabelActive]}>{t('headline.seller.home.todayOrders')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.statBlock} activeOpacity={0.75} onPress={() => setActivePage(1)}>
+        <TouchableOpacity style={[styles.statBlock, activePage === 1 && styles.statBlockActive]} activeOpacity={0.75} onPress={() => setActivePage(1)}>
           <Text style={[styles.statCount, activePage === 1 && styles.statCountActive]}>{loading ? "—" : activeFoods.length}</Text>
           <Text style={[styles.statLabel, activePage === 1 && styles.statLabelActive]}>{t('headline.seller.home.activeFoods')}</Text>
         </TouchableOpacity>
@@ -1478,24 +1478,27 @@ const styles = StyleSheet.create({
     borderBottomColor: "#C8BFB3",
     paddingBottom: 4,
   },
+  statBlockActive: {
+    borderBottomColor: "#2E6B43",
+  },
   statCount: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#3F855C",
+    color: "#33271F",
     ...(Platform.OS === "ios"
       ? { fontFamily: "AvenirNextCondensed-Bold" }
       : { fontFamily: "sans-serif-condensed" }),
   },
-  statCountActive: { color: "#1D5634" },
+  statCountActive: { color: "#2E6B43" },
   statLabel: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#4A3B2F",
+    color: "#33271F",
     ...(Platform.OS === "ios"
       ? { fontFamily: "AvenirNextCondensed-DemiBold" }
       : { fontFamily: "sans-serif-condensed" }),
   },
-  statLabelActive: { color: "#1D5634" },
+  statLabelActive: { color: "#2E6B43" },
   skeletonCard: { backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#E5DDCF", padding: 12, marginBottom: 10, gap: 10 },
   skeletonLine: { height: 14, borderRadius: 6, backgroundColor: "#EDE8E0", width: "70%" },
   skeletonLineShort: { height: 12, borderRadius: 6, backgroundColor: "#F2EDE6", width: "40%" },
