@@ -4096,23 +4096,6 @@ export default function HomeScreen({
                   <Text style={styles.cartTotalValue}>₺{total.toFixed(2)}</Text>
                 </View>
               </View>
-              <View style={styles.checkoutAddressCard}>
-                <Text style={styles.checkoutAddressTitle}>{t('helper.home.flowTitle')}</Text>
-                <View style={styles.checkoutAddressBox}>
-                  <Text style={styles.checkoutAddressLabel}>{t('helper.home.flowStartTypeLabel')}</Text>
-                  <Text style={styles.checkoutAddressValue}>{t('cta.home.pickup')}</Text>
-                  <Text style={styles.checkoutAddressLabel}>{t('helper.home.pickupAddressLabel')}</Text>
-                  <Text style={styles.checkoutAddressValue} numberOfLines={2}>
-                    {pickupSellerAddressLoading
-                      ? t('helper.home.pickupAddressLoading')
-                      : pickupSellerAddressError
-                        ? pickupSellerAddressError
-                        : pickupSellerAddress
-                          ? [pickupSellerAddress.title, pickupSellerAddress.addressLine].filter(Boolean).join(' · ')
-                          : t('helper.home.pickupAddressMissing')}
-                  </Text>
-                </View>
-              </View>
               {paymentStatus ? (
                 <View style={styles.paymentStatusCard}>
                   <Text style={styles.paymentStatusTitle}>{t('status.home.paymentTitle')}</Text>
@@ -4126,11 +4109,22 @@ export default function HomeScreen({
               {paymentInfo ? (
                 <Text style={styles.paymentInfoText}>{paymentInfo}</Text>
               ) : null}
-              <View style={styles.paymentActionHintBox}>
-                <Text style={styles.paymentActionHintStrong}>{t('helper.home.createDeliveryChatHint')}</Text>
-                <Text style={styles.paymentActionHint}>{t('helper.home.cartCheckoutHint')}</Text>
-              </View>
               <View style={styles.paymentActionsColumn}>
+                <TouchableOpacity
+                  style={[styles.paymentActionBtn, paymentLoading && styles.paymentActionBtnDisabled]}
+                  onPress={() => void startCartCheckout()}
+                  activeOpacity={0.9}
+                  disabled={paymentLoading}
+                >
+                  {paymentLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.paymentActionBtnText}>{t('cta.home.cartCheckout')}</Text>
+                  )}
+                </TouchableOpacity>
+                <View style={styles.paymentActionHintBox}>
+                  <Text style={styles.paymentActionHintStrong}>{t('helper.home.createDeliveryChatHint')}</Text>
+                </View>
                 <TouchableOpacity
                   style={[
                     styles.paymentSecondaryActionBtn,
@@ -4144,18 +4138,6 @@ export default function HomeScreen({
                     <ActivityIndicator size="small" color="#2F6F4A" />
                   ) : (
                     <Text style={styles.paymentSecondaryActionBtnText}>{t('cta.home.createDeliveryChat')}</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.paymentActionBtn, paymentLoading && styles.paymentActionBtnDisabled]}
-                  onPress={() => void startCartCheckout()}
-                  activeOpacity={0.9}
-                  disabled={paymentLoading}
-                >
-                  {paymentLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.paymentActionBtnText}>{t('cta.home.cartCheckout')}</Text>
                   )}
                 </TouchableOpacity>
               </View>
