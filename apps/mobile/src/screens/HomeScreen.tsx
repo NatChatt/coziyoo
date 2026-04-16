@@ -6448,6 +6448,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     alignItems: 'flex-start',
+    marginLeft: 29,
   },
   foodInfoInlineBadge: {
     flexDirection: 'row',
