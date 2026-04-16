@@ -205,9 +205,14 @@ function buyerFlowLabel(step: BuyerFlowStep): string {
   return 'Teslim Edildi';
 }
 
-function buyerFlowLabelByDeliveryType(step: BuyerFlowStep, deliveryType: 'pickup' | 'delivery'): string {
+function buyerFlowLabelByDeliveryType(
+  step: BuyerFlowStep,
+  deliveryType: 'pickup' | 'delivery',
+  currentStatus?: string,
+): string {
   if (deliveryType === 'pickup') {
     if (step === 'preparing') return 'Hazırlanıyor';
+    if (String(currentStatus ?? '').trim().toLowerCase() === 'completed') return 'Tamamlandı';
     return 'Hazırlandı, seni bekliyor';
   }
   return buyerFlowLabel(step);
@@ -988,7 +993,7 @@ export default function OrderDetailScreen({
                   <TimelineStep
                     key={step}
                     status={step}
-                    label={buyerFlowLabelByDeliveryType(step, order.deliveryType)}
+                    label={buyerFlowLabelByDeliveryType(step, order.deliveryType, order.status)}
                     date={dateValue ? formatEventDate(dateValue) : (fallbackDate ? formatEventDate(fallbackDate) : 'Bekleniyor')}
                     isLast={idx === flowSteps.length - 1}
                     isActive={reached}
