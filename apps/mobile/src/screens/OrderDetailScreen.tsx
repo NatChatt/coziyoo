@@ -1032,12 +1032,6 @@ export default function OrderDetailScreen({
 
         {/* Actions */}
         <View style={styles.actions}>
-          {order.status === 'completed' ? (
-            <View style={styles.completeNotice}>
-              <Ionicons name="checkmark-circle" size={18} color="#2F7B4B" />
-              <Text style={styles.completeNoticeText}>Sipariş tamamlandı.</Text>
-            </View>
-          ) : null}
           {canPay && onOpenPayment && (
             <ActionButton label="Ödeme Yap" onPress={() => onOpenPayment(order.id)} variant="primary" fullWidth />
           )}
@@ -1147,18 +1141,6 @@ const styles = StyleSheet.create({
   pickupBuyerFlowTitle: { color: theme.text, fontSize: 14, fontWeight: '800', marginBottom: 8 },
   pickupBuyerAction: { marginTop: 10 },
   actions: { gap: 10, marginTop: 8 },
-  completeNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#CDE7D8',
-    backgroundColor: '#ECF8F0',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  completeNoticeText: { color: '#2F7B4B', fontSize: 14, fontWeight: '700' },
   cancelTitle: { color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 6 },
   cancelSubtitle: { color: '#71685F', fontSize: 14, marginBottom: 16 },
   cancelActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 8 },
