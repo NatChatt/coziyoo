@@ -944,7 +944,7 @@ class SellerUsersAdmin(ModelAdmin):
         # Parse JSON results
         orders = [{"id": str(r["id"]), "buyer_name": r["buyer_name"], "total_price": r["total_price"],
                    "status": r["status"], "status_tr": STATUS_TR.get(r["status"], r["status"]),
-                   "created_at": timezone.localtime(r["created_at"]) if r.get("created_at") else None,
+                   "created_at": timezone.localtime(parsed_created_at) if (parsed_created_at := _parse_dt(r.get("created_at"))) else r.get("created_at"),
                    "gross_amount": r.get("gross_amount"),
                    "commission_amount": r.get("commission_amount"),
                    "seller_net_amount": r.get("seller_net_amount"),
