@@ -2153,6 +2153,7 @@ export default function HomeScreen({
   const recommendedMealsLoadedOnceRef = useRef(false);
   const buyerFeedRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const buyerOrdersRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const buyerOrdersPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoOpenedPaymentOrderIdsRef = useRef<Set<string>>(new Set());
   const autoOpenedDeliveryPinOrderIdsRef = useRef<Set<string>>(new Set());
   // Always-current auth ref — avoids stale closures without triggering re-renders.
@@ -2608,6 +2609,32 @@ export default function HomeScreen({
       unsubscribe();
     };
   }, [activeTab, fetchRecentBuyerOrders]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Poll order statuses periodically when active orders exist.
+  // Realtime subscription uses buyer_id filter which may not match UPDATE events
+  // if the orders table lacks REPLICA IDENTITY FULL — polling ensures status
+  // changes from the seller (ready, in_delivery, approaching, at_door) are picked up.
+  useEffect(() => {
+    const hasActiveTab = activeTab === 'home' || activeTab === 'cart';
+    const hasOrders = actionableHomeOrders.length > 0;
+    if (!hasActiveTab || !hasOrders) {
+      if (buyerOrdersPollRef.current) {
+        clearInterval(buyerOrdersPollRef.current);
+        buyerOrdersPollRef.current = null;
+      }
+      return;
+    }
+    if (buyerOrdersPollRef.current) return; // already polling
+    buyerOrdersPollRef.current = setInterval(() => {
+      void fetchRecentBuyerOrders();
+    }, 8_000);
+    return () => {
+      if (buyerOrdersPollRef.current) {
+        clearInterval(buyerOrdersPollRef.current);
+        buyerOrdersPollRef.current = null;
+      }
+    };
+  }, [activeTab, actionableHomeOrders.length, fetchRecentBuyerOrders]);
 
   useEffect(() => {
     let cancelled = false;

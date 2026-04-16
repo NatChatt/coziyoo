@@ -158,7 +158,7 @@ type Props = {
 
 type OrderNote = {id: string; senderRole: string; senderName: string; message: string; createdAt: string | null};
 
-const CANCELLABLE = ['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid', 'preparing', 'ready', 'in_delivery', 'approaching', 'at_door'];
+const CANCELLABLE = ['pending_seller_approval', 'pending_buyer_confirmation', 'seller_approved', 'awaiting_payment', 'paid'];
 const NON_MESSAGEABLE = ['cancelled', 'completed'];
 const TERMINAL_ORDER_STATUSES = ['completed', 'cancelled', 'rejected'] as const;
 const COMPLETABLE = ['delivered'];
