@@ -3099,7 +3099,7 @@ export default function HomeScreen({
     }
   }
 
-  const startDeliveryRequestFromCart = useCallback(async () => {
+  async function startDeliveryRequestFromCart() {
     if (deliveryRequestStarting) return;
     if (!onOpenOrderDetail) {
       Alert.alert(t('headline.common.error'), t('error.home.deliveryRequestFailed'));
@@ -3146,7 +3146,7 @@ export default function HomeScreen({
     } finally {
       setDeliveryRequestStarting(false);
     }
-  }, [apiUrl, deliveryRequestStarting, fetchRecentBuyerOrders, onOpenOrderDetail]);
+  }
 
   async function refreshPaymentStatus(waitForSettlement = false, overrideOrderIds?: string[], orderCreatedByUs = false, silent = false) {
     const orderIds = (overrideOrderIds && overrideOrderIds.length > 0
