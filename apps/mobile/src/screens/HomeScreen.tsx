@@ -1861,7 +1861,7 @@ function FoodCard({
                 <View style={[styles.foodInfoIconBubble, hasAllergens ? styles.foodInfoIconBubbleAlert : styles.foodInfoIconBubbleOk]}>
                   <Ionicons name={hasAllergens ? 'warning-outline' : 'checkmark-circle-outline'} size={16} color={hasAllergens ? '#B13B2E' : '#2F6F4A'} />
                 </View>
-                <View style={styles.foodInfoTextWrap}>
+                <View style={[styles.foodInfoTextWrap, styles.foodInfoTextWrapCentered]}>
                   <Text style={[styles.foodInfoTitle, hasAllergens ? styles.foodInfoAlertTitle : styles.foodInfoOkTitle]}>
                     {hasAllergens ? 'Alerjen içerir' : 'Alerjen yok'}
                   </Text>
@@ -6504,6 +6504,10 @@ const styles = StyleSheet.create({
   foodInfoTextWrap: {
     flex: 1,
     minWidth: 0,
+  },
+  foodInfoTextWrapCentered: {
+    minHeight: 34,
+    justifyContent: 'center',
   },
   foodInfoAlertSlot: {
     flex: 1,
