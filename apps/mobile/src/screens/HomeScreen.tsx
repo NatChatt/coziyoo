@@ -6467,7 +6467,7 @@ const styles = StyleSheet.create({
   paymentActionsColumn: { gap: 8, marginTop: 10 },
   paymentActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   paymentActionBtn: {
-    flex: 1,
+    width: '100%',
     height: 42,
     borderRadius: 12,
     backgroundColor: '#4A7C59',
@@ -6477,7 +6477,7 @@ const styles = StyleSheet.create({
   paymentActionBtnDisabled: { opacity: 0.65 },
   paymentActionBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   paymentSecondaryActionBtn: {
-    flex: 1,
+    width: '100%',
     height: 42,
     borderRadius: 12,
     borderWidth: 1,
