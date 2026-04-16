@@ -470,12 +470,6 @@ type PaymentStatusSnapshot = {
   latestAttemptStatus?: string;
 };
 
-type ChatBootstrapResponse = {
-  chatId: string;
-  sellerName: string;
-  lastMessageTime?: string | null;
-};
-
 const CHECKOUT_REQUEST_TIMEOUT_MS = 15000;
 const DEFAULT_CART_BOTTOM_BAR_HEIGHT = 260;
 
@@ -1858,7 +1852,7 @@ export default function HomeScreen({
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatusSnapshot | null>(null);
   const [recentBuyerOrders, setRecentBuyerOrders] = useState<HomeOrderSummary[]>([]);
   const [deliveryRequestOrderIds, setDeliveryRequestOrderIds] = useState<Record<string, true>>({});
-  const [deliveryChatStarting, setDeliveryChatStarting] = useState(false);
+  const [deliveryRequestStarting, setDeliveryRequestStarting] = useState(false);
   const [cartBottomBarHeight, setCartBottomBarHeight] = useState(DEFAULT_CART_BOTTOM_BAR_HEIGHT);
   const cartPaymentAnimationVisible = false;
   const setCartPaymentAnimationDone = (_value: boolean) => {};
@@ -2208,62 +2202,110 @@ export default function HomeScreen({
     }
   }, [apiUrl, deliveryRequestOrderIds, fetchRecentBuyerOrders]);
 
-  function resolveCartSellerForDeliveryChat(): { sellerId: string; sellerName: string } | null {
-    if (cartItems.length === 0) return null;
-    const sellerEntries = new Map<string, string>();
-    for (const item of cartItems) {
-      const sellerId = String(item.meal.sellerId ?? '').trim();
-      const sellerName = String(item.meal.seller ?? '').trim() || t('status.orders.sellerFallback');
-      if (!sellerId) return null;
-      sellerEntries.set(sellerId, sellerName);
-    }
-    if (sellerEntries.size !== 1) return null;
-    const [sellerId, sellerName] = [...sellerEntries.entries()][0];
-    return { sellerId, sellerName };
-  }
-
-  const startDeliveryChat = useCallback(async () => {
-    if (deliveryChatStarting) return;
+  async function createPickupOrdersFromCart(options?: { requireSingleSeller?: boolean }): Promise<{
+    createdOrderIds: string[];
+    firstCreatedStatus: string;
+    effectiveApiUrl: string;
+  }> {
     if (cartItems.length === 0) {
-      Alert.alert(t('helper.home.cartEmptyAlertTitle'), t('helper.home.cartEmptyAlertMessage'));
-      return;
+      throw new Error(t('helper.home.cartEmptyAlertMessage'));
     }
-    const sellerContext = resolveCartSellerForDeliveryChat();
-    if (!sellerContext) {
-      Alert.alert(t('headline.common.error'), t('error.home.deliveryChatSellerRequired'));
-      return;
+
+    const { apiUrl: settingsApiUrl } = await loadSettings();
+    const effectiveApiUrl = settingsApiUrl || apiUrl;
+    if (!effectiveApiUrl || effectiveApiUrl === 'http://localhost:3000') {
+      throw new Error(t('error.home.checkoutStartFailed'));
     }
-    setDeliveryChatStarting(true);
-    try {
-      const result = await apiRequest<ChatBootstrapResponse>(
-        '/v1/chats/bootstrap',
-        currentAuth,
-        {
-          method: 'POST',
-          body: {
-            sellerId: sellerContext.sellerId,
-            initialMessage: t('helper.home.deliveryChatAutoMessage'),
-          },
-          actorRole: 'buyer',
+    if (effectiveApiUrl !== apiUrl) {
+      setApiUrl(effectiveApiUrl);
+    }
+
+    const resolvedCartItems = cartItems.map((item) => {
+      if (item.meal.lotId) return item;
+      const matchedMeal = meals.find((m) => m.id === item.meal.id);
+      return {
+        ...item,
+        meal: {
+          ...item.meal,
+          lotId: matchedMeal?.lotId ?? null,
         },
-        handleAuthRefresh,
-      );
-      if (!result.ok) {
-        throw new Error(result.message ?? t('error.home.deliveryChatStartFailed'));
-      }
-      if (!onOpenChat) {
-        throw new Error(t('error.home.deliveryChatStartFailed'));
-      }
-      onOpenChat(result.data.chatId, result.data.sellerName || sellerContext.sellerName);
-    } catch (error) {
-      Alert.alert(
-        t('headline.common.error'),
-        error instanceof Error ? error.message : t('error.home.deliveryChatStartFailed'),
-      );
-    } finally {
-      setDeliveryChatStarting(false);
+      };
+    });
+
+    const payableItems = resolvedCartItems.filter((item) => item.meal.lotId);
+    const missingItems = resolvedCartItems.filter((item) => !item.meal.lotId);
+    if (missingItems.length > 0) {
+      setCartItems(payableItems);
     }
-  }, [cartItems, currentAuth, deliveryChatStarting, handleAuthRefresh, onOpenChat]);
+    if (payableItems.length === 0) {
+      throw new Error(t('error.home.payableLotsMissing'));
+    }
+
+    const groupedBySeller = new Map<string, CartItem[]>();
+    for (const item of payableItems) {
+      const sellerId = item.meal.sellerId;
+      if (!sellerId) {
+        throw new Error(t('helper.home.flowSellerMissing'));
+      }
+      const existing = groupedBySeller.get(sellerId) ?? [];
+      groupedBySeller.set(sellerId, [...existing, item]);
+    }
+
+    if (options?.requireSingleSeller && groupedBySeller.size !== 1) {
+      throw new Error(t('error.home.deliveryChatSellerRequired'));
+    }
+
+    const createdOrderIds: string[] = [];
+    let firstCreatedStatus = 'pending_seller_approval';
+    for (const [sellerId, sellerItems] of groupedBySeller.entries()) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), CHECKOUT_REQUEST_TIMEOUT_MS);
+      let orderRes: Response;
+      try {
+        orderRes = await authedJsonFetch(`${effectiveApiUrl}/v1/orders/`, {
+          method: 'POST',
+          headers: {
+            'x-actor-role': 'buyer',
+            'Idempotency-Key': `mobile-order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          },
+          body: JSON.stringify({
+            sellerId,
+            deliveryType: 'pickup',
+            items: sellerItems.map((item) => ({
+              lotId: item.meal.lotId,
+              quantity: item.quantity,
+              selectedAddons: item.selectedAddons,
+            })),
+          }),
+          signal: controller.signal,
+        });
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error(t('error.home.checkoutCreateFailed'));
+        }
+        throw new Error(t('error.home.checkoutStartFailed'));
+      }
+      clearTimeout(timeoutId);
+      const orderJson = await readJsonSafe<{
+        data?: { orderId?: string; status?: string };
+        error?: { message?: string };
+      }>(orderRes);
+      if (!orderRes.ok) {
+        throw new Error(t('error.home.checkoutCreateFailed'));
+      }
+      const orderId = String(orderJson?.data?.orderId ?? '');
+      if (!orderId) {
+        throw new Error(t('error.home.checkoutMissingOrderId'));
+      }
+      if (createdOrderIds.length === 0) {
+        firstCreatedStatus = String(orderJson?.data?.status ?? 'pending_seller_approval');
+      }
+      createdOrderIds.push(orderId);
+    }
+
+    return { createdOrderIds, firstCreatedStatus, effectiveApiUrl };
+  }
 
   useEffect(() => {
     loadSettings().then((s) => setApiUrl(s.apiUrl));
@@ -2988,108 +3030,11 @@ export default function HomeScreen({
       return;
     }
 
-    // Resolve the effective API URL from settings so we always use the real server URL
-    // even if the apiUrl state hasn't been set yet in this render cycle (e.g. very fast
-    // interaction right after mount).  loadSettings() is cached after first hydration
-    // so this is effectively free on subsequent calls.
-    const { apiUrl: settingsApiUrl } = await loadSettings();
-    const effectiveApiUrl = settingsApiUrl || apiUrl;
-    if (!effectiveApiUrl || effectiveApiUrl === 'http://localhost:3000') {
-      setPaymentError(t('error.home.checkoutStartFailed'));
-      return;
-    }
-    // Keep the state in sync for other consumers in this component.
-    if (effectiveApiUrl !== apiUrl) {
-      setApiUrl(effectiveApiUrl);
-    }
-
-    const resolvedCartItems = cartItems.map((item) => {
-      if (item.meal.lotId) return item;
-      const matchedMeal = meals.find((m) => m.id === item.meal.id);
-      return {
-        ...item,
-        meal: {
-          ...item.meal,
-          lotId: matchedMeal?.lotId ?? null,
-        },
-      };
-    });
-
-    const payableItems = resolvedCartItems.filter((item) => item.meal.lotId);
-    const missingItems = resolvedCartItems.filter((item) => !item.meal.lotId);
-    if (missingItems.length > 0) {
-      setCartItems(payableItems);
-    }
-    if (payableItems.length === 0) {
-      setPaymentError(t('error.home.payableLotsMissing'));
-      return;
-    }
-
-    const checkoutDeliveryType: 'pickup' = 'pickup';
-
-    const groupedBySeller = new Map<string, CartItem[]>();
-    for (const item of payableItems) {
-      const sellerId = item.meal.sellerId;
-      if (!sellerId) {
-        setPaymentError(t('helper.home.flowSellerMissing'));
-        return;
-      }
-      const existing = groupedBySeller.get(sellerId) ?? [];
-      groupedBySeller.set(sellerId, [...existing, item]);
-    }
-
     setPaymentLoading(true);
     setPaymentError(null);
     setPaymentInfo(null);
     try {
-      const createdOrderIds: string[] = [];
-      let firstCreatedStatus = 'pending_seller_approval';
-      for (const [sellerId, sellerItems] of groupedBySeller.entries()) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), CHECKOUT_REQUEST_TIMEOUT_MS);
-        let orderRes: Response;
-        try {
-          orderRes = await authedJsonFetch(`${effectiveApiUrl}/v1/orders/`, {
-            method: 'POST',
-            headers: {
-              'x-actor-role': 'buyer',
-              'Idempotency-Key': `mobile-order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            },
-            body: JSON.stringify({
-              sellerId,
-              deliveryType: checkoutDeliveryType,
-              items: sellerItems.map((item) => ({
-                lotId: item.meal.lotId,
-                quantity: item.quantity,
-                selectedAddons: item.selectedAddons,
-              })),
-            }),
-            signal: controller.signal,
-          });
-        } catch (error) {
-          clearTimeout(timeoutId);
-          if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error(t('error.home.checkoutCreateFailed'));
-          }
-          throw new Error(t('error.home.checkoutStartFailed'));
-        }
-        clearTimeout(timeoutId);
-        const orderJson = await readJsonSafe<{
-          data?: { orderId?: string; status?: string; sellerId?: string; createdAt?: string };
-          error?: { message?: string };
-        }>(orderRes);
-        if (!orderRes.ok) {
-          throw new Error(t('error.home.checkoutCreateFailed'));
-        }
-        const orderId = String(orderJson?.data?.orderId ?? '');
-        if (!orderId) {
-          throw new Error(t('error.home.checkoutMissingOrderId'));
-        }
-        if (createdOrderIds.length === 0) {
-          firstCreatedStatus = String(orderJson?.data?.status ?? 'pending_seller_approval');
-        }
-        createdOrderIds.push(orderId);
-      }
+      const { createdOrderIds, firstCreatedStatus } = await createPickupOrdersFromCart();
       setActiveOrderId(createdOrderIds[0] ?? null);
       setActiveOrderIds(createdOrderIds);
       setPaymentStatus(
@@ -3116,6 +3061,55 @@ export default function HomeScreen({
       setPaymentLoading(false);
     }
   }
+
+  const startDeliveryRequestFromCart = useCallback(async () => {
+    if (deliveryRequestStarting) return;
+    if (!onOpenOrderDetail) {
+      Alert.alert(t('headline.common.error'), t('error.home.deliveryRequestFailed'));
+      return;
+    }
+    setDeliveryRequestStarting(true);
+    setPaymentError(null);
+    setPaymentInfo(null);
+    try {
+      const { createdOrderIds, firstCreatedStatus, effectiveApiUrl } = await createPickupOrdersFromCart({ requireSingleSeller: true });
+      const targetOrderId = createdOrderIds[0] ?? null;
+      if (!targetOrderId) {
+        throw new Error(t('error.home.checkoutMissingOrderId'));
+      }
+
+      const response = await authedJsonFetch(`${effectiveApiUrl}/v1/orders/${targetOrderId}/buyer-delivery-request`, {
+        method: 'POST',
+        headers: {
+          'x-actor-role': 'buyer',
+        },
+        body: JSON.stringify({ requestedDeliveryType: 'delivery' }),
+      });
+      const json = await readJsonSafe<{ error?: { message?: string } }>(response);
+      if (!response.ok) {
+        throw new Error(json?.error?.message ?? t('error.home.deliveryRequestFailed'));
+      }
+
+      setActiveOrderId(targetOrderId);
+      setActiveOrderIds(createdOrderIds);
+      setPaymentStatus({
+        orderId: targetOrderId,
+        orderStatus: firstCreatedStatus,
+        paymentCompleted: false,
+      });
+      setPaymentInfo(t('helper.home.deliveryRequestSuccess'));
+      setCartItems([]);
+      await fetchRecentBuyerOrders();
+      onOpenOrderDetail(targetOrderId);
+    } catch (error) {
+      Alert.alert(
+        t('headline.common.error'),
+        error instanceof Error ? error.message : t('error.home.deliveryRequestFailed'),
+      );
+    } finally {
+      setDeliveryRequestStarting(false);
+    }
+  }, [apiUrl, deliveryRequestStarting, fetchRecentBuyerOrders, onOpenOrderDetail]);
 
   async function refreshPaymentStatus(waitForSettlement = false, overrideOrderIds?: string[], orderCreatedByUs = false, silent = false) {
     const orderIds = (overrideOrderIds && overrideOrderIds.length > 0
@@ -4144,13 +4138,13 @@ export default function HomeScreen({
                   <TouchableOpacity
                     style={[
                       styles.paymentSecondaryActionBtn,
-                      deliveryChatStarting && styles.paymentActionBtnDisabled,
+                      deliveryRequestStarting && styles.paymentActionBtnDisabled,
                     ]}
-                    onPress={() => void startDeliveryChat()}
+                    onPress={() => void startDeliveryRequestFromCart()}
                     activeOpacity={0.9}
-                    disabled={deliveryChatStarting}
+                    disabled={deliveryRequestStarting}
                   >
-                    {deliveryChatStarting ? (
+                    {deliveryRequestStarting ? (
                       <ActivityIndicator size="small" color="#2F6F4A" />
                     ) : (
                       <Text style={styles.paymentSecondaryActionBtnText}>{t('cta.home.createDeliveryChat')}</Text>
