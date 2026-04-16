@@ -1851,6 +1851,7 @@ function FoodCard({
                   </View>
                 </View>
               </View>
+              <View style={styles.foodInfoColDivider} />
               <View style={styles.foodInfoRightCol}>
                 <View style={styles.foodInfoRightItem}>
                   <View style={[styles.foodInfoIconBubble, hasAllergens ? styles.foodInfoIconBubbleAlert : styles.foodInfoIconBubbleOk]}>
@@ -1865,9 +1866,14 @@ function FoodCard({
                     <View style={styles.foodInfoIconBubble}>
                       <Ionicons name="location-outline" size={16} color="#4B372A" />
                     </View>
-                    <Text style={styles.foodInfoInlineBadgeText}>
-                      {meal.distance} km
-                    </Text>
+                    <View style={styles.foodInfoTextWrap}>
+                      <Text style={styles.foodInfoTitle}>
+                        {meal.distance} km
+                      </Text>
+                      <Text style={styles.foodInfoSubtitle}>
+                        Uzaklık
+                      </Text>
+                    </View>
                   </View>
                 ) : null}
               </View>
@@ -6421,6 +6427,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
+  },
+  foodInfoColDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(112,88,68,0.16)',
+    marginHorizontal: 10,
   },
   foodInfoRightCol: {
     width: '34%',
