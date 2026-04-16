@@ -6435,7 +6435,7 @@ const styles = StyleSheet.create({
   },
   foodInfoRightCol: {
     flexShrink: 0,
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     gap: 10,
   },
   foodInfoRightItem: {
