@@ -1716,7 +1716,7 @@ function FoodCard({
   const hasAllergens = allergens.length > 0;
   const titleMetrics = resolveFoodPhotoTitleMetrics(meal.title);
   const sellerHandle = formatSellerIdentity(meal.seller, meal.sellerUsername);
-  const sellerTagline = 'Her gün taze yapılan yemekler.';
+  const sellerTagline = 'Tencereden çıktığı gibi, sıcacık.';
   const ratingValue = Number(String(meal.rating ?? '').replace(',', '.'));
   const ratingBadgeText = Number.isFinite(ratingValue)
     ? Number(ratingValue).toFixed(1)
