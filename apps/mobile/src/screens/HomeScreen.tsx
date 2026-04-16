@@ -1769,9 +1769,7 @@ function FoodCard({
               }}
             />
           ) : (
-            <View style={styles.foodImageFallback}>
-              <Text style={styles.foodEmoji}>🍽️</Text>
-            </View>
+            <View style={styles.foodImageFallback} />
           )}
           {LinearGradient ? (
             <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
@@ -6331,8 +6329,7 @@ const styles = StyleSheet.create({
   },
   foodImageFallback: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#8E593C',
   },
   foodPhotoBottomGradient: {
     position: 'absolute',
@@ -6353,7 +6350,6 @@ const styles = StyleSheet.create({
     height: 118,
     backgroundColor: 'rgba(0,0,0,0.2)',
   },
-  foodEmoji: { fontSize: 56 },
   foodBadgesRight: {
     position: 'absolute',
     top: 16,
