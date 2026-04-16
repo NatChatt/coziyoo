@@ -390,6 +390,16 @@
             <span class="text-sm text-base-700 dark:text-base-300">{{ food.favorite_count }}</span>
           </div>
           <div class="flex items-center justify-between">
+            <span class="text-xs text-base-500 dark:text-base-400">{% trans "Teslimat" %}</span>
+            <span class="text-sm text-base-700 dark:text-base-300">
+              {% if food.seller.delivery_enabled %}
+                {% trans "Getir açık" %}
+              {% else %}
+                {% trans "Sadece gel al" %}
+              {% endif %}
+            </span>
+          </div>
+          <div class="flex items-center justify-between">
             <span class="text-xs text-base-500 dark:text-base-400">{% trans "Oluşturulma" %}</span>
             <span class="text-sm text-base-700 dark:text-base-300">{{ food.created_at|date:"d.m.Y H:i" }}</span>
           </div>
@@ -437,6 +447,40 @@
           <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Kısa Açıklama" %}</span>
         </div>
         <div class="px-5 py-4 text-sm text-base-600 dark:text-base-300">{{ food.card_summary }}</div>
+      </div>
+      {% endif %}
+
+      {# Teslimat Notu #}
+      {% if food.seller.delivery_enabled or food.seller.delivery_terms %}
+      <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
+        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+          <span class="material-symbols-outlined text-base text-base-400 dark:text-base-500 leading-none">local_shipping</span>
+          <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Teslimat" %}</span>
+        </div>
+        <div class="px-5 py-4 flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-base-500 dark:text-base-400">{% trans "Durum" %}</span>
+            <span class="text-sm font-semibold {% if food.seller.delivery_enabled %}text-emerald-700 dark:text-emerald-300{% else %}text-base-700 dark:text-base-300{% endif %}">
+              {% if food.seller.delivery_enabled %}
+                {% trans "Getir aktif" %}
+              {% else %}
+                {% trans "Getir kapalı" %}
+              {% endif %}
+            </span>
+          </div>
+          {% if food.seller.delivery_radius_km %}
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-base-500 dark:text-base-400">{% trans "Menzil" %}</span>
+            <span class="text-sm text-base-700 dark:text-base-300">{{ food.seller.delivery_radius_km }} km</span>
+          </div>
+          {% endif %}
+          {% if food.seller.delivery_terms %}
+          <div>
+            <div class="text-xs text-base-500 dark:text-base-400 mb-1">{% trans "Teslimat Yazısı" %}</div>
+            <div class="text-sm text-base-600 dark:text-base-300 leading-relaxed whitespace-pre-wrap">{{ food.seller.delivery_terms }}</div>
+          </div>
+          {% endif %}
+        </div>
       </div>
       {% endif %}
 
