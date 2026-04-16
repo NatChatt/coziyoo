@@ -668,6 +668,16 @@ function canAutoOpenBuyerPickupPayment(order: HomeOrderSummary): boolean {
   );
 }
 
+function shouldHideCartQuickOrderCard(order: HomeOrderSummary | null | undefined): boolean {
+  if (!order) return false;
+  const normalizedStatus = String(order.status ?? '').trim().toLowerCase();
+  return (
+    order.deliveryType === 'pickup'
+    && !hasPendingBuyerDeliveryRequest(order)
+    && normalizedStatus === 'pending_seller_approval'
+  );
+}
+
 function parseDistanceKm(distanceText: string): number | null {
   const normalized = (distanceText || '').replace(',', '.');
   const match = normalized.match(/(\d+(?:\.\d+)?)/);
@@ -2139,7 +2149,10 @@ export default function HomeScreen({
     ];
   }, [activeOrderId, activeOrderIds, paymentStatus, recentBuyerOrders]);
   const showHomeOrderPromo = actionableHomeOrders.length > 0;
-  const showCartQuickOrderCard = cartItems.length === 0 && actionableHomeOrders.length > 0;
+  const latestActionableHomeOrder = actionableHomeOrders[0] ?? null;
+  const hideCartQuickOrderCard = shouldHideCartQuickOrderCard(latestActionableHomeOrder);
+  const showCartQuickOrderCard =
+    cartItems.length === 0 && actionableHomeOrders.length > 0 && !hideCartQuickOrderCard;
   const shouldShowQuickOrderRefresh = useCallback((orderId: string) => Boolean(
     paymentLoading ||
     paymentStatus?.orderId === orderId ||
@@ -4128,6 +4141,10 @@ export default function HomeScreen({
       }, 0);
       const total = subtotal;
       const showCartPromoFallback = cartItems.length === 0 && !showCartQuickOrderCard;
+      const showCartPendingApprovalState =
+        cartItems.length === 0
+        && hideCartQuickOrderCard
+        && Boolean(paymentInfo || paymentStatus);
       return (
         <View style={styles.cartWrap}>
           <View style={styles.cartHeader}>
@@ -4150,7 +4167,14 @@ export default function HomeScreen({
             </Text>
           </View>
           {cartItems.length === 0 ? (
-            showCartQuickOrderCard ? (
+            showCartPendingApprovalState ? (
+              <View style={styles.tabPanelCard}>
+                <Text style={styles.tabPanelTitle}>{t('status.home.pendingApprovalTitle')}</Text>
+                <Text style={styles.tabPanelText}>
+                  {paymentInfo ?? t('helper.home.paymentCapturePendingSingle')}
+                </Text>
+              </View>
+            ) : showCartQuickOrderCard ? (
               <View>
                 <View style={styles.tabPanelCardCompact}>
                   {renderQuickOrderCard('cart')}
