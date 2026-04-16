@@ -26,11 +26,12 @@ type Props = {
   auth: AuthSession;
   chatId: string;
   sellerName: string;
+  actorRole?: 'buyer' | 'seller';
   onBack: () => void;
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
-export default function ChatScreen({ auth, chatId, sellerName, onBack, onAuthRefresh }: Props) {
+export default function ChatScreen({ auth, chatId, sellerName, actorRole = 'buyer', onBack, onAuthRefresh }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
@@ -42,14 +43,14 @@ export default function ChatScreen({ auth, chatId, sellerName, onBack, onAuthRef
     const result = await apiRequest<Message[]>(
       `/v1/chats/${chatId}/messages`,
       auth,
-      { actorRole: 'buyer' },
+      { actorRole },
       onAuthRefresh,
     );
     if (result.ok) {
       setMessages(Array.isArray(result.data) ? result.data : []);
     }
     setLoading(false);
-  }, [chatId, auth.accessToken, auth.userId, onAuthRefresh]);
+  }, [actorRole, chatId, auth.accessToken, auth.userId, onAuthRefresh]);
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
@@ -62,7 +63,7 @@ export default function ChatScreen({ auth, chatId, sellerName, onBack, onAuthRef
     const result = await apiRequest<Message>(
       `/v1/chats/${chatId}/messages`,
       auth,
-      { method: 'POST', body: { message: trimmed, messageType: 'text' }, actorRole: 'buyer' },
+      { method: 'POST', body: { message: trimmed, messageType: 'text' }, actorRole },
       onAuthRefresh,
     );
     if (result.ok) {
@@ -78,7 +79,7 @@ export default function ChatScreen({ auth, chatId, sellerName, onBack, onAuthRef
   }
 
   function renderMessage({ item }: { item: Message }) {
-    const isMine = item.senderType === 'buyer';
+    const isMine = item.senderType === actorRole;
 
     return (
       <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>

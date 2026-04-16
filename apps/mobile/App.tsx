@@ -238,6 +238,7 @@ export default function App() {
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [selectedChatName, setSelectedChatName] = useState('');
+  const [selectedChatActor, setSelectedChatActor] = useState<'buyer' | 'seller'>('buyer');
   const [complaintBackTarget, setComplaintBackTarget] = useState<'orderDetail' | 'complaintOrders'>('orderDetail');
 
   const [isNewRegistration, setIsNewRegistration] = useState(false);
@@ -657,7 +658,14 @@ export default function App() {
     return (
       <ChatListScreen
         auth={auth}
-        onBack={() => goHome('messages')}
+        actorRole={selectedChatActor}
+        onBack={() => {
+          if (selectedChatActor === 'seller') {
+            setScreen('home');
+            return;
+          }
+          goHome('messages');
+        }}
         onOpenChat={(chatId, name) => { setSelectedChatId(chatId); setSelectedChatName(name); setScreen('chat'); }}
         onAuthRefresh={setAuth}
       />
@@ -670,6 +678,7 @@ export default function App() {
         auth={auth}
         chatId={selectedChatId}
         sellerName={selectedChatName}
+        actorRole={selectedChatActor}
         onBack={() => setScreen('chatList')}
         onAuthRefresh={setAuth}
       />
@@ -838,6 +847,10 @@ export default function App() {
           auth={auth}
           onOpenProfile={() => setScreen('sellerProfileDetail')}
           onOpenFinance={() => setScreen('sellerFinance')}
+          onOpenMessages={() => {
+            setSelectedChatActor('seller');
+            setScreen('chatList');
+          }}
           onOpenFoodsManager={(foodId) => {
             if (foodId) {
               setSellerFoodsFromManager(false);
@@ -896,8 +909,16 @@ export default function App() {
         setOrderDetailBackTarget('home');
         setScreen('payment');
       }}
-      onOpenChatList={() => setScreen('chatList')}
-      onOpenChat={(chatId, name) => { setSelectedChatId(chatId); setSelectedChatName(name); setScreen('chat'); }}
+      onOpenChatList={() => {
+        setSelectedChatActor('buyer');
+        setScreen('chatList');
+      }}
+      onOpenChat={(chatId, name) => {
+        setSelectedChatActor('buyer');
+        setSelectedChatId(chatId);
+        setSelectedChatName(name);
+        setScreen('chat');
+      }}
       onOpenFavorites={() => setScreen('favorites')}
       onOpenFoodDetail={(food: FoodItem) => { setSelectedFood(food); setScreen('foodDetail'); }}
       onLogout={handleLogout}

@@ -17,6 +17,7 @@ type Props = {
   onAuthRefresh?: (session: AuthSession) => void;
   onOpenProfile: () => void;
   onOpenFinance: () => void;
+  onOpenMessages: () => void;
   onOpenFoodsManager: (foodId?: string) => void;
   onOpenOrder: (orderId: string) => void;
   onSwitchToBuyer?: () => void;
@@ -327,6 +328,7 @@ export default function SellerHomeScreen({
   onAuthRefresh,
   onOpenProfile,
   onOpenFinance,
+  onOpenMessages,
   onOpenFoodsManager,
   onOpenOrder,
   onSwitchToBuyer,
@@ -357,6 +359,7 @@ export default function SellerHomeScreen({
       }));
   });
   const [activePage, setActivePage] = useState(0);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [celebrationOrderId, setCelebrationOrderId] = useState<string | null>(null);
   const [newOrderUntilById, setNewOrderUntilById] = useState<Record<string, number>>({});
   const [clockMs, setClockMs] = useState(() => Date.now());
@@ -518,12 +521,13 @@ export default function SellerHomeScreen({
       // Orders are highest priority; do not block them behind profile/foods fetches.
       await refreshOrdersOnly(baseUrl);
 
-      const [profileRes, foodsRes, lotsRes, reviewsRes, meRes] = await Promise.all([
+      const [profileRes, foodsRes, lotsRes, reviewsRes, meRes, chatsRes] = await Promise.all([
         fetchWithAuth("/v1/seller/profile", baseUrl),
         fetchWithAuth("/v1/seller/foods", baseUrl),
         fetchWithAuth("/v1/seller/lots", baseUrl),
         fetchWithAuth("/v1/seller/reviews?pageSize=1", baseUrl),
         fetchWithAuth("/v1/auth/me", baseUrl),
+        fetchWithAuth("/v1/chats", baseUrl),
       ]);
 
       const profileJson = await profileRes.json().catch(() => ({}));
@@ -543,6 +547,17 @@ export default function SellerHomeScreen({
         const meJson = await meRes.json().catch(() => ({}));
         const cc = normalizeCountryCode(meJson?.data?.countryCode ?? "");
         if (cc) setSellerCountryCode(cc);
+      }
+
+      const chatsJson = await chatsRes.json().catch(() => ({}));
+      if (chatsRes.ok && Array.isArray(chatsJson?.data)) {
+        const unreadTotal = chatsJson.data.reduce((sum: number, row: Record<string, unknown>) => {
+          const unread = Number(row?.buyerUnreadCount ?? 0);
+          return sum + (Number.isFinite(unread) ? unread : 0);
+        }, 0);
+        setChatUnreadCount(unreadTotal);
+      } else if (chatsRes.status >= 400) {
+        setChatUnreadCount(0);
       }
 
       if (foodsRes.ok) {
@@ -789,6 +804,14 @@ export default function SellerHomeScreen({
         <View style={styles.quickButtonsRow}>
           <TouchableOpacity style={styles.quickButton} activeOpacity={0.85} onPress={() => onOpenFoodsManager()}>
             <Text style={styles.quickButtonText}>{t('cta.seller.home.foodsManager')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickButton} activeOpacity={0.85} onPress={onOpenMessages}>
+            <Text style={styles.quickButtonText}>{t('cta.seller.home.messages')}</Text>
+            {chatUnreadCount > 0 ? (
+              <View style={styles.quickButtonBadge}>
+                <Text style={styles.quickButtonBadgeText}>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</Text>
+              </View>
+            ) : null}
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickLpiPill} activeOpacity={0.85} onPress={onOpenFinance}>
             <Text style={[styles.quickButtonText, styles.quickWalletButtonText]}>{t('cta.seller.home.wallet')}</Text>
@@ -1229,6 +1252,23 @@ const styles = StyleSheet.create({
     borderColor: "#79BA94",
     alignItems: "center",
     justifyContent: "center",
+  },
+  quickButtonBadge: {
+    position: "absolute",
+    top: 6,
+    right: 8,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    backgroundColor: "#3F855C",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickButtonBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "800",
   },
   quickButtonText: {
     color: "#1D5634",

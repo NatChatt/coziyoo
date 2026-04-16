@@ -23,10 +23,11 @@ type Props = {
   auth: AuthSession;
   onBack: () => void;
   onOpenChat: (chatId: string, sellerName: string) => void;
+  actorRole?: 'buyer' | 'seller';
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
-export default function ChatListScreen({ auth, onBack, onOpenChat, onAuthRefresh }: Props) {
+export default function ChatListScreen({ auth, onBack, onOpenChat, actorRole = 'buyer', onAuthRefresh }: Props) {
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,7 +37,7 @@ export default function ChatListScreen({ auth, onBack, onOpenChat, onAuthRefresh
     const result = await apiRequest<ChatSummary[]>(
       '/v1/chats',
       auth,
-      { actorRole: 'buyer' },
+      { actorRole },
       onAuthRefresh,
     );
     if (result.ok) {
@@ -44,7 +45,7 @@ export default function ChatListScreen({ auth, onBack, onOpenChat, onAuthRefresh
     }
     setLoading(false);
     setRefreshing(false);
-  }, [auth.accessToken, auth.userId, onAuthRefresh]);
+  }, [actorRole, auth.accessToken, auth.userId, onAuthRefresh]);
 
   useEffect(() => { fetchChats(); }, [fetchChats]);
 

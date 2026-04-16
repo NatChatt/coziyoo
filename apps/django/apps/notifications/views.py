@@ -27,6 +27,11 @@ def _dictfetchall(cursor):
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
+def _resolve_chat_actor(request):
+    actor_role = str(request.headers.get("x-actor-role") or request.META.get("HTTP_X_ACTOR_ROLE") or "").strip().lower()
+    return "seller" if actor_role == "seller" else "buyer"
+
+
 # ── List Notifications ────────────────────────────────────────────────────────
 
 class NotificationListView(APIView):
@@ -138,25 +143,46 @@ class ChatListView(APIView):
 
     def get(self, request):
         user_id = str(request.user.id)
+        actor_role = _resolve_chat_actor(request)
         with connection.cursor() as cur:
-            cur.execute(
-                """
-                SELECT
-                    c.id,
-                    c.seller_id,
-                    COALESCE(u.display_name, u.email, 'Usta') AS seller_name,
-                    u.profile_image_url AS seller_image,
-                    c.last_message,
-                    c.last_message_time,
-                    COALESCE(c.buyer_unread_count, 0) AS buyer_unread_count
-                FROM chats c
-                JOIN users u ON u.id = c.seller_id
-                WHERE c.buyer_id = %s
-                  AND COALESCE(c.is_active, TRUE) = TRUE
-                ORDER BY c.last_message_time DESC NULLS LAST, c.created_at DESC
-                """,
-                [user_id],
-            )
+            if actor_role == "seller":
+                cur.execute(
+                    """
+                    SELECT
+                        c.id,
+                        c.buyer_id AS counterpart_id,
+                        COALESCE(u.display_name, u.email, 'Müşteri') AS counterpart_name,
+                        u.profile_image_url AS counterpart_image,
+                        c.last_message,
+                        c.last_message_time,
+                        COALESCE(c.seller_unread_count, 0) AS unread_count
+                    FROM chats c
+                    JOIN users u ON u.id = c.buyer_id
+                    WHERE c.seller_id = %s
+                      AND COALESCE(c.is_active, TRUE) = TRUE
+                    ORDER BY c.last_message_time DESC NULLS LAST, c.created_at DESC
+                    """,
+                    [user_id],
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT
+                        c.id,
+                        c.seller_id AS counterpart_id,
+                        COALESCE(u.display_name, u.email, 'Usta') AS counterpart_name,
+                        u.profile_image_url AS counterpart_image,
+                        c.last_message,
+                        c.last_message_time,
+                        COALESCE(c.buyer_unread_count, 0) AS unread_count
+                    FROM chats c
+                    JOIN users u ON u.id = c.seller_id
+                    WHERE c.buyer_id = %s
+                      AND COALESCE(c.is_active, TRUE) = TRUE
+                    ORDER BY c.last_message_time DESC NULLS LAST, c.created_at DESC
+                    """,
+                    [user_id],
+                )
             rows = _dictfetchall(cur)
 
         items = []
@@ -164,12 +190,12 @@ class ChatListView(APIView):
             items.append(
                 {
                     "id": str(row["id"]),
-                    "sellerId": str(row["seller_id"]),
-                    "sellerName": str(row["seller_name"] or "Usta"),
-                    "sellerImage": row["seller_image"],
+                    "sellerId": str(row["counterpart_id"]),
+                    "sellerName": str(row["counterpart_name"] or ("Müşteri" if actor_role == "seller" else "Usta")),
+                    "sellerImage": row["counterpart_image"],
                     "lastMessage": row["last_message"],
                     "lastMessageTime": row["last_message_time"].isoformat() if row["last_message_time"] else None,
-                    "buyerUnreadCount": int(row["buyer_unread_count"] or 0),
+                    "buyerUnreadCount": int(row["unread_count"] or 0),
                 }
             )
 
@@ -280,19 +306,31 @@ class ChatMessagesView(APIView):
     permission_classes = [IsAppRealm]
 
     def get(self, request, chat_id):
-        buyer_id = str(request.user.id)
+        user_id = str(request.user.id)
+        actor_role = _resolve_chat_actor(request)
 
         with transaction.atomic():
             with connection.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT id
-                    FROM chats
-                    WHERE id = %s AND buyer_id = %s
-                    LIMIT 1
-                    """,
-                    [str(chat_id), buyer_id],
-                )
+                if actor_role == "seller":
+                    cur.execute(
+                        """
+                        SELECT id
+                        FROM chats
+                        WHERE id = %s AND seller_id = %s
+                        LIMIT 1
+                        """,
+                        [str(chat_id), user_id],
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT id
+                        FROM chats
+                        WHERE id = %s AND buyer_id = %s
+                        LIMIT 1
+                        """,
+                        [str(chat_id), user_id],
+                    )
                 if cur.fetchone() is None:
                     return Response(
                         {"error": {"code": "NOT_FOUND", "message": "Chat not found"}},
@@ -303,14 +341,20 @@ class ChatMessagesView(APIView):
                     """
                     UPDATE messages
                     SET is_read = TRUE
-                    WHERE chat_id = %s AND sender_type = 'seller' AND COALESCE(is_read, FALSE) = FALSE
+                    WHERE chat_id = %s AND sender_type = %s AND COALESCE(is_read, FALSE) = FALSE
                     """,
-                    [str(chat_id)],
+                    [str(chat_id), "buyer" if actor_role == "seller" else "seller"],
                 )
-                cur.execute(
-                    "UPDATE chats SET buyer_unread_count = 0, updated_at = now() WHERE id = %s",
-                    [str(chat_id)],
-                )
+                if actor_role == "seller":
+                    cur.execute(
+                        "UPDATE chats SET seller_unread_count = 0, updated_at = now() WHERE id = %s",
+                        [str(chat_id)],
+                    )
+                else:
+                    cur.execute(
+                        "UPDATE chats SET buyer_unread_count = 0, updated_at = now() WHERE id = %s",
+                        [str(chat_id)],
+                    )
                 cur.execute(
                     """
                     SELECT id, sender_id, sender_type, message, message_type, COALESCE(is_read, FALSE) AS is_read, created_at
@@ -339,7 +383,8 @@ class ChatMessagesView(APIView):
         return Response({"data": items})
 
     def post(self, request, chat_id):
-        buyer_id = str(request.user.id)
+        user_id = str(request.user.id)
+        actor_role = _resolve_chat_actor(request)
         message = str(request.data.get("message") or "").strip()
         message_type = str(request.data.get("messageType") or "text").strip().lower()
 
@@ -358,15 +403,26 @@ class ChatMessagesView(APIView):
 
         with transaction.atomic():
             with connection.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT id
-                    FROM chats
-                    WHERE id = %s AND buyer_id = %s
-                    LIMIT 1
-                    """,
-                    [str(chat_id), buyer_id],
-                )
+                if actor_role == "seller":
+                    cur.execute(
+                        """
+                        SELECT id
+                        FROM chats
+                        WHERE id = %s AND seller_id = %s
+                        LIMIT 1
+                        """,
+                        [str(chat_id), user_id],
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT id
+                        FROM chats
+                        WHERE id = %s AND buyer_id = %s
+                        LIMIT 1
+                        """,
+                        [str(chat_id), user_id],
+                    )
                 if cur.fetchone() is None:
                     return Response(
                         {"error": {"code": "NOT_FOUND", "message": "Chat not found"}},
@@ -379,24 +435,38 @@ class ChatMessagesView(APIView):
                         id, chat_id, sender_id, sender_type, message, message_type,
                         order_data_json, is_read, created_at
                     )
-                    VALUES (%s, %s, %s, 'buyer', %s, 'text', NULL, TRUE, now())
+                    VALUES (%s, %s, %s, %s, %s, 'text', NULL, TRUE, now())
                     RETURNING id, sender_id, sender_type, message, message_type, is_read, created_at
                     """,
-                    [message_id, str(chat_id), buyer_id, message],
+                    [message_id, str(chat_id), user_id, actor_role, message],
                 )
                 row = _dictfetchone(cur)
-                cur.execute(
-                    """
-                    UPDATE chats
-                    SET last_message = %s,
-                        last_message_time = now(),
-                        last_message_sender = 'buyer',
-                        seller_unread_count = COALESCE(seller_unread_count, 0) + 1,
-                        updated_at = now()
-                    WHERE id = %s
-                    """,
-                    [message, str(chat_id)],
-                )
+                if actor_role == "seller":
+                    cur.execute(
+                        """
+                        UPDATE chats
+                        SET last_message = %s,
+                            last_message_time = now(),
+                            last_message_sender = 'seller',
+                            buyer_unread_count = COALESCE(buyer_unread_count, 0) + 1,
+                            updated_at = now()
+                        WHERE id = %s
+                        """,
+                        [message, str(chat_id)],
+                    )
+                else:
+                    cur.execute(
+                        """
+                        UPDATE chats
+                        SET last_message = %s,
+                            last_message_time = now(),
+                            last_message_sender = 'buyer',
+                            seller_unread_count = COALESCE(seller_unread_count, 0) + 1,
+                            updated_at = now()
+                        WHERE id = %s
+                        """,
+                        [message, str(chat_id)],
+                    )
 
         return Response(
             {

@@ -32,7 +32,7 @@ export async function apiRequest<T = unknown>(
     'Authorization': `Bearer ${auth.accessToken}`,
     'Content-Type': 'application/json',
   };
-  if (options?.actorRole && auth.userType === 'both') {
+  if (options?.actorRole) {
     headers['x-actor-role'] = options.actorRole;
   }
 
