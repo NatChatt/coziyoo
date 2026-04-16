@@ -730,22 +730,54 @@ class SellerReviewsView(APIView):
     permission_classes = [IsAppRealm]
 
     def get(self, request):
-        sql = """
-            SELECT r.id, r.rating, r.comment, r.created_at, u.display_name AS buyer_name
+        items_sql = """
+            SELECT
+                r.id,
+                r.rating,
+                r.comment,
+                r.created_at,
+                u.display_name AS buyer_name,
+                f.name AS food_name
             FROM reviews r
             JOIN users u ON u.id = r.buyer_id
+            LEFT JOIN foods f ON f.id = r.food_id
             WHERE r.seller_id = %s
             ORDER BY r.created_at DESC
             LIMIT 50
         """
+        summary_sql = """
+            SELECT
+                COUNT(*)::int AS total_reviews,
+                COALESCE(AVG(r.rating), 0)::numeric(4,2) AS average_rating
+            FROM reviews r
+            WHERE r.seller_id = %s
+        """
         with connection.cursor() as cursor:
-            cursor.execute(sql, [request.user.id])
+            cursor.execute(items_sql, [request.user.id])
             reviews = _rows_as_dicts(cursor)
+            cursor.execute(summary_sql, [request.user.id])
+            summary = _rows_as_dicts(cursor)[0]
 
         for review in reviews:
             _stringify_uuids(review, ["id"])
+            review["buyerName"] = review.get("buyer_name")
+            review["foodName"] = review.get("food_name")
+            review["createdAt"] = review["created_at"].isoformat() if review.get("created_at") else None
+            review.pop("buyer_name", None)
+            review.pop("food_name", None)
+            review.pop("created_at", None)
 
-        return Response({"data": reviews})
+        return Response(
+            {
+                "data": {
+                    "summary": {
+                        "averageRating": float(summary.get("average_rating") or 0),
+                        "totalReviews": int(summary.get("total_reviews") or 0),
+                    },
+                    "items": reviews,
+                }
+            }
+        )
 
 
 class SellerCategoriesView(APIView):

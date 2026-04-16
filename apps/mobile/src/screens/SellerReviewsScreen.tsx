@@ -111,20 +111,29 @@ export default function SellerReviewsScreen({ auth, onBack, onAuthRefresh }: Pro
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error?.message ?? t('cta.seller.profileDetail.reviews'));
 
-      const nextSummary = json?.data?.summary;
-      const nextItems = Array.isArray(json?.data?.items) ? json.data.items : [];
+      const nextData = json?.data;
+      const nextSummary = nextData?.summary;
+      const nextItems = Array.isArray(nextData?.items)
+        ? nextData.items
+        : Array.isArray(nextData)
+          ? nextData
+          : [];
       setSummary({
         averageRating: Number(nextSummary?.averageRating ?? 0),
         totalReviews: Number(nextSummary?.totalReviews ?? nextItems.length),
       });
       setReviews(
-        nextItems.map((row: SellerReview) => ({
+        nextItems.map((row: SellerReview & {
+          food_name?: string | null;
+          buyer_name?: string | null;
+          created_at?: string;
+        }) => ({
           id: String(row.id),
           rating: Number(row.rating ?? 0),
           comment: String(row.comment ?? ""),
-          foodName: row.foodName ? String(row.foodName) : null,
-          buyerName: String(row.buyerName ?? t('status.seller.reviews.anonymousBuyer')),
-          createdAt: String(row.createdAt ?? ""),
+          foodName: row.foodName ? String(row.foodName) : (row.food_name ? String(row.food_name) : null),
+          buyerName: String(row.buyerName ?? row.buyer_name ?? t('status.seller.reviews.anonymousBuyer')),
+          createdAt: String(row.createdAt ?? row.created_at ?? ""),
         })),
       );
     } catch (error) {
