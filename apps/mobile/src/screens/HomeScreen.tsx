@@ -1648,16 +1648,6 @@ function FoodCard({
           { backgroundColor: colors.bg, borderColor: colors.border },
         ]}
       >
-        {hasSellerFigure ? (
-          <View pointerEvents="none" style={styles.foodSellerFigureOverlay}>
-            <Image
-              source={sellerHeroSource!}
-              style={[styles.foodSellerFigureImage, styles.foodSellerPortraitImage]}
-              resizeMode="cover"
-              onError={() => setSellerThumbFailed(true)}
-            />
-          </View>
-        ) : null}
         <View
           style={[styles.foodPhoto, { backgroundColor: meal.backgroundColor }]}
           onLayout={(event) => {
@@ -1667,77 +1657,80 @@ function FoodCard({
             setImageFrameHeight((prev) => (prev === nextHeight ? prev : nextHeight));
           }}
         >
-          <View style={styles.foodPhotoTopRow}>
-            <View style={styles.foodPhotoChefPanel}>
-              <View style={styles.foodPhotoChefPanelBackdrop} />
-              {!hasSellerFigure ? (
-                <View style={styles.foodSellerFigureFallback}>
-                  <Text style={styles.foodSellerFigureFallbackEmoji}>👩‍🍳</Text>
-                </View>
-              ) : null}
-            </View>
-            <View style={styles.foodPhotoDishPanel}>
-              {activeImageUrl ? (
-                <Image
-                  source={{ uri: activeImageUrl }}
-                  style={styles.foodImage}
-                  resizeMode="cover"
-                  onError={() => {
-                    setImageUrls((prev) => prev.slice(1));
-                    setImageIndex(0);
-                  }}
+          <View style={styles.foodPhotoDishPanel}>
+            {activeImageUrl ? (
+              <Image
+                source={{ uri: activeImageUrl }}
+                style={styles.foodImage}
+                resizeMode="cover"
+                onError={() => {
+                  setImageUrls((prev) => prev.slice(1));
+                  setImageIndex(0);
+                }}
+              />
+            ) : (
+              <View style={styles.foodImageTapFallback}>
+                <Text style={styles.foodEmoji}>🍽️</Text>
+              </View>
+            )}
+            {LinearGradient ? (
+              <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
+                <LinearGradient
+                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.16)', 'rgba(0,0,0,0.42)']}
+                  locations={[0, 0.52, 1]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.foodPhotoBottomGradientFill}
                 />
-              ) : (
-                <View style={styles.foodImageTapFallback}>
-                  <Text style={styles.foodEmoji}>🍽️</Text>
-                </View>
-              )}
-              {LinearGradient ? (
-                <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
-                  <LinearGradient
-                    colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.16)', 'rgba(0,0,0,0.42)']}
-                    locations={[0, 0.52, 1]}
-                    start={{ x: 0.5, y: 0 }}
-                    end={{ x: 0.5, y: 1 }}
-                    style={styles.foodPhotoBottomGradientFill}
-                  />
-                </View>
-              ) : (
-                <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
-              )}
-              <View pointerEvents="none" style={styles.foodPhotoTitleOverlay}>
+              </View>
+            ) : (
+              <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
+            )}
+            <View pointerEvents="none" style={[styles.foodPhotoTitleOverlay, hasSellerFigure && styles.foodPhotoTitleOverlayWithFigure]}>
+              <Text
+                numberOfLines={2}
+                style={[
+                  styles.foodPhotoTitleText,
+                  titleMetrics,
+                  { color: colors.photoTitle },
+                  photoTextTone === 'dark' && styles.foodPhotoTitleTextDark,
+                ]}
+              >
+                {meal.title}
+              </Text>
+              {meal.cuisine ? (
                 <Text
-                  numberOfLines={2}
+                  numberOfLines={1}
                   style={[
-                    styles.foodPhotoTitleText,
-                    titleMetrics,
-                    { color: colors.photoTitle },
-                    photoTextTone === 'dark' && styles.foodPhotoTitleTextDark,
+                    styles.foodPhotoCuisineText,
+                    { color: colors.photoCuisine },
+                    photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
                   ]}
                 >
-                  {meal.title}
+                  {formatCuisineLabel(meal.cuisine)}
                 </Text>
-                {meal.cuisine ? (
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.foodPhotoCuisineText,
-                      { color: colors.photoCuisine },
-                      photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
-                    ]}
-                  >
-                    {formatCuisineLabel(meal.cuisine)}
-                  </Text>
-                ) : null}
-              </View>
-              <View style={styles.foodBadgesRight}>
-                <View style={styles.foodPriceBadge}>
-                  <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
-                </View>
+              ) : null}
+            </View>
+            <View style={styles.foodBadgesRight}>
+              <View style={styles.foodPriceBadge}>
+                <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
               </View>
             </View>
           </View>
-          <View pointerEvents="none" style={styles.foodPhotoSplitAccent} />
+          {hasSellerFigure ? (
+            <View pointerEvents="none" style={styles.foodSellerFigureOverlay}>
+              <Image
+                source={sellerHeroSource!}
+                style={[styles.foodSellerFigureImage, styles.foodSellerPortraitImage]}
+                resizeMode="cover"
+                onError={() => setSellerThumbFailed(true)}
+              />
+            </View>
+          ) : (
+            <View pointerEvents="none" style={styles.foodSellerFigureFallbackCard}>
+              <Text style={styles.foodSellerFigureFallbackEmoji}>👩‍🍳</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity
           activeOpacity={0.96}
@@ -6249,25 +6242,11 @@ const styles = StyleSheet.create({
     height: 248,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'visible',
+    overflow: 'hidden',
     backgroundColor: '#B96C44',
   },
-  foodPhotoTopRow: {
-    width: '100%',
-    height: '100%',
-    flexDirection: 'row',
-  },
-  foodPhotoChefPanel: {
-    width: '41.5%',
-    position: 'relative',
-    backgroundColor: '#F4EBDD',
-  },
-  foodPhotoChefPanelBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F6EEE2',
-  },
   foodPhotoDishPanel: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     position: 'relative',
     overflow: 'hidden',
     backgroundColor: '#8E593C',
@@ -6343,10 +6322,10 @@ const styles = StyleSheet.create({
   foodEmoji: { fontSize: 56 },
   foodSellerFigureOverlay: {
     position: 'absolute',
-    left: -2,
-    top: 0,
-    width: 210,
-    height: 392,
+    left: 0,
+    top: 10,
+    width: 194,
+    height: 430,
     zIndex: 9,
     alignItems: 'center',
     justifyContent: 'flex-end',
@@ -6361,27 +6340,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
   },
-  foodSellerFigureFallback: {
+  foodSellerFigureFallbackCard: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 26,
+    left: 12,
+    top: 22,
+    width: 170,
+    height: 290,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+    zIndex: 9,
   },
   foodSellerFigureFallbackEmoji: {
     fontSize: 84,
-  },
-  foodPhotoSplitAccent: {
-    position: 'absolute',
-    top: 10,
-    bottom: 8,
-    left: '41.5%',
-    marginLeft: -1.5,
-    width: 3,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.88)',
-    zIndex: 7,
   },
   foodBadgesRight: {
     position: 'absolute',
@@ -6397,6 +6367,10 @@ const styles = StyleSheet.create({
     right: 18,
     bottom: 18,
     zIndex: 7,
+  },
+  foodPhotoTitleOverlayWithFigure: {
+    left: 192,
+    right: 18,
   },
   foodPhotoLeftTextBlock: {
     position: 'absolute',
@@ -6484,7 +6458,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   foodInfoContentWithFigure: {
-    paddingLeft: 176,
+    paddingLeft: 188,
   },
   foodInfoLine: {
     flexDirection: 'row',
