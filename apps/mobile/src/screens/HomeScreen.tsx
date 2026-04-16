@@ -6434,7 +6434,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   foodInfoRightCol: {
-    width: '34%',
+    width: '30%',
     flexShrink: 0,
     alignItems: 'flex-end',
     gap: 10,
@@ -6518,7 +6518,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   foodStatItemRightCol: {
-    width: '34%',
+    width: '30%',
     flexGrow: 0,
     flexShrink: 0,
   },
@@ -6550,7 +6550,7 @@ const styles = StyleSheet.create({
   foodStatDivider: {
     width: 1,
     backgroundColor: 'rgba(112,88,68,0.16)',
-    marginHorizontal: 6,
+    marginHorizontal: 4,
   },
   foodFooterRow: {
     borderTopWidth: 1,
