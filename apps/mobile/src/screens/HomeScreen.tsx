@@ -4009,12 +4009,12 @@ export default function HomeScreen({
               </View>
             )
           ) : (
-            <>
-              <ScrollView
-                style={styles.cartList}
-                contentContainerStyle={styles.cartListContent}
-                showsVerticalScrollIndicator={false}
-              >
+            <ScrollView
+              style={styles.cartList}
+              contentContainerStyle={styles.cartListContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View>
                 {cartItems.map((item) => {
                   const unitPrice = Number(item.meal.price.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
                   const addonsUnitTotal = item.selectedAddons.paid.reduce(
@@ -4089,7 +4089,7 @@ export default function HomeScreen({
                     </View>
                   );
                 })}
-              </ScrollView>
+              </View>
               <View style={styles.cartFooter}>
                 <View style={styles.cartTotalRow}>
                   <Text style={styles.cartTotalLabel}>Toplam</Text>
@@ -4141,7 +4141,7 @@ export default function HomeScreen({
                   )}
                 </TouchableOpacity>
               </View>
-            </>
+            </ScrollView>
           )}
         </View>
       );
