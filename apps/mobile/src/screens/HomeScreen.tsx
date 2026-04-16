@@ -1724,9 +1724,9 @@ function FoodCard({
     return 'Ev yemekleri';
   })();
   const ratingValue = Number(String(meal.rating ?? '').replace(',', '.'));
-  const ratingBadgeText = Number.isFinite(ratingValue) && ratingValue > 0
+  const ratingBadgeText = Number.isFinite(ratingValue)
     ? Number(ratingValue).toFixed(1)
-    : 'Yeni';
+    : '0.0';
   const socialProofText = Number.isFinite(ratingValue) && ratingValue > 0
     ? `${Number(ratingValue).toFixed(1)} puanla seviliyor.`
     : 'Yoğun ilgi görüyor';
