@@ -23,6 +23,7 @@ urlpatterns = [
     path("v1/seller/", include("apps.foods.urls_seller")),
     path("v1/payments/", include("apps.payments.urls")),
     path("v1/notifications/", include("apps.notifications.urls")),
+    path("v1/chats/", include("apps.notifications.chat_urls")),
     path("v1/complaints/", include("apps.complaints.urls")),
     path("v1/tickets/", include("apps.complaints.urls_tickets")),
     path("v1/finance/", include("apps.finance.urls")),

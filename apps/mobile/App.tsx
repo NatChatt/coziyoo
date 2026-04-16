@@ -897,6 +897,7 @@ export default function App() {
         setScreen('payment');
       }}
       onOpenChatList={() => setScreen('chatList')}
+      onOpenChat={(chatId, name) => { setSelectedChatId(chatId); setSelectedChatName(name); setScreen('chat'); }}
       onOpenFavorites={() => setScreen('favorites')}
       onOpenFoodDetail={(food: FoodItem) => { setSelectedFood(food); setScreen('foodDetail'); }}
       onLogout={handleLogout}

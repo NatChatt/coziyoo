@@ -182,6 +182,7 @@ type Props = {
   onOpenPayment?: (orderId: string) => void;
   onOpenNotifications?: () => void;
   onOpenChatList?: () => void;
+  onOpenChat?: (chatId: string, sellerName: string) => void;
   onOpenFavorites?: () => void;
   onOpenFoodDetail?: (food: any) => void;
   onLogout: () => void;
@@ -467,6 +468,12 @@ type PaymentStatusSnapshot = {
   orderStatus: string;
   paymentCompleted: boolean;
   latestAttemptStatus?: string;
+};
+
+type ChatBootstrapResponse = {
+  chatId: string;
+  sellerName: string;
+  lastMessageTime?: string | null;
 };
 
 const CHECKOUT_REQUEST_TIMEOUT_MS = 15000;
@@ -1800,6 +1807,7 @@ export default function HomeScreen({
   onOpenPayment,
   onOpenNotifications,
   onOpenChatList,
+  onOpenChat,
   onOpenFavorites,
   onOpenFoodDetail,
   onLogout,
@@ -1849,6 +1857,7 @@ export default function HomeScreen({
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatusSnapshot | null>(null);
   const [recentBuyerOrders, setRecentBuyerOrders] = useState<HomeOrderSummary[]>([]);
   const [deliveryRequestOrderIds, setDeliveryRequestOrderIds] = useState<Record<string, true>>({});
+  const [deliveryChatStarting, setDeliveryChatStarting] = useState(false);
   const cartPaymentAnimationVisible = false;
   const setCartPaymentAnimationDone = (_value: boolean) => {};
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -2196,6 +2205,63 @@ export default function HomeScreen({
       void fetchRecentBuyerOrders();
     }
   }, [apiUrl, deliveryRequestOrderIds, fetchRecentBuyerOrders]);
+
+  function resolveCartSellerForDeliveryChat(): { sellerId: string; sellerName: string } | null {
+    if (cartItems.length === 0) return null;
+    const sellerEntries = new Map<string, string>();
+    for (const item of cartItems) {
+      const sellerId = String(item.meal.sellerId ?? '').trim();
+      const sellerName = String(item.meal.seller ?? '').trim() || t('status.orders.sellerFallback');
+      if (!sellerId) return null;
+      sellerEntries.set(sellerId, sellerName);
+    }
+    if (sellerEntries.size !== 1) return null;
+    const [sellerId, sellerName] = [...sellerEntries.entries()][0];
+    return { sellerId, sellerName };
+  }
+
+  const startDeliveryChat = useCallback(async () => {
+    if (deliveryChatStarting) return;
+    if (cartItems.length === 0) {
+      Alert.alert(t('helper.home.cartEmptyAlertTitle'), t('helper.home.cartEmptyAlertMessage'));
+      return;
+    }
+    const sellerContext = resolveCartSellerForDeliveryChat();
+    if (!sellerContext) {
+      Alert.alert(t('headline.common.error'), t('error.home.deliveryChatSellerRequired'));
+      return;
+    }
+    setDeliveryChatStarting(true);
+    try {
+      const result = await apiRequest<ChatBootstrapResponse>(
+        '/v1/chats/bootstrap',
+        currentAuth,
+        {
+          method: 'POST',
+          body: {
+            sellerId: sellerContext.sellerId,
+            initialMessage: t('helper.home.deliveryChatAutoMessage'),
+          },
+          actorRole: 'buyer',
+        },
+        handleAuthRefresh,
+      );
+      if (!result.ok) {
+        throw new Error(result.message ?? t('error.home.deliveryChatStartFailed'));
+      }
+      if (!onOpenChat) {
+        throw new Error(t('error.home.deliveryChatStartFailed'));
+      }
+      onOpenChat(result.data.chatId, result.data.sellerName || sellerContext.sellerName);
+    } catch (error) {
+      Alert.alert(
+        t('headline.common.error'),
+        error instanceof Error ? error.message : t('error.home.deliveryChatStartFailed'),
+      );
+    } finally {
+      setDeliveryChatStarting(false);
+    }
+  }, [cartItems, currentAuth, deliveryChatStarting, handleAuthRefresh, onOpenChat]);
 
   useEffect(() => {
     loadSettings().then((s) => setApiUrl(s.apiUrl));
@@ -4060,7 +4126,26 @@ export default function HomeScreen({
               {paymentInfo ? (
                 <Text style={styles.paymentInfoText}>{paymentInfo}</Text>
               ) : null}
-              <View style={styles.paymentActionsRow}>
+              <View style={styles.paymentActionHintBox}>
+                <Text style={styles.paymentActionHintStrong}>{t('helper.home.createDeliveryChatHint')}</Text>
+                <Text style={styles.paymentActionHint}>{t('helper.home.cartCheckoutHint')}</Text>
+              </View>
+              <View style={styles.paymentActionsColumn}>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentSecondaryActionBtn,
+                    deliveryChatStarting && styles.paymentActionBtnDisabled,
+                  ]}
+                  onPress={() => void startDeliveryChat()}
+                  activeOpacity={0.9}
+                  disabled={deliveryChatStarting}
+                >
+                  {deliveryChatStarting ? (
+                    <ActivityIndicator size="small" color="#2F6F4A" />
+                  ) : (
+                    <Text style={styles.paymentSecondaryActionBtnText}>{t('cta.home.createDeliveryChat')}</Text>
+                  )}
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.paymentActionBtn, paymentLoading && styles.paymentActionBtnDisabled]}
                   onPress={() => void startCartCheckout()}
@@ -4073,9 +4158,6 @@ export default function HomeScreen({
                     <Text style={styles.paymentActionBtnText}>{t('cta.home.cartCheckout')}</Text>
                   )}
                 </TouchableOpacity>
-              </View>
-              <View style={styles.paymentActionHintBox}>
-                <Text style={styles.paymentActionHint}>{t('helper.home.cartCheckoutHint')}</Text>
               </View>
             </>
           )}
@@ -6379,6 +6461,7 @@ const styles = StyleSheet.create({
   paymentStatusText: { color: '#6B5D4F', fontSize: 12, lineHeight: 18 },
   paymentInfoText: { color: '#2F6F4A', fontSize: 12, fontWeight: '600', marginTop: 8 },
   paymentInfoTextCompact: { color: '#2F6F4A', fontSize: 12, fontWeight: '600', marginTop: 10, marginHorizontal: 18 },
+  paymentActionsColumn: { gap: 8, marginTop: 10 },
   paymentActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   paymentActionBtn: {
     flex: 1,
@@ -6390,6 +6473,18 @@ const styles = StyleSheet.create({
   },
   paymentActionBtnDisabled: { opacity: 0.65 },
   paymentActionBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  paymentSecondaryActionBtn: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#4A7C59',
+    backgroundColor: '#EFF7F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  paymentSecondaryActionBtnText: { color: '#2F6F4A', fontSize: 13, fontWeight: '700' },
   paymentActionHintBox: {
     marginTop: 10,
     borderWidth: 1,
@@ -6404,6 +6499,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
+  },
+  paymentActionHintStrong: {
+    color: '#3D3229',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    fontWeight: '700',
+    marginBottom: 6,
   },
   paymentRefreshBtn: {
     height: 42,
