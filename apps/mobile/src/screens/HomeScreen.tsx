@@ -477,6 +477,7 @@ type ChatBootstrapResponse = {
 };
 
 const CHECKOUT_REQUEST_TIMEOUT_MS = 15000;
+const DEFAULT_CART_BOTTOM_BAR_HEIGHT = 260;
 
 type HomeOrdersApiItem = {
   id: string;
@@ -1858,6 +1859,7 @@ export default function HomeScreen({
   const [recentBuyerOrders, setRecentBuyerOrders] = useState<HomeOrderSummary[]>([]);
   const [deliveryRequestOrderIds, setDeliveryRequestOrderIds] = useState<Record<string, true>>({});
   const [deliveryChatStarting, setDeliveryChatStarting] = useState(false);
+  const [cartBottomBarHeight, setCartBottomBarHeight] = useState(DEFAULT_CART_BOTTOM_BAR_HEIGHT);
   const cartPaymentAnimationVisible = false;
   const setCartPaymentAnimationDone = (_value: boolean) => {};
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -4009,139 +4011,154 @@ export default function HomeScreen({
               </View>
             )
           ) : (
-            <ScrollView
-              style={styles.cartList}
-              contentContainerStyle={styles.cartListContent}
-              showsVerticalScrollIndicator={false}
-            >
-              <View>
-                {cartItems.map((item) => {
-                  const unitPrice = Number(item.meal.price.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-                  const addonsUnitTotal = item.selectedAddons.paid.reduce(
-                    (sum, addon) => sum + (Number(addon.price ?? 0) * Number(addon.quantity ?? 1)),
-                    0,
-                  );
-                  const itemTotal = (unitPrice * item.quantity) + addonsUnitTotal;
-                  return (
-                    <View key={item.key} style={styles.cartItemCard}>
-                      <View style={styles.cartItemTextWrap}>
-                        <Text style={styles.cartItemTitle}>{item.meal.title}</Text>
-                        <Text style={styles.cartItemSeller}>
-                          {formatSellerIdentity(item.meal.seller, item.meal.sellerUsername)}
-                        </Text>
-                        {item.selectedAddons.free.length > 0 ? (
-                          <Text style={styles.cartAddonLine}>
-                            Ücretsiz: {item.selectedAddons.free.map((addon) => addon.name).join(', ')}
+            <>
+              <ScrollView
+                style={styles.cartList}
+                contentContainerStyle={[
+                  styles.cartListContent,
+                  { paddingBottom: cartBottomBarHeight + 16 },
+                ]}
+                showsVerticalScrollIndicator={false}
+              >
+                <View>
+                  {cartItems.map((item) => {
+                    const unitPrice = Number(item.meal.price.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+                    const addonsUnitTotal = item.selectedAddons.paid.reduce(
+                      (sum, addon) => sum + (Number(addon.price ?? 0) * Number(addon.quantity ?? 1)),
+                      0,
+                    );
+                    const itemTotal = (unitPrice * item.quantity) + addonsUnitTotal;
+                    return (
+                      <View key={item.key} style={styles.cartItemCard}>
+                        <View style={styles.cartItemTextWrap}>
+                          <Text style={styles.cartItemTitle}>{item.meal.title}</Text>
+                          <Text style={styles.cartItemSeller}>
+                            {formatSellerIdentity(item.meal.seller, item.meal.sellerUsername)}
                           </Text>
-                        ) : null}
-                        {item.selectedAddons.paid.length > 0 ? (
-                          <>
-                            {item.selectedAddons.paid.map((addon, addonIndex) => (
-                              <View key={`${item.key}-paid-${addon.name}-${addonIndex}`} style={styles.cartAddonRow}>
-                                <Text style={styles.cartAddonLine}>
-                                  • {addon.name} x{addon.quantity} (+₺{(addon.price * addon.quantity).toFixed(2)})
-                                </Text>
-                                <View style={styles.cartAddonQtyRow}>
-                                  <TouchableOpacity
-                                    style={styles.cartAddonQtyBtn}
-                                    onPress={() => adjustCartPaidAddonQuantity(item.key, addon, -1)}
-                                    activeOpacity={0.85}
-                                  >
-                                    <Ionicons name="remove" size={12} color="#8A4B16" />
-                                  </TouchableOpacity>
-                                  <Text style={styles.cartAddonQtyText}>{addon.quantity}</Text>
-                                  <TouchableOpacity
-                                    style={styles.cartAddonQtyBtn}
-                                    onPress={() => adjustCartPaidAddonQuantity(item.key, addon, 1)}
-                                    activeOpacity={0.85}
-                                  >
-                                    <Ionicons name="add" size={12} color="#8A4B16" />
-                                  </TouchableOpacity>
+                          {item.selectedAddons.free.length > 0 ? (
+                            <Text style={styles.cartAddonLine}>
+                              Ücretsiz: {item.selectedAddons.free.map((addon) => addon.name).join(', ')}
+                            </Text>
+                          ) : null}
+                          {item.selectedAddons.paid.length > 0 ? (
+                            <>
+                              {item.selectedAddons.paid.map((addon, addonIndex) => (
+                                <View key={`${item.key}-paid-${addon.name}-${addonIndex}`} style={styles.cartAddonRow}>
+                                  <Text style={styles.cartAddonLine}>
+                                    • {addon.name} x{addon.quantity} (+₺{(addon.price * addon.quantity).toFixed(2)})
+                                  </Text>
+                                  <View style={styles.cartAddonQtyRow}>
+                                    <TouchableOpacity
+                                      style={styles.cartAddonQtyBtn}
+                                      onPress={() => adjustCartPaidAddonQuantity(item.key, addon, -1)}
+                                      activeOpacity={0.85}
+                                    >
+                                      <Ionicons name="remove" size={12} color="#8A4B16" />
+                                    </TouchableOpacity>
+                                    <Text style={styles.cartAddonQtyText}>{addon.quantity}</Text>
+                                    <TouchableOpacity
+                                      style={styles.cartAddonQtyBtn}
+                                      onPress={() => adjustCartPaidAddonQuantity(item.key, addon, 1)}
+                                      activeOpacity={0.85}
+                                    >
+                                      <Ionicons name="add" size={12} color="#8A4B16" />
+                                    </TouchableOpacity>
+                                  </View>
                                 </View>
-                              </View>
-                            ))}
-                          </>
-                        ) : null}
-                      </View>
-                      <View style={styles.cartItemRight}>
-                        <Text style={styles.cartItemPrice}>
-                          ₺{unitPrice.toFixed(2)} x {item.quantity}
-                        </Text>
-                        <Text style={styles.cartItemTotal}>Ara toplam: ₺{itemTotal.toFixed(2)}</Text>
-                        <View style={styles.cartQtyRow}>
-                          <TouchableOpacity
-                            style={styles.cartQtyBtn}
-                            onPress={() => decreaseCartItem(item.key)}
-                            activeOpacity={0.85}
-                          >
-                            <Ionicons name="remove" size={14} color="#5F5246" />
-                          </TouchableOpacity>
-                          <Text style={styles.cartQtyText}>{item.quantity}</Text>
-                          <TouchableOpacity
-                            style={styles.cartQtyBtn}
-                            onPress={() => increaseCartItem(item.key)}
-                            activeOpacity={0.85}
-                          >
-                            <Ionicons name="add" size={14} color="#5F5246" />
-                          </TouchableOpacity>
+                              ))}
+                            </>
+                          ) : null}
+                        </View>
+                        <View style={styles.cartItemRight}>
+                          <Text style={styles.cartItemPrice}>
+                            ₺{unitPrice.toFixed(2)} x {item.quantity}
+                          </Text>
+                          <Text style={styles.cartItemTotal}>Ara toplam: ₺{itemTotal.toFixed(2)}</Text>
+                          <View style={styles.cartQtyRow}>
+                            <TouchableOpacity
+                              style={styles.cartQtyBtn}
+                              onPress={() => decreaseCartItem(item.key)}
+                              activeOpacity={0.85}
+                            >
+                              <Ionicons name="remove" size={14} color="#5F5246" />
+                            </TouchableOpacity>
+                            <Text style={styles.cartQtyText}>{item.quantity}</Text>
+                            <TouchableOpacity
+                              style={styles.cartQtyBtn}
+                              onPress={() => increaseCartItem(item.key)}
+                              activeOpacity={0.85}
+                            >
+                              <Ionicons name="add" size={14} color="#5F5246" />
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       </View>
-                    </View>
-                  );
-                })}
-              </View>
-              <View style={styles.cartFooter}>
-                <View style={styles.cartTotalRow}>
-                  <Text style={styles.cartTotalLabel}>Toplam</Text>
-                  <Text style={styles.cartTotalValue}>₺{total.toFixed(2)}</Text>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+              <View
+                style={styles.cartBottomBar}
+                onLayout={(event) => {
+                  const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+                  if (Math.abs(nextHeight - cartBottomBarHeight) > 4) {
+                    setCartBottomBarHeight(nextHeight);
+                  }
+                }}
+              >
+                <View style={styles.cartFooter}>
+                  <View style={styles.cartTotalRow}>
+                    <Text style={styles.cartTotalLabel}>Toplam</Text>
+                    <Text style={styles.cartTotalValue}>₺{total.toFixed(2)}</Text>
+                  </View>
+                </View>
+                {paymentStatus ? (
+                  <View style={styles.paymentStatusCard}>
+                    <Text style={styles.paymentStatusTitle}>{t('status.home.paymentTitle')}</Text>
+                    <Text style={styles.paymentStatusText}>{t('status.home.orderLabel')} {paymentStatus.orderId.slice(0, 8)}...</Text>
+                    <Text style={styles.paymentStatusText}>{t('status.home.orderStatusLabel')} {formatOrderStatusLabel(paymentStatus.orderStatus)}</Text>
+                    <Text style={styles.paymentStatusText}>
+                      {paymentStatus.paymentCompleted ? t('status.home.paymentDone') : formatPaymentAttemptLabel(paymentStatus.latestAttemptStatus)}
+                    </Text>
+                  </View>
+                ) : null}
+                {paymentInfo ? (
+                  <Text style={styles.paymentInfoText}>{paymentInfo}</Text>
+                ) : null}
+                <View style={styles.paymentActionsColumn}>
+                  <TouchableOpacity
+                    style={[styles.paymentActionBtn, paymentLoading && styles.paymentActionBtnDisabled]}
+                    onPress={() => void startCartCheckout()}
+                    activeOpacity={0.9}
+                    disabled={paymentLoading}
+                  >
+                    {paymentLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.paymentActionBtnText}>{t('cta.home.cartCheckout')}</Text>
+                    )}
+                  </TouchableOpacity>
+                  <View style={styles.paymentActionHintBox}>
+                    <Text style={styles.paymentActionHintStrong}>{t('helper.home.createDeliveryChatHint')}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.paymentSecondaryActionBtn,
+                      deliveryChatStarting && styles.paymentActionBtnDisabled,
+                    ]}
+                    onPress={() => void startDeliveryChat()}
+                    activeOpacity={0.9}
+                    disabled={deliveryChatStarting}
+                  >
+                    {deliveryChatStarting ? (
+                      <ActivityIndicator size="small" color="#2F6F4A" />
+                    ) : (
+                      <Text style={styles.paymentSecondaryActionBtnText}>{t('cta.home.createDeliveryChat')}</Text>
+                    )}
+                  </TouchableOpacity>
                 </View>
               </View>
-              {paymentStatus ? (
-                <View style={styles.paymentStatusCard}>
-                  <Text style={styles.paymentStatusTitle}>{t('status.home.paymentTitle')}</Text>
-                  <Text style={styles.paymentStatusText}>{t('status.home.orderLabel')} {paymentStatus.orderId.slice(0, 8)}...</Text>
-                  <Text style={styles.paymentStatusText}>{t('status.home.orderStatusLabel')} {formatOrderStatusLabel(paymentStatus.orderStatus)}</Text>
-                  <Text style={styles.paymentStatusText}>
-                    {paymentStatus.paymentCompleted ? t('status.home.paymentDone') : formatPaymentAttemptLabel(paymentStatus.latestAttemptStatus)}
-                  </Text>
-                </View>
-              ) : null}
-              {paymentInfo ? (
-                <Text style={styles.paymentInfoText}>{paymentInfo}</Text>
-              ) : null}
-              <View style={styles.paymentActionsColumn}>
-                <TouchableOpacity
-                  style={[styles.paymentActionBtn, paymentLoading && styles.paymentActionBtnDisabled]}
-                  onPress={() => void startCartCheckout()}
-                  activeOpacity={0.9}
-                  disabled={paymentLoading}
-                >
-                  {paymentLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.paymentActionBtnText}>{t('cta.home.cartCheckout')}</Text>
-                  )}
-                </TouchableOpacity>
-                <View style={styles.paymentActionHintBox}>
-                  <Text style={styles.paymentActionHintStrong}>{t('helper.home.createDeliveryChatHint')}</Text>
-                </View>
-                <TouchableOpacity
-                  style={[
-                    styles.paymentSecondaryActionBtn,
-                    deliveryChatStarting && styles.paymentActionBtnDisabled,
-                  ]}
-                  onPress={() => void startDeliveryChat()}
-                  activeOpacity={0.9}
-                  disabled={deliveryChatStarting}
-                >
-                  {deliveryChatStarting ? (
-                    <ActivityIndicator size="small" color="#2F6F4A" />
-                  ) : (
-                    <Text style={styles.paymentSecondaryActionBtnText}>{t('cta.home.createDeliveryChat')}</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
+            </>
           )}
         </View>
       );
@@ -6287,7 +6304,7 @@ const styles = StyleSheet.create({
   },
   tabPanelTitle: { color: '#3D3229', fontSize: 20, fontWeight: '700' },
   tabPanelText: { color: '#8D8072', fontSize: 14, marginTop: 8, lineHeight: 20 },
-  cartWrap: { flex: 1, marginTop: 16, paddingHorizontal: 18, paddingBottom: 86 },
+  cartWrap: { flex: 1, marginTop: 16, paddingHorizontal: 18 },
   cartHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -6357,8 +6374,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#EDE8E0',
     paddingTop: 10,
-    marginTop: 4,
     gap: 4,
+  },
+  cartBottomBar: {
+    paddingTop: 8,
+    paddingBottom: 86,
+    backgroundColor: '#F7F4EF',
   },
   cartDeliveryFeeRow: {
     flexDirection: 'row',
