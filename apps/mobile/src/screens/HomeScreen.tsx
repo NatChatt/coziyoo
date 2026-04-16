@@ -1753,69 +1753,67 @@ function FoodCard({
             setImageFrameHeight((prev) => (prev === nextHeight ? prev : nextHeight));
           }}
         >
-          {/* Food image — full-width background layer */}
-          <View style={styles.foodPhotoDishPanel}>
-            {renderableImageUri ? (
-              <Image
-                source={{ uri: renderableImageUri }}
-                style={styles.foodImage}
-                resizeMode="cover"
-                onError={() => {
-                  if (isInlineBase64ImageUri(activeImageUrl)) {
-                    setRenderableImageUri(null);
-                    return;
-                  }
-                  setImageUrls((prev) => prev.slice(1));
-                  setImageIndex(0);
-                }}
+          {/* Food image — single full-width background */}
+          {renderableImageUri ? (
+            <Image
+              source={{ uri: renderableImageUri }}
+              style={styles.foodImage}
+              resizeMode="cover"
+              onError={() => {
+                if (isInlineBase64ImageUri(activeImageUrl)) {
+                  setRenderableImageUri(null);
+                  return;
+                }
+                setImageUrls((prev) => prev.slice(1));
+                setImageIndex(0);
+              }}
+            />
+          ) : (
+            <View style={styles.foodImageFallback}>
+              <Text style={styles.foodEmoji}>🍽️</Text>
+            </View>
+          )}
+          {LinearGradient ? (
+            <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
+              <LinearGradient
+                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.22)', 'rgba(0,0,0,0.52)']}
+                locations={[0, 0.52, 1]}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.foodPhotoBottomGradientFill}
               />
-            ) : (
-              <View style={styles.foodImageTapFallback}>
-                <Text style={styles.foodEmoji}>🍽️</Text>
-              </View>
-            )}
-            {LinearGradient ? (
-              <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
-                <LinearGradient
-                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.16)', 'rgba(0,0,0,0.42)']}
-                  locations={[0, 0.52, 1]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.foodPhotoBottomGradientFill}
-                />
-              </View>
-            ) : (
-              <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
-            )}
-            <View pointerEvents="none" style={styles.foodPhotoTitleOverlay}>
+            </View>
+          ) : (
+            <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
+          )}
+          <View pointerEvents="none" style={styles.foodPhotoTitleOverlay}>
+            <Text
+              numberOfLines={2}
+              style={[
+                styles.foodPhotoTitleText,
+                titleMetrics,
+                { color: colors.photoTitle },
+                photoTextTone === 'dark' && styles.foodPhotoTitleTextDark,
+              ]}
+            >
+              {meal.title}
+            </Text>
+            {meal.cuisine ? (
               <Text
-                numberOfLines={2}
+                numberOfLines={1}
                 style={[
-                  styles.foodPhotoTitleText,
-                  titleMetrics,
-                  { color: colors.photoTitle },
-                  photoTextTone === 'dark' && styles.foodPhotoTitleTextDark,
+                  styles.foodPhotoCuisineText,
+                  { color: colors.photoCuisine },
+                  photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
                 ]}
               >
-                {meal.title}
+                {formatCuisineLabel(meal.cuisine)}
               </Text>
-              {meal.cuisine ? (
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.foodPhotoCuisineText,
-                    { color: colors.photoCuisine },
-                    photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
-                  ]}
-                >
-                  {formatCuisineLabel(meal.cuisine)}
-                </Text>
-              ) : null}
-            </View>
-            <View style={styles.foodBadgesRight}>
-              <View style={styles.foodPriceBadge}>
-                <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
-              </View>
+            ) : null}
+          </View>
+          <View style={styles.foodBadgesRight}>
+            <View style={styles.foodPriceBadge}>
+              <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
             </View>
           </View>
         </View>
@@ -6328,13 +6326,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#B96C44',
   },
-  foodPhotoDishPanel: {
+  foodImage: {
     ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-    backgroundColor: '#8E593C',
   },
-  foodImageTapFallback: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
-  foodImage: { width: '100%', height: '100%' },
+  foodImageFallback: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   foodPhotoBottomGradient: {
     position: 'absolute',
     left: 0,
