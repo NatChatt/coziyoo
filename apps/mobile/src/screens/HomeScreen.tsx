@@ -2598,14 +2598,14 @@ export default function HomeScreen({
     refreshGreeting();
     const interval = setInterval(refreshGreeting, 60_000);
     return () => clearInterval(interval);
-  }, [greetingName]);
+  }, [greetingName, appLanguage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const refreshSubtitle = () => setGreetingSubtitle(randomHomeGreetingSubtitle());
     refreshSubtitle();
     const interval = setInterval(refreshSubtitle, 15 * 60_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [appLanguage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!sloganTrackWidth || !sloganTextWidth) return;
@@ -4017,7 +4017,7 @@ export default function HomeScreen({
               </Text>
               <Text style={styles.greetingEmoji}>{dynamicGreetingTitle.emoji}</Text>
             </View>
-            <Text style={styles.heroSubtitle}>Bugün ne yesek?</Text>
+            <Text style={styles.heroSubtitle}>{greetingSubtitle}</Text>
             <TouchableOpacity
               onPress={() => setLocationModalVisible(true)}
               activeOpacity={0.8}
