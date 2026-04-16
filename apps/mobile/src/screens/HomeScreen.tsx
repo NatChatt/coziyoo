@@ -1822,25 +1822,29 @@ function FoodCard({
         >
           <View style={styles.foodInfoContent}>
             <View style={styles.foodInfoLine}>
-              <View style={styles.foodInfoIconBubble}>
-                <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
-              </View>
-              <View style={styles.foodInfoTextWrap}>
-                <Text style={styles.foodInfoTitle} numberOfLines={1}>
-                  {stockSummary || 'Bugün hazırlanıyor'}
-                </Text>
-                <Text style={styles.foodInfoSubtitle} numberOfLines={1}>
-                  {socialProofText}
-                </Text>
+              <View style={styles.foodInfoLead}>
+                <View style={styles.foodInfoIconBubble}>
+                  <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
+                </View>
+                <View style={styles.foodInfoTextWrap}>
+                  <Text style={styles.foodInfoTitle} numberOfLines={1}>
+                    {stockSummary || 'Bugün hazırlanıyor'}
+                  </Text>
+                  <Text style={styles.foodInfoSubtitle} numberOfLines={1}>
+                    {socialProofText}
+                  </Text>
+                </View>
               </View>
               {hasAllergens ? (
-                <View style={styles.foodInfoInlineBadge}>
-                  <View style={[styles.foodInfoIconBubble, styles.foodInfoIconBubbleAlert]}>
-                    <Ionicons name="warning-outline" size={16} color="#B13B2E" />
+                <View style={styles.foodInfoAlertSlot}>
+                  <View style={styles.foodInfoInlineBadge}>
+                    <View style={[styles.foodInfoIconBubble, styles.foodInfoIconBubbleAlert]}>
+                      <Ionicons name="warning-outline" size={16} color="#B13B2E" />
+                    </View>
+                    <Text style={[styles.foodInfoInlineBadgeText, styles.foodInfoAlertTitle]} numberOfLines={1}>
+                      Alerjen içerir
+                    </Text>
                   </View>
-                  <Text style={[styles.foodInfoInlineBadgeText, styles.foodInfoAlertTitle]} numberOfLines={1}>
-                    Alerjen içerir
-                  </Text>
                 </View>
               ) : null}
             </View>
@@ -6418,6 +6422,13 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 12,
   },
+  foodInfoLead: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 0,
+  },
   foodInfoIconBubble: {
     width: 34,
     height: 34,
@@ -6433,12 +6444,16 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  foodInfoAlertSlot: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'flex-start',
+  },
   foodInfoInlineBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginLeft: 10,
-    maxWidth: '48%',
+    minWidth: 0,
   },
   foodInfoInlineBadgeText: {
     fontSize: 12,
