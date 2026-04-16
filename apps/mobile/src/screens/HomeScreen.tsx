@@ -1827,20 +1827,10 @@ function FoodCard({
                   <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
                 </View>
                 <View style={styles.foodInfoTextWrap}>
-                  <Text
-                    style={styles.foodInfoTitle}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.9}
-                  >
+                  <Text style={styles.foodInfoTitle}>
                     {stockSummary || 'Bugün hazırlanıyor'}
                   </Text>
-                  <Text
-                    style={styles.foodInfoSubtitle}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.92}
-                  >
+                  <Text style={styles.foodInfoSubtitle}>
                     {socialProofText}
                   </Text>
                 </View>
@@ -1853,7 +1843,7 @@ function FoodCard({
                       <Ionicons name="warning-outline" size={16} color="#B13B2E" />
                     </View>
                     <View style={styles.foodInfoAlertTextWrap}>
-                      <Text style={[styles.foodInfoInlineBadgeText, styles.foodInfoAlertTitle]} numberOfLines={1}>
+                      <Text style={[styles.foodInfoInlineBadgeText, styles.foodInfoAlertTitle]}>
                         Alerjen içerir
                       </Text>
                     </View>
@@ -1869,10 +1859,10 @@ function FoodCard({
                   <Ionicons name="time-outline" size={16} color="#3F3025" />
                 </View>
                 <View style={styles.foodStatTextWrap}>
-                  <Text style={styles.foodStatValue} numberOfLines={1}>
+                  <Text style={styles.foodStatValue}>
                     {meal.time || 'Süre yakında'}
                   </Text>
-                  <Text style={styles.foodStatLabel} numberOfLines={1}>
+                  <Text style={styles.foodStatLabel}>
                     Hazırlık süresi
                   </Text>
                 </View>
@@ -1885,10 +1875,10 @@ function FoodCard({
                       <Ionicons name="location-outline" size={16} color="#3F3025" />
                     </View>
                     <View style={styles.foodStatTextWrap}>
-                      <Text style={styles.foodStatValue} numberOfLines={1}>
+                      <Text style={styles.foodStatValue}>
                         {meal.distance}
                       </Text>
-                      <Text style={styles.foodStatLabel} numberOfLines={1}>
+                      <Text style={styles.foodStatLabel}>
                         Uzaklık
                       </Text>
                     </View>
@@ -6433,14 +6423,14 @@ const styles = StyleSheet.create({
   },
   foodInfoLine: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
     marginBottom: 12,
   },
   foodInfoLead: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
     minWidth: 0,
   },
@@ -6463,7 +6453,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
   },
   foodInfoAlertTextWrap: {
@@ -6505,7 +6495,7 @@ const styles = StyleSheet.create({
   foodStatItem: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
   },
   foodStatIconBubble: {
