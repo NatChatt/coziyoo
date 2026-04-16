@@ -1716,6 +1716,7 @@ function FoodCard({
   const hasAllergens = allergens.length > 0;
   const titleMetrics = resolveFoodPhotoTitleMetrics(meal.title);
   const sellerHandle = formatSellerIdentity(meal.seller, meal.sellerUsername);
+  const sellerTagline = 'Her gün taze yapılan yemekler.';
   const ratingValue = Number(String(meal.rating ?? '').replace(',', '.'));
   const ratingBadgeText = Number.isFinite(ratingValue)
     ? Number(ratingValue).toFixed(1)
@@ -1919,6 +1920,9 @@ function FoodCard({
                 <View style={styles.foodFooterSellerText}>
                   <Text style={styles.foodFooterSellerHandle}>
                     {sellerHandle}
+                  </Text>
+                  <Text style={styles.foodFooterSellerTagline}>
+                    {sellerTagline}
                   </Text>
                 </View>
               </View>
@@ -6650,6 +6654,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     lineHeight: 16,
+  },
+  foodFooterSellerTagline: {
+    marginTop: 3,
+    color: '#7D695A',
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 14,
   },
   foodFooterFavoriteBtn: {
     width: 42,
