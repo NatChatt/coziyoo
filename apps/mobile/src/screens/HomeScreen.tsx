@@ -1739,7 +1739,7 @@ function FoodCard({
           <View pointerEvents="none" style={styles.foodPhotoSplitAccent} />
         </View>
         <TouchableOpacity
-          activeOpacity={0.9}
+          activeOpacity={1}
           onPress={onPress}
           style={styles.foodInfo}
         >
@@ -6568,6 +6568,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
+    overflow: 'visible',
   },
   foodFooterSeller: {
     flex: 1,
@@ -6580,11 +6581,14 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
+    marginTop: -8,
+    position: 'relative',
+    zIndex: 8,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    elevation: 6,
   },
   foodSellerThumb: {
     width: '100%',
