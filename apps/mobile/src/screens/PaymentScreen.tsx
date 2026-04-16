@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Linking, Modal, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, Easing, Linking, Modal, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/colors';
 import { type AuthSession } from '../utils/auth';
@@ -9,6 +9,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import ActionButton from '../components/ActionButton';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
+import { extractAddressCoordinates, openExternalMapsOnce } from '../utils/externalMaps';
 
 const STEP_DURATION = 700;
 
@@ -129,6 +130,7 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
   const [awaitingExternalPayment, setAwaitingExternalPayment] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const paymentSessionIdRef = useRef<string | null>(null);
+  const pickupMapAttemptedRef = useRef(false);
 
   const checkPaymentStatus = useCallback(async () => {
     const statusRes = await apiRequest<{
@@ -209,6 +211,48 @@ export default function PaymentScreen({ auth, orderId, onBack, onPaymentComplete
     const id = setInterval(() => { void checkPaymentStatus(); }, 5_000);
     return () => clearInterval(id);
   }, [awaitingExternalPayment, checkPaymentStatus]);
+
+  useEffect(() => {
+    if (result !== 'success') return;
+    if (pickupMapAttemptedRef.current) return;
+    pickupMapAttemptedRef.current = true;
+
+    let cancelled = false;
+    void (async () => {
+      const orderRes = await apiRequest<{
+        deliveryType?: string;
+        sellerAddress?: {
+          title?: string;
+          addressLine?: string;
+          line?: string;
+          lat?: number | string;
+          lng?: number | string;
+          latitude?: number | string;
+          longitude?: number | string;
+        } | null;
+      }>(`/v1/orders/${orderId}`, auth, { actorRole: 'buyer' }, onAuthRefresh);
+      if (!orderRes.ok || cancelled) return;
+      if (String(orderRes.data.deliveryType ?? '').trim().toLowerCase() !== 'pickup') return;
+
+      const address = [
+        orderRes.data.sellerAddress?.title,
+        orderRes.data.sellerAddress?.addressLine ?? orderRes.data.sellerAddress?.line,
+      ].filter(Boolean).join(' · ');
+      const coordinates = extractAddressCoordinates(orderRes.data.sellerAddress);
+
+      try {
+        await openExternalMapsOnce(`buyer-payment-pickup:${orderId}`, address, coordinates);
+      } catch {
+        if (!cancelled) {
+          Alert.alert(t('headline.common.error'), t('error.common.mapOpenFailed'));
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth, onAuthRefresh, orderId, result]);
 
   const finalizeMockPayment = useCallback(async () => {
     setProcessing(false);

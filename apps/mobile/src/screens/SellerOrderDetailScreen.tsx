@@ -24,6 +24,7 @@ import { subscribeOrderRealtime } from "../utils/realtime";
 import { formatCopy, t } from "../copy/brandCopy";
 import { getCurrentLanguage } from "../utils/settings";
 import { updateSellerOrderCacheItem } from "../utils/sellerOrdersCache";
+import { extractAddressCoordinates, openExternalMaps, openExternalMapsOnce } from "../utils/externalMaps";
 
 type Props = {
   auth: AuthSession;
@@ -99,7 +100,6 @@ type OrderDetail = {
   buyerProgressAt?: string | null;
 };
 
-type MapCoordinates = { lat: number; lng: number };
 type OrderNote = {id: string; senderRole: string; senderName: string; message: string; createdAt: string | null};
 
 function normalizeOrderDetail(value: unknown, fallbackOrderId: string): OrderDetail | null {
@@ -119,55 +119,6 @@ function normalizeOrderDetail(value: unknown, fallbackOrderId: string): OrderDet
         ? row.buyerProgressAt
         : (typeof row.buyer_progress_at === "string" ? row.buyer_progress_at : null),
   };
-}
-
-async function openAddressInMaps(address: string): Promise<void> {
-  const query = address.trim();
-  if (!query) return;
-  const encoded = encodeURIComponent(query);
-  const appleDirectionsUrl = `maps://?daddr=${encoded}&dirflg=d`;
-  const googleNavUrl = `google.navigation:q=${encoded}&mode=d`;
-  const googleDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=driving`;
-  const candidates = Platform.OS === "ios"
-    ? [appleDirectionsUrl]
-    : [googleNavUrl, googleDirectionsUrl];
-  for (const url of candidates) {
-    const supported = await Linking.canOpenURL(url);
-    if (!supported) continue;
-    await Linking.openURL(url);
-    return;
-  }
-  throw new Error(t("error.common.mapOpenFailed"));
-}
-
-function toFiniteNumber(value: unknown): number | null {
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function extractAddressCoordinates(value: unknown): MapCoordinates | null {
-  if (!value || typeof value !== "object") return null;
-  const row = value as Record<string, unknown>;
-  const lat = toFiniteNumber(row.lat ?? row.latitude);
-  const lng = toFiniteNumber(row.lng ?? row.longitude);
-  if (lat === null || lng === null) return null;
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-  return { lat, lng };
-}
-
-async function openAddressInMapsWithCoordinates(
-  address: string | null | undefined,
-  coordinates: MapCoordinates | null,
-): Promise<void> {
-  const fallbackAddress = String(address ?? "").trim();
-  if (coordinates) {
-    return openAddressInMaps(`${coordinates.lat},${coordinates.lng}`);
-  }
-  return openAddressInMaps(fallbackAddress);
 }
 
 function normalizeFlowStatus(status: string): string {
@@ -317,6 +268,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
   const notesScrollRef = useRef<ScrollView | null>(null);
   // Always keep a ref to the latest fetchNotes to avoid stale-closure issues in setInterval
   const fetchNotesRef = useRef<((id?: string, baseUrl?: string) => Promise<void>) | null>(null);
+  const pickupExternalMapAttemptedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
@@ -573,11 +525,20 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     if (!order) return "";
     return [order.deliveryAddress?.title, order.deliveryAddress?.addressLine || order.deliveryAddress?.line].filter(Boolean).join(" · ");
   }, [order]);
-  const mapAddressText = deliveryAddressText;
+  const pickupAddressText = useMemo(() => {
+    if (!order) return "";
+    return [order.sellerAddress?.title, order.sellerAddress?.addressLine || order.sellerAddress?.line].filter(Boolean).join(" · ");
+  }, [order]);
+  const mapAddressText = String(effectiveDeliveryType ?? "").trim().toLowerCase() === "pickup"
+    ? pickupAddressText
+    : deliveryAddressText;
   const mapCoordinates = useMemo(() => {
     if (!order) return null;
+    if (String(effectiveDeliveryType ?? "").trim().toLowerCase() === "pickup") {
+      return extractAddressCoordinates(order.sellerAddress);
+    }
     return extractAddressCoordinates(order.deliveryAddress);
-  }, [order]);
+  }, [effectiveDeliveryType, order]);
   const deliveryFee = useMemo(() => {
     if (!order || effectiveDeliveryType !== "delivery") return 0;
     const itemsSubtotal = (order.items ?? []).reduce((sum, item) => {
@@ -623,6 +584,24 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
       setPinModalVisible(false);
     }
   }, [shouldCheckPinBeforeComplete]);
+
+  useEffect(() => {
+    if (!order?.id) return;
+    if (String(effectiveDeliveryType ?? "").trim().toLowerCase() !== "pickup") return;
+    if (String(order.buyerProgressStatus ?? "").trim().toLowerCase() !== "in_delivery") return;
+
+    const nextKey = `${order.id}:pickup:buyer_in_delivery`;
+    if (pickupExternalMapAttemptedKeyRef.current === nextKey) return;
+    pickupExternalMapAttemptedKeyRef.current = nextKey;
+
+    void openExternalMapsOnce(
+      `seller-pickup-buyer-progress:${order.id}`,
+      deliveryAddressText,
+      extractAddressCoordinates(order.deliveryAddress),
+    ).catch(() => {
+      Alert.alert(t("headline.common.error"), t("error.common.mapOpenFailed"));
+    });
+  }, [deliveryAddressText, effectiveDeliveryType, order?.buyerProgressStatus, order?.deliveryAddress, order?.id]);
 
   async function submitSellerDecision(decision: "approve" | "revise" | "reject") {
     if (!order) return;
@@ -689,6 +668,10 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
     if (!order) return false;
     setUpdating(true);
     try {
+      const shouldOpenExternalMap =
+        action.toStatus === "in_delivery" &&
+        (String(effectiveDeliveryType ?? "").trim().toLowerCase() === "delivery"
+          || String(effectiveDeliveryType ?? "").trim().toLowerCase() === "pickup");
       const changeStatus = async (toStatus: string) => {
         const res = await authedFetch(`/v1/orders/${order.id}/status`, {
           method: "POST",
@@ -718,6 +701,15 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
         } else {
           await changeStatus(action.toStatus);
           syncSellerOrderCache(order, { status: action.toStatus });
+          if (shouldOpenExternalMap) {
+            const mapAddress = String(effectiveDeliveryType ?? "").trim().toLowerCase() === "pickup"
+              ? pickupAddressText
+              : deliveryAddressText;
+            const coordinates = String(effectiveDeliveryType ?? "").trim().toLowerCase() === "pickup"
+              ? extractAddressCoordinates(order.sellerAddress)
+              : extractAddressCoordinates(order.deliveryAddress);
+            await openExternalMapsOnce(`seller-status-map:${order.id}:${action.toStatus}`, mapAddress, coordinates);
+          }
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "";
@@ -806,7 +798,7 @@ export default function SellerOrderDetailScreen({ auth, orderId, onBack, onAuthR
                 disabled={!mapAddressText}
                 onPress={() => {
                   if (!mapAddressText) return;
-                  openAddressInMapsWithCoordinates(mapAddressText, mapCoordinates).catch((error) => {
+                  openExternalMaps(mapAddressText, mapCoordinates).catch((error) => {
                     Alert.alert(t("headline.common.error"), error instanceof Error ? error.message : t("error.common.mapOpenFailed"));
                   });
                 }}

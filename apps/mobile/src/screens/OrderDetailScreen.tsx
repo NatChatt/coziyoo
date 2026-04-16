@@ -16,6 +16,7 @@ import TextInputField from '../components/TextInputField';
 import { formatPrice, formatDate, orderNo } from '../components/OrderCard';
 import { subscribeOrderRealtime } from '../utils/realtime';
 import { t } from '../copy/brandCopy';
+import { extractAddressCoordinates, openExternalMaps } from '../utils/externalMaps';
 
 type OrderDetail = {
   id: string;
@@ -63,8 +64,6 @@ type OrderDetail = {
   events: { eventType: string; fromStatus: string | null; toStatus: string | null; createdAt: string; reason?: string | null }[];
 };
 
-type MapCoordinates = { lat: number; lng: number };
-
 function formatDeliveryAddress(value: unknown): string | null {
   if (!value) return null;
 
@@ -94,55 +93,6 @@ function formatDeliveryAddress(value: unknown): string | null {
 
   if (chunks.length === 0) return null;
   return Array.from(new Set(chunks)).join(', ');
-}
-
-async function openAddressInMaps(address: string): Promise<void> {
-  const query = address.trim();
-  if (!query) return;
-  const encoded = encodeURIComponent(query);
-  const appleDirectionsUrl = `maps://?daddr=${encoded}&dirflg=d`;
-  const googleNavUrl = `google.navigation:q=${encoded}&mode=d`;
-  const googleDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=driving`;
-  const candidates = Platform.OS === 'ios'
-    ? [appleDirectionsUrl]
-    : [googleNavUrl, googleDirectionsUrl];
-  for (const url of candidates) {
-    const supported = await Linking.canOpenURL(url);
-    if (!supported) continue;
-    await Linking.openURL(url);
-    return;
-  }
-  throw new Error('Harita uygulaması açılamadı');
-}
-
-function toFiniteNumber(value: unknown): number | null {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function extractAddressCoordinates(value: unknown): MapCoordinates | null {
-  if (!value || typeof value !== 'object') return null;
-  const row = value as Record<string, unknown>;
-  const lat = toFiniteNumber(row.lat ?? row.latitude);
-  const lng = toFiniteNumber(row.lng ?? row.longitude);
-  if (lat === null || lng === null) return null;
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-  return { lat, lng };
-}
-
-async function openAddressInMapsWithCoordinates(
-  address: string | null | undefined,
-  coordinates: MapCoordinates | null,
-): Promise<void> {
-  const fallbackAddress = String(address ?? '').trim();
-  if (coordinates) {
-    return openAddressInMaps(`${coordinates.lat},${coordinates.lng}`);
-  }
-  return openAddressInMaps(fallbackAddress);
 }
 
 type Props = {
@@ -850,7 +800,7 @@ export default function OrderDetailScreen({
               disabled={!addressText}
               onPress={() => {
                 if (!addressText) return;
-                openAddressInMapsWithCoordinates(addressText, deliveryMapCoordinates).catch((error) => {
+                openExternalMaps(addressText, deliveryMapCoordinates).catch((error) => {
                   Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.common.mapOpenFailed'));
                 });
               }}
@@ -865,7 +815,7 @@ export default function OrderDetailScreen({
               disabled={!pickupMapAddressText}
               onPress={() => {
                 if (!pickupMapAddressText) return;
-                openAddressInMapsWithCoordinates(pickupMapAddressText, pickupMapCoordinates).catch((error) => {
+                openExternalMaps(pickupMapAddressText, pickupMapCoordinates).catch((error) => {
                   Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.common.mapOpenFailed'));
                 });
               }}
