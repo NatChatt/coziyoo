@@ -1809,6 +1809,14 @@ function FoodCard({
               </Text>
             ) : null}
           </View>
+          {Number.isFinite(ratingValue) && ratingValue > 0 ? (
+            <View style={styles.foodBadgesLeft}>
+              <View style={styles.foodRatingBadge}>
+                <Ionicons name="star" size={14} color="#F2B23A" />
+                <Text style={styles.foodRatingBadgeText}>{Number(ratingValue).toFixed(1)}</Text>
+              </View>
+            </View>
+          ) : null}
           <View style={styles.foodBadgesRight}>
             <View style={styles.foodPriceBadge}>
               <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
@@ -6361,6 +6369,27 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 8,
     zIndex: 7,
+  },
+  foodBadgesLeft: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    alignItems: 'flex-start',
+    zIndex: 7,
+  },
+  foodRatingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(51,36,27,0.9)',
+    borderRadius: 18,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  foodRatingBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
   },
   foodPhotoTitleOverlay: {
     position: 'absolute',
