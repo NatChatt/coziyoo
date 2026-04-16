@@ -1648,6 +1648,16 @@ function FoodCard({
           { backgroundColor: colors.bg, borderColor: colors.border },
         ]}
       >
+        {hasSellerFigure ? (
+          <View pointerEvents="none" style={styles.foodSellerFigureOverlay}>
+            <Image
+              source={sellerHeroSource!}
+              style={[styles.foodSellerFigureImage, styles.foodSellerPortraitImage]}
+              resizeMode="cover"
+              onError={() => setSellerThumbFailed(true)}
+            />
+          </View>
+        ) : null}
         <View
           style={[styles.foodPhoto, { backgroundColor: meal.backgroundColor }]}
           onLayout={(event) => {
@@ -1660,20 +1670,11 @@ function FoodCard({
           <View style={styles.foodPhotoTopRow}>
             <View style={styles.foodPhotoChefPanel}>
               <View style={styles.foodPhotoChefPanelBackdrop} />
-              {hasSellerFigure ? (
-                <View pointerEvents="none" style={styles.foodSellerFigureStage}>
-                  <Image
-                    source={sellerHeroSource!}
-                    style={[styles.foodSellerFigureImage, styles.foodSellerPortraitImage]}
-                    resizeMode="cover"
-                    onError={() => setSellerThumbFailed(true)}
-                  />
-                </View>
-              ) : (
+              {!hasSellerFigure ? (
                 <View style={styles.foodSellerFigureFallback}>
                   <Text style={styles.foodSellerFigureFallbackEmoji}>👩‍🍳</Text>
                 </View>
-              )}
+              ) : null}
             </View>
             <View style={styles.foodPhotoDishPanel}>
               {activeImageUrl ? (
@@ -6259,7 +6260,6 @@ const styles = StyleSheet.create({
   foodPhotoChefPanel: {
     width: '41.5%',
     position: 'relative',
-    overflow: 'visible',
     backgroundColor: '#F4EBDD',
   },
   foodPhotoChefPanelBackdrop: {
@@ -6341,13 +6341,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.26)',
   },
   foodEmoji: { fontSize: 56 },
-  foodSellerFigureStage: {
+  foodSellerFigureOverlay: {
     position: 'absolute',
     left: -2,
-    bottom: -98,
+    top: 0,
     width: 210,
-    height: 360,
-    zIndex: 5,
+    height: 392,
+    zIndex: 9,
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
