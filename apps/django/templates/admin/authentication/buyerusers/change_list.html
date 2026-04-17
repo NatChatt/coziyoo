@@ -1,6 +1,16 @@
 {% extends "admin/change_list.html" %}
 {% load i18n %}
 
+{% block object-tools %}
+<div class="mb-3 flex items-center justify-end">
+  <a href="?{{ request.GET.urlencode }}&export=xlsx"
+     class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700">
+    <span class="material-symbols-outlined text-base leading-none">download</span>
+    {% trans "Export to Excel" %}
+  </a>
+</div>
+{% endblock %}
+
 {% block content %}
 {% if buyer_stats %}
 <div class="mb-4 space-y-3">
@@ -54,15 +64,6 @@
 
   {# ── Unfold's native action bar — appears when checkboxes are selected ── #}
   {% include "unfold/helpers/change_list_actions.html" %}
-
-  {# ── Export action under global search (top-right) ── #}
-  <div class="mb-2 flex items-center justify-end">
-    <a href="?{{ request.GET.urlencode }}&export=xlsx"
-       class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700">
-      <span class="material-symbols-outlined text-base leading-none">download</span>
-      {% trans "Export to Excel" %}
-    </a>
-  </div>
 
   {# ── Custom Buyer Table ── #}
   <div class="mt-2 overflow-x-auto rounded-lg border border-base-200 bg-white shadow-xs dark:border-base-800 dark:bg-base-900">
