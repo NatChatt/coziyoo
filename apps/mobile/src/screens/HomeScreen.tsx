@@ -2066,7 +2066,7 @@ function FoodCard({
                   <Ionicons name="restaurant-outline" size={16} color={colors.price} />
                 </View>
                 <View style={[styles.foodInfoTextWrap, styles.foodInfoTextWrapCentered]}>
-                  <Text style={[styles.foodInfoTitle, { color: colors.title }]}>
+                  <Text style={styles.foodInfoTitle}>
                     {stockSummary || t('status.home.foodCard.preparingToday')}
                   </Text>
                 </View>
@@ -2094,10 +2094,10 @@ function FoodCard({
                   <Ionicons name="time-outline" size={16} color={colors.price} />
                 </View>
                 <View style={styles.foodInfoTextWrap}>
-                  <Text style={[styles.foodInfoTitle, { color: colors.title }]}>
+                  <Text style={styles.foodInfoTitle}>
                     {meal.time || t('status.home.foodCard.timeSoon')}
                   </Text>
-                  <Text style={[styles.foodInfoSubtitle, { color: colors.subtitle }]}>
+                  <Text style={styles.foodInfoSubtitle}>
                     {t('label.home.foodCard.prepTime')}
                   </Text>
                 </View>
@@ -2115,10 +2115,10 @@ function FoodCard({
                       <Ionicons name="location-outline" size={16} color={colors.price} />
                     </View>
                     <View style={styles.foodInfoTextWrap}>
-                      <Text style={[styles.foodInfoTitle, { color: colors.title }]}>
+                      <Text style={styles.foodInfoTitle}>
                         {meal.distance}
                       </Text>
-                      <Text style={[styles.foodInfoSubtitle, { color: colors.subtitle }]}>
+                      <Text style={styles.foodInfoSubtitle}>
                         {t('label.home.foodCard.distance')}
                       </Text>
                     </View>
