@@ -3795,6 +3795,20 @@ export default function HomeScreen({
     setSelectedMeal(meal);
   }
 
+  function openMealDetailFromSeller(meal: MealCard) {
+    closeSellerModal();
+    if (selectedMeal?.id === meal.id) {
+      // Force reopen when the same meal is tapped from seller modal.
+      setMealModalAnimType('none');
+      setSelectedMeal(null);
+      requestAnimationFrame(() => {
+        openMealDetail(meal);
+      });
+      return;
+    }
+    openMealDetail(meal);
+  }
+
   function handleCartBackPress() {
     const hasPendingListState =
       cartItems.length === 0 && (paymentLoading || !!paymentStatus || !!paymentInfo || !!paymentError);
@@ -5528,10 +5542,7 @@ export default function HomeScreen({
                     key={meal.id}
                     style={styles.sellerMealItem}
                     activeOpacity={0.85}
-                    onPress={() => {
-                      setSelectedSeller(null);
-                      openMealDetail(meal);
-                    }}
+                    onPress={() => openMealDetailFromSeller(meal)}
                   >
                     <View style={styles.sellerMealTextWrap}>
                       <Text style={styles.sellerMealTitle}>{meal.title}</Text>
