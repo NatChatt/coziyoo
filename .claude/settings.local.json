@@ -82,7 +82,9 @@
       "Bash(echo \"EXIT:$?\")",
       "mcp__2142179a-5882-4d24-9788-c174d77cac66__execute_sql",
       "mcp__2142179a-5882-4d24-9788-c174d77cac66__get_advisors",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(msgfmt /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/tr/LC_MESSAGES/django.po -o /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/tr/LC_MESSAGES/django.mo)",
+      "Bash(msgfmt /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/en/LC_MESSAGES/django.po -o /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/en/LC_MESSAGES/django.mo)"
     ],
     "additionalDirectories": [
       "/tmp",
