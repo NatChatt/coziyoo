@@ -34,8 +34,8 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6" style="gap: 18px;">
-    <div class="xl:col-span-2 space-y-6" style="row-gap: 18px;">
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6" style="gap: 20px;">
+    <div class="xl:col-span-2" style="display:flex;flex-direction:column;gap:20px;">
       <div class="rounded-xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4 shadow-sm">
         <div class="text-xs uppercase tracking-wide text-base-500 mb-2">Şikayet İçeriği</div>
         <p class="text-sm text-base-800 dark:text-base-100 whitespace-pre-wrap">{{ complaint.description|default:"-" }}</p>
@@ -117,7 +117,7 @@
       </div>
     </div>
 
-    <div class="space-y-6" style="row-gap: 18px;">
+    <div style="display:flex;flex-direction:column;gap:20px;">
       <div class="rounded-xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4 shadow-sm">
         <div class="text-xs uppercase tracking-wide text-base-500 mb-3">Taraflar</div>
         <div class="space-y-3 text-sm">
