@@ -1732,6 +1732,7 @@ function FoodCard({
   const ratingBadgeText = Number.isFinite(ratingValue)
     ? Number(ratingValue).toFixed(1)
     : '0.0';
+  const slideWidth = Math.max(1, imageFrameWidth);
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -1758,21 +1759,54 @@ function FoodCard({
             setImageFrameHeight((prev) => (prev === nextHeight ? prev : nextHeight));
           }}
         >
-          {/* Food image — single full-width background */}
-          {renderableImageUri ? (
-            <Image
-              source={{ uri: renderableImageUri }}
-              style={styles.foodImage}
-              resizeMode="cover"
-              onError={() => {
-                if (isInlineBase64ImageUri(activeImageUrl)) {
-                  setRenderableImageUri(null);
-                  return;
-                }
-                setImageUrls((prev) => prev.slice(1));
-                setImageIndex(0);
+          {/* Food image slider */}
+          {imageUrls.length > 0 ? (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              bounces={false}
+              showsHorizontalScrollIndicator={false}
+              style={styles.foodImageCarousel}
+              contentContainerStyle={styles.foodImageCarouselContent}
+              onMomentumScrollEnd={(event) => {
+                const width = Math.max(1, event.nativeEvent.layoutMeasurement.width);
+                const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+                const safeIndex = Math.max(0, Math.min(nextIndex, imageUrls.length - 1));
+                setImageIndex(safeIndex);
               }}
-            />
+            >
+              {imageUrls.map((uri, idx) => {
+                const sourceUri = idx === imageIndex ? (renderableImageUri || uri) : uri;
+                return (
+                  <View key={`${uri}-${idx}`} style={[styles.foodImageSlide, { width: slideWidth }]}>
+                    <Image
+                      source={{ uri: sourceUri }}
+                      style={styles.foodImage}
+                      resizeMode="cover"
+                      onError={() => {
+                        if (idx === imageIndex && isInlineBase64ImageUri(uri)) {
+                          setRenderableImageUri(null);
+                          return;
+                        }
+                        setImageUrls((prev) => {
+                          const next = prev.filter((_, i) => i !== idx);
+                          if (next.length === 0) {
+                            setImageIndex(0);
+                            return next;
+                          }
+                          setImageIndex((current) => {
+                            if (current === idx) return Math.min(idx, next.length - 1);
+                            if (current > idx) return current - 1;
+                            return current;
+                          });
+                          return next;
+                        });
+                      }}
+                    />
+                  </View>
+                );
+              })}
+            </ScrollView>
           ) : (
             <View style={styles.foodImageFallback} />
           )}
@@ -6336,6 +6370,16 @@ const styles = StyleSheet.create({
     height: 180,
     overflow: 'hidden',
     backgroundColor: '#B96C44',
+  },
+  foodImageCarousel: {
+    width: '100%',
+    height: '100%',
+  },
+  foodImageCarouselContent: {
+    height: '100%',
+  },
+  foodImageSlide: {
+    height: '100%',
   },
   foodImage: {
     ...StyleSheet.absoluteFillObject,
