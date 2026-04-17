@@ -6468,8 +6468,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 8,
   },
   foodPhotoTitleTextDark: {
-    color: '#3A281D',
-    textShadowColor: 'rgba(255,255,255,0.22)',
+    color: '#FFF8EF',
+    textShadowColor: 'rgba(0,0,0,0.64)',
+    textShadowRadius: 8,
   },
   foodPhotoCuisineText: {
     marginTop: 3,
@@ -6481,8 +6482,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 3.5,
   },
   foodPhotoCuisineTextDark: {
-    color: '#5A473B',
-    textShadowColor: 'rgba(255,255,255,0.2)',
+    color: '#F5ECE2',
+    textShadowColor: 'rgba(0,0,0,0.66)',
+    textShadowRadius: 3.8,
   },
   foodPriceBadge: {
     backgroundColor: 'rgba(51,36,27,0.9)',
