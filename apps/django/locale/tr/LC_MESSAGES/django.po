@@ -414,3 +414,126 @@ msgstr "Sebep"
 
 msgid "No transactions found."
 msgstr "İşlem bulunamadı."
+
+# ── Status Labels (Python _humanize_status) ────────────────────────────────
+
+msgid "Pending"
+msgstr "Beklemede"
+
+msgid "Awaiting Seller Approval"
+msgstr "Satıcı Onayı Bekleniyor"
+
+msgid "Processing"
+msgstr "Hazırlanıyor"
+
+msgid "Accepted"
+msgstr "Kabul Edildi"
+
+msgid "Delivered"
+msgstr "Teslim Edildi"
+
+msgid "Completed"
+msgstr "Tamamlandı"
+
+msgid "Cancelled"
+msgstr "İptal Edildi"
+
+msgid "Failed"
+msgstr "Başarısız"
+
+msgid "Open"
+msgstr "Açık"
+
+msgid "Under Review"
+msgstr "İnceleniyor"
+
+msgid "Resolved"
+msgstr "Çözüldü"
+
+msgid "Closed"
+msgstr "Kapatıldı"
+
+# ── Type Labels ────────────────────────────────────────────────────────────
+
+msgid "Both"
+msgstr "Her İkisi"
+
+# ── Tab Labels ─────────────────────────────────────────────────────────────
+
+msgid "Payments"
+msgstr "Ödemeler"
+
+msgid "Activity Log"
+msgstr "Aktivite Logu"
+
+msgid "Notes & Tags"
+msgstr "Notlar & Etiketler"
+
+# ── Page Titles ────────────────────────────────────────────────────────────
+
+msgid "Buyer Detail"
+msgstr "Alıcı Detayı"
+
+msgid "Seller Detail"
+msgstr "Satıcı Detayı"
+
+# ── Order Modal ────────────────────────────────────────────────────────────
+
+msgid "Order No"
+msgstr "Sipariş No"
+
+msgid "Paid"
+msgstr "Ödendi"
+
+msgid "Unpaid"
+msgstr "Ödenmedi"
+
+msgid "Items"
+msgstr "Ürünler"
+
+msgid "Messages"
+msgstr "Yazışmalar"
+
+msgid "View"
+msgstr "Görüntüle"
+
+msgid "Total Amount"
+msgstr "Toplam Tutar"
+
+msgid "Buyer requested delivery"
+msgstr "Alıcı teslimat istedi"
+
+msgid "No messages for this order."
+msgstr "Bu sipariş için yazışma yok."
+
+msgid "This order started as pickup. Buyer later requested delivery."
+msgstr "Bu sipariş önce gel al açıldı. Alıcı sonradan teslimat talebi bıraktı."
+
+msgid "each"
+msgstr "adet"
+
+msgid "messages"
+msgstr "mesaj"
+
+msgid "Complaint"
+msgstr "Şikayet"
+
+# ── UI Controls ────────────────────────────────────────────────────────────
+
+msgid "Cancel"
+msgstr "İptal"
+
+msgid "Type to search (/)"
+msgstr "Aramak için yaz (/)"
+
+msgid "Server returned non-JSON response"
+msgstr "Sunucu JSON döndürmedi"
+
+msgid "Enter tag name, press Enter to add"
+msgstr "Etiket adı gir, Enter ile ekle"
+
+msgid "Add note, press Enter to save…"
+msgstr "Not ekle, Enter ile kaydet…"
+
+msgid "Remove tag"
+msgstr "Etiketi sil"

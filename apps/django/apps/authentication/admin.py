@@ -29,16 +29,29 @@ from .models import (
     RolePermissions,
 )
 
-STATUS_TR = {
-    "pending": "Beklemede", "pending_seller_approval": "Satıcı Onayı Bekleniyor",
-    "processing": "Hazırlanıyor", "accepted": "Kabul Edildi",
-    "delivered": "Teslim Edildi", "completed": "Tamamlandı", "cancelled": "İptal Edildi",
-    "rejected": "Reddedildi", "failed": "Başarısız",
-    "open": "Açık", "in_review": "İnceleniyor", "resolved": "Çözüldü", "closed": "Kapatıldı",
-    "approved": "Onaylandı", "uploaded": "Yüklendi",
-}
+def _get_status_map():
+    return {
+        "pending": _("Pending"),
+        "pending_seller_approval": _("Awaiting Seller Approval"),
+        "processing": _("Processing"),
+        "accepted": _("Accepted"),
+        "delivered": _("Delivered"),
+        "completed": _("Completed"),
+        "cancelled": _("Cancelled"),
+        "rejected": _("Rejected"),
+        "failed": _("Failed"),
+        "open": _("Open"),
+        "in_review": _("Under Review"),
+        "resolved": _("Resolved"),
+        "closed": _("Closed"),
+        "approved": _("Approved"),
+        "uploaded": _("Uploaded"),
+        "not_uploaded": _("Not Uploaded"),
+    }
 
-TYPE_TR = {"buyer": "Alıcı", "seller": "Satıcı", "both": "Her İkisi"}
+
+def _get_type_map():
+    return {"buyer": _("Buyer"), "seller": _("Seller"), "both": _("Both")}
 
 TAG_CHIP_STYLES = [
     "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700",
@@ -53,7 +66,7 @@ TAG_CHIP_STYLES = [
 def _user_type_badge(obj):
     colors = {"buyer": "#2563eb", "seller": "#16a34a", "both": "#9333ea"}
     color = colors.get(obj.user_type, "#6b7280")
-    label = TYPE_TR.get(obj.user_type, obj.user_type)
+    label = _get_type_map().get(obj.user_type, obj.user_type)
     return format_html(
         '<span style="background:{};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">{}</span>',
         color, label,
@@ -87,12 +100,12 @@ def _parse_dt(val):
 
 
 def _humanize_status(status):
-    """Return Turkish label for a status, with fallback humanization."""
+    """Return localized label for a status, with fallback humanization."""
     if not status:
         return "—"
-    tr = STATUS_TR.get(status)
-    if tr:
-        return tr
+    label = _get_status_map().get(status)
+    if label:
+        return label
     return status.replace("_", " ").capitalize()
 
 
@@ -324,7 +337,7 @@ class BuyerUsersAdmin(ModelAdmin):
                                 "display_name": u.display_name or u.email,
                                 "email": u.email,
                                 "user_type": u.user_type,
-                                "user_type_tr": TYPE_TR.get(u.user_type, u.user_type),
+                                "user_type_tr": _get_type_map().get(u.user_type, u.user_type),
                                 "is_active": u.is_active,
                                 **data,
                             })
@@ -610,9 +623,10 @@ class BuyerUsersAdmin(ModelAdmin):
         }
 
         tabs = [
-            ("general", "Genel"), ("orders", "Siparişler"), ("payments", "Ödemeler"),
-            ("complaints", "Şikayetler"), ("reviews", "Yorumlar & Puanlar"),
-            ("activity", "Aktivite Logu"), ("notes", "Notlar & Etiketler"), ("raw", "Ham Veri"),
+            ("general", _("General")), ("orders", _("Orders")),
+            ("payments", _("Payments")), ("complaints", _("Complaints")),
+            ("reviews", _("Reviews")), ("activity", _("Activity Log")),
+            ("notes", _("Notes & Tags")), ("raw", _("Raw Data")),
         ]
 
         raw_data = {
@@ -623,7 +637,7 @@ class BuyerUsersAdmin(ModelAdmin):
 
         context = {
             **self.admin_site.each_context(request),
-            "title": f"Alıcı Detayı — {user.display_name}",
+            "title": _("Buyer Detail") + f" — {user.display_name}",
             "user": user,
             "role_badge": _user_type_badge(user),
             "summary": summary,
@@ -943,7 +957,7 @@ class SellerUsersAdmin(ModelAdmin):
                     "is_required": r[3],
                     "doc_id": r[4],
                     "status": r[5] or "not_uploaded",
-                    "status_tr": STATUS_TR.get(r[5], r[5]) if r[5] else "Yüklenmedi",
+                    "status_tr": _humanize_status(r[5]) if r[5] else str(_("Not Uploaded")),
                     "uploaded_at": r[6],
                     "file_url": s3_utils.hydrate_file_url(r[7]) if r[7] else None,
                     "rejection_reason": r[8] or "",
@@ -951,7 +965,7 @@ class SellerUsersAdmin(ModelAdmin):
 
         # Parse JSON results
         orders = [{"id": str(r["id"]), "buyer_name": r["buyer_name"], "total_price": r["total_price"],
-                   "status": r["status"], "status_tr": STATUS_TR.get(r["status"], r["status"]),
+                   "status": r["status"], "status_tr": _humanize_status(r["status"]),
                    "created_at": timezone.localtime(parsed_created_at) if (parsed_created_at := _parse_dt(r.get("created_at"))) else r.get("created_at"),
                    "gross_amount": r.get("gross_amount"),
                    "commission_amount": r.get("commission_amount"),
@@ -970,7 +984,7 @@ class SellerUsersAdmin(ModelAdmin):
                     "buyer_name": r["buyer_name"]} for r in (reviews_json or [])]
 
         complaints = [{"id": str(r["id"]), "description": r["description"], "status": r["status"],
-                       "status_tr": STATUS_TR.get(r["status"], r["status"]),
+                       "status_tr": _humanize_status(r["status"]),
                        "created_at": r["created_at"]} for r in (complaints_json or [])]
 
         foods = [{"id": str(r["id"]), "name": r["name"], "price": r["price"],
@@ -1031,7 +1045,7 @@ class SellerUsersAdmin(ModelAdmin):
 
         context = {
             **self.admin_site.each_context(request),
-            "title": f"Satıcı Detayı — {user.display_name}",
+            "title": _("Seller Detail") + f" — {user.display_name}",
             "user_obj": user,
             "role_badge": _user_type_badge(user),
             "summary": summary,

@@ -309,6 +309,9 @@ msgstr "Compliance"
 msgid "Toplam Harcama"
 msgstr "Total Spent"
 
+msgid "Toplam Sipariş"
+msgstr "Total Orders"
+
 msgid "Son Aktivite"
 msgstr "Recent Activity"
 
@@ -413,3 +416,126 @@ msgstr "Reason"
 
 msgid "No transactions found."
 msgstr "No transactions found."
+
+# ── Status Labels (Python _humanize_status) ────────────────────────────────
+
+msgid "Pending"
+msgstr "Pending"
+
+msgid "Awaiting Seller Approval"
+msgstr "Awaiting Seller Approval"
+
+msgid "Processing"
+msgstr "Processing"
+
+msgid "Accepted"
+msgstr "Accepted"
+
+msgid "Delivered"
+msgstr "Delivered"
+
+msgid "Completed"
+msgstr "Completed"
+
+msgid "Cancelled"
+msgstr "Cancelled"
+
+msgid "Failed"
+msgstr "Failed"
+
+msgid "Open"
+msgstr "Open"
+
+msgid "Under Review"
+msgstr "Under Review"
+
+msgid "Resolved"
+msgstr "Resolved"
+
+msgid "Closed"
+msgstr "Closed"
+
+# ── Type Labels ────────────────────────────────────────────────────────────
+
+msgid "Both"
+msgstr "Both"
+
+# ── Tab Labels ─────────────────────────────────────────────────────────────
+
+msgid "Payments"
+msgstr "Payments"
+
+msgid "Activity Log"
+msgstr "Activity Log"
+
+msgid "Notes & Tags"
+msgstr "Notes & Tags"
+
+# ── Page Titles ────────────────────────────────────────────────────────────
+
+msgid "Buyer Detail"
+msgstr "Buyer Detail"
+
+msgid "Seller Detail"
+msgstr "Seller Detail"
+
+# ── Order Modal ────────────────────────────────────────────────────────────
+
+msgid "Order No"
+msgstr "Order No"
+
+msgid "Paid"
+msgstr "Paid"
+
+msgid "Unpaid"
+msgstr "Unpaid"
+
+msgid "Items"
+msgstr "Items"
+
+msgid "Messages"
+msgstr "Messages"
+
+msgid "View"
+msgstr "View"
+
+msgid "Total Amount"
+msgstr "Total Amount"
+
+msgid "Buyer requested delivery"
+msgstr "Buyer requested delivery"
+
+msgid "No messages for this order."
+msgstr "No messages for this order."
+
+msgid "This order started as pickup. Buyer later requested delivery."
+msgstr "This order started as pickup. Buyer later requested delivery."
+
+msgid "each"
+msgstr "each"
+
+msgid "messages"
+msgstr "messages"
+
+msgid "Complaint"
+msgstr "Complaint"
+
+# ── UI Controls ────────────────────────────────────────────────────────────
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Type to search (/)"
+msgstr "Type to search (/)"
+
+msgid "Server returned non-JSON response"
+msgstr "Server returned non-JSON response"
+
+msgid "Enter tag name, press Enter to add"
+msgstr "Enter tag name, press Enter to add"
+
+msgid "Add note, press Enter to save…"
+msgstr "Add note, press Enter to save…"
+
+msgid "Remove tag"
+msgstr "Remove tag"
