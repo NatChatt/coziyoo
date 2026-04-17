@@ -10,6 +10,14 @@
   .detail-hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
+  .detail-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px !important;
+  }
+  .detail-stack > * {
+    margin: 0 !important;
+  }
 </style>
 <div class="space-y-4" x-data="{
   tab: '{{ active_tab|default:"general"|escapejs }}', search: '',
@@ -245,7 +253,7 @@
     {# ── Complaints Tab ── #}
     <div x-show="tab === 'complaints'" class="p-4 sm:p-6">
       {% if complaints %}
-        <div class="space-y-3">
+        <div class="detail-stack">
           {% for c in complaints %}
           <div data-search="{{ c.description }} {{ c.status_tr }}"
                x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
