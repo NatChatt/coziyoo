@@ -976,12 +976,12 @@ function pickImagePaletteColor(result: any, fallback: string): string {
 
 function deriveCardColors(dominant: string): CardColors {
   const safe = normalizeHexColor(dominant);
-  const bg = lighten(safe, 0.72);
-  const border = darken(bg, 0.2);
-  const title = darken(safe, 0.48);
-  const subtitle = darken(safe, 0.36);
-  const price = darken(safe, 0.58);
-  const metaBase = darken(safe, 0.3);
+  const bg = lighten(safe, 0.88);
+  const border = darken(bg, 0.12);
+  const title = darken(safe, 0.44);
+  const subtitle = darken(safe, 0.3);
+  const price = darken(safe, 0.54);
+  const metaBase = darken(safe, 0.24);
   return {
     bg,
     border,
@@ -989,8 +989,8 @@ function deriveCardColors(dominant: string): CardColors {
     subtitle,
     price,
     meta: metaBase,
-    photoTitle: '#FFFFFF',
-    photoCuisine: '#F3ECE3',
+    photoTitle: title,
+    photoCuisine: subtitle,
     photoStock: '#EEE4D9',
     photoMeta: '#E1D6C8',
   };
@@ -1821,7 +1821,6 @@ function FoodCard({
                 styles.foodPhotoTitleText,
                 titleMetrics,
                 { color: colors.photoTitle },
-                photoTextTone === 'dark' && styles.foodPhotoTitleTextDark,
               ]}
             >
               {meal.title}
@@ -1832,7 +1831,6 @@ function FoodCard({
                 style={[
                   styles.foodPhotoCuisineText,
                   { color: colors.photoCuisine },
-                  photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
                 ]}
               >
                 {formatCuisineLabel(meal.cuisine)}
