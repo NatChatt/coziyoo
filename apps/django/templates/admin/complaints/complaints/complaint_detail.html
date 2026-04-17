@@ -58,7 +58,17 @@
           <div class="rounded-lg border border-base-100 dark:border-base-800 p-3">
             <div class="flex items-center justify-between gap-3 mb-1">
               <div class="text-xs font-semibold text-base-700 dark:text-base-200">
-                {{ msg.author_obj.display_name|default:msg.author_obj.email|default:"Bilinmeyen" }}
+                {% if msg.author_obj %}
+                  {% if msg.author_obj.display_name %}
+                    {{ msg.author_obj.display_name }}
+                  {% elif msg.author_obj.email %}
+                    {{ msg.author_obj.email }}
+                  {% else %}
+                    Bilinmeyen
+                  {% endif %}
+                {% else %}
+                  Bilinmeyen
+                {% endif %}
                 <span class="ml-1 px-1.5 py-0.5 rounded bg-base-100 dark:bg-base-800 text-[10px] font-medium text-base-500">{{ msg.author_type }}</span>
               </div>
               <div class="text-[11px] text-base-400">{{ msg.created_at|date:"d.m.Y H:i" }}</div>
@@ -83,7 +93,17 @@
           <div class="rounded-lg border border-base-100 dark:border-base-800 p-3">
             <div class="flex items-center justify-between gap-3 mb-1">
               <div class="text-xs font-semibold text-base-700 dark:text-base-200">
-                {{ note.created_by_admin_obj.name|default:note.created_by_admin_obj.email|default:"Admin" }}
+                {% if note.created_by_admin_obj %}
+                  {% if note.created_by_admin_obj.name %}
+                    {{ note.created_by_admin_obj.name }}
+                  {% elif note.created_by_admin_obj.email %}
+                    {{ note.created_by_admin_obj.email }}
+                  {% else %}
+                    Admin
+                  {% endif %}
+                {% else %}
+                  Admin
+                {% endif %}
               </div>
               <div class="text-[11px] text-base-400">{{ note.created_at|date:"d.m.Y H:i" }}</div>
             </div>
@@ -103,22 +123,70 @@
         <div class="space-y-3 text-sm">
           <div>
             <div class="text-[11px] text-base-400 mb-0.5">Şikayetçi</div>
-            <div class="font-medium text-base-800 dark:text-base-100">{{ complainant.display_name|default:complainant.email|default:"-" }}</div>
-            {% if complainant %}<div class="text-xs text-base-500">{{ complainant.email }}</div>{% endif %}
+            <div class="font-medium text-base-800 dark:text-base-100">
+              {% if complainant %}
+                {% if complainant.display_name %}
+                  {{ complainant.display_name }}
+                {% elif complainant.email %}
+                  {{ complainant.email }}
+                {% else %}
+                  -
+                {% endif %}
+              {% else %}
+                -
+              {% endif %}
+            </div>
+            {% if complainant and complainant.email %}<div class="text-xs text-base-500">{{ complainant.email }}</div>{% endif %}
           </div>
           <div>
             <div class="text-[11px] text-base-400 mb-0.5">Alıcı</div>
-            <div class="font-medium text-base-800 dark:text-base-100">{{ buyer.display_name|default:buyer.email|default:"-" }}</div>
+            <div class="font-medium text-base-800 dark:text-base-100">
+              {% if buyer %}
+                {% if buyer.display_name %}
+                  {{ buyer.display_name }}
+                {% elif buyer.email %}
+                  {{ buyer.email }}
+                {% else %}
+                  -
+                {% endif %}
+              {% else %}
+                -
+              {% endif %}
+            </div>
             {% if buyer_url %}<a href="{{ buyer_url }}" class="text-xs text-primary-600 hover:underline">Buyer detaya git</a>{% endif %}
           </div>
           <div>
             <div class="text-[11px] text-base-400 mb-0.5">Satıcı</div>
-            <div class="font-medium text-base-800 dark:text-base-100">{{ seller.display_name|default:seller.email|default:"-" }}</div>
+            <div class="font-medium text-base-800 dark:text-base-100">
+              {% if seller %}
+                {% if seller.display_name %}
+                  {{ seller.display_name }}
+                {% elif seller.email %}
+                  {{ seller.email }}
+                {% else %}
+                  -
+                {% endif %}
+              {% else %}
+                -
+              {% endif %}
+            </div>
             {% if seller_url %}<a href="{{ seller_url }}" class="text-xs text-primary-600 hover:underline">Seller detaya git</a>{% endif %}
           </div>
           <div>
             <div class="text-[11px] text-base-400 mb-0.5">Atanan Admin</div>
-            <div class="font-medium text-base-800 dark:text-base-100">{{ assigned_admin.name|default:assigned_admin.email|default:"-" }}</div>
+            <div class="font-medium text-base-800 dark:text-base-100">
+              {% if assigned_admin %}
+                {% if assigned_admin.name %}
+                  {{ assigned_admin.name }}
+                {% elif assigned_admin.email %}
+                  {{ assigned_admin.email }}
+                {% else %}
+                  -
+                {% endif %}
+              {% else %}
+                -
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
@@ -132,19 +200,31 @@
           </div>
           <div class="flex items-center justify-between">
             <span class="text-base-500">Durum</span>
-            <span class="font-medium text-base-800 dark:text-base-100">{{ order.status|default:"-" }}</span>
+            <span class="font-medium text-base-800 dark:text-base-100">{% if order and order.status %}{{ order.status }}{% else %}-{% endif %}</span>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-base-500">Teslimat</span>
-            <span class="font-medium text-base-800 dark:text-base-100">{{ order.active_delivery_type|default:order.delivery_type|default:"-" }}</span>
+            <span class="font-medium text-base-800 dark:text-base-100">
+              {% if order %}
+                {% if order.active_delivery_type %}
+                  {{ order.active_delivery_type }}
+                {% elif order.delivery_type %}
+                  {{ order.delivery_type }}
+                {% else %}
+                  -
+                {% endif %}
+              {% else %}
+                -
+              {% endif %}
+            </span>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-base-500">Tutar</span>
-            <span class="font-medium text-base-800 dark:text-base-100">₺{{ order.total_price|default:"-" }}</span>
+            <span class="font-medium text-base-800 dark:text-base-100">₺{% if order and order.total_price %}{{ order.total_price }}{% else %}-{% endif %}</span>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-base-500">Oluşturma</span>
-            <span class="text-xs text-base-700 dark:text-base-200">{{ order.created_at|date:"d.m.Y H:i" }}</span>
+            <span class="text-xs text-base-700 dark:text-base-200">{% if order and order.created_at %}{{ order.created_at|date:"d.m.Y H:i" }}{% else %}-{% endif %}</span>
           </div>
         </div>
         {% if order_url %}
@@ -159,7 +239,7 @@
         <div class="space-y-2 text-sm">
           <div class="flex items-center justify-between">
             <span class="text-base-500">Kategori</span>
-            <span class="font-medium text-base-800 dark:text-base-100">{{ complaint.category.name|default:"-" }}</span>
+            <span class="font-medium text-base-800 dark:text-base-100">{{ category_name|default:"-" }}</span>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-base-500">Complainant Type</span>

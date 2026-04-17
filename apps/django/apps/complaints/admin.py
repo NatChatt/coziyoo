@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -136,6 +137,11 @@ class ComplaintsAdmin(ModelAdmin):
         context = {
             **self.admin_site.each_context(request),
             "complaint": complaint,
+            "category_name": (
+                ComplaintCategories.objects.filter(pk=complaint.category_id).values_list("name", flat=True).first()
+                if complaint.category_id
+                else None
+            ),
             "ticket_messages": messages,
             "admin_notes": admin_notes,
             "complainant": complainant,
@@ -180,7 +186,16 @@ class ComplaintsAdmin(ModelAdmin):
 
     @display(description="Complainant", ordering="complainant_user")
     def complainant_link(self, obj):
-        complainant = getattr(obj, "complainant_user", None) or getattr(obj, "complainant_buyer", None)
+        complainant = None
+        try:
+            complainant = getattr(obj, "complainant_user", None)
+        except ObjectDoesNotExist:
+            complainant = None
+        if complainant is None:
+            try:
+                complainant = getattr(obj, "complainant_buyer", None)
+            except ObjectDoesNotExist:
+                complainant = None
         label = getattr(complainant, "display_name", None) or getattr(complainant, "email", None) or "-"
         return format_html(
             '<a href="/admin/complaints/complaints/{}/detail/" class="block w-full h-full text-base-800 dark:text-base-100 hover:underline">{}</a>',
@@ -190,7 +205,12 @@ class ComplaintsAdmin(ModelAdmin):
 
     @display(description="Category", ordering="category")
     def category_link(self, obj):
-        label = getattr(obj.category, "name", None) or "-"
+        label = "-"
+        try:
+            category_obj = getattr(obj, "category", None)
+            label = getattr(category_obj, "name", None) or "-"
+        except ObjectDoesNotExist:
+            label = "-"
         return format_html(
             '<a href="/admin/complaints/complaints/{}/detail/" class="block w-full h-full text-base-800 dark:text-base-100 hover:underline">{}</a>',
             obj.id,
@@ -224,7 +244,10 @@ class ComplaintsAdmin(ModelAdmin):
 
     @display(description="Assigned admin", ordering="assigned_admin")
     def assigned_admin_link(self, obj):
-        admin_obj = getattr(obj, "assigned_admin", None)
+        try:
+            admin_obj = getattr(obj, "assigned_admin", None)
+        except ObjectDoesNotExist:
+            admin_obj = None
         label = getattr(admin_obj, "email", None) or "-"
         return format_html(
             '<a href="/admin/complaints/complaints/{}/detail/" class="block w-full h-full text-base-800 dark:text-base-100 hover:underline">{}</a>',
