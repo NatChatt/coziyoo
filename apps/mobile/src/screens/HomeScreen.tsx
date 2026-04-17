@@ -437,6 +437,16 @@ type CardColors = {
   photoMeta: string;
 };
 
+type HeroColors = {
+  bg: string;
+  gradTop: string;
+  gradMid: string;
+  gradLight: string;
+  featherMain: string;
+  featherSoft: string;
+  overlay: string;
+};
+
 type SellerProfile = {
   startedYear: number;
   experienceYears: number;
@@ -981,6 +991,11 @@ function isPaletteHexColor(value: unknown): value is string {
   return /^#?[0-9a-fA-F]{6}$/.test(normalized);
 }
 
+function toRgba(hex: string, alpha: number): string {
+  const { r, g, b } = hexToRgb(normalizeHexColor(hex));
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function pickImagePaletteColor(result: any, fallback: string): string {
   const candidateKeys = [
     'lightVibrant',
@@ -1053,6 +1068,24 @@ function deriveCardColors(dominant: string): CardColors {
     photoCuisine: subtitle,
     photoStock: '#EEE4D9',
     photoMeta: '#E1D6C8',
+  };
+}
+
+const DEFAULT_HERO_SEED = '#F0BB82';
+
+function deriveHeroColors(dominant: string): HeroColors {
+  const safe = normalizeHexColor(dominant);
+  const { r, g, b } = hexToRgb(safe);
+  const { h, s } = rgbToHsl(r, g, b);
+  const vividSat = Math.max(0.38, Math.min(0.78, s * 1.1));
+  return {
+    bg: colorFromHsl(h, vividSat * 0.16, 0.965),
+    gradTop: colorFromHsl(h, vividSat * 0.28, 0.935),
+    gradMid: colorFromHsl(h, vividSat * 0.40, 0.885),
+    gradLight: colorFromHsl(h, vividSat * 0.13, 0.960),
+    featherMain: colorFromHsl(h, vividSat * 0.40, 0.885),
+    featherSoft: colorFromHsl(h, vividSat * 0.24, 0.930),
+    overlay: colorFromHsl(h, vividSat * 0.62, 0.70),
   };
 }
 
@@ -2258,6 +2291,7 @@ export default function HomeScreen({
   const [headerImageSource, setHeaderImageSource] = useState<ImageSourcePropType>(() => (
     { uri: HERO_AKCABAT_IMAGE_URL }
   ));
+  const [heroColors, setHeroColors] = useState<HeroColors>(() => deriveHeroColors(DEFAULT_HERO_SEED));
   const [profileDisplayName, setProfileDisplayName] = useState<string>(() =>
     resolveProfileDisplayName(null, auth.email),
   );
@@ -2725,6 +2759,15 @@ export default function HomeScreen({
 
     const heroUrl = heroCandidate?.imageUrl?.trim() || HERO_AKCABAT_IMAGE_URL;
     setHeaderImageSource({ uri: heroUrl });
+
+    if (getColors) {
+      getColors(heroUrl, { fallback: DEFAULT_HERO_SEED, cache: true, key: `hero:${heroUrl}` })
+        .then((result) => {
+          const seed = pickImagePaletteColor(result, DEFAULT_HERO_SEED);
+          setHeroColors(deriveHeroColors(seed));
+        })
+        .catch(() => {});
+    }
   }, [meals]);
 
   useEffect(() => {
@@ -4038,10 +4081,10 @@ export default function HomeScreen({
         stickyHeaderIndices={[1]}
       >
         {/* Hero Header */}
-        <View style={styles.heroWrap}>
+        <View style={[styles.heroWrap, { backgroundColor: heroColors.bg }]}>
           {LinearGradient ? (
             <LinearGradient
-              colors={['#FCEBDD', '#F6D8B8', '#F7EDE4', '#FFFFFF']}
+              colors={[heroColors.gradTop, heroColors.gradMid, heroColors.gradLight, '#FFFFFF']}
               locations={[0, 0.35, 0.65, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
@@ -4058,9 +4101,9 @@ export default function HomeScreen({
             <>
               <LinearGradient
                 colors={[
-                  '#F6D8B8',
-                  'rgba(246,216,184,0.88)',
-                  'rgba(246,216,184,0.45)',
+                  heroColors.featherMain,
+                  toRgba(heroColors.featherMain, 0.88),
+                  toRgba(heroColors.featherMain, 0.45),
                   'transparent',
                 ]}
                 locations={[0, 0.24, 0.58, 1]}
@@ -4069,28 +4112,28 @@ export default function HomeScreen({
                 style={styles.heroFeatherLeft}
               />
               <LinearGradient
-                colors={['rgba(252,235,221,0.78)', 'rgba(252,235,221,0.36)', 'transparent']}
+                colors={[toRgba(heroColors.featherSoft, 0.78), toRgba(heroColors.featherSoft, 0.36), 'transparent']}
                 locations={[0, 0.46, 1]}
                 start={{ x: 0, y: 0.5 }}
                 end={{ x: 1, y: 0.5 }}
                 style={styles.heroFeatherLeftSoft}
               />
               <LinearGradient
-                colors={['rgba(252,235,221,0.76)', 'rgba(252,235,221,0.34)', 'transparent']}
+                colors={[toRgba(heroColors.featherSoft, 0.76), toRgba(heroColors.featherSoft, 0.34), 'transparent']}
                 locations={[0, 0.52, 1]}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
                 style={styles.heroFeatherTop}
               />
               <LinearGradient
-                colors={['transparent', 'rgba(255,255,255,0.52)', 'rgba(255,255,255,0.95)']}
+                colors={['transparent', toRgba(heroColors.gradLight, 0.52), toRgba(heroColors.gradLight, 0.95)]}
                 locations={[0, 0.56, 1]}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
                 style={styles.heroFeatherBottom}
               />
               <LinearGradient
-                colors={['transparent', 'rgba(247,237,228,0.42)', 'rgba(247,237,228,0.68)']}
+                colors={['transparent', toRgba(heroColors.bg, 0.42), toRgba(heroColors.bg, 0.68)]}
                 locations={[0, 0.62, 1]}
                 start={{ x: 0, y: 0.5 }}
                 end={{ x: 1, y: 0.5 }}
@@ -4115,8 +4158,8 @@ export default function HomeScreen({
           {LinearGradient ? (
             <LinearGradient
               colors={[
-                'rgba(233,194,152,0.18)',
-                'rgba(233,194,152,0.08)',
+                toRgba(heroColors.overlay, 0.18),
+                toRgba(heroColors.overlay, 0.08),
                 'transparent',
               ]}
               style={styles.heroOverlay}
