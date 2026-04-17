@@ -49,10 +49,10 @@ PRIORITY_CHOICES = [
 @admin.register(Complaints)
 class ComplaintsAdmin(ModelAdmin):
     list_display = [
-        "ticket_link", "complainant_user", "category", "status_badge",
-        "priority_badge", "assigned_admin", "created_at",
+        "ticket_link", "complainant_link", "category_link", "status_badge_link",
+        "priority_badge_link", "assigned_admin_link", "created_at_link",
     ]
-    list_display_links = ["ticket_link"]
+    list_display_links = None
     list_select_related = ["complainant_user", "category", "assigned_admin"]
     list_filter = ["status", "priority", "category"]
     search_fields = ["complainant_user__email", "description"]
@@ -66,9 +66,6 @@ class ComplaintsAdmin(ModelAdmin):
 
     def has_add_permission(self, request):
         return False
-
-    class Media:
-        js = ("admin/js/complaints_row_click.js",)
 
     def get_urls(self):
         urls = super().get_urls()
@@ -181,8 +178,27 @@ class ComplaintsAdmin(ModelAdmin):
             obj.ticket_no,
         )
 
+    @display(description="Complainant", ordering="complainant_user")
+    def complainant_link(self, obj):
+        complainant = getattr(obj, "complainant_user", None) or getattr(obj, "complainant_buyer", None)
+        label = getattr(complainant, "display_name", None) or getattr(complainant, "email", None) or "-"
+        return format_html(
+            '<a href="/admin/complaints/complaints/{}/detail/" class="block w-full h-full text-base-800 dark:text-base-100 hover:underline">{}</a>',
+            obj.id,
+            label,
+        )
+
+    @display(description="Category", ordering="category")
+    def category_link(self, obj):
+        label = getattr(obj.category, "name", None) or "-"
+        return format_html(
+            '<a href="/admin/complaints/complaints/{}/detail/" class="block w-full h-full text-base-800 dark:text-base-100 hover:underline">{}</a>',
+            obj.id,
+            label,
+        )
+
     @display(description="Status", ordering="status")
-    def status_badge(self, obj):
+    def status_badge_link(self, obj):
         colors = {
             "open": "#2563eb", "in_review": "#d97706",
             "awaiting_response": "#9333ea",
@@ -190,18 +206,38 @@ class ComplaintsAdmin(ModelAdmin):
         }
         color = colors.get(obj.status, "#6b7280")
         return format_html(
-            '<span style="color:{};font-weight:600">{}</span>',
-            color, obj.status,
+            '<a href="/admin/complaints/complaints/{}/detail/" class="block w-full h-full"><span style="color:{};font-weight:600">{}</span></a>',
+            obj.id, color, obj.status,
         )
 
     @display(description="Priority", ordering="priority")
-    def priority_badge(self, obj):
+    def priority_badge_link(self, obj):
         colors = {
             "low": "#6b7280", "medium": "#d97706",
             "high": "#dc2626", "urgent": "#7c3aed",
         }
         color = colors.get(obj.priority, "#6b7280")
         return format_html(
-            '<span style="color:{};font-weight:600">{}</span>',
-            color, obj.priority,
+            '<a href="/admin/complaints/complaints/{}/detail/" class="block w-full h-full"><span style="color:{};font-weight:600">{}</span></a>',
+            obj.id, color, obj.priority,
+        )
+
+    @display(description="Assigned admin", ordering="assigned_admin")
+    def assigned_admin_link(self, obj):
+        admin_obj = getattr(obj, "assigned_admin", None)
+        label = getattr(admin_obj, "email", None) or "-"
+        return format_html(
+            '<a href="/admin/complaints/complaints/{}/detail/" class="block w-full h-full text-base-800 dark:text-base-100 hover:underline">{}</a>',
+            obj.id,
+            label,
+        )
+
+    @display(description="Created at", ordering="created_at")
+    def created_at_link(self, obj):
+        if not obj.created_at:
+            return "-"
+        return format_html(
+            '<a href="/admin/complaints/complaints/{}/detail/" class="block w-full h-full text-base-800 dark:text-base-100 hover:underline">{}</a>',
+            obj.id,
+            obj.created_at.strftime("%d.%m.%Y %H:%M"),
         )
