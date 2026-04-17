@@ -44,13 +44,13 @@ class ComplaintListCreateView(APIView):
 
     def post(self, request):
         user_id = request.user.id
-        category_id = request.data.get("categoryId")
+        category_code = request.data.get("category") or request.data.get("categoryId")
         description = request.data.get("description")
         order_id = request.data.get("orderId")
 
-        if not category_id or not description:
+        if not category_code or not description:
             return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "categoryId and description are required"}},
+                {"error": {"code": "VALIDATION_ERROR", "message": "category and description are required"}},
                 status=400,
             )
 
@@ -59,6 +59,19 @@ class ComplaintListCreateView(APIView):
                 {"error": {"code": "VALIDATION_ERROR", "message": "orderId is required"}},
                 status=400,
             )
+
+        # Resolve category code to UUID
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM complaint_categories WHERE code = %s AND is_active = TRUE",
+                [category_code],
+            )
+            row = cur.fetchone()
+            if not row:
+                # Fallback: treat category_code as a direct UUID (legacy support)
+                category_id = category_code
+            else:
+                category_id = row[0]
 
         # Verify the order belongs to this user
         with connection.cursor() as cur:

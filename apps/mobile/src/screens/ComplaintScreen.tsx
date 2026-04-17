@@ -41,7 +41,7 @@ export default function ComplaintScreen({ auth, orderId, onBack, onCreated, onAu
     }
     setSubmitting(true);
     const result = await apiRequest<{ id: string; ticketNo: number }>(
-      '/v1/complaints',
+      '/v1/complaints/',
       auth,
       {
         method: 'POST',
