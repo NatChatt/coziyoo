@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, StatusBar, ScrollView, RefreshControl, TextInput, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/colors';
 import { type AuthSession } from '../utils/auth';
 import { apiRequest } from '../utils/api';
@@ -140,6 +141,13 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
               {ticket.description ? <Text style={styles.description}>{ticket.description}</Text> : null}
             </View>
 
+            {!messagingEnabled && !closed && (
+              <View style={styles.infoCard}>
+                <Ionicons name="time-outline" size={20} color="#7A6E61" />
+                <Text style={styles.infoText}>{t('helper.ticket.underReview')}</Text>
+              </View>
+            )}
+
             {messagingEnabled && (
               <>
                 <View style={styles.card}>
@@ -223,4 +231,15 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   inputDisabled: { opacity: 0.6 },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#F5F0EB',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5DBCF',
+    padding: 14,
+  },
+  infoText: { flex: 1, color: '#7A6E61', fontSize: 13, lineHeight: 20 },
 });
