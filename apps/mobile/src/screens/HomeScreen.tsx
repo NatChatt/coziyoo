@@ -1649,9 +1649,13 @@ function FoodCard({
 
         const sampledColors = await getColors(cropped.uri, {
           fallback: meal.backgroundColor,
-          cache: true,
+          cache: false,
           key: `${activeImageUrl}#text-tone:${cropOriginX}:${cropOriginY}:${cropWidth}:${cropHeight}`,
         });
+
+        const sampledSeed = pickImagePaletteColor(sampledColors, meal.backgroundColor);
+        const nextColors = deriveCardColors(sampledSeed);
+        setColors((prev) => (prev.bg === nextColors.bg && prev.title === nextColors.title ? prev : nextColors));
 
         let sampledDominant = meal.backgroundColor;
         if (Platform.OS === 'ios' && 'background' in sampledColors) {
