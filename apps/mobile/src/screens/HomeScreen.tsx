@@ -997,18 +997,19 @@ function toRgba(hex: string, alpha: number): string {
 }
 
 function pickImagePaletteColor(result: any, fallback: string): string {
+  // Keys ordered by preference; average/background/darkMuted tend to return neutral tones
   const candidateKeys = [
-    'lightVibrant',
     'vibrant',
+    'lightVibrant',
     'primary',
     'detail',
     'secondary',
     'dominant',
-    'average',
     'darkVibrant',
     'muted',
     'lightMuted',
     'darkMuted',
+    'average',
     'background',
   ];
 
@@ -1021,23 +1022,34 @@ function pickImagePaletteColor(result: any, fallback: string): string {
     const color = normalizeHexColor(raw);
     const { r, g, b } = hexToRgb(color);
     const { h, s, l } = rgbToHsl(r, g, b);
-    const vibranceScore = s * 2.4;
-    const midLightnessScore = 1 - Math.abs(l - 0.52);
-    const darkPenalty = l < 0.24 ? 0.65 : 0;
-    const muddyPenalty = s < 0.28 ? 0.55 : 0;
+    // Skip near-grayscale colors — they'd produce invisible card tints
+    if (s < 0.12) continue;
+    const vibranceScore = s * 2.8;
+    const midLightnessScore = 1 - Math.abs(l - 0.50);
+    // Penalise very dark colors
+    const darkPenalty = l < 0.22 ? 0.8 : 0;
+    // Penalise desaturated / muddy colors more aggressively
+    const muddyPenalty = s < 0.35 ? (0.35 - s) * 2.2 : 0;
+    // Penalise very light / washed-out colors (they look like white on the card)
+    const lightPenalty = l > 0.80 ? (l - 0.80) * 3.5 : 0;
+    // Brown/orange mid-tones often come from dish backgrounds, not the food itself
     const brownBand = h >= 16 && h <= 42;
-    const brownPenalty = brownBand && l < 0.48 ? 0.45 : 0;
+    const brownPenalty = brownBand && l < 0.52 ? 0.5 : 0;
+    // vibrant / darkVibrant are the most reliable keys for food color
     const keyBoost =
-      key === 'lightVibrant'
-        ? 0.3
-        : key === 'vibrant' || key === 'primary' || key === 'detail'
-          ? 0.2
-          : key === 'secondary'
-            ? 0.14
-            : key === 'dominant'
-              ? 0.08
-              : 0;
-    const score = vibranceScore + midLightnessScore + keyBoost - darkPenalty - muddyPenalty - brownPenalty;
+      key === 'vibrant' || key === 'darkVibrant'
+        ? 0.28
+        : key === 'primary' || key === 'detail'
+          ? 0.18
+          : key === 'lightVibrant'
+            ? 0.12
+            : key === 'secondary'
+              ? 0.10
+              : key === 'dominant'
+                ? 0.04
+                : 0;
+    const score = vibranceScore + midLightnessScore + keyBoost
+      - darkPenalty - muddyPenalty - lightPenalty - brownPenalty;
     candidates.push({ color, score });
   }
 
@@ -1051,8 +1063,9 @@ function deriveCardColors(dominant: string): CardColors {
   const { r, g, b } = hexToRgb(safe);
   const { h, s } = rgbToHsl(r, g, b);
   const vividSat = Math.max(0.58, Math.min(0.92, s * 1.08));
-  const bg = colorFromHsl(h, vividSat * 0.2, 0.965);
-  const border = colorFromHsl(h, vividSat * 0.28, 0.86);
+  // Raised saturation multipliers so the card palette is visibly tinted
+  const bg = colorFromHsl(h, vividSat * 0.30, 0.962);
+  const border = colorFromHsl(h, vividSat * 0.42, 0.855);
   const title = colorFromHsl(h, vividSat * 0.72, 0.34);
   const subtitle = colorFromHsl(h + 8, vividSat * 0.54, 0.42);
   const price = colorFromHsl(h, vividSat * 0.76, 0.28);
@@ -1534,7 +1547,7 @@ function RecommendationCard({
 
     getColors(meal.imageUrl, {
       fallback: meal.backgroundColor,
-      cache: false,
+      cache: true,
       key: `${meal.id}:${meal.imageUrl}`,
     })
       .then((result) => {
@@ -1629,7 +1642,7 @@ function FoodCard({
     }
     getColors(primaryImageUrl, {
       fallback: meal.backgroundColor,
-      cache: false,
+      cache: true,
       key: `${meal.id}:${primaryImageUrl}`,
     })
       .then((result) => {
