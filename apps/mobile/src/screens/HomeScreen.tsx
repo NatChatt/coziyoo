@@ -3796,17 +3796,18 @@ export default function HomeScreen({
   }
 
   function openMealDetailFromSeller(meal: MealCard) {
-    closeSellerModal();
-    if (selectedMeal?.id === meal.id) {
-      // Force reopen when the same meal is tapped from seller modal.
-      setMealModalAnimType('none');
-      setSelectedMeal(null);
-      requestAnimationFrame(() => {
-        openMealDetail(meal);
-      });
-      return;
-    }
-    openMealDetail(meal);
+    closeSellerModalWithCallback(() => {
+      if (selectedMeal?.id === meal.id) {
+        // Force reopen when the same meal is tapped from seller modal.
+        setMealModalAnimType('none');
+        setSelectedMeal(null);
+        requestAnimationFrame(() => {
+          openMealDetail(meal);
+        });
+        return;
+      }
+      openMealDetail(meal);
+    });
   }
 
   function handleCartBackPress() {
@@ -3965,7 +3966,12 @@ export default function HomeScreen({
     }).start();
   }, [selectedSeller, sellerModalSlideX]);
 
-  function closeSellerModal() {
+  function closeSellerModalWithCallback(onClosed?: () => void) {
+    if (!selectedSeller) {
+      setSellerModalTouchGuardUntil(0);
+      onClosed?.();
+      return;
+    }
     Animated.timing(sellerModalSlideX, {
       toValue: Dimensions.get('window').width,
       duration: 200,
@@ -3974,7 +3980,12 @@ export default function HomeScreen({
     }).start(() => {
       setSelectedSeller(null);
       setSellerModalTouchGuardUntil(0);
+      onClosed?.();
     });
+  }
+
+  function closeSellerModal() {
+    closeSellerModalWithCallback();
   }
 
 
