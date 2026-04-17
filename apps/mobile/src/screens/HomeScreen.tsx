@@ -904,10 +904,6 @@ function getImageSizeAsync(uri: string): Promise<{ width: number; height: number
   });
 }
 
-function rgbToHex(r: number, g: number, b: number): string {
-  return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`.toUpperCase();
-}
-
 function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
   const rn = r / 255;
   const gn = g / 255;
@@ -930,81 +926,73 @@ function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: n
   return { h, s, l };
 }
 
-function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const hp = h / 60;
-  const x = c * (1 - Math.abs((hp % 2) - 1));
-  let r1 = 0;
-  let g1 = 0;
-  let b1 = 0;
-
-  if (hp >= 0 && hp < 1) {
-    r1 = c;
-    g1 = x;
-  } else if (hp >= 1 && hp < 2) {
-    r1 = x;
-    g1 = c;
-  } else if (hp >= 2 && hp < 3) {
-    g1 = c;
-    b1 = x;
-  } else if (hp >= 3 && hp < 4) {
-    g1 = x;
-    b1 = c;
-  } else if (hp >= 4 && hp < 5) {
-    r1 = x;
-    b1 = c;
-  } else {
-    r1 = c;
-    b1 = x;
-  }
-
-  const m = l - c / 2;
-  return {
-    r: (r1 + m) * 255,
-    g: (g1 + m) * 255,
-    b: (b1 + m) * 255,
-  };
+function isPaletteHexColor(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const normalized = value.trim();
+  return /^#?[0-9a-fA-F]{6}$/.test(normalized);
 }
 
-function toneFromHue(h: number, saturation: number, lightness: number): string {
-  const { r, g, b } = hslToRgb(h, saturation, lightness);
-  return rgbToHex(r, g, b);
+function pickImagePaletteColor(result: any, fallback: string): string {
+  const candidateKeys = [
+    'vibrant',
+    'primary',
+    'detail',
+    'dominant',
+    'average',
+    'secondary',
+    'lightVibrant',
+    'darkVibrant',
+    'muted',
+    'lightMuted',
+    'darkMuted',
+    'background',
+  ];
+
+  type Candidate = { color: string; score: number };
+  const candidates: Candidate[] = [];
+
+  for (const key of candidateKeys) {
+    const raw = result?.[key];
+    if (!isPaletteHexColor(raw)) continue;
+    const color = normalizeHexColor(raw);
+    const { r, g, b } = hexToRgb(color);
+    const { s, l } = rgbToHsl(r, g, b);
+    const vibranceScore = s * 1.9;
+    const midLightnessScore = 1 - Math.abs(l - 0.54);
+    const keyBoost =
+      key === 'vibrant' || key === 'primary' || key === 'detail'
+        ? 0.18
+        : key === 'dominant'
+          ? 0.1
+          : 0;
+    const score = vibranceScore + midLightnessScore + keyBoost;
+    candidates.push({ color, score });
+  }
+
+  if (!candidates.length) return normalizeHexColor(fallback);
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0].color;
 }
 
 function deriveCardColors(dominant: string): CardColors {
   const safe = normalizeHexColor(dominant);
-  const { r, g, b } = hexToRgb(safe);
-  const { h, s } = rgbToHsl(r, g, b);
-  const luminance = relativeLuminanceFromHex(safe);
-  const isDarkSource = luminance < 0.42;
-  const sat = Math.min(0.72, Math.max(0.28, s * 1.25));
-  const title = isDarkSource
-    ? toneFromHue(h, sat * 0.78, 0.16)
-    : toneFromHue(h, sat * 0.24, 0.95);
-  const subtitle = isDarkSource
-    ? toneFromHue(h, sat * 0.64, 0.28)
-    : toneFromHue(h, sat * 0.20, 0.84);
-  const price = isDarkSource
-    ? toneFromHue(h, sat * 0.82, 0.20)
-    : toneFromHue(h, sat * 0.24, 0.96);
-  const metaBase = isDarkSource
-    ? toneFromHue(h, sat * 0.58, 0.34)
-    : toneFromHue(h, sat * 0.22, 0.78);
+  const bg = lighten(safe, 0.72);
+  const border = darken(bg, 0.2);
+  const title = darken(safe, 0.48);
+  const subtitle = darken(safe, 0.36);
+  const price = darken(safe, 0.58);
+  const metaBase = darken(safe, 0.3);
   return {
-    bg: isDarkSource
-      ? toneFromHue(h, sat * 0.44, 0.90)
-      : toneFromHue(h, sat * 0.52, 0.20),
-    border: isDarkSource
-      ? toneFromHue(h, sat * 0.54, 0.72)
-      : toneFromHue(h, sat * 0.46, 0.42),
+    bg,
+    border,
     title,
     subtitle,
     price,
     meta: metaBase,
-    photoTitle: toneFromHue(h, sat * 0.16, 0.96),
-    photoCuisine: toneFromHue(h, sat * 0.20, 0.90),
-    photoStock: toneFromHue(h, sat * 0.22, 0.87),
-    photoMeta: toneFromHue(h, sat * 0.24, 0.84),
+    photoTitle: '#FFFFFF',
+    photoCuisine: '#F3ECE3',
+    photoStock: '#EEE4D9',
+    photoMeta: '#E1D6C8',
   };
 }
 
@@ -1440,13 +1428,8 @@ function RecommendationCard({
       key: meal.imageUrl,
     })
       .then((result) => {
-        let dominant = meal.backgroundColor;
-        if (Platform.OS === 'ios' && 'background' in result) {
-          dominant = result.background;
-        } else if (Platform.OS === 'android' && 'dominant' in result) {
-          dominant = result.dominant;
-        }
-        setColors(deriveCardColors(dominant));
+        const seed = pickImagePaletteColor(result, meal.backgroundColor);
+        setColors(deriveCardColors(seed));
       })
       .catch(() => {
         setColors(deriveCardColors(meal.backgroundColor));
@@ -1536,13 +1519,8 @@ function FoodCard({
       key: primaryImageUrl,
     })
       .then((result) => {
-        let dominant = meal.backgroundColor;
-        if (Platform.OS === 'ios' && 'background' in result) {
-          dominant = result.background;
-        } else if (Platform.OS === 'android' && 'dominant' in result) {
-          dominant = result.dominant;
-        }
-        setColors(deriveCardColors(dominant));
+        const seed = pickImagePaletteColor(result, meal.backgroundColor);
+        setColors(deriveCardColors(seed));
       })
       .catch(() => {
         setColors(deriveCardColors(meal.backgroundColor));
