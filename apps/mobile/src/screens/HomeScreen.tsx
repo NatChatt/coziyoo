@@ -6706,7 +6706,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 7,
   },
   foodPhotoCuisineText: {
-    marginTop: 3,
+    marginTop: 1,
     color: '#F4ECE0',
     fontSize: 15,
     fontWeight: '700',
@@ -6752,7 +6752,7 @@ const styles = StyleSheet.create({
   },
   foodInfoContent: {
     paddingTop: 12,
-    paddingBottom: 10,
+    paddingBottom: 8,
     paddingHorizontal: 16,
     overflow: 'visible',
   },
@@ -6849,7 +6849,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   foodInfoSubtitle: {
-    marginTop: 2,
+    marginTop: 0,
     color: '#7B6758',
     fontSize: 12,
     fontWeight: '600',
@@ -6862,8 +6862,8 @@ const styles = StyleSheet.create({
     color: '#2F6F4A',
   },
   foodStatsRow: {
-    marginTop: 10,
-    paddingBottom: 10,
+    marginTop: 8,
+    paddingBottom: 8,
     flexDirection: 'row',
     alignItems: 'stretch',
     gap: 0,
@@ -6914,8 +6914,8 @@ const styles = StyleSheet.create({
   foodFooterRow: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(112,88,68,0.16)',
-    marginTop: 10,
-    paddingTop: 8,
+    marginTop: 6,
+    paddingTop: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -6927,7 +6927,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 8,
     overflow: 'visible',
   },
   foodSellerThumbWrap: {
@@ -6963,7 +6963,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     justifyContent: 'flex-start',
-    paddingTop: 2,
+    paddingTop: 0,
   },
   foodFooterSellerHandle: {
     color: '#33241C',
@@ -6972,7 +6972,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   foodFooterSellerTagline: {
-    marginTop: 3,
+    marginTop: 1,
     color: '#7D695A',
     fontSize: 11,
     fontWeight: '600',
