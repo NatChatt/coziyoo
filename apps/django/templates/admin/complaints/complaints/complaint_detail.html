@@ -3,6 +3,125 @@
 
 {% block title %}Şikayet #{{ complaint.ticket_no }}{% endblock %}
 
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  #content .ticket-bubble {
+    border-width: 1px;
+    border-style: solid;
+  }
+
+  #content .ticket-bubble--admin-buyer {
+    background: #d1fae5;
+    border-color: #34d399;
+    color: #064e3b;
+  }
+
+  #content .ticket-bubble--admin-seller {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #78350f;
+  }
+
+  #content .ticket-bubble--admin-complainant {
+    background: #dbeafe;
+    border-color: #60a5fa;
+    color: #1e3a8a;
+  }
+
+  #content .ticket-bubble--buyer {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+    color: #065f46;
+  }
+
+  #content .ticket-bubble--seller {
+    background: #fffbeb;
+    border-color: #fbbf24;
+    color: #78350f;
+  }
+
+  #content .ticket-bubble--complainant {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
+  }
+
+  .dark #content .ticket-bubble--admin-buyer {
+    background: rgba(16, 185, 129, 0.24);
+    border-color: rgba(52, 211, 153, 0.7);
+    color: #d1fae5;
+  }
+
+  .dark #content .ticket-bubble--admin-seller {
+    background: rgba(245, 158, 11, 0.24);
+    border-color: rgba(251, 191, 36, 0.72);
+    color: #fef3c7;
+  }
+
+  .dark #content .ticket-bubble--admin-complainant {
+    background: rgba(59, 130, 246, 0.26);
+    border-color: rgba(96, 165, 250, 0.74);
+    color: #dbeafe;
+  }
+
+  .dark #content .ticket-bubble--buyer {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: rgba(110, 231, 183, 0.56);
+    color: #d1fae5;
+  }
+
+  .dark #content .ticket-bubble--seller {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: rgba(251, 191, 36, 0.56);
+    color: #fde68a;
+  }
+
+  .dark #content .ticket-bubble--complainant {
+    background: rgba(100, 116, 139, 0.28);
+    border-color: rgba(148, 163, 184, 0.6);
+    color: #e2e8f0;
+  }
+
+  #content .ticket-chip {
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 9999px;
+    padding: 0.125rem 0.5rem;
+  }
+
+  #content .ticket-chip--buyer {
+    background: #059669;
+    color: #ffffff;
+  }
+
+  #content .ticket-chip--seller {
+    background: #d97706;
+    color: #ffffff;
+  }
+
+  #content .ticket-chip--complainant {
+    background: #2563eb;
+    color: #ffffff;
+  }
+
+  .dark #content .ticket-chip--buyer {
+    background: #34d399;
+    color: #052e16;
+  }
+
+  .dark #content .ticket-chip--seller {
+    background: #fbbf24;
+    color: #451a03;
+  }
+
+  .dark #content .ticket-chip--complainant {
+    background: #60a5fa;
+    color: #172554;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="space-y-6" style="row-gap: 16px;">
   <div class="rounded-2xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-5 mb-2">
@@ -92,44 +211,38 @@
           <div class="stack-bordered">
             {% for msg in ticket_messages %}
             <div class="flex {% if msg.author_type == 'admin' %}justify-end{% else %}justify-start{% endif %}">
-              <div class="max-w-[72%] rounded-2xl border px-3 py-2.5 shadow-sm
+              <div class="max-w-[72%] rounded-2xl ticket-bubble px-3 py-2.5 shadow-sm
                 {% if msg.author_type == 'admin' %}
                   {% if msg.recipient_role == 'buyer' %}
-                    bg-emerald-100/90 border-emerald-300 dark:bg-emerald-900/25 dark:border-emerald-700
+                    ticket-bubble--admin-buyer
                   {% elif msg.recipient_role == 'seller' %}
-                    bg-amber-100/90 border-amber-300 dark:bg-amber-900/25 dark:border-amber-700
+                    ticket-bubble--admin-seller
                   {% else %}
-                    bg-sky-100/90 border-sky-300 dark:bg-sky-900/25 dark:border-sky-700
+                    ticket-bubble--admin-complainant
                   {% endif %}
                 {% else %}
                   {% if buyer and msg.author_user_id == buyer.id|stringformat:'s' %}
-                    bg-emerald-50 border-emerald-200 dark:bg-emerald-900/15 dark:border-emerald-800
+                    ticket-bubble--buyer
                   {% elif seller and msg.author_user_id == seller.id|stringformat:'s' %}
-                    bg-amber-50 border-amber-200 dark:bg-amber-900/15 dark:border-amber-800
+                    ticket-bubble--seller
                   {% else %}
-                    bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700
+                    ticket-bubble--complainant
                   {% endif %}
                 {% endif %}">
                 <div class="flex items-center justify-between gap-2 mb-1">
-                  <div class="text-[12px] font-semibold {% if msg.author_type == 'admin' %}text-base-900 dark:text-base-50{% else %}text-base-700 dark:text-base-200{% endif %}">
+                  <div class="text-[12px] font-semibold">
                     {{ msg.author_name|default:"Bilinmeyen" }}
                   </div>
-                  <div class="text-[10px] {% if msg.author_type == 'admin' %}text-base-600 dark:text-base-300{% else %}text-base-400{% endif %}">{{ msg.created_at|date:"d.m.Y H:i" }}</div>
+                  <div class="text-[10px] opacity-75">{{ msg.created_at|date:"d.m.Y H:i" }}</div>
                 </div>
-                <p class="text-[15px] leading-relaxed whitespace-pre-wrap {% if msg.author_type == 'admin' %}text-base-900 dark:text-base-50{% else %}text-base-700 dark:text-base-200{% endif %}">{{ msg.body }}</p>
+                <p class="text-[15px] leading-relaxed whitespace-pre-wrap">{{ msg.body }}</p>
                 <div class="mt-2 flex {% if msg.author_type == 'admin' %}justify-end{% else %}justify-start{% endif %}">
                   {% if msg.author_type == 'admin' %}
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold
-                      {% if msg.recipient_role == 'buyer' %}bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950
-                      {% elif msg.recipient_role == 'seller' %}bg-amber-600 text-white dark:bg-amber-500 dark:text-amber-950
-                      {% else %}bg-sky-600 text-white dark:bg-sky-500 dark:text-sky-950{% endif %}">
+                    <span class="ticket-chip {% if msg.recipient_role == 'buyer' %}ticket-chip--buyer{% elif msg.recipient_role == 'seller' %}ticket-chip--seller{% else %}ticket-chip--complainant{% endif %}">
                       {{ msg.recipient_label }}
                     </span>
                   {% else %}
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold
-                      {% if buyer and msg.author_user_id == buyer.id|stringformat:'s' %}bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950
-                      {% elif seller and msg.author_user_id == seller.id|stringformat:'s' %}bg-amber-600 text-white dark:bg-amber-500 dark:text-amber-950
-                      {% else %}bg-slate-600 text-white dark:bg-slate-500 dark:text-slate-950{% endif %}">
+                    <span class="ticket-chip {% if buyer and msg.author_user_id == buyer.id|stringformat:'s' %}ticket-chip--buyer{% elif seller and msg.author_user_id == seller.id|stringformat:'s' %}ticket-chip--seller{% else %}ticket-chip--complainant{% endif %}">
                       {% if buyer and msg.author_user_id == buyer.id|stringformat:'s' %}Alıcı
                       {% elif seller and msg.author_user_id == seller.id|stringformat:'s' %}Satıcı
                       {% else %}Şikayetçi{% endif %}
