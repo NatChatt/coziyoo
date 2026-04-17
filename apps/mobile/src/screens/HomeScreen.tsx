@@ -1995,8 +1995,8 @@ function FoodCard({
               style={[
                 styles.foodPhotoTitleText,
                 titleMetrics,
-                { color: photoOverlayColors.title },
                 photoTextTone === 'dark' && styles.foodPhotoTitleTextDark,
+                { color: photoOverlayColors.title },
               ]}
             >
               {meal.title}
@@ -2006,8 +2006,8 @@ function FoodCard({
                 numberOfLines={1}
                 style={[
                   styles.foodPhotoCuisineText,
-                  { color: photoOverlayColors.cuisine },
                   photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
+                  { color: photoOverlayColors.cuisine },
                 ]}
               >
                 {formatCuisineLabel(meal.cuisine)}
@@ -6666,7 +6666,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 8,
   },
   foodPhotoTitleTextDark: {
-    color: '#1A1008',
     textShadowColor: 'rgba(255,255,255,0.60)',
     textShadowRadius: 7,
   },
@@ -6680,7 +6679,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 5,
   },
   foodPhotoCuisineTextDark: {
-    color: '#2C1E12',
     textShadowColor: 'rgba(255,255,255,0.55)',
     textShadowRadius: 4,
   },
