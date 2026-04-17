@@ -926,6 +926,55 @@ function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: n
   return { h, s, l };
 }
 
+function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const hp = h / 60;
+  const x = c * (1 - Math.abs((hp % 2) - 1));
+  let r1 = 0;
+  let g1 = 0;
+  let b1 = 0;
+
+  if (hp >= 0 && hp < 1) {
+    r1 = c;
+    g1 = x;
+  } else if (hp >= 1 && hp < 2) {
+    r1 = x;
+    g1 = c;
+  } else if (hp >= 2 && hp < 3) {
+    g1 = c;
+    b1 = x;
+  } else if (hp >= 3 && hp < 4) {
+    g1 = x;
+    b1 = c;
+  } else if (hp >= 4 && hp < 5) {
+    r1 = x;
+    b1 = c;
+  } else {
+    r1 = c;
+    b1 = x;
+  }
+
+  const m = l - c / 2;
+  return {
+    r: Math.round((r1 + m) * 255),
+    g: Math.round((g1 + m) * 255),
+    b: Math.round((b1 + m) * 255),
+  };
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return `#${Math.max(0, Math.min(255, Math.round(r))).toString(16).padStart(2, '0')}${Math.max(0, Math.min(255, Math.round(g))).toString(16).padStart(2, '0')}${Math.max(0, Math.min(255, Math.round(b))).toString(16).padStart(2, '0')}`.toUpperCase();
+}
+
+function colorFromHsl(h: number, s: number, l: number): string {
+  const { r, g, b } = hslToRgb(
+    ((h % 360) + 360) % 360,
+    Math.max(0, Math.min(1, s)),
+    Math.max(0, Math.min(1, l)),
+  );
+  return rgbToHex(r, g, b);
+}
+
 function isPaletteHexColor(value: unknown): value is string {
   if (typeof value !== 'string') return false;
   const normalized = value.trim();
@@ -957,15 +1006,17 @@ function pickImagePaletteColor(result: any, fallback: string): string {
     const color = normalizeHexColor(raw);
     const { r, g, b } = hexToRgb(color);
     const { s, l } = rgbToHsl(r, g, b);
-    const vibranceScore = s * 1.9;
-    const midLightnessScore = 1 - Math.abs(l - 0.54);
+    const vibranceScore = s * 2.4;
+    const midLightnessScore = 1 - Math.abs(l - 0.52);
+    const darkPenalty = l < 0.24 ? 0.65 : 0;
+    const muddyPenalty = s < 0.28 ? 0.55 : 0;
     const keyBoost =
       key === 'vibrant' || key === 'primary' || key === 'detail'
         ? 0.18
         : key === 'dominant'
           ? 0.1
           : 0;
-    const score = vibranceScore + midLightnessScore + keyBoost;
+    const score = vibranceScore + midLightnessScore + keyBoost - darkPenalty - muddyPenalty;
     candidates.push({ color, score });
   }
 
@@ -976,12 +1027,15 @@ function pickImagePaletteColor(result: any, fallback: string): string {
 
 function deriveCardColors(dominant: string): CardColors {
   const safe = normalizeHexColor(dominant);
-  const bg = lighten(safe, 0.88);
-  const border = darken(bg, 0.12);
-  const title = darken(safe, 0.44);
-  const subtitle = darken(safe, 0.3);
-  const price = darken(safe, 0.54);
-  const metaBase = darken(safe, 0.24);
+  const { r, g, b } = hexToRgb(safe);
+  const { h, s } = rgbToHsl(r, g, b);
+  const vividSat = Math.max(0.5, Math.min(0.95, s * 1.1));
+  const bg = colorFromHsl(h, vividSat * 0.42, 0.92);
+  const border = colorFromHsl(h, vividSat * 0.5, 0.76);
+  const title = colorFromHsl(h, vividSat * 0.74, 0.28);
+  const subtitle = colorFromHsl(h, vividSat * 0.64, 0.36);
+  const price = colorFromHsl(h, vividSat * 0.8, 0.24);
+  const metaBase = colorFromHsl(h, vividSat * 0.56, 0.42);
   return {
     bg,
     border,
