@@ -1064,38 +1064,21 @@ function pickImagePaletteColor(result: any, fallback: string): string {
 
 function deriveCardColors(dominant: string): CardColors {
   const safe = normalizeHexColor(dominant);
-  const { r, g, b } = hexToRgb(safe);
-  const { h, s } = rgbToHsl(r, g, b);
-  const luminance = relativeLuminanceFromHex(safe);
-  const isDarkSource = luminance < 0.42;
-  const sat = Math.min(0.72, Math.max(0.28, s * 1.25));
-  const title = isDarkSource
-    ? toneFromHue(h, sat * 0.78, 0.16)
-    : toneFromHue(h, sat * 0.24, 0.95);
-  const subtitle = isDarkSource
-    ? toneFromHue(h, sat * 0.64, 0.28)
-    : toneFromHue(h, sat * 0.20, 0.84);
-  const price = isDarkSource
-    ? toneFromHue(h, sat * 0.82, 0.20)
-    : toneFromHue(h, sat * 0.24, 0.96);
-  const metaBase = isDarkSource
-    ? toneFromHue(h, sat * 0.58, 0.34)
-    : toneFromHue(h, sat * 0.22, 0.78);
+  const title = darken(safe, 0.62);
+  const subtitle = darken(safe, 0.46);
+  const price = darken(safe, 0.56);
+  const metaBase = darken(safe, 0.38);
   return {
-    bg: isDarkSource
-      ? toneFromHue(h, sat * 0.44, 0.90)
-      : toneFromHue(h, sat * 0.52, 0.20),
-    border: isDarkSource
-      ? toneFromHue(h, sat * 0.54, 0.72)
-      : toneFromHue(h, sat * 0.46, 0.42),
+    bg: lighten(safe, 0.82),
+    border: lighten(safe, 0.68),
     title,
     subtitle,
     price,
     meta: metaBase,
-    photoTitle: toneFromHue(h, sat * 0.16, 0.96),
-    photoCuisine: toneFromHue(h, sat * 0.20, 0.90),
-    photoStock: toneFromHue(h, sat * 0.22, 0.87),
-    photoMeta: toneFromHue(h, sat * 0.24, 0.84),
+    photoTitle: lighten(safe, 0.94),
+    photoCuisine: lighten(safe, 0.88),
+    photoStock: lighten(safe, 0.82),
+    photoMeta: lighten(safe, 0.78),
   };
 }
 
