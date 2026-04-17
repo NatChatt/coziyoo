@@ -1471,7 +1471,7 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
           <View style={styles.row2}>
             <View style={styles.rowItem} onLayout={(event) => handleFieldLayout("cuisine", event)}>
               <View style={styles.rowLabelWrap}>
-                <Text style={[styles.sectionTitle, isRequiredFieldHighlighted("cuisine") && styles.sectionTitleError]}>{t('headline.seller.foods.cuisine')}</Text>
+                <Text numberOfLines={1} style={[styles.sectionTitle, isRequiredFieldHighlighted("cuisine") && styles.sectionTitleError]}>{t('headline.seller.foods.cuisine')}</Text>
               </View>
               <TextInput
                 ref={cuisineInputRef}

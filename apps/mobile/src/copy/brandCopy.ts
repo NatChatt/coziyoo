@@ -1892,7 +1892,7 @@ const brandCopyEn: Partial<Record<BrandCopyKey, string>> = {
   'helper.seller.foods.photoHint': '(Upload/Take/Camera)',
   'headline.seller.foods.name': 'Food Name *',
   'helper.seller.foods.namePlaceholder': 'For example: Homemade Manti',
-  'headline.seller.foods.cuisine': 'Which Country/City Cuisine',
+  'headline.seller.foods.cuisine': 'Cuisine',
   'helper.seller.foods.cuisinePlaceholder': 'For example: Turkish cuisine',
   'headline.seller.foods.category': 'Choose Category',
   'helper.seller.foods.categoryPlaceholder': 'Choose category',
