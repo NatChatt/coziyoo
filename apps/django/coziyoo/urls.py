@@ -3,7 +3,7 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
-from apps.foods.views import FoodImageView
+from apps.foods.views import FoodImageView, FavoriteListView, FavoriteToggleView
 from coziyoo.admin_search import admin_global_search
 from coziyoo.dashboard_views import dashboard_data
 
@@ -22,6 +22,8 @@ urlpatterns = [
     path("v1/admin/", include("apps.authentication.urls.admin_panel")),
     path("v1/orders/", include("apps.orders.urls")),
     path("v1/foods/", include("apps.foods.urls")),
+    path("v1/favorites", FavoriteListView.as_view()),
+    path("v1/favorites/<uuid:food_id>", FavoriteToggleView.as_view()),
     path("v1/seller/", include("apps.foods.urls_seller")),
     path("v1/payments/", include("apps.payments.urls")),
     path("v1/notifications/", include("apps.notifications.urls")),

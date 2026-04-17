@@ -7,6 +7,7 @@ import binascii
 import json
 
 from django.db import connection
+from django.db import transaction
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 from rest_framework.views import APIView
@@ -327,6 +328,120 @@ def _serialize_food_row(row, category_map, request=None):
             "homeCardImage": row.get("seller_home_card_image"),
         },
     }
+
+
+def _favorite_list_sql():
+    return """
+        SELECT
+            f.id,
+            f.name,
+            f.price,
+            f.image_url,
+            f.image_urls_json,
+            f.updated_at,
+            f.rating,
+            COALESCE(u.display_name, u.username, 'Satıcı') AS seller_name
+        FROM favorites fav
+        JOIN foods f ON f.id = fav.food_id
+        JOIN users u ON u.id = f.seller_id
+        WHERE fav.user_id = %s
+        ORDER BY fav.created_at DESC
+    """
+
+
+def _serialize_favorite_row(row, request=None):
+    return {
+        "id": str(row["id"]),
+        "name": row.get("name") or "",
+        "price": float(row.get("price") or 0),
+        "imageUrl": _resolve_food_image_for_client(
+            request,
+            row.get("id"),
+            row.get("image_urls_json"),
+            row.get("image_url"),
+            row.get("updated_at"),
+        ),
+        "rating": f"{float(row['rating']):.1f}" if row.get("rating") is not None else None,
+        "sellerName": row.get("seller_name") or "Satıcı",
+    }
+
+
+def _food_exists(food_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT EXISTS(SELECT 1 FROM foods WHERE id = %s)",
+            [food_id],
+        )
+        return bool(cursor.fetchone()[0])
+
+
+def _sync_food_favorite_count(food_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+                UPDATE foods f
+                SET favorite_count = sub.total_count
+                FROM (
+                    SELECT COUNT(*)::int AS total_count
+                    FROM favorites
+                    WHERE food_id = %s
+                ) sub
+                WHERE f.id = %s
+            """,
+            [food_id, food_id],
+        )
+
+
+class FavoriteListView(APIView):
+    permission_classes = [IsAppRealm]
+
+    def get(self, request):
+        with connection.cursor() as cursor:
+            cursor.execute(_favorite_list_sql(), [request.user.id])
+            rows = _rows_as_dicts(cursor)
+        return Response({"data": [_serialize_favorite_row(row, request) for row in rows]})
+
+
+class FavoriteToggleView(APIView):
+    permission_classes = [IsAppRealm]
+
+    def post(self, request, food_id):
+        if not _food_exists(food_id):
+            return Response(
+                {"error": {"code": "FOOD_NOT_FOUND", "message": "Yemek bulunamadı."}},
+                status=404,
+            )
+
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                        INSERT INTO favorites (user_id, food_id, created_at)
+                        VALUES (%s, %s, NOW())
+                        ON CONFLICT (user_id, food_id) DO NOTHING
+                    """,
+                    [request.user.id, food_id],
+                )
+            _sync_food_favorite_count(food_id)
+
+        return Response({"data": {"ok": True}})
+
+    def delete(self, request, food_id):
+        if not _food_exists(food_id):
+            return Response(
+                {"error": {"code": "FOOD_NOT_FOUND", "message": "Yemek bulunamadı."}},
+                status=404,
+            )
+
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM favorites WHERE user_id = %s AND food_id = %s",
+                    [request.user.id, food_id],
+                )
+            _sync_food_favorite_count(food_id)
+
+        return Response({"data": {"ok": True}})
 
 
 class FoodListView(APIView):
