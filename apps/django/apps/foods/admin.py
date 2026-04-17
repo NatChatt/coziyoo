@@ -4,7 +4,7 @@ import json
 from django.contrib import admin
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
-from django.urls import path
+from django.urls import path, reverse
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
@@ -161,6 +161,14 @@ class FoodsAdmin(ModelAdmin):
             Foods.objects.select_related("seller", "category"), pk=food_id
         )
         lots = list(ProductionLots.objects.filter(food_id=food_id).order_by("-produced_at"))
+        seller_id = str(request.GET.get("seller_id") or food.seller_id)
+        seller_tab = str(request.GET.get("seller_tab") or "foods").strip().lower()
+        valid_seller_tabs = {"general", "foods", "orders", "wallet", "compliance", "reviews", "complaints", "raw"}
+        if seller_tab not in valid_seller_tabs:
+            seller_tab = "foods"
+        seller_return_url = (
+            f"{reverse('admin:authentication_sellerusers_seller_detail', args=[seller_id])}?tab={seller_tab}"
+        )
 
         lots_json = json.dumps([
             {
@@ -197,6 +205,7 @@ class FoodsAdmin(ModelAdmin):
             "lots_json": lots_json,
             "page_title": food.name,
             "title": food.name,
+            "seller_return_url": seller_return_url,
         }
         return TemplateResponse(request, "admin/menu/foods/food_detail.html", context)
 

@@ -293,6 +293,36 @@
     </div>
   </template>
 
+  {# ── Seller Panel (Quick return to seller detail) ── #}
+  <div class="rounded-xl border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <a href="{{ seller_return_url }}"
+         class="group flex min-w-0 items-center gap-3 rounded-lg border border-base-200 px-3 py-2 transition-colors hover:bg-base-50 dark:border-base-700 dark:hover:bg-base-900">
+        {% if food.seller.profile_image_url %}
+          <img src="{{ food.seller.profile_image_url }}"
+               class="h-11 w-11 rounded-full object-cover bg-base-200 dark:bg-base-700 shrink-0"
+               onerror="this.style.display='none'">
+        {% else %}
+          <div class="h-11 w-11 rounded-full bg-base-200 dark:bg-base-700 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-xl text-base-400">storefront</span>
+          </div>
+        {% endif %}
+        <div class="min-w-0">
+          <div class="text-xs uppercase tracking-wide text-base-400">{% trans "Satıcı" %}</div>
+          <div class="truncate text-sm font-semibold text-base-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400">
+            {{ food.seller.display_name|default:"—" }}
+          </div>
+          <div class="truncate text-xs text-base-500 dark:text-base-400">{{ food.seller.email|default:"—" }}</div>
+        </div>
+      </a>
+      <a href="{{ seller_return_url }}"
+         class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 sm:w-auto">
+        <span class="material-symbols-outlined text-sm leading-none">arrow_back</span>
+        {% trans "Satıcı Detayına Dön" %}
+      </a>
+    </div>
+  </div>
+
   {# ── Header Card ── #}
   <div class="flex flex-col gap-4 rounded-xl border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800 lg:flex-row lg:items-center lg:p-5">
 

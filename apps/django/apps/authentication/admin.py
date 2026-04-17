@@ -1031,6 +1031,10 @@ class SellerUsersAdmin(ModelAdmin):
             ("compliance", _("Compliance")), ("reviews", _("Reviews")),
             ("complaints", _("Complaints")), ("raw", _("Raw Data")),
         ]
+        valid_tabs = {tab_id for tab_id, _ in tabs}
+        initial_tab = str(request.GET.get("tab", "general")).strip().lower()
+        if initial_tab not in valid_tabs:
+            initial_tab = "general"
 
         raw_data = {
             "id": str(user.id), "email": user.email, "display_name": user.display_name,
@@ -1052,6 +1056,7 @@ class SellerUsersAdmin(ModelAdmin):
             "earnings_summary": earnings_summary,
             "wallet_summary": wallet_summary,
             "tabs": tabs,
+            "initial_tab": initial_tab,
             "orders": orders,
             "adjustments": adjustments,
             "reviews": reviews,
