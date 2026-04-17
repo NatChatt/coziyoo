@@ -305,10 +305,10 @@
 
     <div style="display:flex;flex-direction:column;gap:20px;">
       <div class="rounded-xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4 shadow-sm">
-        <div class="text-xs uppercase tracking-wide text-base-500 mb-3">Taraflar</div>
-        <div class="space-y-3 text-sm">
+        <div class="text-sm uppercase tracking-wide text-base-500 mb-3">Taraflar</div>
+        <div class="space-y-3 text-base">
           <div>
-            <div class="text-[11px] text-base-400 mb-0.5">Şikayetçi</div>
+            <div class="text-xs text-base-400 mb-0.5">Şikayetçi</div>
             <div class="font-medium text-base-800 dark:text-base-100">
               {% if complainant %}
                 {% if complainant.display_name %}
@@ -322,48 +322,52 @@
                 -
               {% endif %}
             </div>
-            {% if complainant and complainant.email %}<div class="text-xs text-base-500">{{ complainant.email }}</div>{% endif %}
+            {% if complainant and complainant.email %}<div class="text-sm text-base-500">{{ complainant.email }}</div>{% endif %}
           </div>
           <div>
-            <div class="text-[11px] text-base-400 mb-0.5">Alıcı</div>
-            <div class="font-medium text-base-800 dark:text-base-100">
-              {% if buyer %}
-                {% if buyer.display_name %}
-                  {{ buyer.display_name }}
-                {% elif buyer.email %}
-                  {{ buyer.email }}
+            <div class="text-xs text-base-400 mb-0.5">Alıcı</div>
+            <div class="flex items-center justify-between gap-3">
+              <div class="font-medium text-base-800 dark:text-base-100">
+                {% if buyer %}
+                  {% if buyer.display_name %}
+                    {{ buyer.display_name }}
+                  {% elif buyer.email %}
+                    {{ buyer.email }}
+                  {% else %}
+                    -
+                  {% endif %}
                 {% else %}
                   -
                 {% endif %}
-              {% else %}
-                -
+              </div>
+              {% if buyer_url %}
+                <a href="{{ buyer_url }}" class="text-sm text-primary-600 hover:underline whitespace-nowrap">Alıcı detayına git</a>
               {% endif %}
             </div>
-            {% if buyer_url %}
-              <a href="{{ buyer_url }}" class="text-xs text-primary-600 hover:underline">Alıcı detayına git</a>
-            {% endif %}
           </div>
           <div>
-            <div class="text-[11px] text-base-400 mb-0.5">Satıcı</div>
-            <div class="font-medium text-base-800 dark:text-base-100">
-              {% if seller %}
-                {% if seller.display_name %}
-                  {{ seller.display_name }}
-                {% elif seller.email %}
-                  {{ seller.email }}
+            <div class="text-xs text-base-400 mb-0.5">Satıcı</div>
+            <div class="flex items-center justify-between gap-3">
+              <div class="font-medium text-base-800 dark:text-base-100">
+                {% if seller %}
+                  {% if seller.display_name %}
+                    {{ seller.display_name }}
+                  {% elif seller.email %}
+                    {{ seller.email }}
+                  {% else %}
+                    -
+                  {% endif %}
                 {% else %}
                   -
                 {% endif %}
-              {% else %}
-                -
+              </div>
+              {% if seller_url %}
+                <a href="{{ seller_url }}" class="text-sm text-primary-600 hover:underline whitespace-nowrap">Satıcı detayına git</a>
               {% endif %}
             </div>
-            {% if seller_url %}
-              <a href="{{ seller_url }}" class="text-xs text-primary-600 hover:underline">Satıcı detayına git</a>
-            {% endif %}
           </div>
           <div>
-            <div class="text-[11px] text-base-400 mb-0.5">Atanan Admin</div>
+            <div class="text-xs text-base-400 mb-0.5">Atanan Admin</div>
             <div class="font-medium text-base-800 dark:text-base-100">
               {% if assigned_admin %}
                 {% if assigned_admin.name %}
