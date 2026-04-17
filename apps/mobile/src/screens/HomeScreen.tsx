@@ -985,6 +985,10 @@ function colorFromHsl(h: number, s: number, l: number): string {
   return rgbToHex(r, g, b);
 }
 
+function toneFromHue(h: number, saturation: number, lightness: number): string {
+  return colorFromHsl(h, saturation, lightness);
+}
+
 function isPaletteHexColor(value: unknown): value is string {
   if (typeof value !== 'string') return false;
   const normalized = value.trim();
@@ -1062,25 +1066,36 @@ function deriveCardColors(dominant: string): CardColors {
   const safe = normalizeHexColor(dominant);
   const { r, g, b } = hexToRgb(safe);
   const { h, s } = rgbToHsl(r, g, b);
-  const vividSat = Math.max(0.58, Math.min(0.92, s * 1.08));
-  // Raised saturation multipliers so the card palette is visibly tinted
-  const bg = colorFromHsl(h, vividSat * 0.30, 0.962);
-  const border = colorFromHsl(h, vividSat * 0.42, 0.855);
-  const title = colorFromHsl(h, vividSat * 0.72, 0.34);
-  const subtitle = colorFromHsl(h + 8, vividSat * 0.54, 0.42);
-  const price = colorFromHsl(h, vividSat * 0.76, 0.28);
-  const metaBase = colorFromHsl(h + 18, vividSat * 0.48, 0.48);
+  const luminance = relativeLuminanceFromHex(safe);
+  const isDarkSource = luminance < 0.42;
+  const sat = Math.min(0.72, Math.max(0.28, s * 1.25));
+  const title = isDarkSource
+    ? toneFromHue(h, sat * 0.78, 0.16)
+    : toneFromHue(h, sat * 0.24, 0.95);
+  const subtitle = isDarkSource
+    ? toneFromHue(h, sat * 0.64, 0.28)
+    : toneFromHue(h, sat * 0.20, 0.84);
+  const price = isDarkSource
+    ? toneFromHue(h, sat * 0.82, 0.20)
+    : toneFromHue(h, sat * 0.24, 0.96);
+  const metaBase = isDarkSource
+    ? toneFromHue(h, sat * 0.58, 0.34)
+    : toneFromHue(h, sat * 0.22, 0.78);
   return {
-    bg,
-    border,
+    bg: isDarkSource
+      ? toneFromHue(h, sat * 0.44, 0.90)
+      : toneFromHue(h, sat * 0.52, 0.20),
+    border: isDarkSource
+      ? toneFromHue(h, sat * 0.54, 0.72)
+      : toneFromHue(h, sat * 0.46, 0.42),
     title,
     subtitle,
     price,
     meta: metaBase,
-    photoTitle: title,
-    photoCuisine: subtitle,
-    photoStock: '#EEE4D9',
-    photoMeta: '#E1D6C8',
+    photoTitle: toneFromHue(h, sat * 0.16, 0.96),
+    photoCuisine: toneFromHue(h, sat * 0.20, 0.90),
+    photoStock: toneFromHue(h, sat * 0.22, 0.87),
+    photoMeta: toneFromHue(h, sat * 0.24, 0.84),
   };
 }
 
@@ -1620,8 +1635,13 @@ function RecommendationCard({
       key: `${meal.id}:${meal.imageUrl}`,
     })
       .then((result) => {
-        const seed = pickImagePaletteColor(result, meal.backgroundColor);
-        setColors(deriveCardColors(seed));
+        let dominant = meal.backgroundColor;
+        if (Platform.OS === 'ios' && 'background' in result) {
+          dominant = result.background;
+        } else if (Platform.OS === 'android' && 'dominant' in result) {
+          dominant = result.dominant;
+        }
+        setColors(deriveCardColors(dominant));
       })
       .catch(() => {
         setColors(deriveCardColors(meal.backgroundColor));
@@ -1716,11 +1736,16 @@ function FoodCard({
       key: `${meal.id}:${primaryImageUrl}`,
     })
       .then((result) => {
-        const seed = pickImagePaletteColor(result, meal.backgroundColor);
+        let dominant = meal.backgroundColor;
+        if (Platform.OS === 'ios' && 'background' in result) {
+          dominant = result.background;
+        } else if (Platform.OS === 'android' && 'dominant' in result) {
+          dominant = result.dominant;
+        }
         const lightColor = pickLightestPaletteColor(result, '#FFFFFF');
-        setPaletteSeed(seed);
+        setPaletteSeed(normalizeHexColor(dominant));
         setPhotoLightColor(lightColor);
-        setColors(deriveCardColors(seed));
+        setColors(deriveCardColors(dominant));
       })
       .catch(() => {
         setColors(deriveCardColors(meal.backgroundColor));
@@ -1800,17 +1825,15 @@ function FoodCard({
           key: `${activeImageUrl}#text-tone:${cropOriginX}:${cropOriginY}:${cropWidth}:${cropHeight}`,
         });
 
-        const sampledSeed = pickImagePaletteColor(sampledColors, meal.backgroundColor);
-        setPaletteSeed(sampledSeed);
-        const nextColors = deriveCardColors(sampledSeed);
-        setColors((prev) => (prev.bg === nextColors.bg && prev.title === nextColors.title ? prev : nextColors));
-
         let sampledDominant = meal.backgroundColor;
         if (Platform.OS === 'ios' && 'background' in sampledColors) {
           sampledDominant = sampledColors.background;
         } else if (Platform.OS === 'android' && 'dominant' in sampledColors) {
           sampledDominant = sampledColors.dominant;
         }
+        setPaletteSeed(normalizeHexColor(sampledDominant));
+        const nextColors = deriveCardColors(sampledDominant);
+        setColors((prev) => (prev.bg === nextColors.bg && prev.title === nextColors.title ? prev : nextColors));
 
         const luminance = relativeLuminanceFromHex(sampledDominant);
         const nextTone: 'light' | 'dark' = luminance > 0.47 ? 'dark' : 'light';
