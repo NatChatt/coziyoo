@@ -1786,21 +1786,7 @@ function FoodCard({
                       onError={() => {
                         if (idx === imageIndex && isInlineBase64ImageUri(uri)) {
                           setRenderableImageUri(null);
-                          return;
                         }
-                        setImageUrls((prev) => {
-                          const next = prev.filter((_, i) => i !== idx);
-                          if (next.length === 0) {
-                            setImageIndex(0);
-                            return next;
-                          }
-                          setImageIndex((current) => {
-                            if (current === idx) return Math.min(idx, next.length - 1);
-                            if (current > idx) return current - 1;
-                            return current;
-                          });
-                          return next;
-                        });
                       }}
                     />
                   </View>
