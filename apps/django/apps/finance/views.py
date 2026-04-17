@@ -92,6 +92,26 @@ class SellerFinanceSummaryView(SellerFinanceBaseView):
                 total_paid_out = total_paid_out or 0
                 current_balance = current_balance or 0
 
+        # Final fallback: keep mobile aligned with admin totals that are derived
+        # from paid orders when finance snapshot tables are empty.
+        if (total_earned or 0) == 0 and (current_balance or 0) == 0:
+            try:
+                with connection.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT COALESCE(SUM(total_price), 0)
+                        FROM orders
+                        WHERE seller_id = %s AND payment_completed = TRUE
+                        """,
+                        [seller_id],
+                    )
+                    orders_total = (cur.fetchone() or (0,))[0] or 0
+                total_earned = orders_total
+                total_paid_out = total_paid_out or 0
+                current_balance = orders_total
+            except ProgrammingError:
+                pass
+
         return Response({"data": {
             "totalEarned": str(total_earned),
             "totalPaidOut": str(total_paid_out),
@@ -140,6 +160,21 @@ class SellerFinanceBalanceView(SellerFinanceBaseView):
             available_balance = 0
             pending_payout_amount = 0
 
+        if (available_balance or 0) == 0:
+            try:
+                with connection.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT COALESCE(SUM(total_price), 0)
+                        FROM orders
+                        WHERE seller_id = %s AND payment_completed = TRUE
+                        """,
+                        [seller_id],
+                    )
+                    available_balance = (cur.fetchone() or (0,))[0] or 0
+            except ProgrammingError:
+                available_balance = 0
+
         return Response({"data": {
             "availableBalance": str(available_balance),
             "pendingPayoutAmount": str(pending_payout_amount),
@@ -184,6 +219,26 @@ class SellerFinancePayoutsView(SellerFinanceBaseView):
                 rows = cur.fetchall() or []
         except ProgrammingError:
             rows = []
+
+        if not rows:
+            try:
+                with connection.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT
+                            id::text,
+                            total_price,
+                            COALESCE(payment_captured_at, updated_at, created_at)
+                        FROM orders
+                        WHERE seller_id = %s AND payment_completed = TRUE
+                        ORDER BY COALESCE(payment_captured_at, updated_at, created_at) DESC
+                        LIMIT %s OFFSET %s
+                        """,
+                        [seller_id, page_size, offset],
+                    )
+                    rows = cur.fetchall() or []
+            except ProgrammingError:
+                rows = []
 
         data = [
             {
