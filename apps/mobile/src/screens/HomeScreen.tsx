@@ -975,14 +975,28 @@ function deriveCardColors(dominant: string): CardColors {
   const safe = normalizeHexColor(dominant);
   const { r, g, b } = hexToRgb(safe);
   const { h, s } = rgbToHsl(r, g, b);
+  const luminance = relativeLuminanceFromHex(safe);
+  const isDarkSource = luminance < 0.42;
   const sat = Math.min(0.72, Math.max(0.28, s * 1.25));
-  const title = toneFromHue(h, sat * 0.98, 0.18);
-  const subtitle = toneFromHue(h, sat * 0.78, 0.30);
-  const price = toneFromHue(h, sat * 0.96, 0.22);
-  const metaBase = toneFromHue(h, sat * 0.74, 0.38);
+  const title = isDarkSource
+    ? toneFromHue(h, sat * 0.78, 0.16)
+    : toneFromHue(h, sat * 0.24, 0.95);
+  const subtitle = isDarkSource
+    ? toneFromHue(h, sat * 0.64, 0.28)
+    : toneFromHue(h, sat * 0.20, 0.84);
+  const price = isDarkSource
+    ? toneFromHue(h, sat * 0.82, 0.20)
+    : toneFromHue(h, sat * 0.24, 0.96);
+  const metaBase = isDarkSource
+    ? toneFromHue(h, sat * 0.58, 0.34)
+    : toneFromHue(h, sat * 0.22, 0.78);
   return {
-    bg: toneFromHue(h, sat * 0.42, 0.89),
-    border: toneFromHue(h, sat * 0.54, 0.72),
+    bg: isDarkSource
+      ? toneFromHue(h, sat * 0.44, 0.90)
+      : toneFromHue(h, sat * 0.52, 0.20),
+    border: isDarkSource
+      ? toneFromHue(h, sat * 0.54, 0.72)
+      : toneFromHue(h, sat * 0.46, 0.42),
     title,
     subtitle,
     price,
@@ -1878,17 +1892,28 @@ function FoodCard({
         <TouchableOpacity
           activeOpacity={0.96}
           onPress={onPress}
-          style={styles.foodInfo}
+          style={[
+            styles.foodInfo,
+            {
+              backgroundColor: hexToRgba(colors.bg, 0.95),
+              borderTopColor: hexToRgba(colors.border, 0.44),
+            },
+          ]}
         >
           <View style={styles.foodInfoContent}>
             {/* Row 1: stock info (left) | allergen (right) — equal halves, no divider */}
             <View style={styles.foodInfoMainRow}>
               <View style={styles.foodInfoHalfCol}>
-                <View style={styles.foodInfoIconBubble}>
-                  <Ionicons name="restaurant-outline" size={16} color="#4B372A" />
+                <View
+                  style={[
+                    styles.foodInfoIconBubble,
+                    { backgroundColor: hexToRgba(colors.meta, 0.16) },
+                  ]}
+                >
+                  <Ionicons name="restaurant-outline" size={16} color={colors.price} />
                 </View>
                 <View style={[styles.foodInfoTextWrap, styles.foodInfoTextWrapCentered]}>
-                  <Text style={styles.foodInfoTitle}>
+                  <Text style={[styles.foodInfoTitle, { color: colors.title }]}>
                     {stockSummary || t('status.home.foodCard.preparingToday')}
                   </Text>
                 </View>
@@ -1907,30 +1932,40 @@ function FoodCard({
             {/* Row 2: prep time | short divider | distance — equal halves */}
             <View style={styles.foodStatsRow}>
               <View style={styles.foodInfoHalfCol}>
-                <View style={styles.foodInfoIconBubble}>
-                  <Ionicons name="time-outline" size={16} color="#4B372A" />
+                <View
+                  style={[
+                    styles.foodInfoIconBubble,
+                    { backgroundColor: hexToRgba(colors.meta, 0.16) },
+                  ]}
+                >
+                  <Ionicons name="time-outline" size={16} color={colors.price} />
                 </View>
                 <View style={styles.foodInfoTextWrap}>
-                  <Text style={styles.foodInfoTitle}>
+                  <Text style={[styles.foodInfoTitle, { color: colors.title }]}>
                     {meal.time || t('status.home.foodCard.timeSoon')}
                   </Text>
-                  <Text style={styles.foodInfoSubtitle}>
+                  <Text style={[styles.foodInfoSubtitle, { color: colors.subtitle }]}>
                     {t('label.home.foodCard.prepTime')}
                   </Text>
                 </View>
               </View>
               {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
                 <>
-                  <View style={styles.foodStatDivider} />
+                  <View style={[styles.foodStatDivider, { backgroundColor: hexToRgba(colors.border, 0.4) }]} />
                   <View style={styles.foodInfoHalfCol}>
-                    <View style={styles.foodInfoIconBubble}>
-                      <Ionicons name="location-outline" size={16} color="#4B372A" />
+                    <View
+                      style={[
+                        styles.foodInfoIconBubble,
+                        { backgroundColor: hexToRgba(colors.meta, 0.16) },
+                      ]}
+                    >
+                      <Ionicons name="location-outline" size={16} color={colors.price} />
                     </View>
                     <View style={styles.foodInfoTextWrap}>
-                      <Text style={styles.foodInfoTitle}>
+                      <Text style={[styles.foodInfoTitle, { color: colors.title }]}>
                         {meal.distance}
                       </Text>
-                      <Text style={styles.foodInfoSubtitle}>
+                      <Text style={[styles.foodInfoSubtitle, { color: colors.subtitle }]}>
                         {t('label.home.foodCard.distance')}
                       </Text>
                     </View>
@@ -1938,7 +1973,7 @@ function FoodCard({
                 </>
               ) : null}
             </View>
-            <View style={styles.foodFooterRow}>
+            <View style={[styles.foodFooterRow, { borderTopColor: hexToRgba(colors.border, 0.4) }]}>
               <View style={styles.foodFooterSeller}>
                 <View style={styles.foodSellerThumbWrap}>
                   <View style={styles.foodSellerThumb}>
@@ -1950,16 +1985,16 @@ function FoodCard({
                       />
                     ) : (
                       <View style={styles.foodSellerThumbFallback}>
-                        <Text style={styles.foodSellerThumbFallbackText}>{sellerInitial}</Text>
+                        <Text style={[styles.foodSellerThumbFallbackText, { color: colors.price }]}>{sellerInitial}</Text>
                       </View>
                     )}
                   </View>
                 </View>
                 <View style={styles.foodFooterSellerText}>
-                  <Text style={styles.foodFooterSellerHandle}>
+                  <Text style={[styles.foodFooterSellerHandle, { color: colors.price }]}>
                     {sellerHandle}
                   </Text>
-                  <Text style={styles.foodFooterSellerTagline}>
+                  <Text style={[styles.foodFooterSellerTagline, { color: colors.subtitle }]}>
                     {sellerTagline}
                   </Text>
                 </View>
