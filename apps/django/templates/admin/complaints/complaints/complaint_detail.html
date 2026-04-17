@@ -89,7 +89,7 @@
         <div class="mt-4 pt-4 border-t border-base-200 dark:border-base-700">
           <div class="text-xs uppercase tracking-wide text-base-500 mb-3">Ticket Mesajları</div>
           {% if ticket_messages %}
-          <div class="space-y-2.5">
+          <div class="stack-bordered">
             {% for msg in ticket_messages %}
             <div class="flex {% if msg.author_type == 'admin' %}justify-end{% else %}justify-start{% endif %}">
               <div class="max-w-[72%] rounded-2xl border px-3 py-2.5 shadow-sm
@@ -161,7 +161,7 @@
           />
         </form>
         {% if admin_notes %}
-        <div class="space-y-3">
+        <div class="stack-bordered">
           {% for note in admin_notes %}
           <div class="rounded-lg border border-base-100 dark:border-base-800 p-3">
             <div class="flex items-center justify-between gap-3 mb-1">

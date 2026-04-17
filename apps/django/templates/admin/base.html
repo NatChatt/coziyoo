@@ -29,6 +29,11 @@
   .dark #content .rounded-xl.border.border-base-200:has(ol) {
     background-color: var(--color-base-800) !important;
   }
+
+  /* Reusable utility: bordered siblings must keep visible vertical separation. */
+  #content .stack-bordered > * + * {
+    margin-top: 1rem !important;
+  }
 </style>
 {% endblock %}
 
