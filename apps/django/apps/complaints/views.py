@@ -1,17 +1,13 @@
 from django.db import connection, ProgrammingError
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-
-# ── Permissions ───────────────────────────────────────────────────────────────
 
 class IsAppRealm(IsAuthenticated):
     def has_permission(self, request, view):
         return super().has_permission(request, view) and getattr(request.user, "realm", None) == "app"
 
-
-# ── Complaint List & Create ───────────────────────────────────────────────────
 
 class ComplaintListCreateView(APIView):
     permission_classes = [IsAppRealm]
@@ -60,20 +56,14 @@ class ComplaintListCreateView(APIView):
                 status=400,
             )
 
-        # Resolve category code to UUID
         with connection.cursor() as cur:
             cur.execute(
                 "SELECT id FROM complaint_categories WHERE code = %s AND is_active = TRUE",
                 [category_code],
             )
             row = cur.fetchone()
-            if not row:
-                # Fallback: treat category_code as a direct UUID (legacy support)
-                category_id = category_code
-            else:
-                category_id = row[0]
+            category_id = row[0] if row else category_code
 
-        # Verify the order belongs to this user
         with connection.cursor() as cur:
             cur.execute(
                 "SELECT id FROM orders WHERE id = %s AND buyer_id = %s",
@@ -101,8 +91,6 @@ class ComplaintListCreateView(APIView):
         return Response({"data": {"id": str(complaint_id), "ticketNo": ticket_no}}, status=201)
 
 
-# ── Complaint Detail ──────────────────────────────────────────────────────────
-
 class ComplaintDetailView(APIView):
     permission_classes = [IsAppRealm]
 
@@ -128,36 +116,54 @@ class ComplaintDetailView(APIView):
             )
 
         cols = ["id", "orderId", "status", "priority", "description", "createdAt",
-                "ticketNo", "categoryName", "resolutionNotes"]
+                "ticketNo", "categoryName", "resolutionNote"]
         item = dict(zip(cols, row))
         item["id"] = str(item["id"])
         item["orderId"] = str(item["orderId"]) if item["orderId"] else None
         item["createdAt"] = item["createdAt"].isoformat() if item["createdAt"] else None
-        item["lastActivityAt"] = item["createdAt"]
 
-        # Fetch messages
         try:
             with connection.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT tm.id, tm.author_id, tm.author_type, tm.body, tm.created_at,
-                           u.display_name
+                    SELECT
+                        tm.id,
+                        tm.author_type,
+                        tm.author_user_id,
+                        tm.author_admin_id,
+                        tm.recipient_user_id,
+                        tm.recipient_role,
+                        tm.body,
+                        tm.created_at,
+                        COALESCE(au.display_name, au.email, 'Kullanıcı') AS author_user_name,
+                        COALESCE(NULLIF(trim(concat_ws(' ', aa.name, aa.surname)), ''), aa.email, 'Admin') AS author_admin_name,
+                        COALESCE(ru.display_name, ru.email, 'Kullanıcı') AS recipient_user_name
                     FROM ticket_messages tm
-                    LEFT JOIN users u ON u.id = tm.author_id
+                    LEFT JOIN users au ON au.id = tm.author_user_id
+                    LEFT JOIN admin_users aa ON aa.id = tm.author_admin_id
+                    LEFT JOIN users ru ON ru.id = tm.recipient_user_id
                     WHERE tm.complaint_id = %s
+                      AND (
+                          tm.author_user_id = %s
+                          OR tm.recipient_user_id = %s
+                      )
                     ORDER BY tm.created_at ASC
                     """,
-                    [complaint_id],
+                    [complaint_id, user_id, user_id],
                 )
                 messages = []
                 for msg in cur.fetchall():
                     messages.append({
                         "id": str(msg[0]),
-                        "senderUserId": str(msg[1]),
-                        "senderRole": "buyer" if msg[2] == "user" else "admin",
-                        "senderName": msg[5] or "",
-                        "message": msg[3],
-                        "createdAt": msg[4].isoformat() if msg[4] else None,
+                        "authorType": msg[1],
+                        "authorUserId": str(msg[2]) if msg[2] else None,
+                        "authorAdminId": str(msg[3]) if msg[3] else None,
+                        "recipientUserId": str(msg[4]) if msg[4] else None,
+                        "recipientRole": msg[5],
+                        "senderName": msg[9] if msg[1] == "admin" else msg[8],
+                        "recipientName": msg[10],
+                        "body": msg[6],
+                        "createdAt": msg[7].isoformat() if msg[7] else None,
                     })
             item["messages"] = messages
         except ProgrammingError:
@@ -166,14 +172,12 @@ class ComplaintDetailView(APIView):
         return Response({"data": item})
 
 
-# ── Complaint Messages ────────────────────────────────────────────────────────
-
 class ComplaintMessagesView(APIView):
     permission_classes = [IsAppRealm]
 
     def post(self, request, complaint_id):
         user_id = request.user.id
-        body = request.data.get("body") or request.data.get("message")
+        body = (request.data.get("body") or request.data.get("message") or "").strip()
 
         if not body:
             return Response(
@@ -181,12 +185,34 @@ class ComplaintMessagesView(APIView):
                 status=400,
             )
 
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM complaints WHERE id = %s AND complainant_user_id = %s",
+                [complaint_id, user_id],
+            )
+            if not cur.fetchone():
+                return Response(
+                    {"error": {"code": "NOT_FOUND", "message": "Ticket not found"}},
+                    status=404,
+                )
+
         try:
             with connection.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO ticket_messages (complaint_id, author_id, author_type, body)
-                    VALUES (%s, %s, 'user', %s) RETURNING id
+                    INSERT INTO ticket_messages (
+                        id,
+                        complaint_id,
+                        author_type,
+                        author_user_id,
+                        author_admin_id,
+                        recipient_user_id,
+                        recipient_role,
+                        body,
+                        created_at
+                    )
+                    VALUES (gen_random_uuid(), %s, 'user', %s, NULL, NULL, 'admin', %s, now())
+                    RETURNING id
                     """,
                     [complaint_id, user_id, body],
                 )

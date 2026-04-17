@@ -35,8 +35,11 @@ class ComplaintCategories(models.Model):
 class TicketMessages(models.Model):
     id = models.UUIDField(primary_key=True)
     complaint = models.ForeignKey('complaints.Complaints', models.DO_NOTHING, related_name='ticket_messages')
-    author = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     author_type = models.CharField(max_length=20)  # 'user' or 'admin'
+    author_user = models.ForeignKey('authentication.Users', models.DO_NOTHING, blank=True, null=True)
+    author_admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING, blank=True, null=True)
+    recipient_user = models.ForeignKey('authentication.Users', models.DO_NOTHING, related_name='complaint_ticket_recipient_set', blank=True, null=True)
+    recipient_role = models.CharField(max_length=20, blank=True, null=True)  # complainant|buyer|seller|admin
     body = models.TextField()
     created_at = models.DateTimeField()
 
@@ -67,5 +70,4 @@ class Complaints(models.Model):
         db_table = 'complaints'
         verbose_name = "Complaint"
         verbose_name_plural = "Complaints"
-
 

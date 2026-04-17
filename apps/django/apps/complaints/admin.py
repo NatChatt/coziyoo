@@ -1,6 +1,10 @@
-from django.contrib import admin
+import json
+import uuid
+
+from django.contrib import admin, messages
 from django.core.exceptions import ObjectDoesNotExist
-from django.shortcuts import get_object_or_404
+from django.db import connection
+from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
@@ -9,7 +13,7 @@ from unfold.decorators import display
 
 from apps.authentication.models import AdminUsers, Users
 from apps.orders.models import Orders
-from .models import Complaints, ComplaintCategories, ComplaintAdminNotes, TicketMessages
+from .models import Complaints, ComplaintCategories, ComplaintAdminNotes
 
 
 class ComplaintAdminNotesInline(TabularInline):
@@ -47,6 +51,36 @@ PRIORITY_CHOICES = [
 ]
 
 
+def _resolve_admin_actor(request):
+    email = (getattr(request.user, "email", "") or "").strip()
+    if not email:
+        return None
+
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                id::text,
+                email,
+                COALESCE(NULLIF(trim(concat_ws(' ', name, surname)), ''), email) AS display_name
+            FROM admin_users
+            WHERE lower(email) = lower(%s) AND is_active = TRUE
+            LIMIT 1
+            """,
+            [email],
+        )
+        row = cur.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "email": row[1],
+        "display_name": row[2],
+    }
+
+
 @admin.register(Complaints)
 class ComplaintsAdmin(ModelAdmin):
     list_display = [
@@ -76,8 +110,233 @@ class ComplaintsAdmin(ModelAdmin):
                 self.admin_site.admin_view(self.complaint_detail_view),
                 name="complaints_complaints_detail",
             ),
+            path(
+                "<uuid:complaint_id>/take-over/",
+                self.admin_site.admin_view(self.take_over_view),
+                name="complaints_complaints_take_over",
+            ),
+            path(
+                "<uuid:complaint_id>/send-message/",
+                self.admin_site.admin_view(self.send_message_view),
+                name="complaints_complaints_send_message",
+            ),
         ]
         return extra + urls
+
+    def _detail_url(self, complaint_id):
+        return reverse("admin:complaints_complaints_detail", args=[str(complaint_id)])
+
+    def _fetch_ticket_messages(self, complaint_id):
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    tm.id,
+                    tm.author_type,
+                    tm.author_user_id,
+                    tm.author_admin_id,
+                    tm.recipient_user_id,
+                    tm.recipient_role,
+                    tm.body,
+                    tm.created_at,
+                    COALESCE(au.display_name, au.email, 'Kullanıcı') AS author_user_name,
+                    COALESCE(NULLIF(trim(concat_ws(' ', aa.name, aa.surname)), ''), aa.email, 'Admin') AS author_admin_name,
+                    COALESCE(ru.display_name, ru.email, 'Kullanıcı') AS recipient_user_name
+                FROM ticket_messages tm
+                LEFT JOIN users au ON au.id = tm.author_user_id
+                LEFT JOIN admin_users aa ON aa.id = tm.author_admin_id
+                LEFT JOIN users ru ON ru.id = tm.recipient_user_id
+                WHERE tm.complaint_id = %s
+                ORDER BY tm.created_at ASC
+                """,
+                [str(complaint_id)],
+            )
+            rows = cur.fetchall()
+
+        role_labels = {
+            "complainant": "Şikayetçi",
+            "buyer": "Alıcı",
+            "seller": "Satıcı",
+            "admin": "Admin",
+        }
+
+        items = []
+        for row in rows:
+            recipient_role = (row[5] or "").strip().lower()
+            items.append({
+                "id": str(row[0]),
+                "author_type": row[1],
+                "author_user_id": str(row[2]) if row[2] else None,
+                "author_admin_id": str(row[3]) if row[3] else None,
+                "recipient_user_id": str(row[4]) if row[4] else None,
+                "recipient_role": recipient_role,
+                "recipient_label": role_labels.get(recipient_role, recipient_role or "-"),
+                "body": row[6],
+                "created_at": row[7],
+                "author_name": row[9] if row[1] == "admin" else row[8],
+                "recipient_user_name": row[10],
+            })
+        return items
+
+    def _fetch_order_items(self, order_id):
+        if not order_id:
+            return []
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    oi.id,
+                    oi.food_id,
+                    oi.quantity,
+                    oi.unit_price,
+                    oi.line_total,
+                    oi.created_at,
+                    f.name
+                FROM order_items oi
+                LEFT JOIN foods f ON f.id = oi.food_id
+                WHERE oi.order_id = %s
+                ORDER BY oi.created_at ASC
+                """,
+                [str(order_id)],
+            )
+            rows = cur.fetchall()
+
+        return [
+            {
+                "id": str(r[0]),
+                "food_id": str(r[1]) if r[1] else None,
+                "food_name": r[6] or "Bilinmeyen ürün",
+                "quantity": int(r[2] or 0),
+                "unit_price": r[3],
+                "line_total": r[4],
+                "created_at": r[5],
+            }
+            for r in rows
+        ]
+
+    def take_over_view(self, request, complaint_id):
+        if request.method != "POST":
+            return redirect(self._detail_url(complaint_id))
+
+        admin_actor = _resolve_admin_actor(request)
+        if not admin_actor:
+            messages.error(request, "Admin kullanıcısı eşleştirilemedi.")
+            return redirect(self._detail_url(complaint_id))
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE complaints
+                SET assigned_admin_id = %s,
+                    status = 'in_review'
+                WHERE id = %s
+                  AND status = 'open'
+                  AND assigned_admin_id IS NULL
+                RETURNING id
+                """,
+                [admin_actor["id"], str(complaint_id)],
+            )
+            row = cur.fetchone()
+
+        if row:
+            messages.success(request, "Şikayet işleme alındı.")
+        else:
+            messages.info(request, "Bu şikayet daha önce işleme alınmış veya durumu değişmiş.")
+
+        return redirect(self._detail_url(complaint_id))
+
+    def send_message_view(self, request, complaint_id):
+        if request.method != "POST":
+            return redirect(self._detail_url(complaint_id))
+
+        admin_actor = _resolve_admin_actor(request)
+        if not admin_actor:
+            messages.error(request, "Admin kullanıcısı eşleştirilemedi.")
+            return redirect(self._detail_url(complaint_id))
+
+        message_body = (request.POST.get("message") or "").strip()
+        recipient_role = (request.POST.get("recipient_role") or "complainant").strip().lower()
+
+        if not message_body:
+            messages.error(request, "Mesaj boş olamaz.")
+            return redirect(self._detail_url(complaint_id))
+
+        if recipient_role not in {"complainant", "buyer", "seller"}:
+            messages.error(request, "Geçersiz alıcı seçimi.")
+            return redirect(self._detail_url(complaint_id))
+
+        complaint = get_object_or_404(Complaints, pk=complaint_id)
+        order = Orders.objects.filter(pk=complaint.order_id).first() if complaint.order_id else None
+
+        recipient_user_id = None
+        if recipient_role == "complainant":
+            recipient_user_id = complaint.complainant_user_id or complaint.complainant_buyer_id
+        elif recipient_role == "buyer" and order:
+            recipient_user_id = order.buyer_id
+        elif recipient_role == "seller" and order:
+            recipient_user_id = order.seller_id
+
+        if not recipient_user_id:
+            messages.error(request, "Seçilen alıcı bulunamadı.")
+            return redirect(self._detail_url(complaint_id))
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO ticket_messages (
+                    id,
+                    complaint_id,
+                    author_type,
+                    author_user_id,
+                    author_admin_id,
+                    recipient_user_id,
+                    recipient_role,
+                    body,
+                    created_at
+                )
+                VALUES (%s, %s, 'admin', NULL, %s, %s, %s, %s, now())
+                """,
+                [
+                    str(uuid.uuid4()),
+                    str(complaint_id),
+                    admin_actor["id"],
+                    str(recipient_user_id),
+                    recipient_role,
+                    message_body,
+                ],
+            )
+
+            cur.execute(
+                """
+                INSERT INTO notification_events (
+                    id,
+                    user_id,
+                    type,
+                    title,
+                    body,
+                    data_json,
+                    is_read,
+                    created_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, FALSE, now())
+                """,
+                [
+                    str(uuid.uuid4()),
+                    str(recipient_user_id),
+                    "complaint_message",
+                    f"Şikayet #{complaint.ticket_no}",
+                    message_body,
+                    json.dumps({
+                        "complaintId": str(complaint.id),
+                        "ticketNo": complaint.ticket_no,
+                        "recipientRole": recipient_role,
+                    }, ensure_ascii=False),
+                ],
+            )
+
+        messages.success(request, "Mesaj gönderildi.")
+        return redirect(self._detail_url(complaint_id))
 
     def complaint_detail_view(self, request, complaint_id):
         complaint = get_object_or_404(
@@ -87,11 +346,8 @@ class ComplaintsAdmin(ModelAdmin):
             pk=complaint_id,
         )
 
-        messages = list(
-            TicketMessages.objects
-            .filter(complaint_id=complaint_id)
-            .order_by("created_at")
-        )
+        ticket_messages = self._fetch_ticket_messages(complaint_id)
+
         admin_notes = list(
             ComplaintAdminNotes.objects
             .filter(complaint_id=complaint_id)
@@ -99,6 +355,8 @@ class ComplaintsAdmin(ModelAdmin):
         )
 
         order = Orders.objects.filter(pk=complaint.order_id).first() if complaint.order_id else None
+        order_items = self._fetch_order_items(complaint.order_id)
+
         complainant_id = complaint.complainant_user_id or complaint.complainant_buyer_id
         complainant = Users.objects.filter(pk=complainant_id).first() if complainant_id else None
         buyer = Users.objects.filter(pk=order.buyer_id).first() if order and getattr(order, "buyer_id", None) else None
@@ -108,13 +366,7 @@ class ComplaintsAdmin(ModelAdmin):
             if complaint.assigned_admin_id
             else None
         )
-        author_ids = [m.author_id for m in messages if m.author_id]
-        authors = {
-            user.id: user
-            for user in Users.objects.filter(id__in=author_ids)
-        }
-        for message in messages:
-            message.author_obj = authors.get(message.author_id)
+
         admin_ids = [n.created_by_admin_id for n in admin_notes if n.created_by_admin_id]
         admins = {
             adm.id: adm
@@ -122,6 +374,8 @@ class ComplaintsAdmin(ModelAdmin):
         }
         for note in admin_notes:
             note.created_by_admin_obj = admins.get(note.created_by_admin_id)
+
+        can_take_over = complaint.status == "open" and complaint.assigned_admin_id is None
 
         buyer_url = (
             f"{reverse('admin:authentication_buyerusers_buyer_detail', args=[buyer.id])}?tab=complaints"
@@ -142,13 +396,17 @@ class ComplaintsAdmin(ModelAdmin):
                 if complaint.category_id
                 else None
             ),
-            "ticket_messages": messages,
+            "ticket_messages": ticket_messages,
             "admin_notes": admin_notes,
             "complainant": complainant,
             "buyer": buyer,
             "seller": seller,
             "order": order,
+            "order_items": order_items,
             "assigned_admin": assigned_admin,
+            "can_take_over": can_take_over,
+            "take_over_url": reverse("admin:complaints_complaints_take_over", args=[str(complaint.id)]),
+            "send_message_url": reverse("admin:complaints_complaints_send_message", args=[str(complaint.id)]),
             "buyer_url": buyer_url,
             "seller_url": seller_url,
             "order_url": f"/admin/orders/orders/{complaint.order_id}/change/" if complaint.order_id else None,
