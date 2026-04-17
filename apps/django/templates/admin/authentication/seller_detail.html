@@ -227,32 +227,32 @@
     <div x-show="tab === 'orders'" class="p-4 sm:p-6 space-y-5">
       {# Earnings Summary Cards #}
       <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <div class="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-emerald-500 dark:text-emerald-400">payments</span>
+        <div class="bg-base-900 border border-base-600 rounded-xl px-4 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-emerald-400">payments</span>
           <div>
-            <div class="text-xs font-medium text-emerald-600 dark:text-emerald-300 uppercase tracking-wide">{% trans "Gross Revenue" %}</div>
-            <div class="text-xl font-bold text-emerald-800 dark:text-emerald-100">₺{{ earnings_summary.gross_total|floatformat:2 }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Gross Revenue" %}</div>
+            <div class="text-xl font-bold text-white">₺{{ earnings_summary.gross_total|floatformat:2 }}</div>
           </div>
         </div>
-        <div class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-amber-500 dark:text-amber-400">percent</span>
+        <div class="bg-base-900 border border-base-600 rounded-xl px-4 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-amber-400">percent</span>
           <div>
-            <div class="text-xs font-medium text-amber-600 dark:text-amber-300 uppercase tracking-wide">{% trans "Commission Paid" %}</div>
-            <div class="text-xl font-bold text-amber-800 dark:text-amber-100">₺{{ earnings_summary.commission_total|floatformat:2 }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Commission Paid" %}</div>
+            <div class="text-xl font-bold text-white">₺{{ earnings_summary.commission_total|floatformat:2 }}</div>
           </div>
         </div>
-        <div class="bg-sky-100 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-800 rounded-xl px-4 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-sky-600 dark:text-sky-400">account_balance_wallet</span>
+        <div class="bg-base-900 border border-base-600 rounded-xl px-4 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-sky-400">account_balance_wallet</span>
           <div>
-            <div class="text-xs font-medium text-sky-700 dark:text-sky-300 uppercase tracking-wide">{% trans "Net Earnings" %}</div>
-            <div class="text-xl font-bold text-sky-900 dark:text-sky-100">₺{{ earnings_summary.net_total|floatformat:2 }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Net Earnings" %}</div>
+            <div class="text-xl font-bold text-white">₺{{ earnings_summary.net_total|floatformat:2 }}</div>
           </div>
         </div>
-        <div class="bg-violet-100 dark:bg-violet-950/35 border border-violet-300 dark:border-violet-800 rounded-xl px-4 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-violet-600 dark:text-violet-400">shopping_bag</span>
+        <div class="bg-base-900 border border-base-600 rounded-xl px-4 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-violet-400">shopping_bag</span>
           <div>
-            <div class="text-xs font-medium text-violet-700 dark:text-violet-300 uppercase tracking-wide">{% trans "Total Orders" %}</div>
-            <div class="text-xl font-bold text-violet-900 dark:text-violet-100">{{ summary.total_orders }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Total Orders" %}</div>
+            <div class="text-xl font-bold text-white">{{ summary.total_orders }}</div>
           </div>
         </div>
       </div>
@@ -316,25 +316,25 @@
     <div x-show="tab === 'wallet'" class="p-4 sm:p-6 space-y-5">
       {# Wallet Summary Cards #}
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div class="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-emerald-500 dark:text-emerald-400">add_circle</span>
+        <div class="bg-base-900 border border-base-600 rounded-xl px-4 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-emerald-400">add_circle</span>
           <div>
-            <div class="text-xs font-medium text-emerald-600 dark:text-emerald-300 uppercase tracking-wide">{% trans "Total Credits" %}</div>
-            <div class="text-xl font-bold text-emerald-800 dark:text-emerald-100">₺{{ wallet_summary.total_credits|floatformat:2 }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Total Credits" %}</div>
+            <div class="text-xl font-bold text-white">₺{{ wallet_summary.total_credits|floatformat:2 }}</div>
           </div>
         </div>
-        <div class="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl px-4 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-rose-500 dark:text-rose-400">remove_circle</span>
+        <div class="bg-base-900 border border-base-600 rounded-xl px-4 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-rose-400">remove_circle</span>
           <div>
-            <div class="text-xs font-medium text-rose-600 dark:text-rose-300 uppercase tracking-wide">{% trans "Total Debits" %}</div>
-            <div class="text-xl font-bold text-rose-800 dark:text-rose-100">₺{{ wallet_summary.total_debits|floatformat:2 }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Total Debits" %}</div>
+            <div class="text-xl font-bold text-white">₺{{ wallet_summary.total_debits|floatformat:2 }}</div>
           </div>
         </div>
-        <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-blue-500 dark:text-blue-400">receipt_long</span>
+        <div class="bg-base-900 border border-base-600 rounded-xl px-4 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-blue-400">receipt_long</span>
           <div>
-            <div class="text-xs font-medium text-blue-600 dark:text-blue-300 uppercase tracking-wide">{% trans "Transactions" %}</div>
-            <div class="text-xl font-bold text-blue-800 dark:text-blue-100">{{ wallet_summary.adj_count }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Transactions" %}</div>
+            <div class="text-xl font-bold text-white">{{ wallet_summary.adj_count }}</div>
           </div>
         </div>
       </div>
