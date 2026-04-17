@@ -1102,20 +1102,57 @@ function deriveHeroColors(dominant: string): HeroColors {
   };
 }
 
-function derivePhotoOverlayText(seed: string, tone: 'light' | 'dark'): { title: string; cuisine: string } {
+// Picks the lightest (highest lightness) sufficiently saturated color from the palette.
+// This is used for text overlaid on dark food photos.
+function pickLightestPaletteColor(result: any, fallback: string): string {
+  const keys = ['lightVibrant', 'lightMuted', 'muted', 'vibrant', 'secondary', 'primary', 'dominant'];
+  let bestColor = normalizeHexColor(fallback);
+  let bestL = -1;
+
+  for (const key of keys) {
+    const raw = result?.[key];
+    if (!isPaletteHexColor(raw)) continue;
+    const color = normalizeHexColor(raw);
+    const { r, g, b } = hexToRgb(color);
+    const { h, s, l } = rgbToHsl(r, g, b);
+    if (s < 0.14) continue; // skip near-greys
+    if (l > bestL) {
+      bestL = l;
+      bestColor = color;
+    }
+  }
+
+  // Boost to a reliably light shade if the candidate is still too mid-tone
+  if (bestL >= 0 && bestL < 0.80) {
+    const { r, g, b } = hexToRgb(bestColor);
+    const { h, s } = rgbToHsl(r, g, b);
+    return colorFromHsl(h, Math.max(s, 0.52), 0.90);
+  }
+  return bestColor;
+}
+
+function derivePhotoOverlayText(
+  lightColor: string,
+  seed: string,
+  tone: 'light' | 'dark',
+): { title: string; cuisine: string } {
+  if (tone === 'light') {
+    // Dark photo background → use the lightest extracted color directly
+    const { r, g, b } = hexToRgb(normalizeHexColor(lightColor));
+    const { h, s } = rgbToHsl(r, g, b);
+    return {
+      title: colorFromHsl(h, Math.max(s, 0.50), 0.93),
+      cuisine: colorFromHsl(h + 6, Math.max(s, 0.40), 0.86),
+    };
+  }
+  // Light photo background → deep dark tinted text
   const safe = normalizeHexColor(seed);
   const { r, g, b } = hexToRgb(safe);
   const { h, s } = rgbToHsl(r, g, b);
-  const vividSat = Math.max(0.7, Math.min(0.98, s * 1.28));
-  if (tone === 'dark') {
-    return {
-      title: colorFromHsl(h, vividSat, 0.26),
-      cuisine: colorFromHsl(h + 8, vividSat * 0.84, 0.34),
-    };
-  }
+  const vividSat = Math.max(0.70, Math.min(0.98, s * 1.28));
   return {
-    title: colorFromHsl(h + 4, vividSat * 0.9, 0.9),
-    cuisine: colorFromHsl(h + 10, vividSat * 0.76, 0.82),
+    title: colorFromHsl(h, vividSat, 0.20),
+    cuisine: colorFromHsl(h + 8, vividSat * 0.84, 0.28),
   };
 }
 
@@ -1619,6 +1656,7 @@ function FoodCard({
   const [imageFrameWidth, setImageFrameWidth] = useState(defaultCardImageWidth);
   const [imageFrameHeight, setImageFrameHeight] = useState(155);
   const [photoTextTone, setPhotoTextTone] = useState<'light' | 'dark'>('light');
+  const [photoLightColor, setPhotoLightColor] = useState('#FFFFFF');
   const [sellerThumbFailed, setSellerThumbFailed] = useState(false);
   const [renderableImageUri, setRenderableImageUri] = useState<string | null>(null);
   const textToneRequestRef = useRef(0);
@@ -1647,7 +1685,9 @@ function FoodCard({
     })
       .then((result) => {
         const seed = pickImagePaletteColor(result, meal.backgroundColor);
+        const lightColor = pickLightestPaletteColor(result, '#FFFFFF');
         setPaletteSeed(seed);
+        setPhotoLightColor(lightColor);
         setColors(deriveCardColors(seed));
       })
       .catch(() => {
@@ -1850,7 +1890,7 @@ function FoodCard({
   const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
     ? t('status.home.foodCard.lastPortions').replace('{stock}', String(meal.stock))
     : '';
-  const photoOverlayColors = derivePhotoOverlayText(paletteSeed, photoTextTone);
+  const photoOverlayColors = derivePhotoOverlayText(photoLightColor, paletteSeed, photoTextTone);
   const hasAllergens = allergens.length > 0;
   const titleMetrics = resolveFoodPhotoTitleMetrics(meal.title);
   const sellerHandle = formatSellerIdentity(meal.seller, meal.sellerUsername);
@@ -6621,28 +6661,28 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontStyle: 'italic',
     letterSpacing: -2,
-    textShadowColor: 'rgba(0,0,0,0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2.2,
+    textShadowColor: 'rgba(0,0,0,0.72)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   foodPhotoTitleTextDark: {
-    color: '#2E2018',
-    textShadowColor: 'rgba(255,255,255,0.45)',
-    textShadowRadius: 5,
+    color: '#1A1008',
+    textShadowColor: 'rgba(255,255,255,0.60)',
+    textShadowRadius: 7,
   },
   foodPhotoCuisineText: {
     marginTop: 3,
     color: '#F4ECE0',
     fontSize: 15,
     fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.18)',
+    textShadowColor: 'rgba(0,0,0,0.65)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1.8,
+    textShadowRadius: 5,
   },
   foodPhotoCuisineTextDark: {
-    color: '#4E3B2F',
-    textShadowColor: 'rgba(255,255,255,0.42)',
-    textShadowRadius: 2.8,
+    color: '#2C1E12',
+    textShadowColor: 'rgba(255,255,255,0.55)',
+    textShadowRadius: 4,
   },
   foodPriceBadge: {
     backgroundColor: 'rgba(51,36,27,0.9)',
