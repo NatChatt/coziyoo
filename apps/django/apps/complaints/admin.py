@@ -126,7 +126,58 @@ class ComplaintsAdmin(ModelAdmin):
     def _detail_url(self, complaint_id):
         return reverse("admin:complaints_complaints_detail", args=[str(complaint_id)])
 
+    def _ticket_messages_schema_v2(self):
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'ticket_messages'
+                      AND column_name = 'author_admin_id'
+                )
+                """
+            )
+            return bool(cur.fetchone()[0])
+
     def _fetch_ticket_messages(self, complaint_id):
+        if not self._ticket_messages_schema_v2():
+            with connection.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        tm.id,
+                        tm.author_type,
+                        tm.author_id,
+                        tm.body,
+                        tm.created_at,
+                        COALESCE(au.display_name, au.email, 'Kullanıcı') AS author_user_name
+                    FROM ticket_messages tm
+                    LEFT JOIN users au ON au.id = tm.author_id
+                    WHERE tm.complaint_id = %s
+                    ORDER BY tm.created_at ASC
+                    """,
+                    [str(complaint_id)],
+                )
+                rows = cur.fetchall()
+
+            items = []
+            for row in rows:
+                items.append({
+                    "id": str(row[0]),
+                    "author_type": row[1],
+                    "author_user_id": str(row[2]) if row[2] else None,
+                    "author_admin_id": None,
+                    "recipient_user_id": None,
+                    "recipient_role": "admin",
+                    "recipient_label": "Admin",
+                    "body": row[3],
+                    "created_at": row[4],
+                    "author_name": row[5],
+                    "recipient_user_name": None,
+                })
+            return items
+
         with connection.cursor() as cur:
             cur.execute(
                 """
@@ -279,6 +330,13 @@ class ComplaintsAdmin(ModelAdmin):
 
         if not recipient_user_id:
             messages.error(request, "Seçilen alıcı bulunamadı.")
+            return redirect(self._detail_url(complaint_id))
+
+        if not self._ticket_messages_schema_v2():
+            messages.error(
+                request,
+                "Mesaj gönderimi için ticket_messages v2 migration gerekli (alter_ticket_messages_to_v2.sql).",
+            )
             return redirect(self._detail_url(complaint_id))
 
         with connection.cursor() as cur:
