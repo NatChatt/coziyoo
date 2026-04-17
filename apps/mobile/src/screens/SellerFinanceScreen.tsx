@@ -108,6 +108,38 @@ function isMissingBankDetailError(status: number, payload: unknown): boolean {
   return false;
 }
 
+async function readResponsePayload(res: Response): Promise<{ json: Record<string, unknown> | null; rawText: string }> {
+  const rawText = await res.text();
+  const trimmed = rawText.trim();
+  if (!trimmed) return { json: {}, rawText };
+  try {
+    return { json: JSON.parse(trimmed) as Record<string, unknown>, rawText };
+  } catch {
+    return { json: null, rawText };
+  }
+}
+
+function responseErrorMessage(
+  res: Response,
+  payload: { json: Record<string, unknown> | null; rawText: string },
+  fallback: string,
+): string {
+  const apiError = payload.json?.error;
+  if (apiError && typeof apiError === "object" && typeof (apiError as { message?: unknown }).message === "string") {
+    const message = (apiError as { message?: string }).message?.trim();
+    if (message) return message;
+  }
+  const raw = payload.rawText.trim();
+  if (raw.startsWith("<")) return `${fallback} (Sunucu JSON yerine HTML döndü, HTTP ${res.status})`;
+  if (raw) return `${fallback}: ${raw.slice(0, 180)}`;
+  return `${fallback} (${res.status})`;
+}
+
+function toNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Props) {
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
@@ -155,20 +187,68 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
       const baseUrl = settings.apiUrl;
       setApiUrl(baseUrl);
       const sellerId = currentAuth.userId;
-      const [summaryRes, balanceRes, payoutsRes] = await Promise.all([
-        authedFetch(`/v1/sellers/${sellerId}/finance/summary`, undefined, baseUrl),
-        authedFetch(`/v1/sellers/${sellerId}/finance/balance`, undefined, baseUrl),
-        authedFetch(`/v1/sellers/${sellerId}/finance/payouts?page=1&pageSize=20`, undefined, baseUrl),
-      ]);
-      const summaryJson = await summaryRes.json();
-      const balanceJson = await balanceRes.json();
-      const payoutsJson = await payoutsRes.json();
-      if (!summaryRes.ok) throw new Error(summaryJson?.error?.message ?? t('error.seller.finance.summaryLoad'));
-      if (!balanceRes.ok) throw new Error(balanceJson?.error?.message ?? t('error.seller.finance.balanceLoad'));
-      if (!payoutsRes.ok) throw new Error(payoutsJson?.error?.message ?? t('error.seller.finance.payoutsLoad'));
-      setSummary(summaryJson?.data ?? null);
-      setBalance(balanceJson?.data ?? null);
-      setPayouts(Array.isArray(payoutsJson?.data) ? payoutsJson.data : []);
+      const summaryPaths = [
+        `/v1/finance/sellers/${sellerId}/summary`,
+        `/v1/sellers/${sellerId}/finance/summary`,
+      ];
+      let summaryData: Record<string, unknown> | null = null;
+      let summaryError: string | null = null;
+      for (const path of summaryPaths) {
+        const res = await authedFetch(path, undefined, baseUrl);
+        const payload = await readResponsePayload(res);
+        if (res.ok && payload.json) {
+          summaryData = (payload.json.data as Record<string, unknown> | undefined) ?? payload.json;
+          summaryError = null;
+          break;
+        }
+        if (res.status === 404) continue;
+        summaryError = responseErrorMessage(res, payload, t('error.seller.finance.summaryLoad'));
+      }
+      if (!summaryData) {
+        throw new Error(summaryError ?? t('error.seller.finance.summaryLoad'));
+      }
+      setSummary({
+        totalSellingAmount: toNumber(summaryData.totalSellingAmount ?? summaryData.totalEarned),
+        totalCommission: toNumber(summaryData.totalCommission ?? summaryData.totalPaidOut),
+        totalNetEarnings: toNumber(summaryData.totalNetEarnings ?? summaryData.currentBalance),
+      });
+
+      const balancePaths = [
+        `/v1/sellers/${sellerId}/finance/balance`,
+        `/v1/finance/sellers/${sellerId}/balance`,
+      ];
+      let balanceData: Record<string, unknown> | null = null;
+      for (const path of balancePaths) {
+        const res = await authedFetch(path, undefined, baseUrl);
+        const payload = await readResponsePayload(res);
+        if (res.ok && payload.json) {
+          balanceData = (payload.json.data as Record<string, unknown> | undefined) ?? payload.json;
+          break;
+        }
+        if (res.status === 404) continue;
+      }
+      setBalance({
+        availableBalance: toNumber(balanceData?.availableBalance ?? summaryData.currentBalance),
+        pendingPayoutAmount: toNumber(balanceData?.pendingPayoutAmount),
+        currency: String(balanceData?.currency ?? "TRY"),
+      });
+
+      const payoutsPaths = [
+        `/v1/sellers/${sellerId}/finance/payouts?page=1&pageSize=20`,
+        `/v1/finance/sellers/${sellerId}/payouts?page=1&pageSize=20`,
+      ];
+      let payoutsData: unknown[] = [];
+      for (const path of payoutsPaths) {
+        const res = await authedFetch(path, undefined, baseUrl);
+        const payload = await readResponsePayload(res);
+        if (res.ok && payload.json) {
+          payoutsData = Array.isArray(payload.json.data) ? payload.json.data : [];
+          break;
+        }
+        if (res.status === 404) continue;
+      }
+      setPayouts(Array.isArray(payoutsData) ? (payoutsData as SellerPayout[]) : []);
+
       const bankGetPaths = [
         `/v1/sellers/${sellerId}/bank-account`,
         `/v1/sellers/${sellerId}/finance/bank-account`,
