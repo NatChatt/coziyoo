@@ -307,7 +307,7 @@ function formatCuisineLabel(cuisine?: string | null): string {
   if (!value) return "";
   const lower = value.toLocaleLowerCase("tr-TR");
   if (lower.endsWith(" mutfağı") || lower.endsWith(" mutfagi")) return value;
-  return `${value} Mutfağı`;
+  return `${value} ${t('helper.home.cuisineSuffix')}`;
 }
 
 function normalizeMealAddons(value: ApiFoodItem["menuItems"]): MealCard["addons"] {
@@ -1288,12 +1288,15 @@ function buildSellerProfile(
     ),
   )
     .slice(0, 2)
-    .join(' ve ');
-  const speciality = topCategories || 'ev yemeği';
+    .join(t('status.home.sellerBioSpecialityJoiner'));
+  const speciality = topCategories || t('status.home.sellerBioDefaultSpeciality');
   return {
     startedYear,
     experienceYears,
-    bio: `${sellerName}, ${startedYear} yılından beri mutfakta aktif olarak çalışıyor. Özellikle ${speciality} konusunda deneyimli; günlük taze üretim, dengeli lezzet ve düzenli kaliteye odaklanıyor.`,
+    bio: t('status.home.sellerBioTemplate')
+      .replace('{name}', sellerName)
+      .replace('{year}', String(startedYear))
+      .replace('{speciality}', speciality),
   };
 }
 
@@ -1834,8 +1837,8 @@ function FoodCard({
           >
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}
-              size={22}
-              color={isFavorite ? '#B8302C' : '#B85C58'}
+              size={24}
+              color={isFavorite ? '#FFF4F1' : '#FFFDFB'}
             />
           </TouchableOpacity>
         </View>
@@ -4112,7 +4115,7 @@ export default function HomeScreen({
             ) : null}
             {!recommendedMealsLoading && visibleRecommendedMeals.length === 0 ? (
               <View style={styles.topSoldLoadingChip}>
-                <Text style={styles.topSoldLoadingText}>Şu an öneri bulunamadı.</Text>
+                <Text style={styles.topSoldLoadingText}>{t('status.home.recommendationsEmpty')}</Text>
               </View>
             ) : null}
             {visibleRecommendedMeals.map((meal) => (
@@ -5053,7 +5056,7 @@ export default function HomeScreen({
                       <Text style={styles.modalDescription}>{includedSidesText}</Text>
                     ) : null}
                     <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>Malzemeler / Baharatlar</Text>
+                      <Text style={styles.modalSectionTitle}>{t('headline.home.mealModal.ingredientsSpices')}</Text>
                       <Text style={styles.modalIngredientsPlain}>
                         {bottomText || topText}
                       </Text>
@@ -5064,7 +5067,7 @@ export default function HomeScreen({
 
               {selectedMeal.allergens.length > 0 && (
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Alerjen Uyarısı</Text>
+                  <Text style={styles.modalSectionTitle}>{t('headline.home.mealModal.allergenWarning')}</Text>
                   <View style={styles.modalTagsWrap}>
                     {selectedMeal.allergens.map((a, i) => (
                       <View key={i} style={styles.modalAllergenTag}>
@@ -5077,8 +5080,8 @@ export default function HomeScreen({
 
               {selectedMeal.addons.some((addon) => addon.pricing === 'paid' && Number(addon.price ?? 0) > 0) ? (
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Ücretli Ekler</Text>
-                  <Text style={styles.modalSectionHint}>Ekstra istersen buradan seçebilirsin.</Text>
+                  <Text style={styles.modalSectionTitle}>{t('headline.home.mealModal.paidAddons')}</Text>
+                  <Text style={styles.modalSectionHint}>{t('helper.home.mealModal.paidAddonsHint')}</Text>
                   <View style={styles.modalPaidAddonsList}>
                     {selectedMeal.addons
                       .filter((addon) => addon.pricing === 'paid' && Number(addon.price ?? 0) > 0)
@@ -5179,23 +5182,25 @@ export default function HomeScreen({
               <View style={styles.sellerStatsRow}>
                 <View style={styles.sellerStatCard}>
                   <Text style={styles.sellerStatValue}>{sellerMeals.length}</Text>
-                  <Text style={styles.sellerStatLabel}>Yemek</Text>
+                  <Text style={styles.sellerStatLabel}>{t('label.home.sellerStat.meals')}</Text>
                 </View>
                 <View style={styles.sellerStatCard}>
                   <Text style={styles.sellerStatValue}>★ {sellerAverageRating}</Text>
-                  <Text style={styles.sellerStatLabel}>Ortalama</Text>
+                  <Text style={styles.sellerStatLabel}>{t('label.home.sellerStat.average')}</Text>
                 </View>
               </View>
               {sellerProfile ? (
                 <View style={styles.sellerAboutCard}>
-                  <Text style={styles.sellerAboutTitle}>Usta Ozgecmisi</Text>
+                  <Text style={styles.sellerAboutTitle}>{t('headline.home.sellerBio')}</Text>
                   <Text style={styles.sellerAboutMeta}>
-                    {sellerProfile.startedYear} yılından beri • {sellerProfile.experienceYears} yıl tecrübe
+                    {t('status.home.sellerExperience')
+                      .replace('{year}', String(sellerProfile.startedYear))
+                      .replace('{years}', String(sellerProfile.experienceYears))}
                   </Text>
                   <Text style={styles.sellerAboutSales}>
                     {sellerCompletedMealsLoading
-                      ? 'Tamamlanan satışlar hesaplanıyor...'
-                      : `Toplam satılan yemek: ${sellerCompletedMealsSold ?? 0}`}
+                      ? t('status.home.sellerSalesLoading')
+                      : t('status.home.sellerTotalMealsSold').replace('{count}', String(sellerCompletedMealsSold ?? 0))}
                   </Text>
                   <Text style={styles.sellerAboutText}>{sellerProfile.bio}</Text>
                 </View>
@@ -5234,7 +5239,7 @@ export default function HomeScreen({
                           <Text style={styles.sellerReviewDate}>{formatReviewDate(review.createdAt)}</Text>
                         </View>
                       </View>
-                      <Text style={styles.sellerReviewFood}>Yemek: {review.foodName}</Text>
+                      <Text style={styles.sellerReviewFood}>{t('label.home.reviewFood').replace('{name}', review.foodName ?? '')}</Text>
                       <Text style={styles.sellerReviewComment}>
                         {review.comment?.trim() || t('helper.home.sellerCommentFallback')}
                       </Text>
@@ -6425,15 +6430,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 14,
     bottom: 14,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 1.5,
-    borderColor: '#DFAEAB',
-    backgroundColor: 'rgba(255,247,245,0.96)',
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 1.2,
+    borderColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: 'rgba(76,56,42,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 7,
+    shadowColor: '#1F130D',
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   foodInfo: {
     backgroundColor: '#FFF8F0',
@@ -6680,8 +6690,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   foodFooterFavoriteBtnActive: {
-    backgroundColor: '#FFE8E6',
-    borderColor: '#D58B86',
+    backgroundColor: 'rgba(161,58,47,0.52)',
+    borderColor: 'rgba(255,240,236,0.72)',
   },
 
   /* --- Tab panels --- */

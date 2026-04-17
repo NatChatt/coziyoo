@@ -100,7 +100,7 @@ export default function FoodDetailScreen({ food, onBack, onAddToCart, onOpenSell
             {food.prepTime ? (
               <View style={styles.metaItem}>
                 <Ionicons name="time-outline" size={14} color="#71685F" />
-                <Text style={styles.metaText}>{food.prepTime} dk</Text>
+                <Text style={styles.metaText}>{food.prepTime} {t('label.foodDetail.prepTimeUnit')}</Text>
               </View>
             ) : null}
             {food.maxDistance ? (
@@ -148,7 +148,7 @@ export default function FoodDetailScreen({ food, onBack, onAddToCart, onOpenSell
         {/* Description */}
         {food.description ? (
           <View style={styles.section}>
-            <SectionDivider icon="document-text-outline" label="Açıklama" />
+            <SectionDivider icon="document-text-outline" label={t('headline.foodDetail.description')} />
             <Text style={styles.descText}>{food.description}</Text>
           </View>
         ) : null}
@@ -158,7 +158,7 @@ export default function FoodDetailScreen({ food, onBack, onAddToCart, onOpenSell
           <View style={[styles.section, styles.allergenSection]}>
             <View style={styles.allergenHeaderRow}>
               <View style={{ marginBottom: 0 }}>
-                <SectionDivider icon="warning-outline" label="Alerjenler" />
+                <SectionDivider icon="warning-outline" label={t('headline.foodDetail.allergens')} />
               </View>
               <TouchableOpacity
                 style={styles.sellerLink}
@@ -183,7 +183,7 @@ export default function FoodDetailScreen({ food, onBack, onAddToCart, onOpenSell
         {/* Ingredients */}
         {food.ingredients.length > 0 && (
           <View style={styles.section}>
-            <SectionDivider icon="leaf-outline" label="İçindekiler" />
+            <SectionDivider icon="leaf-outline" label={t('headline.foodDetail.ingredients')} />
             <View style={styles.tagRow}>
               {food.ingredients.map((ing, i) => (
                 <View key={i} style={styles.ingredientTag}>
@@ -196,7 +196,7 @@ export default function FoodDetailScreen({ food, onBack, onAddToCart, onOpenSell
 
         {Array.isArray(food.menuItems) && food.menuItems.length > 0 && (
           <View style={styles.section}>
-            <SectionDivider icon="restaurant-outline" label="Menü İçeriği" />
+            <SectionDivider icon="restaurant-outline" label={t('headline.foodDetail.menuContents')} />
             <View style={styles.tagRow}>
               {food.menuItems.map((item, i) => (
                 <View key={`${item.name}-${i}`} style={styles.ingredientTag}>
