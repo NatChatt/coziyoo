@@ -1056,6 +1056,23 @@ function deriveCardColors(dominant: string): CardColors {
   };
 }
 
+function derivePhotoOverlayText(seed: string, tone: 'light' | 'dark'): { title: string; cuisine: string } {
+  const safe = normalizeHexColor(seed);
+  const { r, g, b } = hexToRgb(safe);
+  const { h, s } = rgbToHsl(r, g, b);
+  const vividSat = Math.max(0.7, Math.min(0.98, s * 1.28));
+  if (tone === 'dark') {
+    return {
+      title: colorFromHsl(h, vividSat, 0.26),
+      cuisine: colorFromHsl(h + 8, vividSat * 0.84, 0.34),
+    };
+  }
+  return {
+    title: colorFromHsl(h + 4, vividSat * 0.9, 0.9),
+    cuisine: colorFromHsl(h + 10, vividSat * 0.76, 0.82),
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
@@ -1548,6 +1565,9 @@ function FoodCard({
   const [colors, setColors] = useState<CardColors>(
     deriveCardColors(meal.backgroundColor),
   );
+  const [paletteSeed, setPaletteSeed] = useState<string>(
+    normalizeHexColor(meal.backgroundColor),
+  );
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imageIndex, setImageIndex] = useState(0);
   const [imageFrameWidth, setImageFrameWidth] = useState(defaultCardImageWidth);
@@ -1571,6 +1591,7 @@ function FoodCard({
   useEffect(() => {
     if (!primaryImageUrl || !getColors) {
       setColors(deriveCardColors(meal.backgroundColor));
+      setPaletteSeed(normalizeHexColor(meal.backgroundColor));
       return;
     }
     getColors(primaryImageUrl, {
@@ -1580,10 +1601,12 @@ function FoodCard({
     })
       .then((result) => {
         const seed = pickImagePaletteColor(result, meal.backgroundColor);
+        setPaletteSeed(seed);
         setColors(deriveCardColors(seed));
       })
       .catch(() => {
         setColors(deriveCardColors(meal.backgroundColor));
+        setPaletteSeed(normalizeHexColor(meal.backgroundColor));
       });
   }, [primaryImageUrl, meal.backgroundColor]);
 
@@ -1660,6 +1683,7 @@ function FoodCard({
         });
 
         const sampledSeed = pickImagePaletteColor(sampledColors, meal.backgroundColor);
+        setPaletteSeed(sampledSeed);
         const nextColors = deriveCardColors(sampledSeed);
         setColors((prev) => (prev.bg === nextColors.bg && prev.title === nextColors.title ? prev : nextColors));
 
@@ -1780,6 +1804,7 @@ function FoodCard({
   const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
     ? t('status.home.foodCard.lastPortions').replace('{stock}', String(meal.stock))
     : '';
+  const photoOverlayColors = derivePhotoOverlayText(paletteSeed, photoTextTone);
   const hasAllergens = allergens.length > 0;
   const titleMetrics = resolveFoodPhotoTitleMetrics(meal.title);
   const sellerHandle = formatSellerIdentity(meal.seller, meal.sellerUsername);
@@ -1884,7 +1909,8 @@ function FoodCard({
               style={[
                 styles.foodPhotoTitleText,
                 titleMetrics,
-                { color: colors.photoTitle },
+                { color: photoOverlayColors.title },
+                photoTextTone === 'dark' && styles.foodPhotoTitleTextDark,
               ]}
             >
               {meal.title}
@@ -1894,7 +1920,8 @@ function FoodCard({
                 numberOfLines={1}
                 style={[
                   styles.foodPhotoCuisineText,
-                  { color: colors.photoCuisine },
+                  { color: photoOverlayColors.cuisine },
+                  photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
                 ]}
               >
                 {formatCuisineLabel(meal.cuisine)}
