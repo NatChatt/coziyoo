@@ -32,6 +32,20 @@ class ComplaintCategories(models.Model):
 
 
 
+class TicketMessages(models.Model):
+    id = models.UUIDField(primary_key=True)
+    complaint = models.ForeignKey('complaints.Complaints', models.DO_NOTHING, related_name='ticket_messages')
+    author = models.ForeignKey('authentication.Users', models.DO_NOTHING)
+    author_type = models.CharField(max_length=20)  # 'user' or 'admin'
+    body = models.TextField()
+    created_at = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = 'ticket_messages'
+        ordering = ['created_at']
+
+
 class Complaints(models.Model):
     id = models.UUIDField(primary_key=True)
     order = models.ForeignKey('orders.Orders', models.DO_NOTHING)

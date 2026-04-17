@@ -134,7 +134,34 @@ class ComplaintDetailView(APIView):
         item["orderId"] = str(item["orderId"]) if item["orderId"] else None
         item["createdAt"] = item["createdAt"].isoformat() if item["createdAt"] else None
         item["lastActivityAt"] = item["createdAt"]
-        item["messages"] = []
+
+        # Fetch messages
+        try:
+            with connection.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT tm.id, tm.author_id, tm.author_type, tm.body, tm.created_at,
+                           u.display_name
+                    FROM ticket_messages tm
+                    LEFT JOIN users u ON u.id = tm.author_id
+                    WHERE tm.complaint_id = %s
+                    ORDER BY tm.created_at ASC
+                    """,
+                    [complaint_id],
+                )
+                messages = []
+                for msg in cur.fetchall():
+                    messages.append({
+                        "id": str(msg[0]),
+                        "senderUserId": str(msg[1]),
+                        "senderRole": "buyer" if msg[2] == "user" else "admin",
+                        "senderName": msg[5] or "",
+                        "message": msg[3],
+                        "createdAt": msg[4].isoformat() if msg[4] else None,
+                    })
+            item["messages"] = messages
+        except ProgrammingError:
+            item["messages"] = []
 
         return Response({"data": item})
 
