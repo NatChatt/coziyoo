@@ -149,18 +149,21 @@
             <div class="text-2xl font-bold text-emerald-800 dark:text-emerald-100">₺{{ summary.total_earnings|floatformat:2 }}</div>
           </div>
         </div>
-        <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl px-5 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-blue-500 dark:text-blue-400">trending_up</span>
+        <div class="bg-base-900/70 border border-base-600 rounded-xl px-5 py-3 flex items-center gap-3">
+          <span class="material-symbols-outlined text-sky-400">trending_up</span>
           <div>
-            <div class="text-xs font-medium text-blue-600 dark:text-blue-300 uppercase tracking-wide">{% trans "Monthly Earnings" %}</div>
-            <div class="text-2xl font-bold text-blue-800 dark:text-blue-100">₺{{ summary.monthly_earnings|floatformat:2 }}</div>
+            <div class="text-xs font-medium text-base-200 uppercase tracking-wide">{% trans "Monthly Earnings" %}</div>
+            <div class="text-2xl font-bold text-white">₺{{ summary.monthly_earnings|floatformat:2 }}</div>
           </div>
         </div>
         <div class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-3 flex items-center gap-3">
-          <span class="material-symbols-outlined text-amber-500 dark:text-amber-400">star</span>
+          <span class="material-symbols-outlined text-amber-400">star</span>
           <div>
             <div class="text-xs font-medium text-amber-600 dark:text-amber-300 uppercase tracking-wide">{% trans "Avg Rating" %}</div>
-            <div class="text-2xl font-bold text-amber-800 dark:text-amber-100">{{ summary.avg_rating }} / 5</div>
+            <div class="flex items-center gap-1.5 text-2xl font-bold text-amber-800 dark:text-amber-100">
+              <span class="material-symbols-outlined text-xl leading-none" style="color:#FACC15;">star</span>
+              <span>{{ summary.avg_rating|floatformat:1 }}</span>
+            </div>
           </div>
         </div>
         <div class="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl px-5 py-3 flex items-center gap-3">
