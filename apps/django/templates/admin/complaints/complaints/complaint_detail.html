@@ -10,13 +10,15 @@
       <div>
         <p class="text-xs uppercase tracking-wide text-base-500">Ticket</p>
         <h1 class="text-2xl font-bold text-base-900 dark:text-base-100">#{{ complaint.ticket_no }}</h1>
-        <p class="text-xs text-base-400 mt-1">{{ complaint.created_at|date:"d.m.Y H:i" }}</p>
-        {% if complaint.assigned_admin_id %}
-        <p class="text-xs text-emerald-700 dark:text-emerald-400 mt-2">
-          {{ assigned_admin_display_name|default:"Admin" }}
-          tarafından işleme alındı
-        </p>
-        {% endif %}
+        <div class="mt-1 flex items-center justify-between gap-3">
+          <p class="text-xs text-base-400">{{ complaint.created_at|date:"d.m.Y H:i" }}</p>
+          {% if complaint.assigned_admin_id %}
+          <p class="text-xs text-emerald-700 dark:text-emerald-400 text-right">
+            {{ assigned_admin_display_name|default:"Admin" }}
+            tarafından işleme alındı
+          </p>
+          {% endif %}
+        </div>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <span class="px-2.5 py-1 rounded-full text-xs font-semibold
@@ -41,9 +43,6 @@
           </button>
         </form>
         {% endif %}
-        <a href="{{ change_url }}" class="inline-flex items-center gap-1 rounded-lg border border-base-300 dark:border-base-600 px-3 py-1.5 text-xs font-medium text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800">
-          <span class="material-symbols-outlined text-sm">edit</span>Düzenle
-        </a>
       </div>
     </div>
   </div>
