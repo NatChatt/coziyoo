@@ -1005,18 +1005,20 @@ function pickImagePaletteColor(result: any, fallback: string): string {
     if (!isPaletteHexColor(raw)) continue;
     const color = normalizeHexColor(raw);
     const { r, g, b } = hexToRgb(color);
-    const { s, l } = rgbToHsl(r, g, b);
+    const { h, s, l } = rgbToHsl(r, g, b);
     const vibranceScore = s * 2.4;
     const midLightnessScore = 1 - Math.abs(l - 0.52);
     const darkPenalty = l < 0.24 ? 0.65 : 0;
     const muddyPenalty = s < 0.28 ? 0.55 : 0;
+    const brownBand = h >= 16 && h <= 42;
+    const brownPenalty = brownBand && l < 0.48 ? 0.45 : 0;
     const keyBoost =
       key === 'vibrant' || key === 'primary' || key === 'detail'
         ? 0.18
         : key === 'dominant'
           ? 0.1
           : 0;
-    const score = vibranceScore + midLightnessScore + keyBoost - darkPenalty - muddyPenalty;
+    const score = vibranceScore + midLightnessScore + keyBoost - darkPenalty - muddyPenalty - brownPenalty;
     candidates.push({ color, score });
   }
 
@@ -1029,13 +1031,13 @@ function deriveCardColors(dominant: string): CardColors {
   const safe = normalizeHexColor(dominant);
   const { r, g, b } = hexToRgb(safe);
   const { h, s } = rgbToHsl(r, g, b);
-  const vividSat = Math.max(0.5, Math.min(0.95, s * 1.1));
-  const bg = colorFromHsl(h, vividSat * 0.42, 0.92);
-  const border = colorFromHsl(h, vividSat * 0.5, 0.76);
-  const title = colorFromHsl(h, vividSat * 0.74, 0.28);
-  const subtitle = colorFromHsl(h, vividSat * 0.64, 0.36);
-  const price = colorFromHsl(h, vividSat * 0.8, 0.24);
-  const metaBase = colorFromHsl(h, vividSat * 0.56, 0.42);
+  const vividSat = Math.max(0.62, Math.min(0.98, s * 1.18));
+  const bg = colorFromHsl(h, vividSat * 0.4, 0.94);
+  const border = colorFromHsl(h, vividSat * 0.48, 0.8);
+  const title = colorFromHsl(h, vividSat * 0.88, 0.40);
+  const subtitle = colorFromHsl(h, vividSat * 0.74, 0.46);
+  const price = colorFromHsl(h, vividSat * 0.9, 0.34);
+  const metaBase = colorFromHsl(h, vividSat * 0.62, 0.52);
   return {
     bg,
     border,
@@ -6532,9 +6534,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontStyle: 'italic',
     letterSpacing: -2,
-    textShadowColor: 'rgba(0,0,0,0.58)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2.2,
   },
   foodPhotoTitleTextDark: {
     color: '#2E2018',
@@ -6546,9 +6548,9 @@ const styles = StyleSheet.create({
     color: '#F4ECE0',
     fontSize: 15,
     fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.62)',
+    textShadowColor: 'rgba(0,0,0,0.18)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3.5,
+    textShadowRadius: 1.8,
   },
   foodPhotoCuisineTextDark: {
     color: '#4E3B2F',
