@@ -537,3 +537,20 @@ msgstr "Not ekle, Enter ile kaydet…"
 
 msgid "Remove tag"
 msgstr "Etiketi sil"
+
+# ── App & Model verbose names ──────────────────────────────────────────────
+
+msgid "Authentication"
+msgstr "Kimlik Doğrulama"
+
+msgid "User"
+msgstr "Kullanıcı"
+
+msgid "Seller"
+msgstr "Satıcı"
+
+msgid "Finance"
+msgstr "Finans"
+
+msgid "Notifications"
+msgstr "Bildirimler"

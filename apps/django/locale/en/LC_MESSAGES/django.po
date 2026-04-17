@@ -536,3 +536,20 @@ msgstr "Add note, press Enter to save…"
 
 msgid "Remove tag"
 msgstr "Remove tag"
+
+# ── App & Model verbose names ──────────────────────────────────────────────
+
+msgid "Authentication"
+msgstr "Authentication"
+
+msgid "User"
+msgstr "User"
+
+msgid "Seller"
+msgstr "Seller"
+
+msgid "Finance"
+msgstr "Finance"
+
+msgid "Notifications"
+msgstr "Notifications"

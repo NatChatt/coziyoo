@@ -284,32 +284,32 @@ class Users(models.Model):
     class Meta:
         managed = False
         db_table = 'users'
-        verbose_name = "User"
-        verbose_name_plural = "Users"
+        verbose_name = _("User")
+        verbose_name_plural = _("Users")
 
 
 class BuyerUsers(Users):
     """Proxy model for the buyer-only admin view."""
     class Meta:
         proxy = True
-        verbose_name = "Buyer"
-        verbose_name_plural = "Buyers"
+        verbose_name = _("Buyer")
+        verbose_name_plural = _("Buyers")
 
 
 class SellerUsers(Users):
     """Proxy model for the seller-only admin view."""
     class Meta:
         proxy = True
-        verbose_name = "Seller"
-        verbose_name_plural = "Sellers"
+        verbose_name = _("Seller")
+        verbose_name_plural = _("Sellers")
 
 
 class AllUsers(Users):
     """Proxy model for viewing all users including inactive ones."""
     class Meta:
         proxy = True
-        verbose_name = "All Users"
-        verbose_name_plural = "All Users"
+        verbose_name = _("All Users")
+        verbose_name_plural = _("All Users")
 
 
 class SmsLogs(models.Model):
