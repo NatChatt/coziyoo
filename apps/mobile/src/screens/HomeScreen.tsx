@@ -1823,6 +1823,19 @@ function FoodCard({
           ) : (
             <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
           )}
+          {imageUrls.length > 1 ? (
+            <View pointerEvents="none" style={styles.foodPhotoDotsRow}>
+              {imageUrls.map((_, idx) => (
+                <View
+                  key={`dot-${idx}`}
+                  style={[
+                    styles.foodPhotoDot,
+                    idx === imageIndex && styles.foodPhotoDotActive,
+                  ]}
+                />
+              ))}
+            </View>
+          ) : null}
           <View pointerEvents="none" style={styles.foodPhotoTitleOverlay}>
             <Text
               numberOfLines={2}
@@ -6406,6 +6419,28 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 102,
     backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  foodPhotoDotsRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 8,
+    zIndex: 7,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  foodPhotoDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.38)',
+  },
+  foodPhotoDotActive: {
+    width: 16,
+    borderRadius: 4,
+    backgroundColor: '#F5D08A',
   },
   foodBadgesRight: {
     position: 'absolute',
