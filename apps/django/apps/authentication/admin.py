@@ -96,6 +96,13 @@ def _humanize_status(status):
     return status.replace("_", " ").capitalize()
 
 
+def _safe_rating_value(value):
+    try:
+        return max(0.0, min(5.0, float(value)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _tag_chip_style(tag):
     digest = hashlib.md5((tag or "").strip().lower().encode("utf-8")).hexdigest()
     return TAG_CHIP_STYLES[int(digest[:2], 16) % len(TAG_CHIP_STYLES)]
@@ -560,7 +567,8 @@ class BuyerUsersAdmin(ModelAdmin):
                        "created_at": _parse_dt(r.get("created_at"))} for r in (complaints_json or [])]
 
         reviews = [{"id": str(r["id"]), "food_name": r["food_name"],
-                    "stars": "★" * int(r["rating"]) + "☆" * (5 - int(r["rating"])),
+                    "stars": "★" * int(_safe_rating_value(r.get("rating"))) + "☆" * (5 - int(_safe_rating_value(r.get("rating")))),
+                    "rating_value": _safe_rating_value(r.get("rating")),
                     "comment": r["comment"], "created_at": _parse_dt(r.get("created_at")),
                     "order_id": str(r["order_id"]) if r.get("order_id") else None,
                     "seller_id": str(r["seller_id"]) if r.get("seller_id") else None,
@@ -956,7 +964,8 @@ class SellerUsersAdmin(ModelAdmin):
                         "order_id": r.get("order_id")} for r in (adjustments_json or [])]
 
         reviews = [{"id": str(r["id"]), "food_name": r["food_name"],
-                    "stars": "★" * int(r["review_rating"]) + "☆" * (5 - int(r["review_rating"])),
+                    "stars": "★" * int(_safe_rating_value(r.get("review_rating"))) + "☆" * (5 - int(_safe_rating_value(r.get("review_rating")))),
+                    "rating_value": _safe_rating_value(r.get("review_rating")),
                     "comment": r["comment"], "created_at": r["created_at"],
                     "buyer_name": r["buyer_name"]} for r in (reviews_json or [])]
 
