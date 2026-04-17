@@ -323,21 +323,21 @@
 
     {# KPI Cards #}
     <div class="flex flex-wrap gap-3 grow">
-      <div class="rounded-xl py-2 px-3 flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 min-w-[120px] grow">
+      <div class="rounded-xl py-2 px-3 flex items-center gap-2 bg-blue-50 dark:bg-base-900 border border-blue-200 dark:border-blue-900 min-w-[120px] grow">
         <span class="material-symbols-outlined text-base text-blue-500 dark:text-blue-400">inventory_2</span>
         <div>
           <div class="text-xs font-medium text-blue-600 dark:text-blue-300 uppercase tracking-wide">{% trans "Toplam Lot" %}</div>
           <div class="text-2xl font-bold text-blue-800 dark:text-blue-100">{{ lots|length }}</div>
         </div>
       </div>
-      <div class="rounded-xl py-2 px-3 flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 min-w-[120px] grow">
+      <div class="rounded-xl py-2 px-3 flex items-center gap-2 bg-emerald-50 dark:bg-base-900 border border-emerald-200 dark:border-emerald-900 min-w-[120px] grow">
         <span class="material-symbols-outlined text-base text-emerald-500 dark:text-emerald-400">star</span>
         <div>
           <div class="text-xs font-medium text-emerald-600 dark:text-emerald-300 uppercase tracking-wide">{% trans "Rating" %}</div>
           <div class="text-2xl font-bold text-emerald-800 dark:text-emerald-100">{{ food.rating|default:"—" }}</div>
         </div>
       </div>
-      <div class="rounded-xl py-2 px-3 flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 min-w-[120px] grow">
+      <div class="rounded-xl py-2 px-3 flex items-center gap-2 bg-amber-50 dark:bg-base-900 border border-amber-200 dark:border-amber-900 min-w-[120px] grow">
         <span class="material-symbols-outlined text-base text-amber-500 dark:text-amber-400">chat</span>
         <div>
           <div class="text-xs font-medium text-amber-600 dark:text-amber-300 uppercase tracking-wide">{% trans "Yorumlar" %}</div>
@@ -364,7 +364,7 @@
 
       {# Temel Bilgiler #}
       <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
           <span class="material-symbols-outlined text-base text-base-400 dark:text-base-500 leading-none">info</span>
           <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Temel Bilgiler" %}</span>
         </div>
@@ -409,7 +409,7 @@
       {# Alerjenler #}
       {% if food.allergens_json %}
       <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
           <span class="material-symbols-outlined text-base text-amber-500 leading-none">warning</span>
           <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Alerjenler" %}</span>
         </div>
@@ -431,7 +431,7 @@
       {# Açıklama #}
       {% if food.description %}
       <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
           <span class="material-symbols-outlined text-base text-base-400 dark:text-base-500 leading-none">description</span>
           <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Açıklama" %}</span>
         </div>
@@ -442,7 +442,7 @@
       {# Kısa Açıklama #}
       {% if food.card_summary %}
       <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
           <span class="material-symbols-outlined text-base text-base-400 dark:text-base-500 leading-none">short_text</span>
           <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Kısa Açıklama" %}</span>
         </div>
@@ -453,7 +453,7 @@
       {# Teslimat Notu #}
       {% if food.seller.delivery_enabled or food.seller.delivery_terms %}
       <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
           <span class="material-symbols-outlined text-base text-base-400 dark:text-base-500 leading-none">local_shipping</span>
           <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Teslimat" %}</span>
         </div>
@@ -487,7 +487,7 @@
       {# Malzemeler #}
       {% if food.ingredients_json %}
       <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
           <span class="material-symbols-outlined text-base text-base-400 dark:text-base-500 leading-none">nutrition</span>
           <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Malzemeler" %}</span>
         </div>
@@ -504,7 +504,7 @@
       {# Tarif #}
       {% if food.recipe %}
       <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-700/50 border-b border-base-200 dark:border-base-700">
+        <div class="px-5 py-3 flex items-center gap-2 bg-base-50 dark:bg-base-900 border-b border-base-200 dark:border-base-700">
           <span class="material-symbols-outlined text-base text-base-400 dark:text-base-500 leading-none">menu_book</span>
           <span class="text-xs font-semibold uppercase tracking-wide text-base-500 dark:text-base-400">{% trans "Tarif" %}</span>
         </div>
@@ -517,7 +517,7 @@
 
   {# ── Lots Section ── #}
   <div class="rounded-xl border border-base-200 dark:border-base-700 overflow-hidden bg-white dark:bg-base-800">
-    <div class="px-5 py-3 flex items-center gap-3 border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-900/50">
+    <div class="px-5 py-3 flex items-center gap-3 border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-900">
       <span class="material-symbols-outlined text-base text-base-500 dark:text-base-400">inventory_2</span>
       <span class="font-semibold text-base-900 dark:text-white text-sm">{% trans "Lotlar" %}</span>
       <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-bold">{{ lots|length }}</span>
