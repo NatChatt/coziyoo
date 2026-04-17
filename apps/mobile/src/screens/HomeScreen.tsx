@@ -6936,7 +6936,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     position: 'relative',
     zIndex: 12,
-    transform: [{ translateY: -4 }],
+    transform: [{ translateY: 0 }],
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 8,
