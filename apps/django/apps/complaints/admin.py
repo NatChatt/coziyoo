@@ -25,6 +25,22 @@ class ComplaintCategoriesAdmin(ModelAdmin):
     readonly_fields = ["id", "created_at"]
 
 
+STATUS_CHOICES = [
+    ("open", "Açık"),
+    ("in_review", "İnceleniyor"),
+    ("awaiting_response", "Cevap Bekleniyor"),
+    ("resolved", "Çözüldü"),
+    ("closed", "Kapandı"),
+]
+
+PRIORITY_CHOICES = [
+    ("low", "Düşük"),
+    ("medium", "Orta"),
+    ("high", "Yüksek"),
+    ("urgent", "Acil"),
+]
+
+
 @admin.register(Complaints)
 class ComplaintsAdmin(ModelAdmin):
     list_display = [
@@ -44,6 +60,16 @@ class ComplaintsAdmin(ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if "status" in form.base_fields:
+            from django import forms
+            form.base_fields["status"].widget = forms.Select(choices=STATUS_CHOICES)
+        if "priority" in form.base_fields:
+            from django import forms
+            form.base_fields["priority"].widget = forms.Select(choices=PRIORITY_CHOICES)
+        return form
 
     fieldsets = [
         ("Ticket", {"fields": ["id", "ticket_no", "status", "priority", "category"]}),
