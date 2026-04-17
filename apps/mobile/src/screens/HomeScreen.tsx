@@ -983,13 +983,13 @@ function isPaletteHexColor(value: unknown): value is string {
 
 function pickImagePaletteColor(result: any, fallback: string): string {
   const candidateKeys = [
+    'lightVibrant',
     'vibrant',
     'primary',
     'detail',
+    'secondary',
     'dominant',
     'average',
-    'secondary',
-    'lightVibrant',
     'darkVibrant',
     'muted',
     'lightMuted',
@@ -1013,11 +1013,15 @@ function pickImagePaletteColor(result: any, fallback: string): string {
     const brownBand = h >= 16 && h <= 42;
     const brownPenalty = brownBand && l < 0.48 ? 0.45 : 0;
     const keyBoost =
-      key === 'vibrant' || key === 'primary' || key === 'detail'
-        ? 0.18
-        : key === 'dominant'
-          ? 0.1
-          : 0;
+      key === 'lightVibrant'
+        ? 0.3
+        : key === 'vibrant' || key === 'primary' || key === 'detail'
+          ? 0.2
+          : key === 'secondary'
+            ? 0.14
+            : key === 'dominant'
+              ? 0.08
+              : 0;
     const score = vibranceScore + midLightnessScore + keyBoost - darkPenalty - muddyPenalty - brownPenalty;
     candidates.push({ color, score });
   }
@@ -1031,13 +1035,13 @@ function deriveCardColors(dominant: string): CardColors {
   const safe = normalizeHexColor(dominant);
   const { r, g, b } = hexToRgb(safe);
   const { h, s } = rgbToHsl(r, g, b);
-  const vividSat = Math.max(0.62, Math.min(0.98, s * 1.18));
-  const bg = colorFromHsl(h, vividSat * 0.4, 0.94);
-  const border = colorFromHsl(h, vividSat * 0.48, 0.8);
-  const title = colorFromHsl(h, vividSat * 0.88, 0.40);
-  const subtitle = colorFromHsl(h, vividSat * 0.74, 0.46);
-  const price = colorFromHsl(h, vividSat * 0.9, 0.34);
-  const metaBase = colorFromHsl(h, vividSat * 0.62, 0.52);
+  const vividSat = Math.max(0.58, Math.min(0.92, s * 1.08));
+  const bg = colorFromHsl(h, vividSat * 0.2, 0.965);
+  const border = colorFromHsl(h, vividSat * 0.28, 0.86);
+  const title = colorFromHsl(h, vividSat * 0.72, 0.34);
+  const subtitle = colorFromHsl(h + 8, vividSat * 0.54, 0.42);
+  const price = colorFromHsl(h, vividSat * 0.76, 0.28);
+  const metaBase = colorFromHsl(h + 18, vividSat * 0.48, 0.48);
   return {
     bg,
     border,
