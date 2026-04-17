@@ -828,10 +828,10 @@ function resolveGreetingTitleMetrics(text: string): { fontSize: number; lineHeig
 
 function resolveFoodPhotoTitleMetrics(text: string): { fontSize: number; lineHeight: number } {
   const length = text.trim().length;
-  if (length >= 24) return { fontSize: 31, lineHeight: 35 };
-  if (length >= 18) return { fontSize: 36, lineHeight: 40 };
-  if (length >= 12) return { fontSize: 42, lineHeight: 45 };
-  return { fontSize: 50, lineHeight: 52 };
+  if (length >= 24) return { fontSize: 29, lineHeight: 33 };
+  if (length >= 18) return { fontSize: 34, lineHeight: 38 };
+  if (length >= 12) return { fontSize: 39, lineHeight: 42 };
+  return { fontSize: 46, lineHeight: 48 };
 }
 
 /* ------------------------------------------------------------------ */
@@ -1131,28 +1131,60 @@ function pickLightestPaletteColor(result: any, fallback: string): string {
   return bestColor;
 }
 
-function derivePhotoOverlayText(
-  lightColor: string,
-  seed: string,
-  tone: 'light' | 'dark',
-): { title: string; cuisine: string } {
-  if (tone === 'light') {
-    // Dark photo background → use the lightest extracted color directly
-    const { r, g, b } = hexToRgb(normalizeHexColor(lightColor));
-    const { h, s } = rgbToHsl(r, g, b);
-    return {
-      title: colorFromHsl(h, Math.max(s, 0.50), 0.93),
-      cuisine: colorFromHsl(h + 6, Math.max(s, 0.40), 0.86),
-    };
+// Picks the palette color that contrasts most with the photo's background:
+// highest hue distance + saturation, then lightness is forced to be readable.
+function pickContrastingPaletteColor(result: any, bgHex: string, darkBg: boolean, fallback: string): string {
+  const keys = ['vibrant', 'lightVibrant', 'darkVibrant', 'primary', 'detail', 'secondary', 'muted', 'lightMuted', 'dominant', 'average', 'background'];
+  const bgSafe = normalizeHexColor(bgHex);
+  const { r: br, g: bg2, b: bb } = hexToRgb(bgSafe);
+  const { h: bh } = rgbToHsl(br, bg2, bb);
+
+  type Candidate = { color: string; score: number };
+  const candidates: Candidate[] = [];
+
+  for (const key of keys) {
+    const raw = result?.[key];
+    if (!isPaletteHexColor(raw)) continue;
+    const color = normalizeHexColor(raw);
+    const { r, g, b } = hexToRgb(color);
+    const { h, s, l } = rgbToHsl(r, g, b);
+    if (s < 0.10) continue;
+    // Hue angular distance 0–180
+    const rawDist = Math.abs(h - bh) % 360;
+    const hueDist = rawDist > 180 ? 360 - rawDist : rawDist;
+    const hueScore = hueDist / 180;
+    // Vibrant colors pop more
+    const satScore = s;
+    // Penalise if hue too similar to background
+    const huePenalty = hueDist < 20 ? (20 - hueDist) / 20 * 0.7 : 0;
+    const score = hueScore * 1.5 + satScore * 1.2 - huePenalty;
+    candidates.push({ color, score });
   }
-  // Light photo background → deep dark tinted text
-  const safe = normalizeHexColor(seed);
-  const { r, g, b } = hexToRgb(safe);
+
+  const winner = candidates.length
+    ? candidates.sort((a, b) => b.score - a.score)[0].color
+    : normalizeHexColor(fallback);
+
+  const { r, g, b } = hexToRgb(winner);
   const { h, s } = rgbToHsl(r, g, b);
-  const vividSat = Math.max(0.70, Math.min(0.98, s * 1.28));
+  // For dark photo bg → bright text; for light photo bg → deep text
+  const targetL = darkBg ? 0.22 : 0.88;
+  return colorFromHsl(h, Math.max(s, 0.60), targetL);
+}
+
+function derivePhotoOverlayText(
+  overlayColor: string,
+  _seed: string,
+  _tone: 'light' | 'dark',
+): { title: string; cuisine: string } {
+  // overlayColor is already lightness-adjusted by pickContrastingPaletteColor
+  const { r, g, b } = hexToRgb(normalizeHexColor(overlayColor));
+  const { h, s, l } = rgbToHsl(r, g, b);
+  // Cuisine: same hue family, slightly less bright/dark
+  const cuisineL = l > 0.5 ? Math.max(l - 0.07, 0.72) : Math.min(l + 0.06, 0.30);
   return {
-    title: colorFromHsl(h, vividSat, 0.20),
-    cuisine: colorFromHsl(h + 8, vividSat * 0.84, 0.28),
+    title: overlayColor,
+    cuisine: colorFromHsl(h + 6, Math.max(s * 0.88, 0.32), cuisineL),
   };
 }
 
@@ -1782,9 +1814,13 @@ function FoodCard({
 
         const luminance = relativeLuminanceFromHex(sampledDominant);
         const nextTone: 'light' | 'dark' = luminance > 0.47 ? 'dark' : 'light';
+        // Pick the most hue-contrasting color from the sampled region for overlay text
+        const darkBg = nextTone === 'light'; // dark background → we want bright text
+        const overlayColor = pickContrastingPaletteColor(sampledColors, sampledDominant, darkBg, meal.backgroundColor);
         PHOTO_TEXT_TONE_CACHE.set(toneCacheKey, nextTone);
         if (!cancelled && requestId === textToneRequestRef.current) {
           setPhotoTextTone((prev) => (prev === nextTone ? prev : nextTone));
+          setPhotoLightColor(overlayColor);
         }
       } catch {
         if (!cancelled && requestId === textToneRequestRef.current) {
@@ -6657,7 +6693,7 @@ const styles = StyleSheet.create({
   },
   foodPhotoTitleText: {
     color: '#FFFFFF',
-    fontSize: 46,
+    fontSize: 43,
     fontWeight: '900',
     fontStyle: 'italic',
     letterSpacing: -2,
