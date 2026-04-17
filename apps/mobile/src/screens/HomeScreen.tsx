@@ -6798,9 +6798,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   foodInfoIconBubble: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: '#F3E6D8',
     alignItems: 'center',
     justifyContent: 'center',
@@ -6816,7 +6816,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   foodInfoTextWrapCentered: {
-    minHeight: 34,
+    minHeight: 30,
     justifyContent: 'center',
   },
   foodInfoAlertSlot: {
