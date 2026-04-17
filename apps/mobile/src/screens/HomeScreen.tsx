@@ -1799,7 +1799,7 @@ function FoodCard({
           {LinearGradient ? (
             <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
               <LinearGradient
-                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.22)', 'rgba(0,0,0,0.52)']}
+                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.66)']}
                 locations={[0, 0.52, 1]}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
@@ -6404,7 +6404,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 102,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.34)',
   },
   foodPhotoDotsRow: {
     position: 'absolute',
@@ -6463,9 +6463,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontStyle: 'italic',
     letterSpacing: -2,
-    textShadowColor: 'rgba(0,0,0,0.42)',
+    textShadowColor: 'rgba(0,0,0,0.58)',
     textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    textShadowRadius: 8,
   },
   foodPhotoTitleTextDark: {
     color: '#3A281D',
@@ -6476,9 +6476,9 @@ const styles = StyleSheet.create({
     color: '#F4ECE0',
     fontSize: 15,
     fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowColor: 'rgba(0,0,0,0.62)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2.5,
+    textShadowRadius: 3.5,
   },
   foodPhotoCuisineTextDark: {
     color: '#5A473B',
