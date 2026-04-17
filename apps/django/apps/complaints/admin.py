@@ -81,6 +81,13 @@ def _resolve_admin_actor(request):
     }
 
 
+def _admin_display_name(admin_obj):
+    if not admin_obj:
+        return None
+    full = " ".join(part for part in [getattr(admin_obj, "name", None), getattr(admin_obj, "surname", None)] if part)
+    return full or getattr(admin_obj, "email", None) or None
+
+
 @admin.register(Complaints)
 class ComplaintsAdmin(ModelAdmin):
     list_display = [
@@ -119,6 +126,11 @@ class ComplaintsAdmin(ModelAdmin):
                 "<uuid:complaint_id>/send-message/",
                 self.admin_site.admin_view(self.send_message_view),
                 name="complaints_complaints_send_message",
+            ),
+            path(
+                "<uuid:complaint_id>/add-note/",
+                self.admin_site.admin_view(self.add_note_view),
+                name="complaints_complaints_add_note",
             ),
         ]
         return extra + urls
@@ -396,6 +408,43 @@ class ComplaintsAdmin(ModelAdmin):
         messages.success(request, "Mesaj gönderildi.")
         return redirect(self._detail_url(complaint_id))
 
+    def add_note_view(self, request, complaint_id):
+        if request.method != "POST":
+            return redirect(self._detail_url(complaint_id))
+
+        admin_actor = _resolve_admin_actor(request)
+        if not admin_actor:
+            messages.error(request, "Admin kullanıcısı eşleştirilemedi.")
+            return redirect(self._detail_url(complaint_id))
+
+        note = (request.POST.get("note") or "").strip()
+        if not note:
+            messages.error(request, "Not boş olamaz.")
+            return redirect(self._detail_url(complaint_id))
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO complaint_admin_notes (
+                    id,
+                    complaint_id,
+                    note,
+                    created_by_admin_id,
+                    created_at
+                )
+                VALUES (%s, %s, %s, %s, now())
+                """,
+                [
+                    str(uuid.uuid4()),
+                    str(complaint_id),
+                    note,
+                    admin_actor["id"],
+                ],
+            )
+
+        messages.success(request, "Admin notu eklendi.")
+        return redirect(self._detail_url(complaint_id))
+
     def complaint_detail_view(self, request, complaint_id):
         complaint = get_object_or_404(
             Complaints.objects.select_related(
@@ -424,6 +473,9 @@ class ComplaintsAdmin(ModelAdmin):
             if complaint.assigned_admin_id
             else None
         )
+        assigned_admin_display_name = _admin_display_name(assigned_admin)
+        if complaint.assigned_admin_id and not assigned_admin_display_name:
+            assigned_admin_display_name = f"Admin #{str(complaint.assigned_admin_id)[:8]}"
 
         admin_ids = [n.created_by_admin_id for n in admin_notes if n.created_by_admin_id]
         admins = {
@@ -462,9 +514,11 @@ class ComplaintsAdmin(ModelAdmin):
             "order": order,
             "order_items": order_items,
             "assigned_admin": assigned_admin,
+            "assigned_admin_display_name": assigned_admin_display_name,
             "can_take_over": can_take_over,
             "take_over_url": reverse("admin:complaints_complaints_take_over", args=[str(complaint.id)]),
             "send_message_url": reverse("admin:complaints_complaints_send_message", args=[str(complaint.id)]),
+            "add_note_url": reverse("admin:complaints_complaints_add_note", args=[str(complaint.id)]),
             "buyer_url": buyer_url,
             "seller_url": seller_url,
             "order_url": f"/admin/orders/orders/{complaint.order_id}/change/" if complaint.order_id else None,
