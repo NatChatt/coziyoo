@@ -309,9 +309,6 @@ msgstr "Compliance"
 msgid "Toplam Harcama"
 msgstr "Total Spent"
 
-msgid "Toplam Sipariş"
-msgstr "Total Orders"
-
 msgid "Son Aktivite"
 msgstr "Recent Activity"
 
