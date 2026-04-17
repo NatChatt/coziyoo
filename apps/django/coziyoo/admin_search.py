@@ -134,7 +134,7 @@ def admin_global_search(request):
                     "label": (desc or "")[:60] or f"Şikayet #{cid[:8]}",
                     "sublabel": f"{complainant or '?'} · {STATUS_TR.get(status, status)}",
                     "badge": STATUS_TR.get(status, status),
-                    "url": f"/admin/complaints/complaints/{cid}/change/",
+                    "url": f"/admin/complaints/complaints/{cid}/detail/",
                 })
             groups.append({"key": "complaints", "label": _("Complaints"), "color": "#dc2626", "items": items})
 

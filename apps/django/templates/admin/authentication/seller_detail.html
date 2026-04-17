@@ -708,6 +708,8 @@
           {% for c in complaints %}
           <div data-search="{{ c.description }} {{ c.status_tr }}"
                x-show="!search || $el.dataset.search.toLowerCase().includes(search.toLowerCase())"
+               @click="window.location.href='/admin/complaints/complaints/{{ c.id }}/detail/'"
+               style="cursor:pointer"
                class="border border-base-200 dark:border-base-700 rounded-lg p-4 hover:bg-base-50 dark:hover:bg-base-800/50 transition-colors">
             <div class="flex items-center justify-between mb-1">
               <span class="font-medium text-sm text-base-800 dark:text-base-100">{% if c.description %}{{ c.description|truncatechars:80 }}{% else %}{% trans "Complaint" %}{% endif %}</span>

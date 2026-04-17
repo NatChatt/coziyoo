@@ -1,9 +1,12 @@
 from django.contrib import admin
+from django.shortcuts import get_object_or_404
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 
-from .models import Complaints, ComplaintCategories, ComplaintAdminNotes
+from .models import Complaints, ComplaintCategories, ComplaintAdminNotes, TicketMessages
 
 
 class ComplaintAdminNotesInline(TabularInline):
@@ -44,9 +47,10 @@ PRIORITY_CHOICES = [
 @admin.register(Complaints)
 class ComplaintsAdmin(ModelAdmin):
     list_display = [
-        "ticket_no", "complainant_user", "category", "status_badge",
+        "ticket_link", "complainant_user", "category", "status_badge",
         "priority_badge", "assigned_admin", "created_at",
     ]
+    list_display_links = ["ticket_link"]
     list_select_related = ["complainant_user", "category", "assigned_admin"]
     list_filter = ["status", "priority", "category"]
     search_fields = ["complainant_user__email", "description"]
@@ -60,6 +64,73 @@ class ComplaintsAdmin(ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+    def get_urls(self):
+        urls = super().get_urls()
+        extra = [
+            path(
+                "<uuid:complaint_id>/detail/",
+                self.admin_site.admin_view(self.complaint_detail_view),
+                name="complaints_complaints_detail",
+            ),
+        ]
+        return extra + urls
+
+    def complaint_detail_view(self, request, complaint_id):
+        complaint = get_object_or_404(
+            Complaints.objects.select_related(
+                "category",
+                "complainant_user",
+                "complainant_buyer",
+                "assigned_admin",
+                "order__buyer",
+                "order__seller",
+            ),
+            pk=complaint_id,
+        )
+
+        messages = list(
+            TicketMessages.objects.select_related("author")
+            .filter(complaint_id=complaint_id)
+            .order_by("created_at")
+        )
+        admin_notes = list(
+            ComplaintAdminNotes.objects.select_related("created_by_admin")
+            .filter(complaint_id=complaint_id)
+            .order_by("-created_at")
+        )
+
+        buyer = complaint.order.buyer if complaint.order_id else None
+        seller = complaint.order.seller if complaint.order_id else None
+        complainant = complaint.complainant_user or complaint.complainant_buyer
+
+        buyer_url = (
+            f"{reverse('admin:authentication_buyerusers_buyer_detail', args=[buyer.id])}?tab=complaints"
+            if buyer
+            else None
+        )
+        seller_url = (
+            f"{reverse('admin:authentication_sellerusers_seller_detail', args=[seller.id])}?tab=complaints"
+            if seller
+            else None
+        )
+
+        context = {
+            **self.admin_site.each_context(request),
+            "complaint": complaint,
+            "ticket_messages": messages,
+            "admin_notes": admin_notes,
+            "complainant": complainant,
+            "buyer": buyer,
+            "seller": seller,
+            "buyer_url": buyer_url,
+            "seller_url": seller_url,
+            "order_url": f"/admin/orders/orders/{complaint.order_id}/change/" if complaint.order_id else None,
+            "change_url": f"/admin/complaints/complaints/{complaint.id}/change/",
+            "page_title": f"Şikayet #{complaint.ticket_no}",
+            "title": f"Şikayet #{complaint.ticket_no}",
+        }
+        return TemplateResponse(request, "admin/complaints/complaints/complaint_detail.html", context)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
@@ -78,6 +149,14 @@ class ComplaintsAdmin(ModelAdmin):
         ("Assignment", {"fields": ["assigned_admin"]}),
         ("Meta", {"fields": ["created_at", "resolved_at"]}),
     ]
+
+    @display(description="Ticket", ordering="ticket_no")
+    def ticket_link(self, obj):
+        return format_html(
+            '<a href="/admin/complaints/complaints/{}/detail/" class="font-medium text-primary-600 hover:underline">#{}</a>',
+            obj.id,
+            obj.ticket_no,
+        )
 
     @display(description="Status", ordering="status")
     def status_badge(self, obj):
@@ -103,4 +182,3 @@ class ComplaintsAdmin(ModelAdmin):
             '<span style="color:{};font-weight:600">{}</span>',
             color, obj.priority,
         )
-
