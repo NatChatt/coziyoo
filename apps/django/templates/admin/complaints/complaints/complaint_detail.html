@@ -89,34 +89,34 @@
         <div class="mt-4 pt-4 border-t border-base-200 dark:border-base-700">
           <div class="text-xs uppercase tracking-wide text-base-500 mb-3">Ticket Mesajları</div>
           {% if ticket_messages %}
-          <div class="space-y-4">
+          <div class="space-y-2.5">
             {% for msg in ticket_messages %}
             <div class="flex {% if msg.author_type == 'admin' %}justify-end{% else %}justify-start{% endif %}">
-              <div class="max-w-[85%] rounded-2xl border p-3 shadow-sm
+              <div class="max-w-[72%] rounded-2xl border px-3 py-2.5 shadow-sm
                 {% if msg.author_type == 'admin' %}
                   {% if msg.recipient_role == 'buyer' %}
-                    bg-emerald-100 border-emerald-300 dark:bg-emerald-900/30 dark:border-emerald-700
+                    bg-emerald-100/90 border-emerald-300 dark:bg-emerald-900/25 dark:border-emerald-700
                   {% elif msg.recipient_role == 'seller' %}
-                    bg-amber-100 border-amber-300 dark:bg-amber-900/30 dark:border-amber-700
+                    bg-amber-100/90 border-amber-300 dark:bg-amber-900/25 dark:border-amber-700
                   {% else %}
-                    bg-sky-100 border-sky-300 dark:bg-sky-900/30 dark:border-sky-700
+                    bg-sky-100/90 border-sky-300 dark:bg-sky-900/25 dark:border-sky-700
                   {% endif %}
                 {% else %}
                   {% if buyer and msg.author_user_id == buyer.id|stringformat:'s' %}
-                    bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800
+                    bg-emerald-50 border-emerald-200 dark:bg-emerald-900/15 dark:border-emerald-800
                   {% elif seller and msg.author_user_id == seller.id|stringformat:'s' %}
-                    bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800
+                    bg-amber-50 border-amber-200 dark:bg-amber-900/15 dark:border-amber-800
                   {% else %}
-                    bg-slate-50 border-slate-200 dark:bg-slate-800/60 dark:border-slate-700
+                    bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700
                   {% endif %}
                 {% endif %}">
-                <div class="flex items-center {% if msg.author_type == 'admin' %}justify-end{% else %}justify-between{% endif %} gap-3">
-                  <div class="text-xs font-semibold {% if msg.author_type == 'admin' %}text-base-900 dark:text-base-50 text-right{% else %}text-base-700 dark:text-base-200{% endif %}">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <div class="text-[12px] font-semibold {% if msg.author_type == 'admin' %}text-base-900 dark:text-base-50{% else %}text-base-700 dark:text-base-200{% endif %}">
                     {{ msg.author_name|default:"Bilinmeyen" }}
                   </div>
-                  <div class="text-[11px] {% if msg.author_type == 'admin' %}text-base-600 dark:text-base-300 text-right{% else %}text-base-400{% endif %}">{{ msg.created_at|date:"d.m.Y H:i" }}</div>
+                  <div class="text-[10px] {% if msg.author_type == 'admin' %}text-base-600 dark:text-base-300{% else %}text-base-400{% endif %}">{{ msg.created_at|date:"d.m.Y H:i" }}</div>
                 </div>
-                <p class="text-sm whitespace-pre-wrap mt-1 {% if msg.author_type == 'admin' %}text-base-900 dark:text-base-50 text-right{% else %}text-base-700 dark:text-base-200{% endif %}">{{ msg.body }}</p>
+                <p class="text-[15px] leading-relaxed whitespace-pre-wrap {% if msg.author_type == 'admin' %}text-base-900 dark:text-base-50{% else %}text-base-700 dark:text-base-200{% endif %}">{{ msg.body }}</p>
                 <div class="mt-2 flex {% if msg.author_type == 'admin' %}justify-end{% else %}justify-start{% endif %}">
                   {% if msg.author_type == 'admin' %}
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold
@@ -136,9 +136,6 @@
                     </span>
                   {% endif %}
                 </div>
-                {% if msg.recipient_user_name %}
-                  <p class="text-[11px] mt-1 {% if msg.author_type == 'admin' %}text-base-600 dark:text-base-300 text-right{% else %}text-base-400{% endif %}">Alıcı: {{ msg.recipient_user_name }}</p>
-                {% endif %}
               </div>
             </div>
             {% endfor %}
