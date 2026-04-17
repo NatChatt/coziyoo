@@ -1478,8 +1478,8 @@ function RecommendationCard({
 
     getColors(meal.imageUrl, {
       fallback: meal.backgroundColor,
-      cache: true,
-      key: meal.imageUrl,
+      cache: false,
+      key: `${meal.id}:${meal.imageUrl}`,
     })
       .then((result) => {
         const seed = pickImagePaletteColor(result, meal.backgroundColor);
@@ -1569,8 +1569,8 @@ function FoodCard({
     }
     getColors(primaryImageUrl, {
       fallback: meal.backgroundColor,
-      cache: true,
-      key: primaryImageUrl,
+      cache: false,
+      key: `${meal.id}:${primaryImageUrl}`,
     })
       .then((result) => {
         const seed = pickImagePaletteColor(result, meal.backgroundColor);
