@@ -12,6 +12,23 @@
   .dark [class*="hover\:bg-base-50"]:hover {
     background-color: var(--color-base-800) !important;
   }
+
+  /* Nested cards (cards that contain sub-elements/forms/lists) share the same surface style globally. */
+  #content .rounded-xl.border.border-base-200:has(form),
+  #content .rounded-xl.border.border-base-200:has(.rounded-lg),
+  #content .rounded-xl.border.border-base-200:has(table),
+  #content .rounded-xl.border.border-base-200:has(ul),
+  #content .rounded-xl.border.border-base-200:has(ol) {
+    background-color: var(--color-base-50) !important;
+  }
+
+  .dark #content .rounded-xl.border.border-base-200:has(form),
+  .dark #content .rounded-xl.border.border-base-200:has(.rounded-lg),
+  .dark #content .rounded-xl.border.border-base-200:has(table),
+  .dark #content .rounded-xl.border.border-base-200:has(ul),
+  .dark #content .rounded-xl.border.border-base-200:has(ol) {
+    background-color: var(--color-base-800) !important;
+  }
 </style>
 {% endblock %}
 
