@@ -153,7 +153,17 @@
                 -
               {% endif %}
             </div>
-            {% if buyer_url %}<a href="{{ buyer_url }}" class="text-xs text-primary-600 hover:underline">Buyer detaya git</a>{% endif %}
+            {% if buyer_url %}
+              <a href="{{ buyer_url }}" class="text-xs text-primary-600 hover:underline">
+                {% if buyer and buyer.display_name %}
+                  {{ buyer.display_name }} detayına git
+                {% elif buyer and buyer.email %}
+                  {{ buyer.email }} detayına git
+                {% else %}
+                  Buyer detayına git
+                {% endif %}
+              </a>
+            {% endif %}
           </div>
           <div>
             <div class="text-[11px] text-base-400 mb-0.5">Satıcı</div>
@@ -170,7 +180,17 @@
                 -
               {% endif %}
             </div>
-            {% if seller_url %}<a href="{{ seller_url }}" class="text-xs text-primary-600 hover:underline">Seller detaya git</a>{% endif %}
+            {% if seller_url %}
+              <a href="{{ seller_url }}" class="text-xs text-primary-600 hover:underline">
+                {% if seller and seller.display_name %}
+                  {{ seller.display_name }} detayına git
+                {% elif seller and seller.email %}
+                  {{ seller.email }} detayına git
+                {% else %}
+                  Seller detayına git
+                {% endif %}
+              </a>
+            {% endif %}
           </div>
           <div>
             <div class="text-[11px] text-base-400 mb-0.5">Atanan Admin</div>
