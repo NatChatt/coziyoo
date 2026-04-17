@@ -6,6 +6,8 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 
+from apps.authentication.models import AdminUsers, Users
+from apps.orders.models import Orders
 from .models import Complaints, ComplaintCategories, ComplaintAdminNotes, TicketMessages
 
 
@@ -65,6 +67,9 @@ class ComplaintsAdmin(ModelAdmin):
     def has_add_permission(self, request):
         return False
 
+    class Media:
+        js = ("admin/js/complaints_row_click.js",)
+
     def get_urls(self):
         urls = super().get_urls()
         extra = [
@@ -80,29 +85,45 @@ class ComplaintsAdmin(ModelAdmin):
         complaint = get_object_or_404(
             Complaints.objects.select_related(
                 "category",
-                "complainant_user",
-                "complainant_buyer",
-                "assigned_admin",
-                "order__buyer",
-                "order__seller",
             ),
             pk=complaint_id,
         )
 
         messages = list(
-            TicketMessages.objects.select_related("author")
+            TicketMessages.objects
             .filter(complaint_id=complaint_id)
             .order_by("created_at")
         )
         admin_notes = list(
-            ComplaintAdminNotes.objects.select_related("created_by_admin")
+            ComplaintAdminNotes.objects
             .filter(complaint_id=complaint_id)
             .order_by("-created_at")
         )
 
-        buyer = complaint.order.buyer if complaint.order_id else None
-        seller = complaint.order.seller if complaint.order_id else None
-        complainant = complaint.complainant_user or complaint.complainant_buyer
+        order = Orders.objects.filter(pk=complaint.order_id).first() if complaint.order_id else None
+        complainant_id = complaint.complainant_user_id or complaint.complainant_buyer_id
+        complainant = Users.objects.filter(pk=complainant_id).first() if complainant_id else None
+        buyer = Users.objects.filter(pk=order.buyer_id).first() if order and getattr(order, "buyer_id", None) else None
+        seller = Users.objects.filter(pk=order.seller_id).first() if order and getattr(order, "seller_id", None) else None
+        assigned_admin = (
+            AdminUsers.objects.filter(pk=complaint.assigned_admin_id).first()
+            if complaint.assigned_admin_id
+            else None
+        )
+        author_ids = [m.author_id for m in messages if m.author_id]
+        authors = {
+            user.id: user
+            for user in Users.objects.filter(id__in=author_ids)
+        }
+        for message in messages:
+            message.author_obj = authors.get(message.author_id)
+        admin_ids = [n.created_by_admin_id for n in admin_notes if n.created_by_admin_id]
+        admins = {
+            adm.id: adm
+            for adm in AdminUsers.objects.filter(id__in=admin_ids)
+        }
+        for note in admin_notes:
+            note.created_by_admin_obj = admins.get(note.created_by_admin_id)
 
         buyer_url = (
             f"{reverse('admin:authentication_buyerusers_buyer_detail', args=[buyer.id])}?tab=complaints"
@@ -123,6 +144,8 @@ class ComplaintsAdmin(ModelAdmin):
             "complainant": complainant,
             "buyer": buyer,
             "seller": seller,
+            "order": order,
+            "assigned_admin": assigned_admin,
             "buyer_url": buyer_url,
             "seller_url": seller_url,
             "order_url": f"/admin/orders/orders/{complaint.order_id}/change/" if complaint.order_id else None,

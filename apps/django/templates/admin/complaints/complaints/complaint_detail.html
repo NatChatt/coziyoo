@@ -58,7 +58,7 @@
           <div class="rounded-lg border border-base-100 dark:border-base-800 p-3">
             <div class="flex items-center justify-between gap-3 mb-1">
               <div class="text-xs font-semibold text-base-700 dark:text-base-200">
-                {{ msg.author.display_name|default:msg.author.email|default:"Bilinmeyen" }}
+                {{ msg.author_obj.display_name|default:msg.author_obj.email|default:"Bilinmeyen" }}
                 <span class="ml-1 px-1.5 py-0.5 rounded bg-base-100 dark:bg-base-800 text-[10px] font-medium text-base-500">{{ msg.author_type }}</span>
               </div>
               <div class="text-[11px] text-base-400">{{ msg.created_at|date:"d.m.Y H:i" }}</div>
@@ -83,7 +83,7 @@
           <div class="rounded-lg border border-base-100 dark:border-base-800 p-3">
             <div class="flex items-center justify-between gap-3 mb-1">
               <div class="text-xs font-semibold text-base-700 dark:text-base-200">
-                {{ note.created_by_admin.name|default:note.created_by_admin.email|default:"Admin" }}
+                {{ note.created_by_admin_obj.name|default:note.created_by_admin_obj.email|default:"Admin" }}
               </div>
               <div class="text-[11px] text-base-400">{{ note.created_at|date:"d.m.Y H:i" }}</div>
             </div>
@@ -118,7 +118,7 @@
           </div>
           <div>
             <div class="text-[11px] text-base-400 mb-0.5">Atanan Admin</div>
-            <div class="font-medium text-base-800 dark:text-base-100">{{ complaint.assigned_admin.name|default:complaint.assigned_admin.email|default:"-" }}</div>
+            <div class="font-medium text-base-800 dark:text-base-100">{{ assigned_admin.name|default:assigned_admin.email|default:"-" }}</div>
           </div>
         </div>
       </div>
@@ -132,19 +132,19 @@
           </div>
           <div class="flex items-center justify-between">
             <span class="text-base-500">Durum</span>
-            <span class="font-medium text-base-800 dark:text-base-100">{{ complaint.order.status|default:"-" }}</span>
+            <span class="font-medium text-base-800 dark:text-base-100">{{ order.status|default:"-" }}</span>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-base-500">Teslimat</span>
-            <span class="font-medium text-base-800 dark:text-base-100">{{ complaint.order.active_delivery_type|default:complaint.order.delivery_type|default:"-" }}</span>
+            <span class="font-medium text-base-800 dark:text-base-100">{{ order.active_delivery_type|default:order.delivery_type|default:"-" }}</span>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-base-500">Tutar</span>
-            <span class="font-medium text-base-800 dark:text-base-100">₺{{ complaint.order.total_price|default:"-" }}</span>
+            <span class="font-medium text-base-800 dark:text-base-100">₺{{ order.total_price|default:"-" }}</span>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-base-500">Oluşturma</span>
-            <span class="text-xs text-base-700 dark:text-base-200">{{ complaint.order.created_at|date:"d.m.Y H:i" }}</span>
+            <span class="text-xs text-base-700 dark:text-base-200">{{ order.created_at|date:"d.m.Y H:i" }}</span>
           </div>
         </div>
         {% if order_url %}
