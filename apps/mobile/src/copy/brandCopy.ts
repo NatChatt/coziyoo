@@ -792,6 +792,7 @@ export const brandCopy = {
   'status.ticket.lastActivity': 'Son hareket: {date}',
   'status.ticket.state.open': 'Açık',
   'status.ticket.state.in_review': 'İnceleniyor',
+  'status.ticket.state.awaiting_response': 'Cevap Bekleniyor',
   'status.ticket.state.resolved': 'Çözüldü',
   'status.ticket.state.closed': 'Kapandı',
   'status.ticket.priority.low': 'Düşük',
@@ -2228,6 +2229,7 @@ const brandCopyEn: Partial<Record<BrandCopyKey, string>> = {
   'status.ticket.lastActivity': 'Last activity: {date}',
   'status.ticket.state.open': 'Open',
   'status.ticket.state.in_review': 'In Review',
+  'status.ticket.state.awaiting_response': 'Awaiting Response',
   'status.ticket.state.resolved': 'Resolved',
   'status.ticket.state.closed': 'Closed',
 

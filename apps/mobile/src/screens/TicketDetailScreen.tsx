@@ -21,7 +21,7 @@ type TicketDetail = {
   id: string;
   ticketNo: number;
   orderId?: string | null;
-  status: 'open' | 'in_review' | 'resolved' | 'closed';
+  status: 'open' | 'in_review' | 'awaiting_response' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category?: string | null;
   categoryName?: string | null;
@@ -41,6 +41,7 @@ type Props = {
 function statusLabel(status: TicketDetail['status']) {
   if (status === 'open') return t('status.ticket.state.open');
   if (status === 'in_review') return t('status.ticket.state.in_review');
+  if (status === 'awaiting_response') return t('status.ticket.state.awaiting_response');
   if (status === 'resolved') return t('status.ticket.state.resolved');
   return t('status.ticket.state.closed');
 }
@@ -113,6 +114,7 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
   }
 
   const closed = ticket?.status === 'resolved' || ticket?.status === 'closed';
+  const messagingEnabled = ticket?.status === 'in_review' || ticket?.status === 'awaiting_response';
 
   return (
     <View style={styles.container}>
@@ -138,39 +140,42 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
               {ticket.description ? <Text style={styles.description}>{ticket.description}</Text> : null}
             </View>
 
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>{t('label.ticket.messages')}</Text>
-              {ticket.messages?.length === 0 ? (
-                <Text style={styles.meta}>{t('helper.ticket.noMessages')}</Text>
-              ) : (
-                ticket.messages?.map((item) => (
-                  <View key={item.id} style={[styles.messageBubble, item.senderRole === 'buyer' ? styles.messageMine : styles.messageSupport]}>
-                    <Text style={styles.messageAuthor}>{item.senderRole === 'buyer' ? t('status.ticket.authorBuyer') : item.senderName || t('status.ticket.authorSupport')}</Text>
-                    <Text style={styles.messageText}>{item.message}</Text>
-                    <Text style={styles.messageTime}>{new Date(item.createdAt).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR')}</Text>
-                  </View>
-                ))
-              )}
-            </View>
+            {messagingEnabled && (
+              <>
+                <View style={styles.card}>
+                  <Text style={styles.sectionTitle}>{t('label.ticket.messages')}</Text>
+                  {ticket.messages?.length === 0 ? (
+                    <Text style={styles.meta}>{t('helper.ticket.noMessages')}</Text>
+                  ) : (
+                    ticket.messages?.map((item) => (
+                      <View key={item.id} style={[styles.messageBubble, item.senderRole === 'buyer' ? styles.messageMine : styles.messageSupport]}>
+                        <Text style={styles.messageAuthor}>{item.senderRole === 'buyer' ? t('status.ticket.authorBuyer') : item.senderName || t('status.ticket.authorSupport')}</Text>
+                        <Text style={styles.messageText}>{item.message}</Text>
+                        <Text style={styles.messageTime}>{new Date(item.createdAt).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR')}</Text>
+                      </View>
+                    ))
+                  )}
+                </View>
 
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>{t('label.ticket.supportMessage')}</Text>
-              <TextInput
-                value={message}
-                onChangeText={setMessage}
-                placeholder={closed ? t('helper.ticket.closedMessagePlaceholder') : t('helper.ticket.messagePlaceholder')}
-                editable={!closed}
-                multiline
-                style={[styles.input, closed && styles.inputDisabled]}
-              />
-              <ActionButton
-                label={t('cta.ticket.sendMessage')}
-                onPress={() => void handleSendMessage()}
-                disabled={closed || message.trim().length < 2}
-                loading={sending}
-                fullWidth
-              />
-            </View>
+                <View style={styles.card}>
+                  <Text style={styles.sectionTitle}>{t('label.ticket.supportMessage')}</Text>
+                  <TextInput
+                    value={message}
+                    onChangeText={setMessage}
+                    placeholder={t('helper.ticket.messagePlaceholder')}
+                    multiline
+                    style={styles.input}
+                  />
+                  <ActionButton
+                    label={t('cta.ticket.sendMessage')}
+                    onPress={() => void handleSendMessage()}
+                    disabled={message.trim().length < 2}
+                    loading={sending}
+                    fullWidth
+                  />
+                </View>
+              </>
+            )}
           </>
         ) : null}
       </ScrollView>

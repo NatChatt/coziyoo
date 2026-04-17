@@ -57,6 +57,7 @@ class ComplaintsAdmin(ModelAdmin):
     def status_badge(self, obj):
         colors = {
             "open": "#2563eb", "in_review": "#d97706",
+            "awaiting_response": "#9333ea",
             "resolved": "#16a34a", "closed": "#6b7280",
         }
         color = colors.get(obj.status, "#6b7280")
