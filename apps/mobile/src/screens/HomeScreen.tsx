@@ -828,10 +828,10 @@ function resolveGreetingTitleMetrics(text: string): { fontSize: number; lineHeig
 
 function resolveFoodPhotoTitleMetrics(text: string): { fontSize: number; lineHeight: number } {
   const length = text.trim().length;
-  if (length >= 24) return { fontSize: 29, lineHeight: 33 };
-  if (length >= 18) return { fontSize: 34, lineHeight: 38 };
-  if (length >= 12) return { fontSize: 39, lineHeight: 42 };
-  return { fontSize: 46, lineHeight: 48 };
+  if (length >= 24) return { fontSize: 26, lineHeight: 30 };
+  if (length >= 18) return { fontSize: 31, lineHeight: 35 };
+  if (length >= 12) return { fontSize: 36, lineHeight: 39 };
+  return { fontSize: 42, lineHeight: 44 };
 }
 
 /* ------------------------------------------------------------------ */
@@ -6693,7 +6693,7 @@ const styles = StyleSheet.create({
   },
   foodPhotoTitleText: {
     color: '#FFFFFF',
-    fontSize: 43,
+    fontSize: 39,
     fontWeight: '900',
     fontStyle: 'italic',
     letterSpacing: -2,
