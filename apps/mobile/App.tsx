@@ -899,6 +899,7 @@ export default function App() {
       initialTab={homeTab}
       onOpenSettings={() => setScreen('settings')}
       onOpenOrders={() => setScreen('orders')}
+      onOpenComplaints={() => setScreen('ticketList')}
       onOpenOrderDetail={(id) => {
         setSelectedOrderId(id);
         setOrderDetailBackTarget('home');

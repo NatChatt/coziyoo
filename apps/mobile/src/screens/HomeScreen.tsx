@@ -190,6 +190,7 @@ type Props = {
   initialTab?: TabKey;
   onOpenSettings: () => void;
   onOpenOrders: () => void;
+  onOpenComplaints: () => void;
   onOpenOrderDetail?: (orderId: string) => void;
   onOpenPayment?: (orderId: string) => void;
   onOpenNotifications?: () => void;
@@ -2211,6 +2212,7 @@ export default function HomeScreen({
   initialTab,
   onOpenSettings,
   onOpenOrders,
+  onOpenComplaints,
   onOpenOrderDetail,
   onOpenPayment,
   onOpenNotifications,
@@ -4810,6 +4812,22 @@ export default function HomeScreen({
                 <View style={styles.profileActionTextBlock}>
                   <Text style={styles.profileActionTitle}>{t('cta.home.myOrders')}</Text>
                   <Text style={styles.profileActionSubtitle}>{t('helper.home.myOrdersHint')}</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#A79B8E" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.profileActionRow, styles.profileActionRowDivider]}
+              onPress={onOpenComplaints}
+              activeOpacity={0.85}
+            >
+              <View style={styles.profileActionMain}>
+                <View style={[styles.profileActionIconWrap, { backgroundColor: '#FCEFE7' }]}>
+                  <Ionicons name="chatbubbles-outline" size={18} color="#B45C37" />
+                </View>
+                <View style={styles.profileActionTextBlock}>
+                  <Text style={styles.profileActionTitle}>{t('headline.ticket.list')}</Text>
+                  <Text style={styles.profileActionSubtitle}>{t('helper.settings.supportTicketsBody')}</Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#A79B8E" />
