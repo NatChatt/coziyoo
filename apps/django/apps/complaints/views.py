@@ -30,9 +30,16 @@ class ComplaintListCreateView(APIView):
                     LEFT JOIN complaint_categories cc ON cc.id = c.category_id
                     LEFT JOIN orders o ON o.id = c.order_id
                     WHERE o.seller_id = %s
+                      AND EXISTS (
+                          SELECT 1
+                          FROM ticket_messages tm
+                          WHERE tm.complaint_id = c.id
+                            AND tm.author_type = 'admin'
+                            AND tm.recipient_user_id = %s
+                      )
                     ORDER BY c.created_at DESC
                     """,
-                    [user_id],
+                    [user_id, user_id],
                 )
             else:
                 cur.execute(
@@ -158,8 +165,15 @@ class ComplaintDetailView(APIView):
                     LEFT JOIN orders o ON o.id = c.order_id
                     WHERE c.id = %s
                       AND o.seller_id = %s
+                      AND EXISTS (
+                          SELECT 1
+                          FROM ticket_messages tm
+                          WHERE tm.complaint_id = c.id
+                            AND tm.author_type = 'admin'
+                            AND tm.recipient_user_id = %s
+                      )
                     """,
-                    [complaint_id, user_id],
+                    [complaint_id, user_id, user_id],
                 )
             else:
                 cur.execute(
@@ -305,8 +319,15 @@ class ComplaintMessagesView(APIView):
                     LEFT JOIN orders o ON o.id = c.order_id
                     WHERE c.id = %s
                       AND o.seller_id = %s
+                      AND EXISTS (
+                          SELECT 1
+                          FROM ticket_messages tm
+                          WHERE tm.complaint_id = c.id
+                            AND tm.author_type = 'admin'
+                            AND tm.recipient_user_id = %s
+                      )
                     """,
-                    [complaint_id, user_id],
+                    [complaint_id, user_id, user_id],
                 )
             else:
                 cur.execute(

@@ -147,7 +147,7 @@ export default function TicketDetailScreen({ auth, actorRole, ticketId, onBack, 
               {ticket.description ? <Text style={styles.description}>{ticket.description}</Text> : null}
             </View>
 
-            {!messagingEnabled && !closed && (
+            {actorRole === 'buyer' && !messagingEnabled && !closed && (
               <View style={styles.infoCard}>
                 <Ionicons name="time-outline" size={20} color="#7A6E61" />
                 <Text style={styles.infoText}>{t('helper.ticket.underReview')}</Text>
