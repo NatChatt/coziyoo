@@ -21,7 +21,7 @@ class ComplaintListCreateView(APIView):
                        cc.name AS category_name
                 FROM complaints c
                 LEFT JOIN complaint_categories cc ON cc.id = c.category_id
-                WHERE c.complainant_user_id = %s
+                WHERE COALESCE(c.complainant_user_id, c.complainant_buyer_id) = %s
                 ORDER BY c.created_at DESC
                 """,
                 [user_id],
@@ -104,7 +104,7 @@ class ComplaintDetailView(APIView):
                        c.ticket_no, cc.name AS category_name, c.resolution_note
                 FROM complaints c
                 LEFT JOIN complaint_categories cc ON cc.id = c.category_id
-                WHERE c.id = %s AND c.complainant_user_id = %s
+                WHERE c.id = %s AND COALESCE(c.complainant_user_id, c.complainant_buyer_id) = %s
                 """,
                 [complaint_id, user_id],
             )
@@ -224,7 +224,7 @@ class ComplaintMessagesView(APIView):
 
         with connection.cursor() as cur:
             cur.execute(
-                "SELECT id, status FROM complaints WHERE id = %s AND complainant_user_id = %s",
+                "SELECT id, status FROM complaints WHERE id = %s AND COALESCE(complainant_user_id, complainant_buyer_id) = %s",
                 [complaint_id, user_id],
             )
             complaint_row = cur.fetchone()
