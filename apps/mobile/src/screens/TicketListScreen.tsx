@@ -121,20 +121,22 @@ export default function TicketListScreen({ auth, actorRole, onBack, onOpenTicket
         {tickets.map((item) => (
           <TouchableOpacity key={item.id} style={styles.ticketCard} activeOpacity={0.75} onPress={() => onOpenTicket(item.id)}>
             <View style={styles.ticketHead}>
-              <Text style={styles.ticketNo}>#{item.ticketNo}</Text>
+              <View style={styles.ticketHeadLeft}>
+                <Text style={styles.ticketFood} numberOfLines={1}>
+                  {item.primaryFoodName ?? t('helper.orders.itemsFallback')}
+                  {item.orderId ? ` • ${deliveryTypeLabel(item.deliveryType)}` : ''}
+                </Text>
+                <Text style={styles.ticketNo}>#{item.ticketNo}</Text>
+              </View>
               <View style={[styles.badge, { backgroundColor: `${statusColor(item.status)}1A` }]}>
                 <Text style={[styles.badgeText, { color: statusColor(item.status) }]}>{statusLabel(item.status)}</Text>
               </View>
             </View>
             <Text style={styles.ticketCategory}>{item.categoryName ?? t('status.ticket.categoryFallback')}</Text>
-            <Text style={styles.ticketFood}>{item.primaryFoodName ?? t('helper.orders.itemsFallback')}</Text>
             {item.orderId ? (
               <Text style={styles.ticketMeta}>
                 {formatCopy('status.ticket.orderLabel', { id: item.orderId.slice(0, 8).toUpperCase() })}
               </Text>
-            ) : null}
-            {item.orderId ? (
-              <Text style={styles.ticketDeliveryType}>{deliveryTypeLabel(item.deliveryType)}</Text>
             ) : null}
             <Text style={styles.ticketMeta}>
               {formatCopy('status.ticket.lastActivity', {
@@ -175,11 +177,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   ticketHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  ticketHeadLeft: { flex: 1, marginRight: 8 },
   ticketNo: { color: theme.text, fontSize: 16, fontWeight: '800' },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText: { fontSize: 11, fontWeight: '700' },
   ticketCategory: { color: theme.text, fontSize: 15, fontWeight: '700' },
   ticketFood: { color: '#4D4339', fontSize: 14, fontWeight: '700' },
-  ticketDeliveryType: { color: '#2F6F4A', fontSize: 13, fontWeight: '800' },
   ticketMeta: { color: '#7A6E61', fontSize: 13, fontWeight: '500' },
 });
