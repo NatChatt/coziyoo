@@ -57,7 +57,6 @@
       "Bash(npx expo:*)",
       "Bash(open /Users/ismetkarakus/Work/coziyoo-v2/apps/mobile/ios/Coziyoo.xcworkspace)",
       "Bash(psql \"$DATABASE_URL\" -c \"SELECT column_name FROM information_schema.columns WHERE table_name=''users'' AND column_name IN \\(''kitchen_title'',''kitchen_description'',''delivery_radius_km'',''working_hours_json'',''seller_profile_status''\\);\")",
-      "Bash(psql \"postgresql://postgres.yhfribehpmkbjrrgixsv:t6gOe6V8SsO4rU@aws-1-eu-central-1.pooler.supabase.com:6543/postgres\" -c \"SELECT column_name FROM information_schema.columns WHERE table_name = ''foods'' ORDER BY column_name;\")",
       "Bash(brew install:*)",
       "Bash(find /Users/ismetkarakus/Work/coziyoo-v2/apps/mobile -name *.json -o -name *.js -o -name .env*)",
       "Bash(env)",
@@ -84,7 +83,10 @@
       "mcp__2142179a-5882-4d24-9788-c174d77cac66__get_advisors",
       "Bash(xargs cat:*)",
       "Bash(msgfmt /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/tr/LC_MESSAGES/django.po -o /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/tr/LC_MESSAGES/django.mo)",
-      "Bash(msgfmt /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/en/LC_MESSAGES/django.po -o /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/en/LC_MESSAGES/django.mo)"
+      "Bash(msgfmt /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/en/LC_MESSAGES/django.po -o /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/en/LC_MESSAGES/django.mo)",
+      "Bash(psql \"$DATABASE_URL\" -c \"SELECT id, code, name, is_active FROM complaint_categories ORDER BY created_at;\")",
+      "Bash(psql \"$DATABASE_URL\" -c \"\\\\d orders\")",
+      "Bash(psql \"$DATABASE_URL\" -c \"\\\\d complaints\")"
     ],
     "additionalDirectories": [
       "/tmp",
