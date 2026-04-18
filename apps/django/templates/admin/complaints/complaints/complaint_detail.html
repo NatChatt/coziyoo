@@ -192,7 +192,7 @@
             <div class="mt-2 flex flex-wrap gap-2">
               <label class="inline-flex items-center gap-2 rounded-full border border-sky-300 bg-sky-100/70 px-3 py-1.5 text-xs font-semibold text-sky-800 dark:border-sky-700 dark:bg-sky-900/25 dark:text-sky-200 cursor-pointer">
                 <input type="radio" name="recipient_role" value="complainant" class="accent-sky-600" checked>
-                Şikayetçi
+                Şikayetçi Alıcı
               </label>
               {% if buyer %}
               <label class="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-emerald-100/70 px-3 py-1.5 text-xs font-semibold text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-200 cursor-pointer">
@@ -204,6 +204,11 @@
               <label class="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-100/70 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-900/25 dark:text-amber-200 cursor-pointer">
                 <input type="radio" name="recipient_role" value="seller" class="accent-amber-600">
                 Satıcı
+                {% if not seller_thread_opened %}
+                <span class="rounded-full bg-amber-200/80 dark:bg-amber-800/60 px-1.5 py-0.5 text-[10px] leading-none font-bold text-amber-900 dark:text-amber-100">
+                  Henüz dahil edilmedi
+                </span>
+                {% endif %}
               </label>
               {% endif %}
             </div>
@@ -218,30 +223,6 @@
             </button>
           </div>
         </form>
-        {% if seller %}
-        <div class="mt-4 rounded-lg border border-amber-300/70 dark:border-amber-700/60 bg-amber-50/70 dark:bg-amber-900/20 p-3">
-          <div class="flex items-center justify-between gap-2 mb-2">
-            <div class="text-xs font-semibold tracking-wide text-amber-800 dark:text-amber-200 uppercase">Satıcıya Mesaj Alanı</div>
-            {% if seller_thread_opened %}
-            <span class="rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Satıcı dahil edildi</span>
-            {% else %}
-            <span class="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Henüz dahil edilmedi</span>
-            {% endif %}
-          </div>
-          <p class="text-xs text-base-600 dark:text-base-300 mb-2">
-            Bu alandan satıcıyı sürece dahil edebilir ve doğrudan satıcıya mesaj gönderebilirsin.
-          </p>
-          <form method="post" action="{{ send_message_url }}" class="space-y-2">
-            {% csrf_token %}
-            <input type="hidden" name="recipient_role" value="seller">
-            <textarea name="message" rows="2" class="w-full rounded-lg border border-base-300 dark:border-base-700 bg-white dark:bg-base-900 px-3 py-2 text-sm text-base-800 dark:text-base-100" placeholder="Satıcıya iletilecek mesajı yaz..."></textarea>
-            <button type="submit" class="inline-flex items-center gap-1 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700">
-              <span class="material-symbols-outlined text-sm">outgoing_mail</span>
-              {% if seller_thread_opened %}Satıcıya Mesaj Gönder{% else %}Satıcıyı Dahil Et ve Mesaj Gönder{% endif %}
-            </button>
-          </form>
-        </div>
-        {% endif %}
         <div class="mt-4 pt-4 border-t border-base-200 dark:border-base-700">
           <div class="text-xs uppercase tracking-wide text-base-500 mb-3">Ticket Mesajları</div>
           {% if ticket_messages %}
