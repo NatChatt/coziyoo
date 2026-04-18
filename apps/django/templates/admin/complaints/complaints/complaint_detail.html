@@ -349,6 +349,16 @@
                 <a href="{{ buyer_url }}" class="text-sm text-primary-600 hover:underline whitespace-nowrap">Alıcı detayına git</a>
               {% endif %}
             </div>
+            <div class="text-xs text-base-500 mt-1">
+              Yemek:
+              {% if order_items %}
+                {% for item in order_items %}
+                  {{ item.food_name }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+              {% else %}
+                -
+              {% endif %}
+            </div>
           </div>
           <div>
             <div class="text-xs text-base-400 mb-0.5">Satıcı</div>
@@ -368,6 +378,16 @@
               </div>
               {% if seller_url %}
                 <a href="{{ seller_url }}" class="text-sm text-primary-600 hover:underline whitespace-nowrap">Satıcı detayına git</a>
+              {% endif %}
+            </div>
+            <div class="text-xs text-base-500 mt-1">
+              Yemek:
+              {% if order_items %}
+                {% for item in order_items %}
+                  {{ item.food_name }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+              {% else %}
+                -
               {% endif %}
             </div>
           </div>
