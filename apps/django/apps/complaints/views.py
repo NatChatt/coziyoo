@@ -96,6 +96,7 @@ class ComplaintDetailView(APIView):
 
     def get(self, request, complaint_id):
         user_id = request.user.id
+        user_id_str = str(user_id)
         with connection.cursor() as cur:
             cur.execute(
                 """
@@ -165,9 +166,45 @@ class ComplaintDetailView(APIView):
                         "body": msg[6],
                         "createdAt": msg[7].isoformat() if msg[7] else None,
                     })
+            initial_body = (item.get("description") or "").strip()
+            has_initial_message = any(
+                m.get("authorType") == "user"
+                and m.get("authorUserId") == user_id_str
+                and (m.get("body") or "").strip() == initial_body
+                for m in messages
+            )
+            if initial_body and not has_initial_message:
+                messages.insert(0, {
+                    "id": f"initial-{item['id']}",
+                    "authorType": "user",
+                    "authorUserId": user_id_str,
+                    "authorAdminId": None,
+                    "recipientUserId": None,
+                    "recipientRole": "admin",
+                    "senderName": "Sen",
+                    "recipientName": "Admin",
+                    "body": initial_body,
+                    "createdAt": item.get("createdAt"),
+                })
+
             item["messages"] = messages
         except ProgrammingError:
-            item["messages"] = []
+            initial_body = (item.get("description") or "").strip()
+            if initial_body:
+                item["messages"] = [{
+                    "id": f"initial-{item['id']}",
+                    "authorType": "user",
+                    "authorUserId": user_id_str,
+                    "authorAdminId": None,
+                    "recipientUserId": None,
+                    "recipientRole": "admin",
+                    "senderName": "Sen",
+                    "recipientName": "Admin",
+                    "body": initial_body,
+                    "createdAt": item.get("createdAt"),
+                }]
+            else:
+                item["messages"] = []
 
         return Response({"data": item})
 
@@ -187,17 +224,42 @@ class ComplaintMessagesView(APIView):
 
         with connection.cursor() as cur:
             cur.execute(
-                "SELECT id FROM complaints WHERE id = %s AND complainant_user_id = %s",
+                "SELECT id, status FROM complaints WHERE id = %s AND complainant_user_id = %s",
                 [complaint_id, user_id],
             )
-            if not cur.fetchone():
+            complaint_row = cur.fetchone()
+            if not complaint_row:
                 return Response(
                     {"error": {"code": "NOT_FOUND", "message": "Ticket not found"}},
                     status=404,
                 )
+            complaint_status = str(complaint_row[1] or "").strip().lower()
+            if complaint_status in {"resolved", "closed"}:
+                return Response(
+                    {"error": {"code": "TICKET_CLOSED", "message": "Ticket is closed for messaging"}},
+                    status=409,
+                )
 
         try:
             with connection.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM ticket_messages tm
+                    WHERE tm.complaint_id = %s
+                      AND tm.author_type = 'admin'
+                      AND (tm.recipient_user_id = %s OR tm.recipient_role = 'complainant')
+                    LIMIT 1
+                    """,
+                    [complaint_id, user_id],
+                )
+                admin_started = cur.fetchone() is not None
+                if not admin_started:
+                    return Response(
+                        {"error": {"code": "ADMIN_REPLY_REQUIRED", "message": "Admin must send the first reply"}},
+                        status=409,
+                    )
+
                 cur.execute(
                     """
                     INSERT INTO ticket_messages (

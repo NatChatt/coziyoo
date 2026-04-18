@@ -11,11 +11,14 @@ import { getCurrentLanguage } from '../utils/settings';
 
 type TicketMessage = {
   id: string;
-  senderRole: 'buyer' | 'admin';
-  senderName: string;
-  senderUserId: string;
-  message: string;
-  createdAt: string;
+  authorType: 'user' | 'admin';
+  authorUserId?: string | null;
+  authorAdminId?: string | null;
+  recipientUserId?: string | null;
+  recipientRole?: string | null;
+  senderName?: string | null;
+  body: string;
+  createdAt?: string | null;
 };
 
 type TicketDetail = {
@@ -94,6 +97,7 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
   }, [ticketId]);
 
   async function handleSendMessage() {
+    if (!ticket) return;
     if (message.trim().length < 2) {
       Alert.alert(t('error.ticket.messageTooShortTitle'), t('error.ticket.messageTooShortBody'));
       return;
@@ -115,7 +119,8 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
   }
 
   const closed = ticket?.status === 'resolved' || ticket?.status === 'closed';
-  const messagingEnabled = ticket?.status === 'in_review' || ticket?.status === 'awaiting_response';
+  const hasAdminReply = Boolean(ticket?.messages?.some((item) => item.authorType === 'admin'));
+  const messagingEnabled = Boolean(ticket && hasAdminReply && !closed);
 
   return (
     <View style={styles.container}>
@@ -148,42 +153,53 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
               </View>
             )}
 
-            {messagingEnabled && (
-              <>
-                <View style={styles.card}>
-                  <Text style={styles.sectionTitle}>{t('label.ticket.messages')}</Text>
-                  {ticket.messages?.length === 0 ? (
-                    <Text style={styles.meta}>{t('helper.ticket.noMessages')}</Text>
-                  ) : (
-                    ticket.messages?.map((item) => (
-                      <View key={item.id} style={[styles.messageBubble, item.senderRole === 'buyer' ? styles.messageMine : styles.messageSupport]}>
-                        <Text style={styles.messageAuthor}>{item.senderRole === 'buyer' ? t('status.ticket.authorBuyer') : item.senderName || t('status.ticket.authorSupport')}</Text>
-                        <Text style={styles.messageText}>{item.message}</Text>
-                        <Text style={styles.messageTime}>{new Date(item.createdAt).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR')}</Text>
-                      </View>
-                    ))
-                  )}
-                </View>
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t('label.ticket.messages')}</Text>
+              {ticket.messages?.length === 0 ? (
+                <Text style={styles.meta}>{t('helper.ticket.noMessages')}</Text>
+              ) : (
+                ticket.messages?.map((item) => (
+                  <View key={item.id} style={[styles.messageBubble, item.authorType === 'admin' ? styles.messageSupport : styles.messageMine]}>
+                    <Text style={styles.messageAuthor}>
+                      {item.authorType === 'admin'
+                        ? (item.senderName || t('status.ticket.authorSupport'))
+                        : t('status.ticket.authorBuyer')}
+                    </Text>
+                    <Text style={styles.messageText}>{item.body}</Text>
+                    {item.createdAt ? (
+                      <Text style={styles.messageTime}>
+                        {new Date(item.createdAt).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR')}
+                      </Text>
+                    ) : null}
+                  </View>
+                ))
+              )}
+            </View>
 
-                <View style={styles.card}>
-                  <Text style={styles.sectionTitle}>{t('label.ticket.supportMessage')}</Text>
-                  <TextInput
-                    value={message}
-                    onChangeText={setMessage}
-                    placeholder={t('helper.ticket.messagePlaceholder')}
-                    multiline
-                    style={styles.input}
-                  />
-                  <ActionButton
-                    label={t('cta.ticket.sendMessage')}
-                    onPress={() => void handleSendMessage()}
-                    disabled={message.trim().length < 2}
-                    loading={sending}
-                    fullWidth
-                  />
-                </View>
-              </>
-            )}
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t('label.ticket.supportMessage')}</Text>
+              <TextInput
+                value={message}
+                onChangeText={setMessage}
+                placeholder={
+                  closed
+                    ? t('helper.ticket.closedMessagePlaceholder')
+                    : hasAdminReply
+                      ? t('helper.ticket.messagePlaceholder')
+                      : t('helper.ticket.underReview')
+                }
+                editable={messagingEnabled}
+                multiline
+                style={[styles.input, !messagingEnabled && styles.inputDisabled]}
+              />
+              <ActionButton
+                label={t('cta.ticket.sendMessage')}
+                onPress={() => void handleSendMessage()}
+                disabled={!messagingEnabled || message.trim().length < 2}
+                loading={sending}
+                fullWidth
+              />
+            </View>
           </>
         ) : null}
       </ScrollView>
