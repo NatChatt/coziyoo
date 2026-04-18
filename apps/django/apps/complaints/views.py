@@ -82,6 +82,30 @@ class ComplaintListCreateView(APIView):
         with connection.cursor() as cur:
             cur.execute(
                 """
+                SELECT id, ticket_no
+                FROM complaints
+                WHERE order_id = %s
+                  AND COALESCE(complainant_user_id, complainant_buyer_id) = %s
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                [order_id, user_id],
+            )
+            existing = cur.fetchone()
+            if existing:
+                return Response(
+                    {
+                        "error": {
+                            "code": "DUPLICATE_COMPLAINT",
+                            "message": "A complaint already exists for this order",
+                        }
+                    },
+                    status=409,
+                )
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
                 INSERT INTO complaints (complainant_user_id, category_id, description, order_id,
                                         status, priority, complainant_type)
                 VALUES (%s, %s, %s, %s, 'open', 'medium', 'buyer')
