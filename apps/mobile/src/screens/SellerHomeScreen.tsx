@@ -873,6 +873,18 @@ export default function SellerHomeScreen({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.title} numberOfLines={1}>{formatCopy('headline.seller.home.greeting', { name: displayName })}</Text>
+            <TouchableOpacity
+              style={styles.notificationBellUnderGreeting}
+              activeOpacity={0.75}
+              onPress={() => onOpenNotifications?.()}
+            >
+              <Text style={styles.notificationBellInlineIcon}>🔔</Text>
+              {!loading && notificationUnreadCount > 0 ? (
+                <View style={styles.notificationBellInlineBadge}>
+                  <Text style={styles.notificationBellInlineBadgeText}>{notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}</Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.avatar} onPress={onOpenProfile} activeOpacity={0.8}>
@@ -888,18 +900,6 @@ export default function SellerHomeScreen({
                 <Text style={styles.ratingAvg}>{ratingSummary.avg.toFixed(1)}</Text>
                 <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: ratingSummary.count })}</Text>
               </View>
-              <TouchableOpacity
-                style={styles.notificationBellInline}
-                activeOpacity={0.75}
-                onPress={() => onOpenNotifications?.()}
-              >
-                <Text style={styles.notificationBellInlineIcon}>🔔</Text>
-                {!loading && notificationUnreadCount > 0 ? (
-                  <View style={styles.notificationBellInlineBadge}>
-                    <Text style={styles.notificationBellInlineBadgeText}>{notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}</Text>
-                  </View>
-                ) : null}
-              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -1361,10 +1361,9 @@ const styles = StyleSheet.create({
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     marginTop: 6,
     height: 26,
-    minWidth: 160,
   },
   ratingRowUnderAvatar: {
     marginTop: 8,
@@ -1488,7 +1487,7 @@ const styles = StyleSheet.create({
       : { fontFamily: "sans-serif-condensed" }),
   },
   statLabelActive: { color: "#2E6B43" },
-  notificationBellInline: {
+  notificationBellUnderGreeting: {
     width: 22,
     height: 22,
     borderRadius: 11,
@@ -1498,6 +1497,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#D9CCBB",
     position: "relative",
+    alignSelf: "flex-end",
+    marginTop: 8,
   },
   notificationBellInlineIcon: {
     fontSize: 13,
