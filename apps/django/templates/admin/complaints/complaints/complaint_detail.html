@@ -127,13 +127,13 @@
   <!-- Resolve Modal -->
   <div x-show="resolveOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center">
     <div class="absolute inset-0 bg-black/40" @click="resolveOpen = false"></div>
-    <div class="relative z-10 w-full max-w-md rounded-2xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-6 shadow-xl">
+    <div class="relative z-10 w-full max-w-md rounded-2xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-6 shadow-xl" @click.stop>
       <div class="flex items-center gap-2 mb-4">
         <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400">check_circle</span>
         <h2 class="text-base font-semibold text-base-900 dark:text-base-100">Şikayeti Kapat</h2>
       </div>
       <p class="text-sm text-base-500 dark:text-base-400 mb-4">Şikayet <strong>resolved</strong> olarak işaretlenecek. İsteğe bağlı olarak bir çözüm notu ekleyebilirsin.</p>
-      <form method="post" action="{{ resolve_url }}">
+      <form method="post" action="{% url 'admin:complaints_complaints_resolve' complaint.id %}">
         {% csrf_token %}
         <textarea
           name="resolution_note"
