@@ -58,7 +58,7 @@ class NotificationListView(APIView):
                 item["createdAt"] = item["createdAt"].isoformat() if item["createdAt"] else None
                 items.append(item)
 
-        return Response({"data": {"items": items}})
+        return Response({"data": items})
 
 
 # ── Mark Notification as Read ─────────────────────────────────────────────────

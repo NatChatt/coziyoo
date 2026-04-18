@@ -472,14 +472,25 @@ class OrderListCreateView(APIView):
                     """,
                     [str(uuid.uuid4()), order_id, buyer_id, _json_dumps({"note": note, "itemCount": len(normalized_items)})],
                 )
+                first_food_name = ""
+                if normalized_items and normalized_items[0].get("foodId"):
+                    cursor.execute(
+                        "SELECT name FROM foods WHERE id = %s LIMIT 1",
+                        [normalized_items[0]["foodId"]],
+                    )
+                    food_row = cursor.fetchone()
+                    first_food_name = str(food_row[0] or "").strip() if food_row else ""
+
+                food_label = first_food_name or "Bu ürün"
                 _create_notification(
                     cursor,
                     seller_id,
                     "order_created",
-                    "Yeni liste geldi",
-                    "Bir alıcı senden onay bekleyen yeni bir liste gönderdi.",
+                    f"{food_label} için teklif geldi",
+                    "Bir alıcı teklif gönderdi. İnceleyip onaylayabilirsin.",
                     {
                         "orderId": order_id,
+                        "foodName": first_food_name or None,
                         "sellerId": seller_id,
                         "buyerId": buyer_id,
                         "status": "pending_seller_approval",
@@ -1697,9 +1708,9 @@ class BuyerConfirmTermsView(APIView):
                         cursor,
                         str(order["seller_id"]),
                         "buyer_confirmed_delivery",
-                        "Alıcı teslimatı onayladı",
-                        "Teslimat anlaşması tamamlandı. Siparişi hazırlamaya başlayabilirsin.",
-                        {"orderId": order_id_str, "buyerId": user_id},
+                        "Ödeme onayı tamamlandı",
+                        "Alıcı teklifi onayladı. Siparişi hazırlamaya başlayabilirsin.",
+                        {"orderId": order_id_str, "buyerId": user_id, "status": "seller_approved"},
                     )
 
         return Response({"data": {"status": new_status}}, status=status.HTTP_200_OK)
@@ -1819,6 +1830,22 @@ class OrderNotesView(APIView):
                 user_row = _dictfetchone(cursor)
 
         sender_name = (user_row or {}).get('display_name', '')
+        recipient_user_id = seller_id if user_id == buyer_id else buyer_id
+        preview = (message[:117] + "...") if len(message) > 120 else message
+        with connection.cursor() as cursor:
+            _create_notification(
+                cursor,
+                recipient_user_id,
+                "order_note_message",
+                "Sipariş mesajı",
+                message,
+                {
+                    "orderId": order_id_str,
+                    "senderRole": sender_role,
+                    "senderName": sender_name or "",
+                    "messagePreview": preview,
+                },
+            )
 
         import datetime
         return Response({

@@ -28,6 +28,7 @@ import ReviewScreen from './src/screens/ReviewScreen';
 import ComplaintScreen from './src/screens/ComplaintScreen';
 import TicketListScreen from './src/screens/TicketListScreen';
 import TicketDetailScreen from './src/screens/TicketDetailScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
 import ChatListScreen from './src/screens/ChatListScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import FavoritesScreen from './src/screens/FavoritesScreen';
@@ -156,6 +157,7 @@ async function unregisterPushToken(auth: AuthSession, apiUrl: string, token?: st
 type Screen =
   | 'loading' | 'onboarding' | 'login' | 'home'
   | 'settings' | 'profileEdit' | 'addresses'
+  | 'notifications'
   | 'orders' | 'orderDetail' | 'complaintOrders' | 'ticketList' | 'ticketDetail'
   | 'foodDetail' | 'payment'
   | 'allergenDisclosure' | 'deliveryPin'
@@ -472,6 +474,25 @@ export default function App() {
         onOpenComplaintOrders={() => {
           setTicketBackTarget('settings');
           setScreen('ticketList');
+        }}
+        onAuthRefresh={setAuth}
+      />
+    );
+  }
+
+  if (screen === 'notifications') {
+    return (
+      <NotificationsScreen
+        auth={auth}
+        onBack={() => goHome('home')}
+        onOpenOrderDetail={(id) => {
+          setSelectedOrderId(id);
+          setOrderDetailBackTarget('home');
+          setScreen('orderDetail');
+        }}
+        onOpenTicketDetail={(ticketId) => {
+          setSelectedTicketId(ticketId);
+          setScreen('ticketDetail');
         }}
         onAuthRefresh={setAuth}
       />
@@ -927,6 +948,7 @@ export default function App() {
         setTicketBackTarget('buyerProfile');
         setScreen('ticketList');
       }}
+      onOpenNotifications={() => setScreen('notifications')}
       onOpenOrderDetail={(id) => {
         setSelectedOrderId(id);
         setOrderDetailBackTarget('home');

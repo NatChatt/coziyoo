@@ -1,3 +1,6 @@
+import json
+import uuid
+
 from django.db import connection, ProgrammingError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -314,7 +317,7 @@ class ComplaintMessagesView(APIView):
             if actor_role == "seller":
                 cur.execute(
                     """
-                    SELECT c.id, c.status
+                    SELECT c.id, c.status, c.assigned_admin_id, c.ticket_no
                     FROM complaints c
                     LEFT JOIN orders o ON o.id = c.order_id
                     WHERE c.id = %s
@@ -332,7 +335,7 @@ class ComplaintMessagesView(APIView):
             else:
                 cur.execute(
                     """
-                    SELECT c.id, c.status
+                    SELECT c.id, c.status, c.assigned_admin_id, c.ticket_no
                     FROM complaints c
                     LEFT JOIN orders o ON o.id = c.order_id
                     WHERE c.id = %s
@@ -355,6 +358,8 @@ class ComplaintMessagesView(APIView):
                     {"error": {"code": "TICKET_CLOSED", "message": "Ticket is closed for messaging"}},
                     status=409,
                 )
+            assigned_admin_id = complaint_row[2]
+            ticket_no = complaint_row[3]
 
         try:
             with connection.cursor() as cur:
@@ -399,6 +404,69 @@ class ComplaintMessagesView(APIView):
                     [complaint_id, user_id, body],
                 )
                 message_id = str(cur.fetchone()[0])
+
+                admin_ids = []
+                if assigned_admin_id:
+                    admin_ids.append(str(assigned_admin_id))
+                else:
+                    cur.execute(
+                        """
+                        SELECT DISTINCT tm.author_admin_id
+                        FROM ticket_messages tm
+                        WHERE tm.complaint_id = %s
+                          AND tm.author_admin_id IS NOT NULL
+                        ORDER BY tm.author_admin_id
+                        """,
+                        [complaint_id],
+                    )
+                    admin_ids = [str(row[0]) for row in cur.fetchall() if row[0]]
+
+                if admin_ids:
+                    placeholders = ", ".join(["%s"] * len(admin_ids))
+                    cur.execute(
+                        f"""
+                        SELECT u.id
+                        FROM admin_users au
+                        JOIN users u
+                          ON lower(trim(u.email)) = lower(trim(au.email))
+                        WHERE au.id IN ({placeholders})
+                        """,
+                        admin_ids,
+                    )
+                    target_user_ids = [str(row[0]) for row in cur.fetchall() if row[0]]
+
+                    for target_user_id in target_user_ids:
+                        cur.execute(
+                            """
+                            INSERT INTO notification_events (
+                                id,
+                                user_id,
+                                type,
+                                title,
+                                body,
+                                data_json,
+                                is_read,
+                                created_at
+                            )
+                            VALUES (%s, %s, %s, %s, %s, %s, FALSE, now())
+                            """,
+                            [
+                                str(uuid.uuid4()),
+                                target_user_id,
+                                "complaint_message",
+                                f"Şikayet #{ticket_no}",
+                                body,
+                                json.dumps(
+                                    {
+                                        "complaintId": str(complaint_id),
+                                        "ticketNo": ticket_no,
+                                        "recipientRole": "admin",
+                                        "senderRole": actor_role,
+                                    },
+                                    ensure_ascii=False,
+                                ),
+                            ],
+                        )
         except ProgrammingError as exc:
             if "ticket_messages" in str(exc) or "does not exist" in str(exc):
                 return Response(
