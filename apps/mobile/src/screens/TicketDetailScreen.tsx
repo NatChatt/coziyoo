@@ -37,6 +37,7 @@ type TicketDetail = {
 
 type Props = {
   auth: AuthSession;
+  actorRole: 'buyer' | 'seller';
   ticketId: string;
   onBack: () => void;
   onAuthRefresh?: (session: AuthSession) => void;
@@ -65,7 +66,7 @@ function normalizeTicketDetail(data: TicketDetail): TicketDetail {
   };
 }
 
-export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefresh }: Props) {
+export default function TicketDetailScreen({ auth, actorRole, ticketId, onBack, onAuthRefresh }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
@@ -80,7 +81,7 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
     const result = await apiRequest<TicketDetail>(
       `/v1/tickets/${ticketId}`,
       auth,
-      { method: 'GET', actorRole: 'buyer' },
+      { method: 'GET', actorRole },
       onAuthRefresh,
     );
     if (result.ok) {
@@ -106,7 +107,7 @@ export default function TicketDetailScreen({ auth, ticketId, onBack, onAuthRefre
     const result = await apiRequest(
       `/v1/tickets/${ticketId}/messages`,
       auth,
-      { method: 'POST', actorRole: 'buyer', body: { message: message.trim() } },
+      { method: 'POST', actorRole, body: { message: message.trim() } },
       onAuthRefresh,
     );
     setSending(false);

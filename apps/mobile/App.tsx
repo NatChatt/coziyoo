@@ -166,6 +166,7 @@ type Screen =
 
 type TabKey = 'home' | 'messages' | 'cart' | 'notifications' | 'profile';
 type OrderDetailBackTarget = 'orders' | 'home';
+type TicketBackTarget = 'settings' | 'buyerProfile' | 'sellerProfileDetail';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
@@ -240,6 +241,7 @@ export default function App() {
   const [selectedChatName, setSelectedChatName] = useState('');
   const [selectedChatActor, setSelectedChatActor] = useState<'buyer' | 'seller'>('buyer');
   const [complaintBackTarget, setComplaintBackTarget] = useState<'orderDetail' | 'complaintOrders'>('orderDetail');
+  const [ticketBackTarget, setTicketBackTarget] = useState<TicketBackTarget>('buyerProfile');
 
   const [isNewRegistration, setIsNewRegistration] = useState(false);
   const responseListener = useRef<NotificationSubscription | null>(null);
@@ -463,8 +465,14 @@ export default function App() {
     return (
       <SettingsScreen
         auth={auth}
-        onBack={() => goHome('profile')}
-        onOpenComplaintOrders={() => setScreen('ticketList')}
+        onBack={() => {
+          if (actorMode === 'seller') setScreen('sellerProfileDetail');
+          else goHome('profile');
+        }}
+        onOpenComplaintOrders={() => {
+          setTicketBackTarget('settings');
+          setScreen('ticketList');
+        }}
         onAuthRefresh={setAuth}
       />
     );
@@ -474,7 +482,18 @@ export default function App() {
     return (
       <TicketListScreen
         auth={auth}
-        onBack={() => setScreen('settings')}
+        actorRole={actorMode}
+        onBack={() => {
+          if (ticketBackTarget === 'settings') {
+            setScreen('settings');
+            return;
+          }
+          if (ticketBackTarget === 'sellerProfileDetail') {
+            setScreen('sellerProfileDetail');
+            return;
+          }
+          goHome('profile');
+        }}
         onCreateTicket={() => setScreen('complaintOrders')}
         onOpenTicket={(ticketId) => {
           setSelectedTicketId(ticketId);
@@ -489,6 +508,7 @@ export default function App() {
     return (
       <TicketDetailScreen
         auth={auth}
+        actorRole={actorMode}
         ticketId={selectedTicketId}
         onBack={() => setScreen('ticketList')}
         onAuthRefresh={setAuth}
@@ -705,6 +725,10 @@ export default function App() {
         onOpenCompliance={() => setScreen('sellerCompliance')}
         onOpenFinance={() => setScreen('sellerFinance')}
         onOpenReviews={() => setScreen('sellerReviews')}
+        onOpenComplaints={() => {
+          setTicketBackTarget('sellerProfileDetail');
+          setScreen('ticketList');
+        }}
         onOpenSettings={() => setScreen('settings')}
         onLogout={handleLogout}
         onOpenAddresses={() => setScreen('addresses')}
@@ -899,7 +923,10 @@ export default function App() {
       initialTab={homeTab}
       onOpenSettings={() => setScreen('settings')}
       onOpenOrders={() => setScreen('orders')}
-      onOpenComplaints={() => setScreen('ticketList')}
+      onOpenComplaints={() => {
+        setTicketBackTarget('buyerProfile');
+        setScreen('ticketList');
+      }}
       onOpenOrderDetail={(id) => {
         setSelectedOrderId(id);
         setOrderDetailBackTarget('home');

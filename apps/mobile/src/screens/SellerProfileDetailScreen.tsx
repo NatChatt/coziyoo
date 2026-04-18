@@ -21,6 +21,7 @@ type Props = {
   onOpenCompliance: () => void;
   onOpenFinance: () => void;
   onOpenReviews: () => void;
+  onOpenComplaints: () => void;
   onOpenSettings: () => void;
   onLogout: () => void;
   onOpenAddresses: () => void;
@@ -82,6 +83,7 @@ export default function SellerProfileDetailScreen({
   onOpenCompliance,
   onOpenFinance,
   onOpenReviews,
+  onOpenComplaints,
   onOpenSettings,
   onLogout,
   onOpenAddresses,
@@ -959,6 +961,10 @@ export default function SellerProfileDetailScreen({
           </TouchableOpacity>
           <TouchableOpacity style={styles.navBtn} onPress={onOpenReviews}>
             <Text style={styles.navBtnText}>{t('cta.seller.profileDetail.reviews')}</Text>
+            <Text style={styles.navArrow}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navBtn} onPress={onOpenComplaints}>
+            <Text style={styles.navBtnText}>{t('headline.ticket.list')}</Text>
             <Text style={styles.navArrow}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.navBtn} onPress={onOpenSettings}>

@@ -9,27 +9,47 @@ class IsAppRealm(IsAuthenticated):
         return super().has_permission(request, view) and getattr(request.user, "realm", None) == "app"
 
 
+def _actor_role(request):
+    role = str(request.headers.get("x-actor-role") or request.META.get("HTTP_X_ACTOR_ROLE") or "").strip().lower()
+    return "seller" if role == "seller" else "buyer"
+
+
 class ComplaintListCreateView(APIView):
     permission_classes = [IsAppRealm]
 
     def get(self, request):
         user_id = request.user.id
+        actor_role = _actor_role(request)
         with connection.cursor() as cur:
-            cur.execute(
-                """
-                SELECT c.id, c.order_id, c.status, c.priority, c.description, c.created_at, c.ticket_no,
-                       cc.name AS category_name
-                FROM complaints c
-                LEFT JOIN complaint_categories cc ON cc.id = c.category_id
-                LEFT JOIN orders o ON o.id = c.order_id
-                WHERE (
-                    COALESCE(c.complainant_user_id, c.complainant_buyer_id) = %s
-                    OR o.buyer_id = %s
+            if actor_role == "seller":
+                cur.execute(
+                    """
+                    SELECT c.id, c.order_id, c.status, c.priority, c.description, c.created_at, c.ticket_no,
+                           cc.name AS category_name
+                    FROM complaints c
+                    LEFT JOIN complaint_categories cc ON cc.id = c.category_id
+                    LEFT JOIN orders o ON o.id = c.order_id
+                    WHERE o.seller_id = %s
+                    ORDER BY c.created_at DESC
+                    """,
+                    [user_id],
                 )
-                ORDER BY c.created_at DESC
-                """,
-                [user_id, user_id],
-            )
+            else:
+                cur.execute(
+                    """
+                    SELECT c.id, c.order_id, c.status, c.priority, c.description, c.created_at, c.ticket_no,
+                           cc.name AS category_name
+                    FROM complaints c
+                    LEFT JOIN complaint_categories cc ON cc.id = c.category_id
+                    LEFT JOIN orders o ON o.id = c.order_id
+                    WHERE (
+                        COALESCE(c.complainant_user_id, c.complainant_buyer_id) = %s
+                        OR o.buyer_id = %s
+                    )
+                    ORDER BY c.created_at DESC
+                    """,
+                    [user_id, user_id],
+                )
             cols = ["id", "orderId", "status", "priority", "description", "createdAt", "ticketNo", "categoryName"]
             items = []
             for row in cur.fetchall():
@@ -125,22 +145,39 @@ class ComplaintDetailView(APIView):
     def get(self, request, complaint_id):
         user_id = request.user.id
         user_id_str = str(user_id)
+        actor_role = _actor_role(request)
         with connection.cursor() as cur:
-            cur.execute(
-                """
-                SELECT c.id, c.order_id, c.status, c.priority, c.description, c.created_at,
-                       c.ticket_no, cc.name AS category_name, c.resolution_note
-                FROM complaints c
-                LEFT JOIN complaint_categories cc ON cc.id = c.category_id
-                LEFT JOIN orders o ON o.id = c.order_id
-                WHERE c.id = %s
-                  AND (
-                      COALESCE(c.complainant_user_id, c.complainant_buyer_id) = %s
-                      OR o.buyer_id = %s
-                  )
-                """,
-                [complaint_id, user_id, user_id],
-            )
+            if actor_role == "seller":
+                cur.execute(
+                    """
+                    SELECT c.id, c.order_id, c.status, c.priority, c.description, c.created_at,
+                           c.ticket_no, cc.name AS category_name, c.resolution_note,
+                           COALESCE(c.complainant_user_id, c.complainant_buyer_id) AS complainant_id
+                    FROM complaints c
+                    LEFT JOIN complaint_categories cc ON cc.id = c.category_id
+                    LEFT JOIN orders o ON o.id = c.order_id
+                    WHERE c.id = %s
+                      AND o.seller_id = %s
+                    """,
+                    [complaint_id, user_id],
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT c.id, c.order_id, c.status, c.priority, c.description, c.created_at,
+                           c.ticket_no, cc.name AS category_name, c.resolution_note,
+                           COALESCE(c.complainant_user_id, c.complainant_buyer_id) AS complainant_id
+                    FROM complaints c
+                    LEFT JOIN complaint_categories cc ON cc.id = c.category_id
+                    LEFT JOIN orders o ON o.id = c.order_id
+                    WHERE c.id = %s
+                      AND (
+                          COALESCE(c.complainant_user_id, c.complainant_buyer_id) = %s
+                          OR o.buyer_id = %s
+                      )
+                    """,
+                    [complaint_id, user_id, user_id],
+                )
             row = cur.fetchone()
 
         if not row:
@@ -150,11 +187,12 @@ class ComplaintDetailView(APIView):
             )
 
         cols = ["id", "orderId", "status", "priority", "description", "createdAt",
-                "ticketNo", "categoryName", "resolutionNote"]
+                "ticketNo", "categoryName", "resolutionNote", "complainantId"]
         item = dict(zip(cols, row))
         item["id"] = str(item["id"])
         item["orderId"] = str(item["orderId"]) if item["orderId"] else None
         item["createdAt"] = item["createdAt"].isoformat() if item["createdAt"] else None
+        item["complainantId"] = str(item["complainantId"]) if item["complainantId"] else None
 
         try:
             with connection.cursor() as cur:
@@ -200,13 +238,14 @@ class ComplaintDetailView(APIView):
                         "createdAt": msg[7].isoformat() if msg[7] else None,
                     })
             initial_body = (item.get("description") or "").strip()
+            can_show_initial_as_message = item.get("complainantId") == user_id_str
             has_initial_message = any(
                 m.get("authorType") == "user"
                 and m.get("authorUserId") == user_id_str
                 and (m.get("body") or "").strip() == initial_body
                 for m in messages
             )
-            if initial_body and not has_initial_message:
+            if can_show_initial_as_message and initial_body and not has_initial_message:
                 messages.insert(0, {
                     "id": f"initial-{item['id']}",
                     "authorType": "user",
@@ -223,7 +262,8 @@ class ComplaintDetailView(APIView):
             item["messages"] = messages
         except ProgrammingError:
             initial_body = (item.get("description") or "").strip()
-            if initial_body:
+            can_show_initial_as_message = item.get("complainantId") == user_id_str
+            if can_show_initial_as_message and initial_body:
                 item["messages"] = [{
                     "id": f"initial-{item['id']}",
                     "authorType": "user",
@@ -247,6 +287,7 @@ class ComplaintMessagesView(APIView):
 
     def post(self, request, complaint_id):
         user_id = request.user.id
+        actor_role = _actor_role(request)
         body = (request.data.get("body") or request.data.get("message") or "").strip()
 
         if not body:
@@ -256,19 +297,31 @@ class ComplaintMessagesView(APIView):
             )
 
         with connection.cursor() as cur:
-            cur.execute(
-                """
-                SELECT c.id, c.status
-                FROM complaints c
-                LEFT JOIN orders o ON o.id = c.order_id
-                WHERE c.id = %s
-                  AND (
-                      COALESCE(c.complainant_user_id, c.complainant_buyer_id) = %s
-                      OR o.buyer_id = %s
-                  )
-                """,
-                [complaint_id, user_id, user_id],
-            )
+            if actor_role == "seller":
+                cur.execute(
+                    """
+                    SELECT c.id, c.status
+                    FROM complaints c
+                    LEFT JOIN orders o ON o.id = c.order_id
+                    WHERE c.id = %s
+                      AND o.seller_id = %s
+                    """,
+                    [complaint_id, user_id],
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT c.id, c.status
+                    FROM complaints c
+                    LEFT JOIN orders o ON o.id = c.order_id
+                    WHERE c.id = %s
+                      AND (
+                          COALESCE(c.complainant_user_id, c.complainant_buyer_id) = %s
+                          OR o.buyer_id = %s
+                      )
+                    """,
+                    [complaint_id, user_id, user_id],
+                )
             complaint_row = cur.fetchone()
             if not complaint_row:
                 return Response(
@@ -290,10 +343,14 @@ class ComplaintMessagesView(APIView):
                     FROM ticket_messages tm
                     WHERE tm.complaint_id = %s
                       AND tm.author_type = 'admin'
-                      AND (tm.recipient_user_id = %s OR tm.recipient_role = 'complainant')
+                      AND (
+                        tm.recipient_user_id = %s
+                        OR (%s = 'buyer' AND tm.recipient_role IN ('complainant', 'buyer'))
+                        OR (%s = 'seller' AND tm.recipient_role = 'seller')
+                      )
                     LIMIT 1
                     """,
-                    [complaint_id, user_id],
+                    [complaint_id, user_id, actor_role, actor_role],
                 )
                 admin_started = cur.fetchone() is not None
                 if not admin_started:

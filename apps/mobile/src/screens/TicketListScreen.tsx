@@ -27,6 +27,7 @@ type TicketListResponse = {
 
 type Props = {
   auth: AuthSession;
+  actorRole: 'buyer' | 'seller';
   onBack: () => void;
   onOpenTicket: (ticketId: string) => void;
   onCreateTicket: () => void;
@@ -53,7 +54,7 @@ function normalizeTickets(data: TicketListResponse | TicketSummary[]): TicketSum
   return [];
 }
 
-export default function TicketListScreen({ auth, onBack, onOpenTicket, onCreateTicket, onAuthRefresh }: Props) {
+export default function TicketListScreen({ auth, actorRole, onBack, onOpenTicket, onCreateTicket, onAuthRefresh }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +67,7 @@ export default function TicketListScreen({ auth, onBack, onOpenTicket, onCreateT
     const result = await apiRequest<TicketListResponse | TicketSummary[]>(
       '/v1/tickets/',
       auth,
-      { method: 'GET', actorRole: 'buyer' },
+      { method: 'GET', actorRole },
       onAuthRefresh,
     );
     if (result.ok) {
@@ -92,9 +93,11 @@ export default function TicketListScreen({ auth, onBack, onOpenTicket, onCreateT
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadData(true)} />}
       >
-        <View style={styles.topCta}>
-          <ActionButton label={t('cta.ticket.create')} onPress={onCreateTicket} variant="primary" fullWidth />
-        </View>
+        {actorRole === 'buyer' ? (
+          <View style={styles.topCta}>
+            <ActionButton label={t('cta.ticket.create')} onPress={onCreateTicket} variant="primary" fullWidth />
+          </View>
+        ) : null}
 
         {loading ? <Text style={styles.meta}>{t('status.ticket.loading')}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
