@@ -873,7 +873,16 @@ export default function SellerHomeScreen({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.title} numberOfLines={1}>{formatCopy('headline.seller.home.greeting', { name: displayName })}</Text>
-            <View style={styles.ratingRow}>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.avatar} onPress={onOpenProfile} activeOpacity={0.8}>
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
+            </TouchableOpacity>
+            <View style={[styles.ratingRow, styles.ratingRowUnderAvatar]}>
               <TouchableOpacity
                 style={styles.notificationBellInline}
                 activeOpacity={0.75}
@@ -891,13 +900,6 @@ export default function SellerHomeScreen({
               <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: ratingSummary.count })}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.avatar} onPress={onOpenProfile} activeOpacity={0.8}>
-            {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.avatarText}>{initials}</Text>
-            )}
-          </TouchableOpacity>
         </View>
 
         {/* Üst Hızlı Butonlar */}
@@ -1342,6 +1344,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 14,
   },
+  headerRight: {
+    alignItems: "flex-end",
+  },
   title: {
     fontSize: 24,
     color: "#4A3B2F",
@@ -1356,6 +1361,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     marginTop: 6,
+  },
+  ratingRowUnderAvatar: {
+    marginTop: 8,
   },
   ratingStar: {
     fontSize: 15,
