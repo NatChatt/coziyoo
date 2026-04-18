@@ -28,7 +28,16 @@ class ComplaintListCreateView(APIView):
                 cur.execute(
                     """
                     SELECT c.id, c.order_id, c.status, c.priority, c.description, c.created_at, c.ticket_no,
-                           cc.name AS category_name
+                           cc.name AS category_name,
+                           COALESCE(o.active_delivery_type, o.delivery_type, o.requested_delivery_type, 'pickup') AS delivery_type,
+                           (
+                               SELECT f.name
+                               FROM order_items oi
+                               LEFT JOIN foods f ON f.id = oi.food_id
+                               WHERE oi.order_id = c.order_id
+                               ORDER BY oi.created_at
+                               LIMIT 1
+                           ) AS primary_food_name
                     FROM complaints c
                     LEFT JOIN complaint_categories cc ON cc.id = c.category_id
                     LEFT JOIN orders o ON o.id = c.order_id
@@ -48,7 +57,16 @@ class ComplaintListCreateView(APIView):
                 cur.execute(
                     """
                     SELECT c.id, c.order_id, c.status, c.priority, c.description, c.created_at, c.ticket_no,
-                           cc.name AS category_name
+                           cc.name AS category_name,
+                           COALESCE(o.active_delivery_type, o.delivery_type, o.requested_delivery_type, 'pickup') AS delivery_type,
+                           (
+                               SELECT f.name
+                               FROM order_items oi
+                               LEFT JOIN foods f ON f.id = oi.food_id
+                               WHERE oi.order_id = c.order_id
+                               ORDER BY oi.created_at
+                               LIMIT 1
+                           ) AS primary_food_name
                     FROM complaints c
                     LEFT JOIN complaint_categories cc ON cc.id = c.category_id
                     LEFT JOIN orders o ON o.id = c.order_id
@@ -60,7 +78,18 @@ class ComplaintListCreateView(APIView):
                     """,
                     [user_id, user_id],
                 )
-            cols = ["id", "orderId", "status", "priority", "description", "createdAt", "ticketNo", "categoryName"]
+            cols = [
+                "id",
+                "orderId",
+                "status",
+                "priority",
+                "description",
+                "createdAt",
+                "ticketNo",
+                "categoryName",
+                "deliveryType",
+                "primaryFoodName",
+            ]
             items = []
             for row in cur.fetchall():
                 item = dict(zip(cols, row))

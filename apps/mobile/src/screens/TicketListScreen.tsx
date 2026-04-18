@@ -13,6 +13,8 @@ type TicketSummary = {
   id: string;
   ticketNo: number;
   orderId?: string | null;
+  primaryFoodName?: string | null;
+  deliveryType?: 'pickup' | 'delivery' | string | null;
   category?: string | null;
   categoryName?: string | null;
   status: 'open' | 'in_review' | 'resolved' | 'closed';
@@ -46,6 +48,12 @@ function statusColor(status: TicketSummary['status']) {
   if (status === 'in_review') return '#2F6CA6';
   if (status === 'resolved') return '#3E845B';
   return '#6C6258';
+}
+
+function deliveryTypeLabel(value?: string | null) {
+  return String(value || '').trim().toLowerCase() === 'delivery'
+    ? t('status.orders.deliveryType.delivery')
+    : t('status.orders.deliveryType.pickup');
 }
 
 function normalizeTickets(data: TicketListResponse | TicketSummary[]): TicketSummary[] {
@@ -119,10 +127,14 @@ export default function TicketListScreen({ auth, actorRole, onBack, onOpenTicket
               </View>
             </View>
             <Text style={styles.ticketCategory}>{item.categoryName ?? t('status.ticket.categoryFallback')}</Text>
+            <Text style={styles.ticketFood}>{item.primaryFoodName ?? t('helper.orders.itemsFallback')}</Text>
             {item.orderId ? (
               <Text style={styles.ticketMeta}>
                 {formatCopy('status.ticket.orderLabel', { id: item.orderId.slice(0, 8).toUpperCase() })}
               </Text>
+            ) : null}
+            {item.orderId ? (
+              <Text style={styles.ticketDeliveryType}>{deliveryTypeLabel(item.deliveryType)}</Text>
             ) : null}
             <Text style={styles.ticketMeta}>
               {formatCopy('status.ticket.lastActivity', {
@@ -167,5 +179,7 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText: { fontSize: 11, fontWeight: '700' },
   ticketCategory: { color: theme.text, fontSize: 15, fontWeight: '700' },
+  ticketFood: { color: '#4D4339', fontSize: 14, fontWeight: '700' },
+  ticketDeliveryType: { color: '#2F6F4A', fontSize: 13, fontWeight: '800' },
   ticketMeta: { color: '#7A6E61', fontSize: 13, fontWeight: '500' },
 });
