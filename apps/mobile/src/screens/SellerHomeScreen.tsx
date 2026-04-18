@@ -883,11 +883,6 @@ export default function SellerHomeScreen({
               )}
             </TouchableOpacity>
             <View style={[styles.ratingRow, styles.ratingRowUnderAvatar]}>
-              <View style={styles.ratingMetaGroup}>
-                <Text style={styles.ratingStar}>★</Text>
-                <Text style={styles.ratingAvg}>{ratingSummary.avg.toFixed(1)}</Text>
-                <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: ratingSummary.count })}</Text>
-              </View>
               <TouchableOpacity
                 style={styles.notificationBellInline}
                 activeOpacity={0.75}
@@ -900,6 +895,11 @@ export default function SellerHomeScreen({
                   </View>
                 ) : null}
               </TouchableOpacity>
+              <View style={styles.ratingMetaGroup}>
+                <Text style={styles.ratingStar}>★</Text>
+                <Text style={styles.ratingAvg}>{ratingSummary.avg.toFixed(1)}</Text>
+                <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: ratingSummary.count })}</Text>
+              </View>
             </View>
           </View>
         </View>
