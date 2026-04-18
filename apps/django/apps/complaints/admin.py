@@ -486,6 +486,10 @@ class ComplaintsAdmin(ModelAdmin):
             note.created_by_admin_obj = admins.get(note.created_by_admin_id)
 
         can_take_over = complaint.status == "open" and complaint.assigned_admin_id is None
+        seller_thread_opened = any(
+            msg.get("author_type") == "admin" and msg.get("recipient_role") == "seller"
+            for msg in ticket_messages
+        )
 
         buyer_url = (
             f"{reverse('admin:authentication_buyerusers_buyer_detail', args=[buyer.id])}?tab=complaints"
@@ -516,6 +520,7 @@ class ComplaintsAdmin(ModelAdmin):
             "assigned_admin": assigned_admin,
             "assigned_admin_display_name": assigned_admin_display_name,
             "can_take_over": can_take_over,
+            "seller_thread_opened": seller_thread_opened,
             "take_over_url": reverse("admin:complaints_complaints_take_over", args=[str(complaint.id)]),
             "send_message_url": reverse("admin:complaints_complaints_send_message", args=[str(complaint.id)]),
             "add_note_url": reverse("admin:complaints_complaints_add_note", args=[str(complaint.id)]),
