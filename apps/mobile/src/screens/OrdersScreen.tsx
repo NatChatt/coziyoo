@@ -296,13 +296,13 @@ export default function OrdersScreen({
           </View>
 
           <View style={styles.orderTopRight}>
+            <Text style={styles.orderIdText}>{getDisplayOrderNo(order)}</Text>
+            <Text style={styles.orderDateText}>{formatOrderDateTime(order.createdAt)}</Text>
             <Text style={styles.orderTopDeliveryType}>
               {order.deliveryType === 'delivery'
                 ? t('status.orders.deliveryType.delivery')
                 : t('status.orders.deliveryType.pickup')}
             </Text>
-            <Text style={styles.orderIdText}>{getDisplayOrderNo(order)}</Text>
-            <Text style={styles.orderDateText}>{formatOrderDateTime(order.createdAt)}</Text>
           </View>
         </View>
 
