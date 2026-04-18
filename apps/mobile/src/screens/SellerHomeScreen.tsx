@@ -1496,9 +1496,9 @@ const styles = StyleSheet.create({
   },
   statLabelActive: { color: "#2E6B43" },
   notificationBellUnderGreeting: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 31,
+    height: 31,
+    borderRadius: 15.5,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F3ECE2",
@@ -1507,7 +1507,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   notificationBellInlineIcon: {
-    fontSize: 17,
+    fontSize: 19,
   },
   notificationBellInlineBadge: {
     position: "absolute",
