@@ -17,6 +17,7 @@ type Props = {
   onAuthRefresh?: (session: AuthSession) => void;
   onOpenProfile: () => void;
   onOpenFinance: () => void;
+  onOpenNotifications?: () => void;
   onOpenMessages: () => void;
   onOpenFoodsManager: (foodId?: string) => void;
   onOpenOrder: (orderId: string) => void;
@@ -352,6 +353,7 @@ export default function SellerHomeScreen({
   onAuthRefresh,
   onOpenProfile,
   onOpenFinance,
+  onOpenNotifications,
   onOpenMessages,
   onOpenFoodsManager,
   onOpenOrder,
@@ -384,6 +386,7 @@ export default function SellerHomeScreen({
   });
   const [activePage, setActivePage] = useState(0);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
   const [celebrationOrderId, setCelebrationOrderId] = useState<string | null>(null);
   const [newOrderUntilById, setNewOrderUntilById] = useState<Record<string, number>>({});
   const [clockMs, setClockMs] = useState(() => Date.now());
@@ -549,13 +552,14 @@ export default function SellerHomeScreen({
       // Orders are highest priority; do not block them behind profile/foods fetches.
       await refreshOrdersOnly(baseUrl);
 
-      const [profileRes, foodsRes, lotsRes, reviewsRes, meRes, chatsRes] = await Promise.all([
+      const [profileRes, foodsRes, lotsRes, reviewsRes, meRes, chatsRes, notificationsRes] = await Promise.all([
         fetchWithAuth("/v1/seller/profile", baseUrl),
         fetchWithAuth("/v1/seller/foods", baseUrl),
         fetchWithAuth("/v1/seller/lots", baseUrl),
         fetchWithAuth("/v1/seller/reviews?pageSize=1", baseUrl),
         fetchWithAuth("/v1/auth/me", baseUrl),
         fetchWithAuth("/v1/chats", baseUrl),
+        fetchWithAuth("/v1/notifications", baseUrl),
       ]);
 
       const profileJson = await profileRes.json().catch(() => ({}));
@@ -586,6 +590,19 @@ export default function SellerHomeScreen({
         setChatUnreadCount(unreadTotal);
       } else if (chatsRes.status >= 400) {
         setChatUnreadCount(0);
+      }
+
+      const notificationsJson = await notificationsRes.json().catch(() => ({}));
+      if (notificationsRes.ok) {
+        const notificationItems = Array.isArray(notificationsJson?.data)
+          ? notificationsJson.data
+          : (Array.isArray(notificationsJson?.data?.items) ? notificationsJson.data.items : []);
+        const unreadTotal = notificationItems.reduce((sum: number, row: Record<string, unknown>) => {
+          return sum + (toBool(row?.isRead) ? 0 : 1);
+        }, 0);
+        setNotificationUnreadCount(unreadTotal);
+      } else if (notificationsRes.status >= 400) {
+        setNotificationUnreadCount(0);
       }
 
       if (foodsRes.ok) {
@@ -888,6 +905,18 @@ export default function SellerHomeScreen({
         <TouchableOpacity style={[styles.statBlock, activePage === 0 && styles.statBlockActive]} activeOpacity={0.75} onPress={() => setActivePage(0)}>
           <Text style={[styles.statCount, activePage === 0 && styles.statCountActive]}>{loading ? "—" : todayOrders.length}</Text>
           <Text style={[styles.statLabel, activePage === 0 && styles.statLabelActive]}>{t('headline.seller.home.todayOrders')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.statBlock, styles.statBlockNotifications, notificationUnreadCount > 0 && styles.statBlockNotificationsActive]}
+          activeOpacity={0.75}
+          onPress={() => onOpenNotifications?.()}
+        >
+          <Text style={[styles.statCount, styles.statCountNotifications, notificationUnreadCount > 0 && styles.statCountNotificationsActive]}>
+            {loading ? "—" : notificationUnreadCount}
+          </Text>
+          <Text style={[styles.statLabel, styles.statLabelNotifications, notificationUnreadCount > 0 && styles.statLabelNotificationsActive]}>
+            {t('headline.notifications.title')}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.statBlock, activePage === 1 && styles.statBlockActive]} activeOpacity={0.75} onPress={() => setActivePage(1)}>
           <Text style={[styles.statCount, activePage === 1 && styles.statCountActive]}>{loading ? "—" : activeFoods.length}</Text>
@@ -1407,15 +1436,17 @@ const styles = StyleSheet.create({
   ordersContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 48 },
   listContentGrow: { flexGrow: 1 },
   ordersSection: { marginBottom: 14 },
-  ordersHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingHorizontal: 16 },
+  ordersHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingHorizontal: 16, gap: 10 },
   ordersTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   ordersTitle: { fontSize: 18, fontWeight: "800", color: "#4A3B2F" },
   ordersCountChip: { alignItems: "center", justifyContent: "center" },
   ordersCountChipText: { color: "#5C4A3A", fontSize: 18, fontWeight: "800" },
   pager: { flex: 1 },
   statBlock: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 5,
     borderBottomWidth: 2,
     borderBottomColor: "#C8BFB3",
@@ -1442,6 +1473,25 @@ const styles = StyleSheet.create({
       : { fontFamily: "sans-serif-condensed" }),
   },
   statLabelActive: { color: "#2E6B43" },
+  statBlockNotifications: {
+    borderBottomColor: "#B8D5C4",
+  },
+  statBlockNotificationsActive: {
+    borderBottomColor: "#2E6B43",
+  },
+  statCountNotifications: {
+    color: "#245A3A",
+  },
+  statCountNotificationsActive: {
+    color: "#1E5133",
+  },
+  statLabelNotifications: {
+    color: "#245A3A",
+    fontSize: 15,
+  },
+  statLabelNotificationsActive: {
+    color: "#1E5133",
+  },
   skeletonCard: { backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#E5DDCF", padding: 12, marginBottom: 10, gap: 10 },
   skeletonLine: { height: 14, borderRadius: 6, backgroundColor: "#EDE8E0", width: "70%" },
   skeletonLineShort: { height: 12, borderRadius: 6, backgroundColor: "#F2EDE6", width: "40%" },

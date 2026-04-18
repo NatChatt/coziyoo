@@ -896,6 +896,7 @@ export default function App() {
             setSelectedChatActor('seller');
             setScreen('chatList');
           }}
+          onOpenNotifications={() => setScreen('notifications')}
           onOpenFoodsManager={(foodId) => {
             if (foodId) {
               setSellerFoodsFromManager(false);
