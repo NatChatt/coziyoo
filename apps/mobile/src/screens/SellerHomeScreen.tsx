@@ -883,6 +883,11 @@ export default function SellerHomeScreen({
               )}
             </TouchableOpacity>
             <View style={[styles.ratingRow, styles.ratingRowUnderAvatar]}>
+              <View style={styles.ratingMetaGroup}>
+                <Text style={styles.ratingStar}>★</Text>
+                <Text style={styles.ratingAvg}>{ratingSummary.avg.toFixed(1)}</Text>
+                <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: ratingSummary.count })}</Text>
+              </View>
               <TouchableOpacity
                 style={styles.notificationBellInline}
                 activeOpacity={0.75}
@@ -895,9 +900,6 @@ export default function SellerHomeScreen({
                   </View>
                 ) : null}
               </TouchableOpacity>
-              <Text style={styles.ratingStar}>★</Text>
-              <Text style={styles.ratingAvg}>{ratingSummary.avg.toFixed(1)}</Text>
-              <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: ratingSummary.count })}</Text>
             </View>
           </View>
         </View>
@@ -1359,12 +1361,18 @@ const styles = StyleSheet.create({
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    justifyContent: "space-between",
     marginTop: 6,
-    height: 24,
+    height: 26,
+    minWidth: 160,
   },
   ratingRowUnderAvatar: {
     marginTop: 8,
+  },
+  ratingMetaGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   ratingStar: {
     fontSize: 15,
@@ -1490,7 +1498,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#D9CCBB",
     position: "relative",
-    marginRight: 4,
   },
   notificationBellInlineIcon: {
     fontSize: 13,
