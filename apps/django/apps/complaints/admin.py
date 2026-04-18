@@ -132,6 +132,11 @@ class ComplaintsAdmin(ModelAdmin):
                 self.admin_site.admin_view(self.add_note_view),
                 name="complaints_complaints_add_note",
             ),
+            path(
+                "<uuid:complaint_id>/resolve/",
+                self.admin_site.admin_view(self.resolve_view),
+                name="complaints_complaints_resolve",
+            ),
         ]
         return extra + urls
 
@@ -445,6 +450,34 @@ class ComplaintsAdmin(ModelAdmin):
         messages.success(request, "Admin notu eklendi.")
         return redirect(self._detail_url(complaint_id))
 
+    def resolve_view(self, request, complaint_id):
+        if request.method != "POST":
+            return redirect(self._detail_url(complaint_id))
+
+        resolution_note = (request.POST.get("resolution_note") or "").strip()
+
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE complaints
+                SET status = 'resolved',
+                    resolved_at = now(),
+                    resolution_note = COALESCE(NULLIF(%s, ''), resolution_note)
+                WHERE id = %s
+                  AND status NOT IN ('resolved', 'closed')
+                RETURNING id
+                """,
+                [resolution_note, str(complaint_id)],
+            )
+            row = cur.fetchone()
+
+        if row:
+            messages.success(request, "Şikayet çözüldü olarak kapatıldı.")
+        else:
+            messages.info(request, "Şikayet zaten kapalı.")
+
+        return redirect(self._detail_url(complaint_id))
+
     def complaint_detail_view(self, request, complaint_id):
         complaint = get_object_or_404(
             Complaints.objects.select_related(
@@ -524,6 +557,8 @@ class ComplaintsAdmin(ModelAdmin):
             "take_over_url": reverse("admin:complaints_complaints_take_over", args=[str(complaint.id)]),
             "send_message_url": reverse("admin:complaints_complaints_send_message", args=[str(complaint.id)]),
             "add_note_url": reverse("admin:complaints_complaints_add_note", args=[str(complaint.id)]),
+            "resolve_url": reverse("admin:complaints_complaints_resolve", args=[str(complaint.id)]),
+            "can_resolve": complaint.status not in ("resolved", "closed"),
             "buyer_url": buyer_url,
             "seller_url": seller_url,
             "order_url": f"/admin/orders/orders/{complaint.order_id}/change/" if complaint.order_id else None,
