@@ -124,8 +124,8 @@ export default function TicketListScreen({ auth, actorRole, onBack, onOpenTicket
               <View style={styles.ticketHeadLeft}>
                 <Text style={styles.ticketNo}>#{item.ticketNo}</Text>
                 <Text style={styles.ticketFood} numberOfLines={1}>
-                  {item.primaryFoodName ?? t('helper.orders.itemsFallback')}
-                  {item.orderId ? ` • ${deliveryTypeLabel(item.deliveryType)}` : ''}
+                  <Text>{item.primaryFoodName ?? t('helper.orders.itemsFallback')}</Text>
+                  {item.orderId ? <Text style={styles.ticketDeliveryTypeInline}>{` • ${deliveryTypeLabel(item.deliveryType)}`}</Text> : null}
                 </Text>
               </View>
               <View style={[styles.badge, { backgroundColor: `${statusColor(item.status)}1A` }]}>
@@ -183,5 +183,6 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '700' },
   ticketCategory: { color: theme.text, fontSize: 15, fontWeight: '700' },
   ticketFood: { color: '#4D4339', fontSize: 14, fontWeight: '700' },
+  ticketDeliveryTypeInline: { color: '#2F6F4A' },
   ticketMeta: { color: '#7A6E61', fontSize: 13, fontWeight: '500' },
 });
