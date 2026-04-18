@@ -52,6 +52,24 @@ target 'Coziyoo' do
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
 
+    # Force C++17 for all pods (required by Folly on Xcode 26)
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
+      end
+    end
+
+    # Patch fmt base.h: disable consteval for Apple Clang 21 (Xcode 26) where it's broken
+    fmt_base = File.join(__dir__, 'Pods/fmt/include/fmt/base.h')
+    if File.exist?(fmt_base)
+      content = File.read(fmt_base)
+      patched = content.gsub(
+        /defined\(__apple_build_version__\) && __apple_build_version__ < \d+L/,
+        'defined(__apple_build_version__)'
+      )
+      File.write(fmt_base, patched) if patched != content
+    end
+
     # This is necessary for Xcode 14, because it signs resource bundles by default
     # when building for devices.
     installer.target_installation_results.pod_target_installation_results
