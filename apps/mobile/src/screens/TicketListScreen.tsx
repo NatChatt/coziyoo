@@ -64,7 +64,7 @@ export default function TicketListScreen({ auth, onBack, onOpenTicket, onCreateT
     else setLoading(true);
     setError(null);
     const result = await apiRequest<TicketListResponse | TicketSummary[]>(
-      '/v1/tickets',
+      '/v1/tickets/',
       auth,
       { method: 'GET', actorRole: 'buyer' },
       onAuthRefresh,
