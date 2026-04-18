@@ -871,8 +871,21 @@ export default function SellerHomeScreen({
       <View style={styles.stickyTop}>
         {/* Greeting + Avatar */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.title} numberOfLines={1}>{formatCopy('headline.seller.home.greeting', { name: displayName })}</Text>
+          <View style={styles.headerTopRow}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.title} numberOfLines={1}>{formatCopy('headline.seller.home.greeting', { name: displayName })}</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.avatar} onPress={onOpenProfile} activeOpacity={0.8}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.avatarText}>{initials}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.headerMetaRow}>
             <TouchableOpacity
               style={styles.notificationBellUnderGreeting}
               activeOpacity={0.75}
@@ -885,16 +898,7 @@ export default function SellerHomeScreen({
                 </View>
               ) : null}
             </TouchableOpacity>
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.avatar} onPress={onOpenProfile} activeOpacity={0.8}>
-              {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.avatarText}>{initials}</Text>
-              )}
-            </TouchableOpacity>
-            <View style={[styles.ratingRow, styles.ratingRowUnderAvatar]}>
+            <View style={styles.ratingRow}>
               <View style={styles.ratingMetaGroup}>
                 <Text style={styles.ratingStar}>★</Text>
                 <Text style={styles.ratingAvg}>{ratingSummary.avg.toFixed(1)}</Text>
@@ -1337,10 +1341,18 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E6DED1",
   },
   header: {
+    marginBottom: 20,
+  },
+  headerTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 20,
+  },
+  headerMetaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
   },
   headerLeft: {
     flex: 1,
@@ -1361,12 +1373,8 @@ const styles = StyleSheet.create({
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start",
-    marginTop: 6,
-    height: 26,
-  },
-  ratingRowUnderAvatar: {
-    marginTop: 8,
+    justifyContent: "flex-end",
+    minHeight: 22,
   },
   ratingMetaGroup: {
     flexDirection: "row",
@@ -1497,8 +1505,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#D9CCBB",
     position: "relative",
-    alignSelf: "flex-end",
-    marginTop: 8,
   },
   notificationBellInlineIcon: {
     fontSize: 13,
