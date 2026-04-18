@@ -874,6 +874,18 @@ export default function SellerHomeScreen({
           <View style={styles.headerLeft}>
             <Text style={styles.title} numberOfLines={1}>{formatCopy('headline.seller.home.greeting', { name: displayName })}</Text>
             <View style={styles.ratingRow}>
+              <TouchableOpacity
+                style={styles.notificationBellInline}
+                activeOpacity={0.75}
+                onPress={() => onOpenNotifications?.()}
+              >
+                <Text style={styles.notificationBellInlineIcon}>🔔</Text>
+                {!loading && notificationUnreadCount > 0 ? (
+                  <View style={styles.notificationBellInlineBadge}>
+                    <Text style={styles.notificationBellInlineBadgeText}>{notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}</Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
               <Text style={styles.ratingStar}>★</Text>
               <Text style={styles.ratingAvg}>{ratingSummary.avg.toFixed(1)}</Text>
               <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: ratingSummary.count })}</Text>
@@ -905,18 +917,6 @@ export default function SellerHomeScreen({
         <TouchableOpacity style={[styles.statBlock, activePage === 0 && styles.statBlockActive]} activeOpacity={0.75} onPress={() => setActivePage(0)}>
           <Text style={[styles.statCount, activePage === 0 && styles.statCountActive]}>{loading ? "—" : todayOrders.length}</Text>
           <Text style={[styles.statLabel, activePage === 0 && styles.statLabelActive]}>{t('headline.seller.home.todayOrders')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.notificationBellButton}
-          activeOpacity={0.75}
-          onPress={() => onOpenNotifications?.()}
-        >
-          <Text style={styles.notificationBellIcon}>🔔</Text>
-          {!loading && notificationUnreadCount > 0 ? (
-            <View style={styles.notificationBellBadge}>
-              <Text style={styles.notificationBellBadgeText}>{notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}</Text>
-            </View>
-          ) : null}
         </TouchableOpacity>
         <TouchableOpacity style={[styles.statBlock, activePage === 1 && styles.statBlockActive]} activeOpacity={0.75} onPress={() => setActivePage(1)}>
           <Text style={[styles.statCount, activePage === 1 && styles.statCountActive]}>{loading ? "—" : activeFoods.length}</Text>
@@ -1436,7 +1436,7 @@ const styles = StyleSheet.create({
   ordersContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 48 },
   listContentGrow: { flexGrow: 1 },
   ordersSection: { marginBottom: 14 },
-  ordersHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingHorizontal: 16, gap: 10 },
+  ordersHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingHorizontal: 16 },
   ordersTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   ordersTitle: { fontSize: 18, fontWeight: "800", color: "#4A3B2F" },
   ordersCountChip: { alignItems: "center", justifyContent: "center" },
@@ -1471,35 +1471,36 @@ const styles = StyleSheet.create({
       : { fontFamily: "sans-serif-condensed" }),
   },
   statLabelActive: { color: "#2E6B43" },
-  notificationBellButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  notificationBellInline: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F3ECE2",
     borderWidth: 1,
     borderColor: "#D9CCBB",
     position: "relative",
+    marginRight: 2,
   },
-  notificationBellIcon: {
-    fontSize: 18,
+  notificationBellInlineIcon: {
+    fontSize: 13,
   },
-  notificationBellBadge: {
+  notificationBellInlineBadge: {
     position: "absolute",
-    top: -5,
-    right: -5,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    paddingHorizontal: 4,
+    top: -4,
+    right: -6,
+    minWidth: 14,
+    height: 14,
+    borderRadius: 7,
+    paddingHorizontal: 3,
     backgroundColor: "#3F855C",
     alignItems: "center",
     justifyContent: "center",
   },
-  notificationBellBadgeText: {
+  notificationBellInlineBadgeText: {
     color: "#FFFFFF",
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "800",
   },
   skeletonCard: { backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#E5DDCF", padding: 12, marginBottom: 10, gap: 10 },
