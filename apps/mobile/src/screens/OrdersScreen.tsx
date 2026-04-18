@@ -15,6 +15,7 @@ import StatusBadge, { getStatusInfo } from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import LoadingState from '../components/LoadingState';
+import { parseApiDate } from '../utils/parseUtils';
 import { t } from '../copy/brandCopy';
 import { theme } from '../theme/colors';
 import { formatPrice, orderNo } from '../components/OrderCard';
@@ -65,13 +66,6 @@ type OrderGroupKey = 'preparing' | 'route' | 'done';
 const DONE_STATUSES = new Set(['delivered', 'completed', 'cancelled', 'rejected']);
 const ROUTE_STATUSES = new Set(['in_delivery', 'approaching', 'at_door']);
 
-function parseApiDate(value?: string | null): Date | null {
-  if (!value?.trim()) return null;
-  const normalized = value.trim().replace(' ', 'T').replace(/(\.\d+)?([+-]\d{2})$/, '$1$2:00');
-  const parsed = new Date(normalized);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-}
 
 function formatOrderDateTime(value?: string): string {
   const parsed = parseApiDate(value);

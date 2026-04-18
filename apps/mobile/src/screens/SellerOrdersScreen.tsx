@@ -9,6 +9,7 @@ import { subscribeSellerOrdersRealtime } from "../utils/realtime";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
+import { parseApiDate } from "../utils/parseUtils";
 
 type Props = {
   auth: AuthSession;
@@ -87,13 +88,6 @@ function parseDateInput(value: string): Date | null {
   return date;
 }
 
-function parseApiDate(value?: string | null): Date | null {
-  if (!value?.trim()) return null;
-  const normalized = value.trim().replace(" ", "T").replace(/(\.\d+)?([+-]\d{2})$/, "$1$2:00");
-  const parsed = new Date(normalized);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-}
 
 function normalizeCountryCode(value: unknown): string {
   const raw = String(value ?? "").trim().toUpperCase();

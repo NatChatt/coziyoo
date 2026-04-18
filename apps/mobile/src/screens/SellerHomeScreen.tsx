@@ -11,6 +11,8 @@ import { normalizeSellerLotSnapshot, summarizeSellerLotsByFood } from "../utils/
 import { subscribeSellerOrdersRealtime } from "../utils/realtime";
 import { getStatusInfo } from "../components/StatusBadge";
 import { formatCopy, t } from "../copy/brandCopy";
+import { parseApiDate, toBool } from "../utils/parseUtils";
+import { toFiniteNumber } from "../utils/externalMaps";
 
 type Props = {
   auth: AuthSession;
@@ -69,32 +71,6 @@ function pickupBuyerCurrentStepLabel(status?: string | null): string | null {
   return null;
 }
 
-function toBool(value: unknown): boolean {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value !== 0;
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    return ["1", "true", "t", "yes", "y", "aktif", "active"].includes(normalized);
-  }
-  return false;
-}
-
-function toFiniteNumber(value: unknown): number | null {
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function parseApiDate(value?: string | null): Date | null {
-  if (!value?.trim()) return null;
-  const normalized = value.trim().replace(" ", "T").replace(/(\.\d+)?([+-]\d{2})$/, "$1$2:00");
-  const parsed = new Date(normalized);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-}
 
 function normalizeCountryCode(value: unknown): string {
   const raw = String(value ?? "").trim().toUpperCase();
@@ -633,20 +609,7 @@ export default function SellerHomeScreen({
                 stock: Number(f.stock ?? 0),
               })),
           );
-          console.info("[seller-home] foods loaded", {
-            count: foods.length,
-            activeCount: foods.filter((f) => toBool(f.isActive)).length,
-            userId: currentAuth.userId,
-          });
         }
-      } else {
-        const foodsError = await foodsRes.json().catch(() => ({}));
-        console.warn("[seller-home] foods fetch failed", {
-          status: foodsRes.status,
-          message: foodsError?.error?.message ?? null,
-          userId: currentAuth.userId,
-          actorRole: "seller",
-        });
       }
     } catch {
       // best-effort

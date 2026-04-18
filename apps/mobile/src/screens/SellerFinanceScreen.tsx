@@ -10,6 +10,7 @@ import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
 import { getCurrentLanguage } from "../utils/settings";
+import { parseApiDate } from "../utils/parseUtils";
 
 type Props = {
   auth: AuthSession;
@@ -47,13 +48,6 @@ type WalletTab = "overview" | "transactions" | "withdraw";
 const MIN_PAYOUT_AMOUNT = 50;
 const QUICK_WITHDRAW_AMOUNTS = [100, 250, 500] as const;
 
-function parseApiDate(value?: string | null): Date | null {
-  if (!value?.trim()) return null;
-  const normalized = value.trim().replace(" ", "T").replace(/(\.\d+)?([+-]\d{2})$/, "$1$2:00");
-  const parsed = new Date(normalized);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
-}
 
 function formatDate(value?: string | null): string {
   const parsed = parseApiDate(value);

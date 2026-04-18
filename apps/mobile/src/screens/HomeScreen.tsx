@@ -3164,7 +3164,6 @@ export default function HomeScreen({
 
       if (!silent) setMealsError(t('error.home.retryLater'));
     } catch (err) {
-      console.warn('[HomeScreen] failed to fetch foods:', err);
       if (!silent) setMealsError(normalizeHomeRequestError(err, 'error.home.requestFailed'));
     } finally {
       if (!silent) setMealsLoading(false);

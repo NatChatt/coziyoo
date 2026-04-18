@@ -127,13 +127,8 @@ async function registerPushToken(auth: AuthSession, apiUrl: string): Promise<str
       || lower.includes("push notifications")
       || lower.includes("capability hasn't been added");
     if (missingCapability) {
-      // iOS dev/provisioning environments may not include push entitlements.
-      // Treat as expected and continue without push token registration.
-      console.info('[push] register skipped (missing push capability)');
       return null;
     }
-    // Push registration is best-effort; never block the user
-    console.warn('[push] register failed', message || error);
     return null;
   }
 }

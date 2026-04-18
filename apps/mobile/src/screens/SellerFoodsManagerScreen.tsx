@@ -9,6 +9,7 @@ import { getSellerFoodsCache, setSellerFoodsCache } from "../utils/sellerFoodsCa
 import { normalizeSellerLotSnapshot, summarizeSellerLotsByFood } from "../utils/sellerLotSummary";
 import { theme } from "../theme/colors";
 import { formatCopy, t } from "../copy/brandCopy";
+import { toBool } from "../utils/parseUtils";
 
 type Props = {
   auth: AuthSession;
@@ -30,15 +31,6 @@ type SellerFood = {
   [key: string]: unknown;
 };
 
-function toBool(value: unknown): boolean {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value !== 0;
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    return ["1", "true", "t", "yes", "y", "aktif", "active"].includes(normalized);
-  }
-  return false;
-}
 
 export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm, onOpenLotCreate, onOpenLots, onAuthRefresh }: Props) {
   const initialCache = getSellerFoodsCache() as SellerFood[] | null;

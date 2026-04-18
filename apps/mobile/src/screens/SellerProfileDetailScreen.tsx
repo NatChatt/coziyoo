@@ -573,7 +573,6 @@ export default function SellerProfileDetailScreen({
       setIsKitchenModalOpen(false);
       void load();
     } catch (e) {
-      console.error("[kitchen save]", e);
     } finally {
       setKitchenSaving(false);
     }

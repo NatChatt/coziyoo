@@ -9,6 +9,7 @@ from django.db import connection, transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from coziyoo.utils import _dictfetchone, _dictfetchall
 
 # ---------------------------------------------------------------------------
 # State machine
@@ -55,20 +56,6 @@ def _check_app_auth(request):
         )
     return request.user, None
 
-
-def _dictfetchone(cursor):
-    """Return a single row as a dict, or None."""
-    row = cursor.fetchone()
-    if row is None:
-        return None
-    columns = [col[0] for col in cursor.description]
-    return dict(zip(columns, row))
-
-
-def _dictfetchall(cursor):
-    """Return all rows as a list of dicts."""
-    columns = [col[0] for col in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
 def _json_dumps(value):

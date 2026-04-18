@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from coziyoo.utils import _dictfetchone, _dictfetchall
 
 
 # ── Permissions ───────────────────────────────────────────────────────────────
@@ -12,19 +13,6 @@ from rest_framework import status
 class IsAppRealm(IsAuthenticated):
     def has_permission(self, request, view):
         return super().has_permission(request, view) and getattr(request.user, "realm", None) == "app"
-
-
-def _dictfetchone(cursor):
-    row = cursor.fetchone()
-    if row is None:
-        return None
-    columns = [col[0] for col in cursor.description]
-    return dict(zip(columns, row))
-
-
-def _dictfetchall(cursor):
-    columns = [col[0] for col in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
 def _resolve_chat_actor(request):

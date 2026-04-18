@@ -10,6 +10,7 @@ import { clearSellerFoodsCache } from "../utils/sellerFoodsCache";
 import { type IngredientTemplate, addIngredientToLibrary, loadIngredientLibrary } from "../utils/ingredientsLibrary";
 import { type AddonTemplate, addCustomAddon, loadAddonLibrary } from "../utils/addonLibrary";
 import { theme } from "../theme/colors";
+import { toBool } from "../utils/parseUtils";
 import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
 
@@ -234,15 +235,6 @@ type SellerFoodsFieldKey =
   | "initialSaleStartsAt"
   | "initialSaleEndsAt";
 
-function toBool(value: unknown): boolean {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value !== 0;
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    return ["1", "true", "t", "yes", "y", "aktif", "active"].includes(normalized);
-  }
-  return false;
-}
 
 function tryParseJsonArray(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
@@ -501,7 +493,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const [ingredientsPickerVisible, setIngredientsPickerVisible] = useState(false);
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [newIngredientInput, setNewIngredientInput] = useState("");
-  const [inlineIngredientInput, setInlineIngredientInput] = useState("");
   const [allergens, setAllergens] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>(["", "", "", "", ""]);
   const [movingImageIndex, setMovingImageIndex] = useState<number | null>(null);
@@ -1184,14 +1175,13 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
             : {};
           const lots = Array.isArray(lotsPayload.data) ? (lotsPayload.data as unknown[]) : [];
           const now = Date.now();
-          let existingLotId: string | null = null;
           const hasVisibleLotFromApi = lots.some((lot: any) => {
             const lotFoodId = String(lot?.food_id ?? lot?.foodId ?? "").trim();
             const status = String(lot?.status ?? "").toLowerCase();
             const qty = Number(lot?.quantity_available ?? lot?.quantityAvailable ?? 0);
             const startsAt = Date.parse(String(lot?.sale_starts_at ?? lot?.saleStartsAt ?? ""));
             const endsAt = Date.parse(String(lot?.sale_ends_at ?? lot?.saleEndsAt ?? ""));
-            if (
+            return (
               lotFoodId === foodId &&
               (status === "active" || status === "open") &&
               qty > 0 &&
@@ -1199,11 +1189,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
               Number.isFinite(endsAt) &&
               startsAt <= now &&
               endsAt > now
-            ) {
-              existingLotId = String(lot?.id ?? lot?.lotId ?? "");
-              return true;
-            }
-            return false;
+            );
           });
           hasVisibleLot = hasVisibleLot || hasVisibleLotFromApi;
 
@@ -1320,19 +1306,6 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
     setAddonSearch("");
   }
 
-  async function toggleStatus(food: SellerFood) {
-    try {
-      const res = await authedFetch(`/v1/seller/foods/${food.id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ isActive: !food.isActive }),
-      });
-      const json = await parseResponseBodySafe(res);
-      if (!res.ok) throw new Error(resolveApiMessage(json, t('error.seller.foods.statusUpdate')));
-      await loadFoods();
-    } catch (e) {
-      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.foods.statusUpdate'));
-    }
-  }
 
 
   const previewImage = imageUrls.map((x) => x.trim()).find(Boolean) || "";
