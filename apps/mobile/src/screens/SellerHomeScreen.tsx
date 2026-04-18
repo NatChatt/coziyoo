@@ -907,16 +907,16 @@ export default function SellerHomeScreen({
           <Text style={[styles.statLabel, activePage === 0 && styles.statLabelActive]}>{t('headline.seller.home.todayOrders')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.statBlock, styles.statBlockNotifications, notificationUnreadCount > 0 && styles.statBlockNotificationsActive]}
+          style={styles.notificationBellButton}
           activeOpacity={0.75}
           onPress={() => onOpenNotifications?.()}
         >
-          <Text style={[styles.statCount, styles.statCountNotifications, notificationUnreadCount > 0 && styles.statCountNotificationsActive]}>
-            {loading ? "—" : notificationUnreadCount}
-          </Text>
-          <Text style={[styles.statLabel, styles.statLabelNotifications, notificationUnreadCount > 0 && styles.statLabelNotificationsActive]}>
-            {t('headline.notifications.title')}
-          </Text>
+          <Text style={styles.notificationBellIcon}>🔔</Text>
+          {!loading && notificationUnreadCount > 0 ? (
+            <View style={styles.notificationBellBadge}>
+              <Text style={styles.notificationBellBadgeText}>{notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}</Text>
+            </View>
+          ) : null}
         </TouchableOpacity>
         <TouchableOpacity style={[styles.statBlock, activePage === 1 && styles.statBlockActive]} activeOpacity={0.75} onPress={() => setActivePage(1)}>
           <Text style={[styles.statCount, activePage === 1 && styles.statCountActive]}>{loading ? "—" : activeFoods.length}</Text>
@@ -1443,10 +1443,8 @@ const styles = StyleSheet.create({
   ordersCountChipText: { color: "#5C4A3A", fontSize: 18, fontWeight: "800" },
   pager: { flex: 1 },
   statBlock: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: 5,
     borderBottomWidth: 2,
     borderBottomColor: "#C8BFB3",
@@ -1473,24 +1471,36 @@ const styles = StyleSheet.create({
       : { fontFamily: "sans-serif-condensed" }),
   },
   statLabelActive: { color: "#2E6B43" },
-  statBlockNotifications: {
-    borderBottomColor: "#B8D5C4",
+  notificationBellButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3ECE2",
+    borderWidth: 1,
+    borderColor: "#D9CCBB",
+    position: "relative",
   },
-  statBlockNotificationsActive: {
-    borderBottomColor: "#2E6B43",
+  notificationBellIcon: {
+    fontSize: 18,
   },
-  statCountNotifications: {
-    color: "#245A3A",
+  notificationBellBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    backgroundColor: "#3F855C",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  statCountNotificationsActive: {
-    color: "#1E5133",
-  },
-  statLabelNotifications: {
-    color: "#245A3A",
-    fontSize: 15,
-  },
-  statLabelNotificationsActive: {
-    color: "#1E5133",
+  notificationBellBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
   },
   skeletonCard: { backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#E5DDCF", padding: 12, marginBottom: 10, gap: 10 },
   skeletonLine: { height: 14, borderRadius: 6, backgroundColor: "#EDE8E0", width: "70%" },
