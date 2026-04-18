@@ -1361,6 +1361,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     marginTop: 6,
+    height: 24,
   },
   ratingRowUnderAvatar: {
     marginTop: 8,
@@ -1368,7 +1369,7 @@ const styles = StyleSheet.create({
   ratingStar: {
     fontSize: 15,
     color: "#D4860A",
-    lineHeight: 18,
+    lineHeight: 15,
   },
   ratingAvg: {
     fontSize: 14,
@@ -1480,16 +1481,16 @@ const styles = StyleSheet.create({
   },
   statLabelActive: { color: "#2E6B43" },
   notificationBellInline: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F3ECE2",
     borderWidth: 1,
     borderColor: "#D9CCBB",
     position: "relative",
-    marginRight: 2,
+    marginRight: 4,
   },
   notificationBellInlineIcon: {
     fontSize: 13,
