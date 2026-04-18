@@ -122,11 +122,11 @@ export default function TicketListScreen({ auth, actorRole, onBack, onOpenTicket
           <TouchableOpacity key={item.id} style={styles.ticketCard} activeOpacity={0.75} onPress={() => onOpenTicket(item.id)}>
             <View style={styles.ticketHead}>
               <View style={styles.ticketHeadLeft}>
+                <Text style={styles.ticketNo}>#{item.ticketNo}</Text>
                 <Text style={styles.ticketFood} numberOfLines={1}>
                   {item.primaryFoodName ?? t('helper.orders.itemsFallback')}
                   {item.orderId ? ` • ${deliveryTypeLabel(item.deliveryType)}` : ''}
                 </Text>
-                <Text style={styles.ticketNo}>#{item.ticketNo}</Text>
               </View>
               <View style={[styles.badge, { backgroundColor: `${statusColor(item.status)}1A` }]}>
                 <Text style={[styles.badgeText, { color: statusColor(item.status) }]}>{statusLabel(item.status)}</Text>
