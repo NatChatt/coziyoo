@@ -296,6 +296,11 @@ export default function OrdersScreen({
           </View>
 
           <View style={styles.orderTopRight}>
+            <Text style={styles.orderTopDeliveryType}>
+              {order.deliveryType === 'delivery'
+                ? t('status.orders.deliveryType.delivery')
+                : t('status.orders.deliveryType.pickup')}
+            </Text>
             <Text style={styles.orderIdText}>{getDisplayOrderNo(order)}</Text>
             <Text style={styles.orderDateText}>{formatOrderDateTime(order.createdAt)}</Text>
           </View>
@@ -309,11 +314,6 @@ export default function OrdersScreen({
                 <Text style={styles.proposalPendingPillText}>{t('status.orders.proposalPendingPill')}</Text>
               </View>
             ) : null}
-            <Text style={styles.deliveryMeta}>
-              {order.deliveryType === 'delivery'
-                ? t('status.orders.deliveryType.delivery')
-                : t('status.orders.deliveryType.pickup')}
-            </Text>
           </View>
           <Text style={styles.orderTotal}>{formatPrice(order.totalPrice)}</Text>
         </View>
@@ -515,6 +515,7 @@ const styles = StyleSheet.create({
   newBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
   orderMeta: { color: '#6C6055', marginTop: 4, lineHeight: 19 },
   orderTopRight: { alignItems: 'flex-end', minWidth: 108 },
+  orderTopDeliveryType: { color: '#2F6F4A', fontSize: 12, fontWeight: '800' },
   orderIdText: { color: '#887766', fontSize: 12, fontWeight: '800' },
   orderDateText: { color: '#9A8A7A', fontSize: 11, fontWeight: '700', marginTop: 2 },
   orderBottomRow: {
@@ -547,7 +548,6 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   proposalPendingBannerText: { flex: 1, color: '#6D28D9', fontSize: 12, fontWeight: '700', lineHeight: 18 },
-  deliveryMeta: { color: '#7A6C5E', fontSize: 12, fontWeight: '700' },
   orderTotal: { color: '#4A3B2F', fontWeight: '900', fontSize: 16 },
   cardActionRow: { marginTop: 14 },
   cardActionBtn: {

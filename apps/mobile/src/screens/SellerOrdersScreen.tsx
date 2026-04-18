@@ -126,6 +126,15 @@ function isCurrentBusinessDay(date: Date, reference: Date, useTurkeyTime: boolea
   return businessDayKey(date, useTurkeyTime) === businessDayKey(reference, useTurkeyTime);
 }
 
+function getOrderDeliveryLabel(order: SellerOrder): string {
+  const normalized = String(order.activeDeliveryType ?? order.deliveryType ?? order.requestedDeliveryType ?? "")
+    .trim()
+    .toLowerCase();
+  return normalized === "delivery"
+    ? t("status.orders.deliveryType.delivery")
+    : t("status.orders.deliveryType.pickup");
+}
+
 export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRefresh }: Props) {
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
@@ -319,17 +328,24 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
                       <Text style={styles.foodName}>
                         {item.primaryFoodName}{item.itemCount && item.itemCount > 1 ? ` +${item.itemCount - 1}` : ""}
                       </Text>
-                      <Text style={styles.orderNo}>{item.orderNo || "#" + item.id.slice(0, 8).toUpperCase()}</Text>
+                      <View style={styles.cardHeaderRight}>
+                        <Text style={styles.orderDeliveryType}>{getOrderDeliveryLabel(item)}</Text>
+                        <Text style={styles.orderNo}>{item.orderNo || "#" + item.id.slice(0, 8).toUpperCase()}</Text>
+                      </View>
                     </View>
                   ) : (
                     <View style={styles.cardHeader}>
-                      <Text style={styles.orderNo}>{item.orderNo || "#" + item.id.slice(0, 8).toUpperCase()}</Text>
+                      <View style={styles.cardHeaderRight}>
+                        <Text style={styles.orderDeliveryType}>{getOrderDeliveryLabel(item)}</Text>
+                        <Text style={styles.orderNo}>{item.orderNo || "#" + item.id.slice(0, 8).toUpperCase()}</Text>
+                      </View>
                     </View>
                   )}
                   <Text style={styles.meta}>{formatCopy('status.seller.orders.buyer', { name: item.buyerName || "-" })}</Text>
                   {(item.updatedAt || item.createdAt) ? (
                     <Text style={styles.meta}>{formatOrderDate(item.updatedAt ?? item.createdAt)}</Text>
                   ) : null}
+                  <Text style={styles.meta}>{`${t("label.seller.orderDetail.deliveryType")}: ${getOrderDeliveryLabel(item)}`}</Text>
                   {item.requestedDeliveryType === "delivery" && item.activeDeliveryType !== "delivery" ? (
                     <View style={styles.deliveryRequestBanner}>
                       <Text style={styles.deliveryRequestTitle}>{t('helper.seller.orderDetail.deliveryRequestTitle')}</Text>
@@ -375,6 +391,8 @@ const styles = StyleSheet.create({
   },
   card: { backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#E5DDCF", padding: 12 },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  cardHeaderRight: { alignItems: "flex-end", marginLeft: 8 },
+  orderDeliveryType: { color: "#2F6F4A", fontWeight: "800", fontSize: 12, marginBottom: 2 },
   orderNo: { color: "#6C6055", fontWeight: "800", fontSize: 13 },
   foodName: { color: "#2E241C", fontWeight: "700", fontSize: 14, flex: 1, marginRight: 8 },
   meta: { color: "#6C6055", marginTop: 3 },
