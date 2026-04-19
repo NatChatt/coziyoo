@@ -454,6 +454,11 @@ class ComplaintsAdmin(ModelAdmin):
         if request.method != "POST":
             return redirect(self._detail_url(complaint_id))
 
+        admin_actor = _resolve_admin_actor(request)
+        if not admin_actor:
+            messages.error(request, "Admin kullanıcısı eşleştirilemedi. Önce admin hesabınla tekrar giriş yap.")
+            return redirect(self._detail_url(complaint_id))
+
         resolution_note = (request.POST.get("resolution_note") or "").strip()
 
         with connection.cursor() as cur:
@@ -462,12 +467,13 @@ class ComplaintsAdmin(ModelAdmin):
                 UPDATE complaints
                 SET status = 'closed',
                     resolved_at = COALESCE(resolved_at, now()),
+                    assigned_admin_id = COALESCE(assigned_admin_id, %s),
                     resolution_note = COALESCE(NULLIF(%s, ''), resolution_note)
                 WHERE id = %s
                   AND status <> 'closed'
                 RETURNING id, status
                 """,
-                [resolution_note, str(complaint_id)],
+                [admin_actor["id"], resolution_note, str(complaint_id)],
             )
             row = cur.fetchone()
 
