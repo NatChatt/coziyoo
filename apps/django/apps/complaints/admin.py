@@ -460,19 +460,19 @@ class ComplaintsAdmin(ModelAdmin):
             cur.execute(
                 """
                 UPDATE complaints
-                SET status = 'resolved',
-                    resolved_at = now(),
+                SET status = 'closed',
+                    resolved_at = COALESCE(resolved_at, now()),
                     resolution_note = COALESCE(NULLIF(%s, ''), resolution_note)
                 WHERE id = %s
-                  AND status NOT IN ('resolved', 'closed')
-                RETURNING id
+                  AND status <> 'closed'
+                RETURNING id, status
                 """,
                 [resolution_note, str(complaint_id)],
             )
             row = cur.fetchone()
 
         if row:
-            messages.success(request, "Şikayet çözüldü olarak kapatıldı.")
+            messages.success(request, "Şikayet kapatıldı.")
         else:
             messages.info(request, "Şikayet zaten kapalı.")
 
