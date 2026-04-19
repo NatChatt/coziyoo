@@ -117,24 +117,30 @@ export default function OnboardingScreen({ onComplete, onGoToLogin }: Props) {
 
   function renderWelcome() {
     return (
-      <View style={styles.centerContent}>
-        <View style={styles.welcomeIconWrap}>
-          <Text style={styles.welcomeIcon}>🍽️</Text>
+      <View style={styles.welcomeScreen}>
+        <View style={styles.welcomeBrandWrap}>
+          <Text style={styles.welcomeBrand}>CoziYoo</Text>
+          <Text style={styles.welcomeSubtitle}>Homemade Food Near You</Text>
         </View>
-        <Text style={styles.welcomeTitle}>Coziyoo'ya{'\n'}Hoş Geldiniz</Text>
-        <Text style={styles.welcomeSubtitle}>Lezzetli ev yemekleri burada</Text>
-        <Text style={styles.welcomeDesc}>
-          Komşunuzun mutfağından, kapınıza.{'\n'}Sıcacık, ev yapımı lezzetler sizi bekliyor.
-        </Text>
 
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => animateTransition('register')} activeOpacity={0.85}>
-          <Text style={styles.primaryBtnText}>Başlayalım</Text>
-          <Ionicons name="arrow-forward" size={20} color="#fff" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.secondaryBtn} onPress={onGoToLogin} activeOpacity={0.8}>
-          <Text style={styles.secondaryBtnText}>Zaten hesabım var</Text>
-        </TouchableOpacity>
+        <View style={styles.welcomeBottomWrap}>
+          <TouchableOpacity
+            style={styles.getStartedBtn}
+            onPress={() => animateTransition('register')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.getStartedText}>Get Started</Text>
+          </TouchableOpacity>
+          <View style={styles.dotsRow}>
+            <View style={[styles.dot, styles.dotActive]} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+          </View>
+          <TouchableOpacity style={styles.welcomeLoginLink} onPress={onGoToLogin} activeOpacity={0.8}>
+            <Text style={styles.welcomeLoginText}>Zaten hesabım var</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -250,9 +256,11 @@ export default function OnboardingScreen({ onComplete, onGoToLogin }: Props) {
 
   const showBack = step === 'register';
 
+  const isWelcome = step === 'welcome';
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
+    <SafeAreaView style={[styles.safe, isWelcome && styles.safeWelcome]}>
+      <StatusBar barStyle={isWelcome ? 'light-content' : 'dark-content'} backgroundColor={isWelcome ? '#8F9D86' : theme.background} />
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -277,6 +285,7 @@ export default function OnboardingScreen({ onComplete, onGoToLogin }: Props) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.background },
+  safeWelcome: { backgroundColor: '#8F9D86' },
   container: { flex: 1 },
   header: {
     flexDirection: 'row',
@@ -295,41 +304,71 @@ const styles = StyleSheet.create({
   },
   body: { flex: 1, paddingHorizontal: 24 },
 
-  centerContent: {
+  welcomeScreen: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#8F9D86',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 140,
+    paddingBottom: 46,
+  },
+  welcomeBrandWrap: {
     alignItems: 'center',
   },
-  welcomeIconWrap: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#F0D5AE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
+  welcomeBrand: {
+    color: '#F5F5F2',
+    fontSize: 76,
+    lineHeight: 84,
+    fontWeight: '900',
+    letterSpacing: -2.2,
   },
-  welcomeIcon: { fontSize: 48 },
-  welcomeTitle: {
-    fontSize: 32,
+  welcomeBottomWrap: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 16,
+  },
+  getStartedBtn: {
+    width: '78%',
+    backgroundColor: '#F2F2F1',
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  getStartedText: {
+    color: '#8A9883',
+    fontSize: 31,
     fontWeight: '800',
-    color: theme.text,
-    textAlign: 'center',
-    lineHeight: 40,
+    letterSpacing: 0.1,
   },
   welcomeSubtitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: theme.primary,
+    fontSize: 30,
+    fontWeight: '500',
+    color: '#ECEEE8',
     marginTop: 8,
   },
-  welcomeDesc: {
-    fontSize: 14,
-    color: theme.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginTop: 12,
-    marginBottom: 36,
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#F4F5F2',
+    backgroundColor: 'transparent',
+  },
+  dotActive: {
+    backgroundColor: '#F4F5F2',
+  },
+  welcomeLoginLink: {
+    marginTop: 4,
+  },
+  welcomeLoginText: {
+    color: '#F4F5F2',
+    fontSize: 13,
+    fontWeight: '600',
   },
 
   stepContent: {
