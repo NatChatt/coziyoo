@@ -854,7 +854,7 @@ class OrderCancelView(APIView):
                     UPDATE orders
                     SET status = 'cancelled', updated_at = now()
                     WHERE id = %s
-                      AND status NOT IN ('completed', 'delivered', 'cancelled')
+                      AND status NOT IN ('completed', 'delivered', 'cancelled', 'paid', 'preparing', 'ready', 'in_delivery')
                     RETURNING id
                     """,
                     [order_id_str],

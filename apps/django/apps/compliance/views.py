@@ -145,15 +145,31 @@ class SellerDocumentPresignView(APIView):
                 status=503,
             )
 
+        _ALLOWED_EXTENSIONS = {
+            ".pdf": "application/pdf",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".doc": "application/msword",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        }
+
         doc_type = request.data.get("docType")
         file_name = request.data.get("fileName", "document.bin")
-        content_type = request.data.get("contentType", "application/octet-stream")
 
         if not doc_type:
             return Response(
                 {"error": {"code": "VALIDATION_ERROR", "message": "docType is required"}},
                 status=400,
             )
+
+        ext = "." + file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
+        if ext not in _ALLOWED_EXTENSIONS:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "Desteklenmeyen dosya türü. İzin verilenler: PDF, JPG, PNG, DOC, DOCX"}},
+                status=400,
+            )
+        content_type = _ALLOWED_EXTENSIONS[ext]
 
         with connection.cursor() as cur:
             cur.execute(
