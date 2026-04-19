@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { readJsonSafe } from './http';
 
-const STORAGE_KEY = '@coziyoo:auth';
+const STORAGE_KEY = 'coziyoo_auth';
 
 export type AuthSession = {
   accessToken: string;
@@ -12,12 +12,12 @@ export type AuthSession = {
 };
 
 export async function saveAuthSession(session: AuthSession): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(session));
 }
 
 export async function loadAuthSession(): Promise<AuthSession | null> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const raw = await SecureStore.getItemAsync(STORAGE_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as AuthSession;
   } catch {
@@ -26,7 +26,7 @@ export async function loadAuthSession(): Promise<AuthSession | null> {
 }
 
 export async function clearAuthSession(): Promise<void> {
-  await AsyncStorage.removeItem(STORAGE_KEY);
+  await SecureStore.deleteItemAsync(STORAGE_KEY);
 }
 
 export async function refreshAuthSession(

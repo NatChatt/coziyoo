@@ -3,6 +3,11 @@ from decouple import config
 
 DEBUG = False
 
+_secret_key = config("DJANGO_SECRET_KEY", default="")
+if not _secret_key or _secret_key.startswith("django-insecure-"):
+    raise ValueError("DJANGO_SECRET_KEY must be set to a secure value in production")
+SECRET_KEY = _secret_key
+
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="api.coziyoo.com,admin.coziyoo.com,127.0.0.1,localhost", cast=lambda v: [s.strip() for s in v.split(",")])
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
