@@ -3,7 +3,7 @@ import uuid
 
 from django.contrib import admin, messages
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import connection
+from django.db import connection, DatabaseError
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -461,21 +461,42 @@ class ComplaintsAdmin(ModelAdmin):
 
         resolution_note = (request.POST.get("resolution_note") or "").strip()
 
-        with connection.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE complaints
-                SET status = 'closed',
-                    resolved_at = COALESCE(resolved_at, now()),
-                    assigned_admin_id = COALESCE(assigned_admin_id, %s),
-                    resolution_note = COALESCE(NULLIF(%s, ''), resolution_note)
-                WHERE id = %s
-                  AND status <> 'closed'
-                RETURNING id, status, ticket_no, order_id
-                """,
-                [admin_actor["id"], resolution_note, str(complaint_id)],
-            )
-            row = cur.fetchone()
+        status_set = "closed"
+        try:
+            with connection.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE complaints
+                    SET status = 'closed',
+                        resolved_at = COALESCE(resolved_at, now()),
+                        assigned_admin_id = COALESCE(assigned_admin_id, %s),
+                        resolution_note = COALESCE(NULLIF(%s, ''), resolution_note)
+                    WHERE id = %s
+                      AND status <> 'closed'
+                    RETURNING id, status, ticket_no, order_id
+                    """,
+                    [admin_actor["id"], resolution_note, str(complaint_id)],
+                )
+                row = cur.fetchone()
+        except DatabaseError:
+            # Some environments may still enforce legacy status constraints.
+            # Fall back to 'resolved' so complaint can still be closed operationally.
+            status_set = "resolved"
+            with connection.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE complaints
+                    SET status = 'resolved',
+                        resolved_at = COALESCE(resolved_at, now()),
+                        assigned_admin_id = COALESCE(assigned_admin_id, %s),
+                        resolution_note = COALESCE(NULLIF(%s, ''), resolution_note)
+                    WHERE id = %s
+                      AND status NOT IN ('resolved', 'closed')
+                    RETURNING id, status, ticket_no, order_id
+                    """,
+                    [admin_actor["id"], resolution_note, str(complaint_id)],
+                )
+                row = cur.fetchone()
 
         if row:
             _, _, ticket_no, order_id = row
@@ -538,7 +559,10 @@ class ComplaintsAdmin(ModelAdmin):
                                 ),
                             ],
                         )
-            messages.success(request, "Şikayet kapatıldı.")
+            if status_set == "closed":
+                messages.success(request, "Şikayet kapatıldı.")
+            else:
+                messages.success(request, "Şikayet kapatıldı (legacy status: resolved).")
         else:
             messages.info(request, "Şikayet zaten kapalı.")
 
