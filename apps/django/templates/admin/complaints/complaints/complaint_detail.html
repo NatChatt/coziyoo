@@ -140,7 +140,11 @@
           rows="3"
           class="w-full rounded-lg border border-base-300 dark:border-base-700 bg-white dark:bg-base-800 px-3 py-2 text-sm text-base-800 dark:text-base-100 mb-4"
           placeholder="Çözüm notu (isteğe bağlı)…"></textarea>
-        <div class="flex items-center justify-end gap-2">
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <button type="submit"
+            class="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700">
+            <span class="material-symbols-outlined text-sm">check_circle</span>Gönder ve Kapat
+          </button>
           <button type="button" @click="resolveOpen = false"
             class="inline-flex items-center gap-1 rounded-lg border border-base-300 dark:border-base-600 px-3 py-1.5 text-xs font-medium text-base-700 dark:text-base-200 hover:bg-base-50 dark:hover:bg-base-800">
             İptal
