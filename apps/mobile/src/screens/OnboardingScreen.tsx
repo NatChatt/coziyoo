@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TextInput,
+  Image,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -119,7 +120,11 @@ export default function OnboardingScreen({ onComplete, onGoToLogin }: Props) {
     return (
       <View style={styles.welcomeScreen}>
         <View style={styles.welcomeBrandWrap}>
-          <Text style={styles.welcomeBrand}>CoziYoo</Text>
+          <Image
+            source={require('../../assets/images/coziyoo-onboarding-logo.png')}
+            style={styles.welcomeLogo}
+            resizeMode="contain"
+          />
           <Text style={styles.welcomeSubtitle}>Homemade Food Near You</Text>
         </View>
 
@@ -137,9 +142,6 @@ export default function OnboardingScreen({ onComplete, onGoToLogin }: Props) {
             <View style={styles.dot} />
             <View style={styles.dot} />
           </View>
-          <TouchableOpacity style={styles.welcomeLoginLink} onPress={onGoToLogin} activeOpacity={0.8}>
-            <Text style={styles.welcomeLoginText}>Zaten hesabım var</Text>
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -274,7 +276,7 @@ export default function OnboardingScreen({ onComplete, onGoToLogin }: Props) {
           </View>
         )}
 
-        <Animated.View style={[styles.body, { opacity: fadeAnim }]}>
+        <Animated.View style={[styles.body, isWelcome && styles.bodyWelcome, { opacity: fadeAnim }]}>
           {step === 'welcome' && renderWelcome()}
           {step === 'register' && renderRegister()}
         </Animated.View>
@@ -285,7 +287,7 @@ export default function OnboardingScreen({ onComplete, onGoToLogin }: Props) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.background },
-  safeWelcome: { backgroundColor: '#8F9D86' },
+  safeWelcome: { backgroundColor: '#8D9C86' },
   container: { flex: 1 },
   header: {
     flexDirection: 'row',
@@ -303,48 +305,46 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
   },
   body: { flex: 1, paddingHorizontal: 24 },
+  bodyWelcome: { paddingHorizontal: 0 },
 
   welcomeScreen: {
     flex: 1,
-    backgroundColor: '#8F9D86',
+    backgroundColor: '#8D9C86',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 140,
-    paddingBottom: 46,
+    paddingTop: 210,
+    paddingBottom: 96,
   },
   welcomeBrandWrap: {
     alignItems: 'center',
   },
-  welcomeBrand: {
-    color: '#F5F5F2',
-    fontSize: 76,
-    lineHeight: 84,
-    fontWeight: '900',
-    letterSpacing: -2.2,
+  welcomeLogo: {
+    width: 306,
+    height: 68,
   },
   welcomeBottomWrap: {
     width: '100%',
     alignItems: 'center',
-    gap: 16,
+    gap: 20,
   },
   getStartedBtn: {
-    width: '78%',
+    width: 316,
     backgroundColor: '#F2F2F1',
     borderRadius: 999,
-    paddingVertical: 14,
+    paddingVertical: 13,
     alignItems: 'center',
   },
   getStartedText: {
-    color: '#8A9883',
-    fontSize: 31,
-    fontWeight: '800',
+    color: '#7F9178',
+    fontSize: 18,
+    fontWeight: '700',
     letterSpacing: 0.1,
   },
   welcomeSubtitle: {
-    fontSize: 30,
-    fontWeight: '500',
-    color: '#ECEEE8',
-    marginTop: 8,
+    fontSize: 17,
+    fontWeight: '400',
+    color: '#EEF0EA',
+    marginTop: 16,
   },
   dotsRow: {
     flexDirection: 'row',
@@ -352,23 +352,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1.5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
     borderColor: '#F4F5F2',
     backgroundColor: 'transparent',
   },
   dotActive: {
     backgroundColor: '#F4F5F2',
-  },
-  welcomeLoginLink: {
-    marginTop: 4,
-  },
-  welcomeLoginText: {
-    color: '#F4F5F2',
-    fontSize: 13,
-    fontWeight: '600',
   },
 
   stepContent: {
