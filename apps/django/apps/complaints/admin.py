@@ -471,13 +471,73 @@ class ComplaintsAdmin(ModelAdmin):
                     resolution_note = COALESCE(NULLIF(%s, ''), resolution_note)
                 WHERE id = %s
                   AND status <> 'closed'
-                RETURNING id, status
+                RETURNING id, status, ticket_no, order_id
                 """,
                 [admin_actor["id"], resolution_note, str(complaint_id)],
             )
             row = cur.fetchone()
 
         if row:
+            _, _, ticket_no, order_id = row
+            close_message = (
+                f"Şikayet kapandı. Not: {resolution_note}"
+                if resolution_note
+                else "Şikayet kapandı."
+            )
+
+            if order_id:
+                with connection.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT buyer_id, seller_id
+                        FROM orders
+                        WHERE id = %s
+                        LIMIT 1
+                        """,
+                        [str(order_id)],
+                    )
+                    order_row = cur.fetchone()
+
+                    target_user_ids = []
+                    if order_row:
+                        for uid in order_row:
+                            if uid:
+                                uid_str = str(uid)
+                                if uid_str not in target_user_ids:
+                                    target_user_ids.append(uid_str)
+
+                    for target_user_id in target_user_ids:
+                        cur.execute(
+                            """
+                            INSERT INTO notification_events (
+                                id,
+                                user_id,
+                                type,
+                                title,
+                                body,
+                                data_json,
+                                is_read,
+                                created_at
+                            )
+                            VALUES (%s, %s, %s, %s, %s, %s, FALSE, now())
+                            """,
+                            [
+                                str(uuid.uuid4()),
+                                target_user_id,
+                                "complaint",
+                                f"Şikayet #{ticket_no}",
+                                close_message,
+                                json.dumps(
+                                    {
+                                        "complaintId": str(complaint_id),
+                                        "ticketNo": ticket_no,
+                                        "status": "closed",
+                                        "senderRole": "admin",
+                                    },
+                                    ensure_ascii=False,
+                                ),
+                            ],
+                        )
             messages.success(request, "Şikayet kapatıldı.")
         else:
             messages.info(request, "Şikayet zaten kapalı.")
