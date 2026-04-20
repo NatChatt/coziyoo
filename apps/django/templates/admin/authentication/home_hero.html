@@ -224,6 +224,7 @@
   var userScale = 1;
   var minScale = 0.35;
   var maxScale = 3.2;
+  var wheelStep = 0.02;
   var offsetX = 0;
   var offsetY = 0;
   var startX = 0;
@@ -349,7 +350,7 @@
   stage.addEventListener('wheel', function (e) {
     if (!hasImage()) return;
     e.preventDefault();
-    var delta = e.deltaY > 0 ? -0.08 : 0.08;
+    var delta = e.deltaY > 0 ? -wheelStep : wheelStep;
     userScale = clamp(userScale + delta, minScale, maxScale);
     renderTransform();
   }, { passive: false });
