@@ -97,6 +97,7 @@ import { HOME_FEED_CATEGORIES } from '../constants/foodCategories';
 
 const AnimatedTouchableOpacity: any = Animated.createAnimatedComponent(RNTouchableOpacity as any);
 const PICKUP_ADDRESS_REQUEST_TIMEOUT_MS = 12000;
+const BUYER_HOME_TAB_BAR_HEIGHT = 70;
 
 function shouldDisableGlobalPressFx(style: unknown, activeOpacity?: number): boolean {
   if (activeOpacity === 1) return true;
@@ -7702,7 +7703,12 @@ const styles = StyleSheet.create({
 
   /* --- FAB --- */
   floatingWrap: {
-    position: 'absolute', left: '50%', bottom: -2, marginLeft: -26,
+    position: 'absolute',
+    left: '50%',
+    bottom: Platform.OS === 'ios'
+      ? -34 + ((BUYER_HOME_TAB_BAR_HEIGHT - 52) / 2)
+      : ((BUYER_HOME_TAB_BAR_HEIGHT - 52) / 2),
+    marginLeft: -26,
     zIndex: 80, width: 52, height: 52, alignItems: 'center', justifyContent: 'center',
   },
   pulseRing1: {
@@ -7744,7 +7750,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: Platform.OS === 'ios' ? -34 : 0,
-    height: 70, backgroundColor: '#FFFDF9',
+    height: BUYER_HOME_TAB_BAR_HEIGHT, backgroundColor: '#FFFDF9',
     borderTopWidth: 1, borderTopColor: '#EDE8E0',
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingTop: 2, paddingBottom: 0, paddingHorizontal: 8, zIndex: 50,
