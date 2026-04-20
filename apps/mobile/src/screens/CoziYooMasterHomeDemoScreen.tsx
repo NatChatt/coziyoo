@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   heroWrap: {
     position: 'relative',
     height: 210,
-    overflow: 'hidden',
+    overflow: 'visible',
     backgroundColor: '#fddfb9',
   },
   heroImage: {
@@ -149,10 +149,10 @@ const styles = StyleSheet.create({
   },
   heroBottomGradient: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -52,
     left: 0,
     right: 0,
-    height: 70,
+    height: 122,
   },
   heroOverlayContent: {
     position: 'absolute',
@@ -212,6 +212,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 0,
     marginBottom: 4,
+    zIndex: 5,
   },
   searchInput: {
     flex: 1,
