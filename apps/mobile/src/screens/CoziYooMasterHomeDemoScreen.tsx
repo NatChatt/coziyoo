@@ -54,11 +54,32 @@ export default function CoziYooMasterHomeDemoScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.topArea}>
+          <LinearGradient
+            colors={['#FDE7C8', '#F7D7AF', '#F4D3A7']}
+            locations={[0, 0.55, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.topAreaWarmGradient}
+          />
           <View style={styles.heroWrap}>
             <Image
               source={require('../../assets/images/coziyoo-demo-cover1.jpg')}
               style={styles.heroImage}
               resizeMode="cover"
+            />
+            <LinearGradient
+              colors={['#fddfb9', 'rgba(253, 223, 185, 0)']}
+              locations={[0, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.imageEdgeFadeLeft}
+            />
+            <LinearGradient
+              colors={['rgba(253, 223, 185, 0)', 'rgba(253, 223, 185, 0.28)']}
+              locations={[0.4, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.imageEdgeFadeBottom}
             />
 
             <LinearGradient
@@ -71,30 +92,6 @@ export default function CoziYooMasterHomeDemoScreen() {
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.heroLeftGradient}
-            />
-
-            <LinearGradient
-              colors={['rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0)']}
-              locations={[0, 1]}
-              start={{ x: 1, y: 0.5 }}
-              end={{ x: 0, y: 0.5 }}
-              style={styles.heroRightLift}
-            />
-
-            <LinearGradient
-              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.30)', 'rgba(253, 222, 183, 0)']}
-              locations={[0, 0.5, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.plateHaloHorizontal}
-            />
-
-            <LinearGradient
-              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.24)', 'rgba(253, 222, 183, 0)']}
-              locations={[0, 0.5, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.plateHaloVertical}
             />
 
             <View style={styles.heroOverlayContent}>
@@ -132,8 +129,8 @@ export default function CoziYooMasterHomeDemoScreen() {
             </View>
           </View>
           <LinearGradient
-            colors={['#fddfb9', '#F3EFE6']}
-            locations={[0, 1]}
+            colors={['rgba(243, 239, 230, 0)', 'rgba(243, 239, 230, 0.58)', '#F3EFE6']}
+            locations={[0, 0.68, 1]}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={styles.topAreaFade}
@@ -149,7 +146,7 @@ export default function CoziYooMasterHomeDemoScreen() {
 
 const styles = StyleSheet.create({
   safe: {
-    backgroundColor: '#fddfb9',
+    backgroundColor: '#F3EFE6',
     flex: 1,
   },
   scrollContent: {
@@ -157,6 +154,10 @@ const styles = StyleSheet.create({
   },
   topArea: {
     backgroundColor: '#fddfb9',
+    position: 'relative',
+  },
+  topAreaWarmGradient: {
+    ...StyleSheet.absoluteFillObject,
   },
   heroWrap: {
     position: 'relative',
@@ -171,38 +172,28 @@ const styles = StyleSheet.create({
     width: '58%',
     height: 210,
   },
+  imageEdgeFadeLeft: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '58%',
+    height: 210,
+    zIndex: 1,
+  },
+  imageEdgeFadeBottom: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '58%',
+    height: 210,
+    zIndex: 1,
+  },
   heroLeftGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     height: 210,
-  },
-  heroRightLift: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: '44%',
-    height: 210,
-    zIndex: 1,
-  },
-  plateHaloHorizontal: {
-    position: 'absolute',
-    top: 4,
-    right: 10,
-    width: 194,
-    height: 194,
-    borderRadius: 97,
-    zIndex: 2,
-  },
-  plateHaloVertical: {
-    position: 'absolute',
-    top: 4,
-    right: 10,
-    width: 194,
-    height: 194,
-    borderRadius: 97,
-    zIndex: 2,
   },
   heroOverlayContent: {
     position: 'absolute',
@@ -260,13 +251,13 @@ const styles = StyleSheet.create({
   },
   searchBarWrap: {
     paddingHorizontal: 20,
-    marginTop: -2,
+    marginTop: 0,
     marginBottom: 0,
     zIndex: 5,
   },
   topAreaFade: {
-    height: 46,
-    marginTop: -2,
+    height: 44,
+    marginTop: 0,
   },
   searchInput: {
     flex: 1,
