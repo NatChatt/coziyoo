@@ -123,9 +123,7 @@
   }
   .hero-overlay-bottom {
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     pointer-events: none;
     z-index: 25;
   }
@@ -371,8 +369,8 @@
       xMid: 0.02 + xEase * 0.52,
       xStop1: 0.12 + xEase * 0.18,
       xStop2: 0.46 + xEase * 0.30,
-      yStrong: 0.08 + yEase * 0.92,
-      yStart: 0.42 - yEase * 0.20,
+      yStrong: Math.min(1, 0.18 + yEase * 0.92),
+      yStart: 0.72 - yEase * 0.62,
     };
   }
 
