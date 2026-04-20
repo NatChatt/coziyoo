@@ -102,16 +102,17 @@ export default function CoziYooMasterHomeDemoScreen() {
                 <Feather name="chevron-down" size={16} color="#b15735" />
               </View>
             </View>
-
-            <View style={styles.searchBar}>
-              <Feather name="search" size={18} color="#8a8a8a" />
-              <TextInput
-                placeholder="Search food, restaurants..."
-                placeholderTextColor="#9a9a9a"
-                style={styles.searchInput}
-                returnKeyType="search"
-              />
-            </View>
+          </View>
+        </View>
+        <View style={styles.searchBarWrap}>
+          <View style={styles.searchBar}>
+            <Feather name="search" size={18} color="#8a8a8a" />
+            <TextInput
+              placeholder="Search food, restaurants..."
+              placeholderTextColor="#9a9a9a"
+              style={styles.searchInput}
+              returnKeyType="search"
+            />
           </View>
         </View>
 
@@ -198,7 +199,6 @@ const styles = StyleSheet.create({
   searchBar: {
     width: '100%',
     minHeight: 44,
-    marginTop: 24,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -207,6 +207,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: 'rgba(92, 64, 51, 0.15)',
+  },
+  searchBarWrap: {
+    paddingHorizontal: 20,
+    marginTop: 0,
+    marginBottom: 4,
   },
   searchInput: {
     flex: 1,
