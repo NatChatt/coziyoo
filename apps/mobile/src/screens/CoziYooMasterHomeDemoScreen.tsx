@@ -165,10 +165,10 @@ const styles = StyleSheet.create({
   },
   heroFoodImage: {
     position: 'absolute',
-    right: -56,
-    top: -4,
-    width: width * 0.86,
-    height: 244,
+    right: -42,
+    top: 10,
+    width: width * 0.74,
+    height: 214,
   },
   heroSoftBlend: {
     position: 'absolute',
