@@ -7740,11 +7740,14 @@ const styles = StyleSheet.create({
 
   /* --- Bottom bar --- */
   bottomBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     height: 70, backgroundColor: '#FFFDF9',
     borderTopWidth: 1, borderTopColor: '#EDE8E0',
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingTop: 2, paddingBottom: 0, paddingHorizontal: 8, zIndex: 50,
-    marginBottom: Platform.OS === 'ios' ? -10 : -4,
   },
   navItem: {
     flex: 1,
