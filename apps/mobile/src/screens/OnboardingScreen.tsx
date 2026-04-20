@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   Image,
   Pressable,
+  Animated,
+  Easing,
   StyleSheet,
   StatusBar,
   SafeAreaView,
@@ -17,17 +19,61 @@ type Props = {
 
 export default function OnboardingScreen({ onGoToLogin }: Props) {
   const [isHovered, setIsHovered] = useState(false);
+  const logoAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    logoAnim.setValue(0);
+    Animated.timing(logoAnim, {
+      toValue: 1,
+      duration: 950,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [logoAnim]);
+
+  const logoAnimatedStyle = {
+    opacity: logoAnim,
+    transform: [
+      { perspective: 900 },
+      {
+        rotateY: logoAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['-70deg', '0deg'],
+        }),
+      },
+      {
+        rotateX: logoAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['14deg', '0deg'],
+        }),
+      },
+      {
+        rotateZ: logoAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['-6deg', '0deg'],
+        }),
+      },
+      {
+        scale: logoAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.78, 1],
+        }),
+      },
+    ],
+  } as const;
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#8D9C86" />
       <View style={styles.welcomeScreen}>
         <View style={styles.welcomeBrandWrap}>
-          <Image
-            source={require('../../assets/images/coziyoo-onboarding-logo.png')}
-            style={styles.welcomeLogo}
-            resizeMode="contain"
-          />
+          <Animated.View style={logoAnimatedStyle}>
+            <Image
+              source={require('../../assets/images/coziyoo-onboarding-logo.png')}
+              style={styles.welcomeLogo}
+              resizeMode="contain"
+            />
+          </Animated.View>
           <Text style={styles.welcomeSubtitle}>Homemade Food Near You</Text>
         </View>
 
