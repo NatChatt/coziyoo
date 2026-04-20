@@ -24,22 +24,6 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-let BlurView: React.ComponentType<{
-  intensity?: number;
-  tint?: 'light' | 'dark' | 'default' | string;
-  style?: any;
-  children?: React.ReactNode;
-}> | null = null;
-try {
-  const maybeBlurView = require('expo-blur').BlurView;
-  const hasNativeView = Boolean(
-    UIManager.getViewManagerConfig?.('ViewManagerAdapter_ExpoBlurView')
-      || UIManager.getViewManagerConfig?.('ExpoBlurView'),
-  );
-  BlurView = hasNativeView ? maybeBlurView : null;
-} catch {
-  // Optional at runtime; fallback view is used when unavailable.
-}
 let LinearGradient: React.ComponentType<{
   colors: string[];
   locations?: number[];
@@ -4205,14 +4189,13 @@ export default function HomeScreen({
         <View style={[styles.heroWrap, { backgroundColor: heroColors.bg }]}>
           {LinearGradient ? (
             <LinearGradient
-              colors={[heroColors.gradTop, heroColors.gradMid, heroColors.gradLight, '#FFFFFF']}
-              locations={[0, 0.35, 0.65, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
+              colors={['#F8DFC2', '#F6D6B4', toRgba(heroColors.gradLight, 0.78), toRgba(heroColors.gradLight, 0.22)]}
+              locations={[0, 0.48, 0.78, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
               style={styles.heroBaseGradient}
             />
           ) : null}
-          {/* Food image — covers entire hero */}
           <Image
             source={headerImageSource}
             style={styles.heroFoodBgImg}
@@ -4221,103 +4204,53 @@ export default function HomeScreen({
           {LinearGradient ? (
             <>
               <LinearGradient
-                colors={[
-                  heroColors.featherMain,
-                  toRgba(heroColors.featherMain, 0.88),
-                  toRgba(heroColors.featherMain, 0.45),
-                  'transparent',
-                ]}
-                locations={[0, 0.24, 0.58, 1]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
+                colors={['transparent', toRgba(heroColors.bg, 0.28), toRgba(heroColors.bg, 0.76), heroColors.bg]}
+                locations={[0, 0.44, 0.8, 1]}
+                start={{ x: 1, y: 0.5 }}
+                end={{ x: 0, y: 0.5 }}
                 style={styles.heroFeatherLeft}
               />
               <LinearGradient
-                colors={[toRgba(heroColors.featherSoft, 0.78), toRgba(heroColors.featherSoft, 0.36), 'transparent']}
-                locations={[0, 0.46, 1]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={styles.heroFeatherLeftSoft}
-              />
-              <LinearGradient
-                colors={[toRgba(heroColors.featherSoft, 0.76), toRgba(heroColors.featherSoft, 0.34), 'transparent']}
+                colors={['transparent', toRgba(heroColors.bg, 0.16), toRgba(heroColors.bg, 0.54)]}
                 locations={[0, 0.52, 1]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={styles.heroFeatherTop}
-              />
-              <LinearGradient
-                colors={['transparent', toRgba(heroColors.gradLight, 0.52), toRgba(heroColors.gradLight, 0.95)]}
-                locations={[0, 0.56, 1]}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
                 style={styles.heroFeatherBottom}
               />
-              <LinearGradient
-                colors={['transparent', toRgba(heroColors.bg, 0.42), toRgba(heroColors.bg, 0.68)]}
-                locations={[0, 0.62, 1]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={styles.heroFeatherRight}
-              />
             </>
           ) : null}
-          {BlurView ? (
-            <BlurView intensity={8} style={styles.heroTopBlur} />
-          ) : (
-            <View style={styles.heroTopBlurFallback} />
-          )}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.01)']}
-              locations={[0, 0.5, 1]}
-              style={styles.heroMistOverlay}
-            />
-          ) : (
-            <View style={styles.heroMistOverlayFallback} />
-          )}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={[
-                toRgba(heroColors.overlay, 0.18),
-                toRgba(heroColors.overlay, 0.08),
-                'transparent',
-              ]}
-              style={styles.heroOverlay}
-            />
-          ) : (
-            <View style={styles.heroOverlayFallback} />
-          )}
-          {/* Profile avatar */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.heroAvatarCircle}
-            onPress={() => handleTabPress('profile')}
-          >
-            {profileImageUrl && !profileImageLoadFailed ? (
-              <Image
-                source={{ uri: profileImageUrl }}
-                style={styles.heroAvatarImage}
-                onError={() => setProfileImageLoadFailed(true)}
-              />
-            ) : cachedLocalImageUrl ? (
-              <Image source={{ uri: cachedLocalImageUrl }} style={styles.heroAvatarImage} />
-            ) : (
-              <Text style={styles.avatarEmoji}>👩‍🍳</Text>
-            )}
-          </TouchableOpacity>
-          {/* Text content */}
           <View style={styles.heroTextArea}>
-            <View style={styles.greetingTitleWrap}>
-              <Text
-                style={[styles.greetingTitle, resolveGreetingTitleMetrics(dynamicGreetingTitle.text)]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.72}
+            <View style={styles.heroIdentityRow}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={styles.heroAvatarCircle}
+                onPress={() => handleTabPress('profile')}
               >
-                {dynamicGreetingTitle.text}
-              </Text>
-              <Text style={styles.greetingEmoji}>{dynamicGreetingTitle.emoji}</Text>
+                {profileImageUrl && !profileImageLoadFailed ? (
+                  <Image
+                    source={{ uri: profileImageUrl }}
+                    style={styles.heroAvatarImage}
+                    onError={() => setProfileImageLoadFailed(true)}
+                  />
+                ) : cachedLocalImageUrl ? (
+                  <Image source={{ uri: cachedLocalImageUrl }} style={styles.heroAvatarImage} />
+                ) : (
+                  <Text style={styles.avatarEmoji}>👩‍🍳</Text>
+                )}
+              </TouchableOpacity>
+              <View style={styles.heroGreetingArea}>
+                <View style={styles.greetingTitleWrap}>
+                  <Text
+                    style={[styles.greetingTitle, resolveGreetingTitleMetrics(dynamicGreetingTitle.text)]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.72}
+                  >
+                    {dynamicGreetingTitle.text}
+                  </Text>
+                  <Text style={styles.greetingEmoji}>{dynamicGreetingTitle.emoji}</Text>
+                </View>
+              </View>
             </View>
             <Text style={styles.heroSubtitle}>{greetingSubtitle}</Text>
             <TouchableOpacity
@@ -4326,9 +4259,9 @@ export default function HomeScreen({
               hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
               style={styles.heroLocationRow}
             >
-              <Ionicons name="location" size={16} color="#619670" />
+              <Ionicons name="location-outline" size={16} color="#C86D45" />
               <Text style={styles.heroLocationText}>{selectedLocationLabel}</Text>
-              <Ionicons name="chevron-down" size={14} color="#619670" style={{ marginLeft: 2 }} />
+              <Ionicons name="chevron-down" size={14} color="#C86D45" style={{ marginLeft: 2 }} />
             </TouchableOpacity>
           </View>
         </View>
@@ -5978,12 +5911,12 @@ const styles = StyleSheet.create({
   /* --- Hero Header with Gradient + Food Image --- */
   heroWrap: {
     position: 'relative',
-    height: 260,
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    height: 284,
+    paddingHorizontal: 20,
+    paddingTop: 58,
     marginHorizontal: -18,
     marginTop: -24,
-    backgroundColor: '#F9E9D5',
+    backgroundColor: '#F6D9B7',
     overflow: 'hidden',
   },
   heroBaseGradient: {
@@ -5991,148 +5924,88 @@ const styles = StyleSheet.create({
   },
   heroFoodBgImg: {
     position: 'absolute',
-    top: 10,
-    right: 6,
-    width: '42%',
-    height: '88%',
+    top: -14,
+    right: -34,
+    width: '68%',
+    height: '112%',
     opacity: 1,
     resizeMode: 'cover',
-  },
-  heroTopBlur: {
-    position: 'absolute',
-    top: 10,
-    right: 6,
-    width: '42%',
-    height: '88%',
-  },
-  heroTopBlurFallback: {
-    position: 'absolute',
-    top: 10,
-    right: 6,
-    width: '42%',
-    height: '88%',
-    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   heroFeatherLeft: {
     position: 'absolute',
     top: 0,
     right: 0,
-    width: '76%',
+    width: '84%',
     height: '100%',
-  },
-  heroFeatherLeftSoft: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: '68%',
-    height: '100%',
-  },
-  heroFeatherTop: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: '65%',
-    height: '48%',
   },
   heroFeatherBottom: {
     position: 'absolute',
-    right: 0,
+    left: 0,
     bottom: 0,
-    width: '65%',
-    height: '46%',
-  },
-  heroFeatherRight: {
-    position: 'absolute',
-    top: 10,
-    right: 6,
-    width: '48%',
-    height: '88%',
-  },
-  heroMistOverlay: {
-    position: 'absolute',
-    top: 10,
-    right: 6,
-    width: '42%',
-    height: '88%',
-  },
-  heroMistOverlayFallback: {
-    position: 'absolute',
-    top: 10,
-    right: 6,
-    width: '42%',
-    height: '88%',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  heroOverlay: {
-    position: 'absolute',
-    top: 10,
-    right: 6,
-    width: '42%',
-    height: '88%',
-  },
-  heroOverlayFallback: {
-    position: 'absolute',
-    top: 10,
-    right: 6,
-    width: '42%',
-    height: '88%',
-    backgroundColor: 'rgba(233,194,152,0.12)',
+    width: '100%',
+    height: '40%',
   },
   heroTextArea: {
     zIndex: 3,
-    maxWidth: '58%',
-    paddingTop: 8,
+    width: '62%',
+    paddingTop: 2,
+    paddingBottom: 22,
+    paddingLeft: 2,
   },
-  greetingTitleWrap: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center' },
-  greetingEmoji: { fontSize: 24, opacity: 0.9, marginLeft: 6 },
+  heroIdentityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  heroGreetingArea: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  greetingTitleWrap: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', maxWidth: '100%' },
+  greetingEmoji: { fontSize: 20, opacity: 0.9, marginLeft: 4 },
   greetingTitle: {
-    color: '#2F1F17',
-    fontSize: 26,
-    lineHeight: 32,
+    color: '#17140F',
+    fontSize: 37,
+    lineHeight: 43,
     fontWeight: '900',
-    letterSpacing: -0.8,
-    textShadowColor: 'rgba(255,255,255,0.34)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1.5,
+    letterSpacing: -1.1,
   },
   heroSubtitle: {
-    color: '#38261D',
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 4,
+    color: '#B95E39',
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 14,
   },
   heroLocationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 10,
     gap: 4,
+    alignSelf: 'flex-start',
   },
   heroLocationText: {
-    color: '#619670',
-    fontSize: 14,
-    fontWeight: '800',
+    color: '#B95E39',
+    fontSize: 15,
+    fontWeight: '700',
   },
   heroAvatarCircle: {
-    position: 'absolute',
-    top: 40,
-    right: 30,
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: '#E7E5E2',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#E2E0DC',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2.5,
+    borderWidth: 2,
     borderColor: '#fff',
-    zIndex: 10,
+    zIndex: 5,
     overflow: 'hidden',
     shadowColor: '#5A3E2B',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  heroAvatarImage: { width: 62, height: 62, borderRadius: 31 },
+  heroAvatarImage: { width: 56, height: 56, borderRadius: 28 },
   avatarEmoji: { fontSize: 24 },
   
   /* --- Sticky Search + Chips wrapper --- */
