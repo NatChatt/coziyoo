@@ -336,7 +336,13 @@
   }
 
   function hasImage() {
-    return image.style.display !== 'none' && !!image.src;
+    return (
+      image.style.display !== 'none' &&
+      !!image.src &&
+      image.complete === true &&
+      (image.naturalWidth || 0) > 1 &&
+      (image.naturalHeight || 0) > 1
+    );
   }
 
   function setEmpty(show) {
@@ -571,6 +577,12 @@
     setEmpty(false);
   }
 
+  image.addEventListener('error', function () {
+    image.style.display = 'none';
+    setEmpty(true);
+    helpText.textContent = 'Gorsel yuklenemedi. Resmi tekrar secip yeniden dene.';
+  });
+
   function exportCanvasToInput() {
     if (!hasImage()) return false;
 
@@ -585,8 +597,9 @@
     var ctx = canvas.getContext('2d');
     if (!ctx) return false;
 
-    var iw = image.naturalWidth || vw;
-    var ih = image.naturalHeight || vh;
+    var iw = image.naturalWidth || 0;
+    var ih = image.naturalHeight || 0;
+    if (iw <= 1 || ih <= 1) return false;
     var finalScale = baseScale * state.scale;
     var drawW = iw * finalScale;
     var drawH = ih * finalScale;
@@ -782,9 +795,9 @@
 
   form.addEventListener('submit', function (e) {
     actionInput.value = 'approve';
-    if (!hasImage() && !imageUrlInput.value) {
+    if (!hasImage()) {
       e.preventDefault();
-      alert('Once bir gorsel ekle.');
+      alert('Yayinlamak icin once gecerli bir gorsel yuklenmeli.');
       return;
     }
 
