@@ -4266,6 +4266,15 @@ export default function HomeScreen({
         </View>
         {/* Sticky: Search Bar + Category Chips */}
         <View style={styles.stickySearchChips}>
+          {LinearGradient ? (
+            <LinearGradient
+              colors={['#F3D8B8', '#FAEEDC', '#FFFBF4']}
+              locations={[0, 0.52, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.stickySearchFade}
+            />
+          ) : null}
           <View style={styles.floatingSearchWrap}>
             <TouchableOpacity
               style={[styles.floatingSearchBar, searchMode && styles.floatingSearchBarActive]}
@@ -4889,7 +4898,7 @@ export default function HomeScreen({
   return (
     <>
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFBF4" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FDDEB7" />
       {paymentError ? (
         <View style={styles.topErrorBanner}>
           <Text style={styles.topErrorBannerText}>{paymentError}</Text>
@@ -5890,7 +5899,7 @@ const cpStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   /* --- Layout --- */
-  safe: { flex: 1, backgroundColor: '#FFFBF4' },
+  safe: { flex: 1, backgroundColor: '#FDDEB7' },
   topErrorBanner: {
     backgroundColor: theme.error,
     paddingHorizontal: 14,
@@ -5923,10 +5932,10 @@ const styles = StyleSheet.create({
   },
   heroFoodBgImg: {
     position: 'absolute',
-    top: 0,
-    right: -12,
-    width: '84%',
-    height: 210,
+    top: -6,
+    right: -8,
+    width: '88%',
+    height: 232,
     opacity: 1,
     resizeMode: 'cover',
   },
@@ -5942,7 +5951,7 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: '100%',
-    height: 70,
+    height: 96,
   },
   heroTextArea: {
     zIndex: 3,
@@ -6009,6 +6018,7 @@ const styles = StyleSheet.create({
   
   /* --- Sticky Search + Chips wrapper --- */
   stickySearchChips: {
+    position: 'relative',
     backgroundColor: '#FFFBF4',
     paddingTop: 18,
     paddingBottom: 4,
@@ -6018,6 +6028,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0,
+  },
+  stickySearchFade: {
+    ...StyleSheet.absoluteFillObject,
+    height: 156,
   },
 
   /* --- Floating Search Bar (premium shadow) --- */
