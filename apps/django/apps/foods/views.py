@@ -8,7 +8,7 @@ import json
 
 from django.db import connection
 from django.db import transaction
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -72,9 +72,9 @@ def _has_public_column(table_name, column_name):
     return exists
 
 
-def _resolve_mobile_home_header_image_url():
+def _load_latest_mobile_home_header_raw():
     if not _has_public_column("admin_sales_commission_settings", "mobile_home_header_image_url"):
-        return None
+        return None, None
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -90,14 +90,63 @@ def _resolve_mobile_home_header_image_url():
         row = cursor.fetchone()
 
     if not row or not row[0]:
+        return None, None
+    return str(row[0]).strip(), row[0]
+
+
+def _resolve_mobile_home_header_image_url(request: HttpRequest | None = None):
+    value, _raw = _load_latest_mobile_home_header_raw()
+    if not value:
         return None
-    value = str(row[0]).strip()
     if value.startswith("s3://"):
-        hydrated = s3_utils.hydrate_file_url(value)
-        return hydrated or None
+        # Always serve through our API to avoid signed URL expiry/client access issues.
+        path = f"{reverse('foods-home-hero-image')}?v={abs(hash(value)) % 1000000000}"
+        if request is not None:
+            return request.build_absolute_uri(path)
+        return path
     if value.startswith(("http://", "https://", "data:image/")):
         return value
     return None
+
+
+def mobile_home_hero_image_view(request: HttpRequest):
+    value, _raw = _load_latest_mobile_home_header_raw()
+    if not value:
+        raise Http404("No hero image")
+
+    if value.startswith("data:image/"):
+        try:
+            header, payload = value.split(",", 1)
+            content_type = header.split(";")[0].replace("data:", "").strip() or "image/png"
+            binary = base64.b64decode(payload)
+            response = HttpResponse(binary, content_type=content_type)
+            response["Cache-Control"] = "no-store"
+            return response
+        except (ValueError, binascii.Error):
+            raise Http404("Bad data url")
+
+    if value.startswith("s3://"):
+        parsed = s3_utils.parse_storage_pointer(value)
+        if not parsed or not s3_utils.is_configured():
+            raise Http404("S3 unavailable")
+        try:
+            client = s3_utils.get_client()
+            result = client.get_object(Bucket=parsed["bucket"], Key=parsed["key"])
+            content_type = str(result.get("ContentType") or "image/jpeg").strip() or "image/jpeg"
+            body = result["Body"].read()
+            if not body:
+                raise Http404("Empty image")
+            response = HttpResponse(body, content_type=content_type)
+            response["Cache-Control"] = "no-store"
+            return response
+        except Exception:
+            raise Http404("S3 fetch failed")
+
+    # For plain external URLs, redirect as a last resort.
+    if value.startswith(("http://", "https://")):
+        return HttpResponseRedirect(value)
+
+    raise Http404("Unsupported image source")
 
 
 def _parse_text_list(value):
@@ -574,7 +623,7 @@ class FoodListView(APIView):
         category_map = _load_category_map(category_ids)
         return Response({
             "data": [_serialize_food_row(item, category_map, request) for item in items],
-            "mobileHomeHeaderImageUrl": _resolve_mobile_home_header_image_url(),
+            "mobileHomeHeaderImageUrl": _resolve_mobile_home_header_image_url(request),
         })
 
 
