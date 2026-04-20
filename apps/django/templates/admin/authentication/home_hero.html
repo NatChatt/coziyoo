@@ -130,6 +130,13 @@
     pointer-events: none;
     z-index: 21;
   }
+  .hero-overlay-paper {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 22;
+    mix-blend-mode: multiply;
+  }
   .hero-overlay-bottom {
     position: absolute;
     inset: 0;
@@ -239,6 +246,7 @@
           <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
           <div class="hero-overlay-left" id="hero-overlay-left"></div>
           <div class="hero-overlay-corners" id="hero-overlay-corners"></div>
+          <div class="hero-overlay-paper" id="hero-overlay-paper"></div>
           <div class="hero-overlay-top" id="hero-overlay-top"></div>
           <div class="hero-copy">
             <div class="hero-copy-top">
@@ -310,6 +318,7 @@
   var empty = document.getElementById('hero-empty');
   var overlayLeft = document.getElementById('hero-overlay-left');
   var overlayCorners = document.getElementById('hero-overlay-corners');
+  var overlayPaper = document.getElementById('hero-overlay-paper');
   var overlayTop = document.getElementById('hero-overlay-top');
   var overlayBottom = document.getElementById('hero-overlay-bottom');
 
@@ -496,6 +505,18 @@
       'rgba(255, 251, 244, 0) 0%, ' +
       'rgba(255, 251, 244, ' + fade.yStrong.toFixed(3) + ') ' + (fade.yStart * 100).toFixed(1) + '%, ' +
       'rgba(255, 251, 244, 1) 100%)';
+
+    // Parchment-like grain: dotted + aged paper fibers
+    var grainAlpha = (0.06 + (fade.xStrong * 0.08) + (fade.yStrong * 0.08));
+    var warmAlpha = (0.04 + fade.cornerOpacity * 0.12);
+    overlayPaper.style.background =
+      'radial-gradient(circle at 12% 18%, rgba(133, 97, 58, ' + grainAlpha.toFixed(3) + ') 0 0.9px, transparent 1.3px),' +
+      'radial-gradient(circle at 74% 32%, rgba(122, 88, 49, ' + (grainAlpha * 0.85).toFixed(3) + ') 0 0.8px, transparent 1.2px),' +
+      'radial-gradient(circle at 36% 76%, rgba(147, 110, 67, ' + (grainAlpha * 0.75).toFixed(3) + ') 0 1px, transparent 1.5px),' +
+      'linear-gradient(115deg, rgba(198, 150, 94, ' + warmAlpha.toFixed(3) + ') 0%, rgba(255, 246, 230, 0) 56%),' +
+      'linear-gradient(12deg, rgba(181, 138, 84, ' + (warmAlpha * 0.7).toFixed(3) + ') 0%, rgba(255, 250, 240, 0) 70%)';
+    overlayPaper.style.backgroundSize = '7px 7px, 9px 9px, 11px 11px, 100% 100%, 100% 100%';
+    overlayPaper.style.opacity = '1';
   }
 
   function applyAll() {
