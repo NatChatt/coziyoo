@@ -57,35 +57,16 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
   const logoAnimatedStyle = {
     opacity: logoAnim,
     transform: [
-      { perspective: 1200 },
-      {
-        rotateY: logoAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: ['-1080deg', '0deg'],
-        }),
-      },
-      {
-        rotateX: logoAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: ['58deg', '0deg'],
-        }),
-      },
-      {
-        rotateZ: logoAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: ['720deg', '0deg'],
-        }),
-      },
       {
         scale: logoAnim.interpolate({
           inputRange: [0, 1],
-          outputRange: [0.28, 1],
+          outputRange: [0.16, 1],
         }),
       },
       {
         translateY: logoAnim.interpolate({
           inputRange: [0, 1],
-          outputRange: [120, 0],
+          outputRange: [180, 0],
         }),
       },
     ],
