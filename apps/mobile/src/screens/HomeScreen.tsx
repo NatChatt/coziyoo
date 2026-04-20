@@ -1993,8 +1993,8 @@ function FoodCard({
           {LinearGradient ? (
             <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
               <LinearGradient
-                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.66)']}
-                locations={[0, 0.52, 1]}
+                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.46)', 'rgba(0,0,0,0.82)']}
+                locations={[0, 0.44, 1]}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
                 style={styles.foodPhotoBottomGradientFill}
@@ -4189,8 +4189,8 @@ export default function HomeScreen({
         <View style={styles.heroWrap}>
           {LinearGradient ? (
             <LinearGradient
-              colors={['#F4D6BF', 'rgba(244,214,191,0.55)', 'rgba(244,214,191,0.25)', 'transparent']}
-              locations={[0, 0.38, 0.72, 1]}
+              colors={['rgba(255, 235, 205, 0.98)', 'rgba(255, 235, 205, 0.82)', 'rgba(255, 235, 205, 0.28)', 'rgba(255, 235, 205, 0)']}
+              locations={[0, 0.28, 0.68, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.heroBaseGradient}
@@ -4201,6 +4201,52 @@ export default function HomeScreen({
             style={styles.heroFoodBgImg}
             onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
           />
+          {LinearGradient ? (
+            <LinearGradient
+              colors={['rgba(191, 132, 91, 0.22)', 'rgba(191, 132, 91, 0.1)', 'rgba(191, 132, 91, 0)']}
+              locations={[0, 0.16, 0.34]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroFoodBgEdgeFade}
+            />
+          ) : null}
+          {LinearGradient ? (
+            <LinearGradient
+              colors={['rgba(255, 228, 196, 1)', 'rgba(255, 228, 196, 0.9)', 'rgba(255, 228, 196, 0.42)', 'rgba(255, 228, 196, 0)']}
+              locations={[0, 0.32, 0.72, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.heroFeatherLeft}
+            />
+          ) : null}
+          {LinearGradient ? (
+            <LinearGradient
+              colors={['rgba(253, 222, 183, 0.98)', 'rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0)']}
+              locations={[0, 0.52, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.heroFeatherTop}
+            />
+          ) : null}
+          {LinearGradient ? (
+            <LinearGradient
+              colors={['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']}
+              locations={[0, 1]}
+              start={{ x: 0.5, y: 1 }}
+              end={{ x: 0.5, y: 0 }}
+              style={styles.heroFeatherBottom}
+            />
+          ) : null}
+          {LinearGradient ? (
+            <LinearGradient
+              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.28)', 'rgba(253, 222, 183, 0.58)']}
+              locations={[0, 0.5, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.heroFeatherRight}
+            />
+          ) : null}
+          <View pointerEvents="none" style={styles.heroRightSeamCover} />
           <View style={styles.heroTextArea}>
             <View style={styles.heroIdentityRow}>
               <TouchableOpacity
@@ -5904,7 +5950,8 @@ const styles = StyleSheet.create({
     height: 226,
     paddingHorizontal: 20,
     paddingTop: 8,
-    marginHorizontal: -18,
+    marginLeft: -18,
+    marginRight: -40,
     marginTop: 0,
     backgroundColor: '#FDDEB7',
     overflow: 'hidden',
@@ -5914,12 +5961,23 @@ const styles = StyleSheet.create({
   },
   heroFoodBgImg: {
     position: 'absolute',
-    top: -10,
-    right: -80,
-    width: '100%',
-    height: '120%',
-    opacity: 1,
+    top: 14,
+    right: -40,
+    width: '68%',
+    height: '82%',
+    opacity: 0.94,
+    borderTopLeftRadius: 44,
+    borderBottomLeftRadius: 44,
     resizeMode: 'cover',
+  },
+  heroFoodBgEdgeFade: {
+    position: 'absolute',
+    top: 16,
+    right: -38,
+    width: '64%',
+    height: '78%',
+    borderTopLeftRadius: 44,
+    borderBottomLeftRadius: 44,
   },
   heroFeatherLeft: {
     position: 'absolute',
@@ -5945,9 +6003,15 @@ const styles = StyleSheet.create({
   heroFeatherRight: {
     position: 'absolute',
     top: 0,
-    right: 0,
-    width: 18,
+    right: -6,
+    width: 24,
     height: '100%',
+  },
+  heroRightSeamCover: {
+    ...StyleSheet.absoluteFillObject,
+    left: undefined,
+    width: 40,
+    backgroundColor: '#FDDEB7',
   },
   heroTextArea: {
     zIndex: 3,
@@ -6553,11 +6617,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 110,
+    height: 128,
   },
   foodPhotoBottomGradientFill: {
-    width: '100%',
-    height: '100%',
+    ...StyleSheet.absoluteFillObject,
   },
   foodPhotoBottomGradientFallback: {
     position: 'absolute',
