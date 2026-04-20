@@ -4190,7 +4190,6 @@ export default function HomeScreen({
   }
 
   function renderHomeFeed() {
-    const hasAdminHeroImage = Boolean(adminHeroImageUrl);
     return (
       <ScrollView
         ref={feedScrollRef}
@@ -4203,12 +4202,8 @@ export default function HomeScreen({
         <View style={styles.heroWrap}>
           {LinearGradient ? (
             <LinearGradient
-              colors={
-                hasAdminHeroImage
-                  ? ['rgba(255, 240, 218, 0.78)', 'rgba(255, 240, 218, 0.42)', 'rgba(255, 240, 218, 0.12)', 'rgba(255, 240, 218, 0)']
-                  : ['rgba(255, 235, 205, 0.98)', 'rgba(255, 235, 205, 0.82)', 'rgba(255, 235, 205, 0.28)', 'rgba(255, 235, 205, 0)']
-              }
-              locations={hasAdminHeroImage ? [0, 0.26, 0.62, 1] : [0, 0.28, 0.68, 1]}
+              colors={['rgba(255, 235, 205, 0.98)', 'rgba(255, 235, 205, 0.82)', 'rgba(255, 235, 205, 0.28)', 'rgba(255, 235, 205, 0)']}
+              locations={[0, 0.28, 0.68, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.heroBaseGradient}
@@ -4219,7 +4214,7 @@ export default function HomeScreen({
             style={styles.heroFoodBgImg}
             onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
           />
-          {LinearGradient && !hasAdminHeroImage ? (
+          {LinearGradient ? (
             <LinearGradient
               colors={['rgba(191, 132, 91, 0.22)', 'rgba(191, 132, 91, 0.1)', 'rgba(191, 132, 91, 0)']}
               locations={[0, 0.16, 0.34]}
@@ -4230,12 +4225,8 @@ export default function HomeScreen({
           ) : null}
           {LinearGradient ? (
             <LinearGradient
-              colors={
-                hasAdminHeroImage
-                  ? ['rgba(255, 228, 196, 0.82)', 'rgba(255, 228, 196, 0.58)', 'rgba(255, 228, 196, 0.26)', 'rgba(255, 228, 196, 0)']
-                  : ['rgba(255, 228, 196, 1)', 'rgba(255, 228, 196, 0.9)', 'rgba(255, 228, 196, 0.42)', 'rgba(255, 228, 196, 0)']
-              }
-              locations={hasAdminHeroImage ? [0, 0.28, 0.66, 1] : [0, 0.32, 0.72, 1]}
+              colors={['rgba(255, 228, 196, 1)', 'rgba(255, 228, 196, 0.9)', 'rgba(255, 228, 196, 0.42)', 'rgba(255, 228, 196, 0)']}
+              locations={[0, 0.32, 0.72, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.heroFeatherLeft}
@@ -4243,12 +4234,8 @@ export default function HomeScreen({
           ) : null}
           {LinearGradient ? (
             <LinearGradient
-              colors={
-                hasAdminHeroImage
-                  ? ['rgba(253, 222, 183, 0.72)', 'rgba(253, 222, 183, 0.38)', 'rgba(253, 222, 183, 0)']
-                  : ['rgba(253, 222, 183, 0.98)', 'rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0)']
-              }
-              locations={hasAdminHeroImage ? [0, 0.44, 1] : [0, 0.52, 1]}
+              colors={['rgba(253, 222, 183, 0.98)', 'rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0)']}
+              locations={[0, 0.52, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.heroFeatherTop}
@@ -4256,18 +4243,14 @@ export default function HomeScreen({
           ) : null}
           {LinearGradient ? (
             <LinearGradient
-              colors={
-                hasAdminHeroImage
-                  ? ['rgba(255, 251, 244, 0.70)', 'rgba(255, 255, 255, 0)']
-                  : ['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']
-              }
+              colors={['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']}
               locations={[0, 1]}
               start={{ x: 0.5, y: 1 }}
               end={{ x: 0.5, y: 0 }}
               style={styles.heroFeatherBottom}
             />
           ) : null}
-          {LinearGradient && !hasAdminHeroImage ? (
+          {LinearGradient ? (
             <LinearGradient
               colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.28)', 'rgba(253, 222, 183, 0.58)']}
               locations={[0, 0.5, 1]}
@@ -4276,7 +4259,7 @@ export default function HomeScreen({
               style={styles.heroFeatherRight}
             />
           ) : null}
-          {!hasAdminHeroImage ? <View pointerEvents="none" style={styles.heroRightSeamCover} /> : null}
+          <View pointerEvents="none" style={styles.heroRightSeamCover} />
           <View style={styles.heroTextArea}>
             <View style={styles.heroIdentityRow}>
               <TouchableOpacity
@@ -7761,6 +7744,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: '#EDE8E0',
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingTop: 2, paddingBottom: 0, paddingHorizontal: 8, zIndex: 50,
+    marginBottom: Platform.OS === 'ios' ? -10 : -4,
   },
   navItem: {
     flex: 1,
