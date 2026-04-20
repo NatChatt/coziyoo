@@ -4189,8 +4189,8 @@ export default function HomeScreen({
         <View style={styles.heroWrap}>
           {LinearGradient ? (
             <LinearGradient
-              colors={['rgba(253, 222, 183, 1)', 'rgba(253, 222, 183, 1)', 'rgba(253, 222, 183, 0)']}
-              locations={[0, 0.5, 1]}
+              colors={['#F4D6BF', 'rgba(244,214,191,0.55)', 'rgba(244,214,191,0.25)', 'transparent']}
+              locations={[0, 0.38, 0.72, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.heroBaseGradient}
@@ -4201,42 +4201,6 @@ export default function HomeScreen({
             style={styles.heroFoodBgImg}
             onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
           />
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(253, 222, 183, 1)', 'rgba(253, 222, 183, 0.95)', 'rgba(253, 222, 183, 0.35)', 'rgba(253, 222, 183, 0)']}
-              locations={[0, 0.45, 0.78, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.heroFeatherLeft}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(253, 222, 183, 0.98)', 'rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0)']}
-              locations={[0, 0.52, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.heroFeatherTop}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']}
-              locations={[0, 1]}
-              start={{ x: 0.5, y: 1 }}
-              end={{ x: 0.5, y: 0 }}
-              style={styles.heroFeatherBottom}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.28)', 'rgba(253, 222, 183, 0.58)']}
-              locations={[0, 0.5, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.heroFeatherRight}
-            />
-          ) : null}
           <View style={styles.heroTextArea}>
             <View style={styles.heroIdentityRow}>
               <TouchableOpacity
