@@ -4203,8 +4203,8 @@ export default function HomeScreen({
           />
           {LinearGradient ? (
             <LinearGradient
-              colors={['rgba(253, 222, 183, 1)', 'rgba(253, 222, 183, 0.95)', 'rgba(253, 222, 183, 0.35)', 'rgba(253, 222, 183, 0)']}
-              locations={[0, 0.45, 0.78, 1]}
+              colors={['rgba(253, 222, 183, 1)', 'rgba(253, 222, 183, 0.88)', 'rgba(253, 222, 183, 0.16)', 'rgba(253, 222, 183, 0)']}
+              locations={[0, 0.46, 0.82, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.heroFeatherLeft}
@@ -4212,8 +4212,8 @@ export default function HomeScreen({
           ) : null}
           {LinearGradient ? (
             <LinearGradient
-              colors={['rgba(253, 222, 183, 0.98)', 'rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0)']}
-              locations={[0, 0.52, 1]}
+              colors={['rgba(253, 222, 183, 0.52)', 'rgba(253, 222, 183, 0.18)', 'rgba(253, 222, 183, 0)']}
+              locations={[0, 0.5, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.heroFeatherTop}
@@ -4221,8 +4221,8 @@ export default function HomeScreen({
           ) : null}
           {LinearGradient ? (
             <LinearGradient
-              colors={['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']}
-              locations={[0, 1]}
+              colors={['rgba(255, 251, 244, 0.86)', 'rgba(255, 255, 255, 0)']}
+              locations={[0, 0.96]}
               start={{ x: 0.5, y: 1 }}
               end={{ x: 0.5, y: 0 }}
               style={styles.heroFeatherBottom}
@@ -4230,7 +4230,7 @@ export default function HomeScreen({
           ) : null}
           {LinearGradient ? (
             <LinearGradient
-              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.28)', 'rgba(253, 222, 183, 0.58)']}
+              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.14)', 'rgba(253, 222, 183, 0.34)']}
               locations={[0, 0.5, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
@@ -5950,10 +5950,10 @@ const styles = StyleSheet.create({
   },
   heroFoodBgImg: {
     position: 'absolute',
-    top: -12,
-    right: -56,
-    width: '114%',
-    height: 246,
+    top: -8,
+    right: -32,
+    width: '96%',
+    height: 232,
     opacity: 1,
     resizeMode: 'cover',
   },
@@ -5961,7 +5961,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    width: '100%',
+    width: '84%',
     height: 210,
   },
   heroFeatherTop: {
@@ -5969,20 +5969,20 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     width: '100%',
-    height: 78,
+    height: 54,
   },
   heroFeatherBottom: {
     position: 'absolute',
     left: 0,
     bottom: 0,
     width: '100%',
-    height: 96,
+    height: 74,
   },
   heroFeatherRight: {
     position: 'absolute',
     top: 0,
     right: 0,
-    width: 18,
+    width: 12,
     height: 210,
   },
   heroTextArea: {
