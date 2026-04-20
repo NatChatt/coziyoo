@@ -1433,8 +1433,10 @@ function resolveHomeHeaderImageUrl(payload: unknown): string | null {
   ];
 
   for (const item of candidates) {
-    if (typeof item === 'string' && /^https?:\/\//.test(item.trim())) {
-      return item.trim();
+    if (typeof item !== 'string') continue;
+    const normalized = item.trim();
+    if (/^https?:\/\//.test(normalized) || /^data:image\//.test(normalized)) {
+      return normalized;
     }
   }
   return null;
