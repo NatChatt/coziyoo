@@ -111,7 +111,7 @@ export default function CoziYooMasterHomeDemoScreen() {
                 source={require('../../assets/images/coziyoo-demo-avatar.jpeg')}
                 style={styles.avatar}
               />
-              <Text style={styles.greeting}>Hi, John Doe</Text>
+              <Text style={styles.greeting}>Hi, M.K.</Text>
             </View>
 
             <Text style={styles.headline}>What should we eat today?</Text>
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   heroFoodImage: {
     position: 'absolute',
     right: -56,
-    top: -4,
+    top: 10,
     width: width * 0.86,
     height: 244,
   },
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   heroContent: {
     flex: 1,
     paddingHorizontal: 18,
-    paddingTop: 20,
+    paddingTop: 34,
     width: '61%',
     zIndex: 2,
   },
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
   searchWrap: {
-    marginTop: -18,
+    marginTop: -2,
     paddingHorizontal: 18,
     zIndex: 3,
   },
