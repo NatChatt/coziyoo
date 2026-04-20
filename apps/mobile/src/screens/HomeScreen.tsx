@@ -5932,7 +5932,7 @@ const cpStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   /* --- Layout --- */
-  safe: { flex: 1, backgroundColor: '#FDDEB7' },
+  safe: { flex: 1, backgroundColor: '#FFFBF4' },
   topErrorBanner: {
     backgroundColor: theme.error,
     paddingHorizontal: 14,
@@ -5946,7 +5946,7 @@ const styles = StyleSheet.create({
   },
   container: { flex: 1, backgroundColor: '#FFFBF4' },
   content: { flex: 1, zIndex: 10 },
-  scroll: { flex: 1, backgroundColor: '#FDDEB7' },
+  scroll: { flex: 1, backgroundColor: '#FFFBF4' },
   scrollContent: { paddingBottom: 130 },
 
   /* --- Hero Header with Gradient + Food Image --- */
