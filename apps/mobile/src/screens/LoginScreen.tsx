@@ -221,7 +221,7 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
         <View style={styles.header}>
           <View style={styles.logoWrap}>
           <Image
-            source={require('../../assets/images/coziyoo-logo-light-bg.png')}
+            source={require('../../assets/images/coziyoo-onboarding-logo.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />
