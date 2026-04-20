@@ -5,42 +5,26 @@
 <div class="max-w-6xl mx-auto p-4" data-saved="{% if saved %}1{% else %}0{% endif %}">
   <div class="mb-4">
     <h1 class="text-2xl font-semibold text-base-900 dark:text-base-100">Home Hero</h1>
-    <p class="text-sm text-base-500 dark:text-base-400">Görsel URL gir, ön izle, beğenirsen onayla. İstersen düzenleye dönüp tekrar değiştirebilirsin.</p>
+    <p class="text-sm text-base-500 dark:text-base-400">Görsel yükle, ön izle, beğenirsen onayla. İstersen düzenleye dönüp tekrar değiştirebilirsin.</p>
   </div>
 
   <form method="post" class="space-y-4" id="home-hero-form" novalidate>
     {% csrf_token %}
     <input type="hidden" name="action" id="hero-action" value="approve" />
+    <input type="hidden" name="mobile_home_header_image_url" id="hero-image-value" value="{{ current_url|default:'' }}" />
 
     <div class="rounded-xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div>
-          <label for="hero-url-input" class="block text-sm font-medium mb-2">Home Hero Görsel URL</label>
-          <input
-            id="hero-url-input"
-            name="mobile_home_header_image_url"
-            type="url"
-            value="{{ current_url }}"
-            placeholder="https://..."
-            class="w-full rounded-lg border border-base-300 dark:border-base-700 bg-white dark:bg-base-950 px-3 py-2 text-sm"
-          />
-          <p class="mt-2 text-xs text-base-500 dark:text-base-400">
-            Onayla butonu URL kaydeder. Yerel dosya seçersen sadece önizleme için görünür.
-          </p>
-        </div>
-
-        <div>
-          <label for="hero-file-input" class="block text-sm font-medium mb-2">Görsel Ekle (Önizleme)</label>
-          <input id="hero-file-input" type="file" accept="image/*" class="hidden" />
-          <button
-            type="button"
-            id="hero-file-trigger"
-            class="w-full rounded-lg border border-dashed border-base-300 dark:border-base-700 bg-base-50 dark:bg-base-950/60 px-4 py-3 text-sm text-base-700 dark:text-base-200 text-left"
-          >
-            Dosya seçmek için tıkla (sadece önizleme)
-          </button>
-          <p id="hero-file-name" class="mt-2 text-xs text-base-500 dark:text-base-400"></p>
-        </div>
+      <div>
+        <label for="hero-file-input" class="block text-sm font-medium mb-2">Home Hero Görseli</label>
+        <input id="hero-file-input" type="file" accept="image/*" class="hidden" />
+        <button
+          type="button"
+          id="hero-file-trigger"
+          class="w-full rounded-lg border border-dashed border-base-300 dark:border-base-700 bg-base-50 dark:bg-base-950/60 px-4 py-3 text-sm text-base-700 dark:text-base-200 text-left"
+        >
+          Dosya seçmek için tıkla
+        </button>
+        <p id="hero-file-name" class="mt-2 text-xs text-base-500 dark:text-base-400"></p>
       </div>
     </div>
 
@@ -104,7 +88,7 @@
     const container = document.querySelector('[data-saved]');
     const wasSaved = container && container.getAttribute('data-saved') === '1';
 
-    const input = document.getElementById('hero-url-input');
+    const imageValue = document.getElementById('hero-image-value');
     const fileInput = document.getElementById('hero-file-input');
     const fileTrigger = document.getElementById('hero-file-trigger');
     const fileName = document.getElementById('hero-file-name');
@@ -121,12 +105,7 @@
     const form = document.getElementById('home-hero-form');
     const actionInput = document.getElementById('hero-action');
 
-    let localPreviewActive = false;
-
-    function isValidUrl(value) {
-      const raw = String(value || '').trim();
-      return raw.startsWith('http://') || raw.startsWith('https://');
-    }
+    let changed = false;
 
     function showEmptyPreview(show) {
       if (show) {
@@ -155,22 +134,7 @@
       showEmptyPreview(false);
     }
 
-    function applyPreviewFromInput() {
-      const value = (input.value || '').trim();
-      if (!isValidUrl(value)) {
-        if (!localPreviewActive) {
-          applyPreviewFromSource('');
-        }
-        return;
-      }
-      localPreviewActive = false;
-      fileName.textContent = '';
-      fileInput.value = '';
-      applyPreviewFromSource(value);
-    }
-
     function setMode(editable) {
-      input.disabled = !editable;
       fileInput.disabled = !editable;
       fileTrigger.disabled = !editable;
       approveBtn.disabled = !editable;
@@ -190,21 +154,17 @@
       }
     });
 
-    input.addEventListener('input', function () {
-      localPreviewActive = false;
-      actionInput.value = 'edit';
-      applyPreviewFromInput();
-    });
-
     fileInput.addEventListener('change', function () {
       const file = fileInput.files && fileInput.files[0];
       if (!file) return;
-      fileName.textContent = file.name + ' (önizleme)';
+      fileName.textContent = file.name;
       const reader = new FileReader();
       reader.onload = function (event) {
-        localPreviewActive = true;
+        changed = true;
         actionInput.value = 'edit';
-        applyPreviewFromSource(event.target && event.target.result ? String(event.target.result) : '');
+        const dataUrl = event.target && event.target.result ? String(event.target.result) : '';
+        imageValue.value = dataUrl;
+        applyPreviewFromSource(dataUrl);
       };
       reader.readAsDataURL(file);
     });
@@ -212,7 +172,6 @@
     editBtn.addEventListener('click', function () {
       actionInput.value = 'edit';
       setMode(true);
-      input.focus();
     });
 
     approveBtn.addEventListener('click', function () {
@@ -221,20 +180,20 @@
 
     form.addEventListener('submit', function (event) {
       actionInput.value = 'approve';
-      const value = (input.value || '').trim();
-      if (value && !isValidUrl(value)) {
+      const value = (imageValue.value || '').trim();
+      if (!value) {
         event.preventDefault();
-        alert('Onaylamak için geçerli bir görsel URL gir.');
+        alert('Onaylamak için görsel seç.');
         return;
       }
-      if (!value && localPreviewActive) {
+      if (!changed && wasSaved) {
         event.preventDefault();
-        alert('Yerel dosya sadece önizleme içindir. Onaylamak için görsel URL gir.');
+        alert('Değişiklik yok. Yeni görsel seç veya Düzenle modunda kal.');
       }
     });
 
-    applyPreviewFromInput();
-    if (!image.getAttribute('src')) {
+    applyPreviewFromSource((imageValue.value || '').trim());
+    if (!image.getAttribute('src') || !imageValue.value) {
       showEmptyPreview(true);
     }
     setMode(!wasSaved);

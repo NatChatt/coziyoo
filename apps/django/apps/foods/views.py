@@ -91,7 +91,7 @@ def _resolve_mobile_home_header_image_url():
     if not row or not row[0]:
         return None
     value = str(row[0]).strip()
-    if not value.startswith(("http://", "https://")):
+    if not value.startswith(("http://", "https://", "data:image/")):
         return None
     return value
 

@@ -14,7 +14,7 @@ def _normalize_hero_url(value: str) -> str:
     raw = str(value or "").strip()
     if not raw:
         return ""
-    if raw.startswith("http://") or raw.startswith("https://"):
+    if raw.startswith("http://") or raw.startswith("https://") or raw.startswith("data:image/"):
         return raw
     return ""
 
@@ -28,7 +28,7 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
         action = str(request.POST.get("action") or "").strip().lower()
         if action == "approve":
             if request.POST.get("mobile_home_header_image_url", "").strip() and not next_url:
-                messages.error(request, "Geçerli bir görsel URL gir. (http:// veya https://)")
+                messages.error(request, "Geçerli bir görsel seç.")
             else:
                 if latest is None:
                     admin_user = AdminUsers.objects.filter(email__iexact=getattr(request.user, "email", "")).first()
