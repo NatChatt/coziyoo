@@ -4308,15 +4308,6 @@ export default function HomeScreen({
         </View>
         {/* Sticky: Search Bar + Category Chips */}
         <View style={styles.stickySearchChips}>
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['#F3D8B8', '#FAEEDC', '#FFFBF4']}
-              locations={[0, 0.52, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.stickySearchFade}
-            />
-          ) : null}
           <View style={styles.floatingSearchWrap}>
             <TouchableOpacity
               style={[styles.floatingSearchBar, searchMode && styles.floatingSearchBarActive]}
@@ -6091,7 +6082,7 @@ const styles = StyleSheet.create({
   /* --- Sticky Search + Chips wrapper --- */
   stickySearchChips: {
     position: 'relative',
-    backgroundColor: '#FFFBF4',
+    backgroundColor: 'transparent',
     paddingTop: 18,
     paddingBottom: 4,
     zIndex: 10,
