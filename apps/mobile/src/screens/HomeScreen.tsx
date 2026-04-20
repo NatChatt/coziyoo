@@ -4203,6 +4203,15 @@ export default function HomeScreen({
           />
           {LinearGradient ? (
             <LinearGradient
+              colors={['rgba(253, 222, 183, 1)', 'rgba(253, 222, 183, 0.95)', 'rgba(253, 222, 183, 0.35)', 'rgba(253, 222, 183, 0)']}
+              locations={[0, 0.45, 0.78, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.heroFeatherLeft}
+            />
+          ) : null}
+          {LinearGradient ? (
+            <LinearGradient
               colors={['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']}
               locations={[0, 1]}
               start={{ x: 0.5, y: 1 }}
@@ -5915,11 +5924,18 @@ const styles = StyleSheet.create({
   heroFoodBgImg: {
     position: 'absolute',
     top: 0,
-    right: 0,
-    width: '100%',
+    right: -12,
+    width: '84%',
     height: 210,
     opacity: 1,
     resizeMode: 'cover',
+  },
+  heroFeatherLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: 210,
   },
   heroFeatherBottom: {
     position: 'absolute',
@@ -5930,8 +5946,8 @@ const styles = StyleSheet.create({
   },
   heroTextArea: {
     zIndex: 3,
-    width: '60%',
-    paddingTop: 36,
+    width: '56%',
+    paddingTop: 34,
     paddingBottom: 12,
     paddingLeft: 0,
   },
@@ -5972,9 +5988,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   heroAvatarCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#E2E0DC',
     alignItems: 'center',
     justifyContent: 'center',
@@ -5988,7 +6004,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  heroAvatarImage: { width: 40, height: 40, borderRadius: 20 },
+  heroAvatarImage: { width: 44, height: 44, borderRadius: 22 },
   avatarEmoji: { fontSize: 24 },
   
   /* --- Sticky Search + Chips wrapper --- */
