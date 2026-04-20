@@ -52,15 +52,6 @@ function CategoriesBlock() {
 export default function CoziYooMasterHomeDemoScreen() {
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.page}>
-        <LinearGradient
-          colors={['#fddfb9', '#fffbf4']}
-          locations={[0, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={styles.pageTopFade}
-          pointerEvents="none"
-        />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.heroWrap}>
           <Image
@@ -79,6 +70,15 @@ export default function CoziYooMasterHomeDemoScreen() {
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={styles.heroLeftGradient}
+          />
+
+          <LinearGradient
+            colors={['rgba(253, 222, 183, 0)', '#fffbf4']}
+            locations={[0, 1]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.heroBottomBlend}
+            pointerEvents="none"
           />
 
           <View style={styles.heroOverlayContent}>
@@ -118,38 +118,23 @@ export default function CoziYooMasterHomeDemoScreen() {
 
         <CategoriesBlock />
       </ScrollView>
-      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
-    backgroundColor: '#fddfb9',
-    flex: 1,
-  },
-  page: {
-    flex: 1,
-    position: 'relative',
     backgroundColor: '#fffbf4',
-  },
-  pageTopFade: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 360,
-    zIndex: 0,
+    flex: 1,
   },
   scrollContent: {
-    position: 'relative',
-    zIndex: 1,
+    backgroundColor: '#fffbf4',
   },
   heroWrap: {
     position: 'relative',
     height: 210,
     overflow: 'visible',
-    backgroundColor: 'transparent',
+    backgroundColor: '#fddfb9',
   },
   heroImage: {
     position: 'absolute',
@@ -164,6 +149,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 210,
+  },
+  heroBottomBlend: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -24,
+    height: 78,
+    zIndex: 2,
   },
   heroOverlayContent: {
     position: 'absolute',
@@ -221,7 +214,7 @@ const styles = StyleSheet.create({
   },
   searchBarWrap: {
     paddingHorizontal: 20,
-    marginTop: 0,
+    marginTop: -2,
     marginBottom: 4,
     zIndex: 5,
   },
