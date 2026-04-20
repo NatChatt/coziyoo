@@ -148,6 +148,27 @@ def _hydrate_for_admin(value: str) -> str:
     return s3_utils.hydrate_file_url(value) or value
 
 
+def _storage_pointer_to_data_url(pointer: str) -> str:
+    if not pointer or not pointer.startswith("s3://"):
+        return ""
+    parsed = s3_utils.parse_storage_pointer(pointer)
+    if not parsed:
+        return ""
+    if not s3_utils.is_configured():
+        return ""
+    try:
+        client = s3_utils.get_client()
+        response = client.get_object(Bucket=parsed["bucket"], Key=parsed["key"])
+        content_type = str(response.get("ContentType") or "image/jpeg").strip() or "image/jpeg"
+        body = response["Body"].read()
+        if not body:
+            return ""
+        encoded = base64.b64encode(body).decode("ascii")
+        return f"data:{content_type};base64,{encoded}"
+    except Exception:
+        return ""
+
+
 @staff_member_required
 def home_hero_view(request: HttpRequest) -> HttpResponse:
     latest = AdminSalesCommissionSettings.objects.order_by("-created_at").first()
@@ -227,6 +248,7 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
         "title": "Home Hero",
         "current_url": _hydrate_for_admin(current_url_raw),
         "current_url_raw": current_url_raw,
+        "current_image_data_url": _storage_pointer_to_data_url(current_url_raw),
         "current_edit_json": current_edit_json,
         "saved": request.GET.get("saved") == "1",
         "opts": AdminSalesCommissionSettings._meta,

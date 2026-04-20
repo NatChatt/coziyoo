@@ -211,6 +211,7 @@
     <input type="hidden" name="mobile_home_header_image_data" id="hero-image-data" value="" />
     <input type="hidden" name="mobile_home_header_image_url" id="hero-image-url" value="{{ current_url_raw|default:'' }}" />
     <input type="hidden" name="mobile_home_header_edit_json" id="hero-edit-json" value="{{ current_edit_json|default:''|escape }}" />
+    <input type="hidden" id="hero-current-image-data-url" value="{{ current_image_data_url|default:''|escape }}" />
 
     <div class="hero-preview-panel">
       <div class="hero-preview-header">
@@ -272,6 +273,7 @@
   var imageDataInput = document.getElementById('hero-image-data');
   var imageUrlInput = document.getElementById('hero-image-url');
   var editJsonInput = document.getElementById('hero-edit-json');
+  var currentImageDataUrlInput = document.getElementById('hero-current-image-data-url');
 
   var helpText = document.getElementById('hero-help-text');
   var stage = document.getElementById('hero-stage');
@@ -301,6 +303,7 @@
     fadeX: 48,
     fadeY: 58,
   };
+  var LOCAL_STATE_KEY = 'coziyoo_admin_home_hero_editor_state_v1';
 
   function clamp(value, min, max) {
     if (value < min) return min;
@@ -318,6 +321,9 @@
 
   function parseSavedState() {
     var raw = String(editJsonInput.value || '').trim();
+    if (!raw) {
+      raw = String(window.localStorage?.getItem(LOCAL_STATE_KEY) || '').trim();
+    }
     if (!raw) return;
     try {
       var parsed = JSON.parse(raw);
@@ -414,7 +420,7 @@
   }
 
   function saveEditState() {
-    editJsonInput.value = JSON.stringify({
+    var json = JSON.stringify({
       scale: state.scale,
       offsetX: state.offsetX,
       offsetY: state.offsetY,
@@ -422,6 +428,8 @@
       fadeY: state.fadeY,
       updatedAt: new Date().toISOString(),
     });
+    editJsonInput.value = json;
+    try { window.localStorage?.setItem(LOCAL_STATE_KEY, json); } catch (_) {}
   }
 
   function resetState() {
@@ -609,9 +617,9 @@
 
     saveEditState();
     var ok = exportCanvasToInput();
-    if (!ok && !imageUrlInput.value) {
+    if (!ok) {
       e.preventDefault();
-      alert('Gorsel yayinlanamadi. Lutfen tekrar dene.');
+      alert('Gorsel islenemedi. Resmi tekrar secip yeniden dene.');
       return;
     }
     helpText.textContent = 'Yayinlaniyor...';
@@ -620,8 +628,8 @@
   parseSavedState();
   applyFadePreview();
 
-  if (imageUrlInput.value || image.getAttribute('src')) {
-    var src = image.getAttribute('src') || imageUrlInput.value;
+  if (currentImageDataUrlInput.value || imageUrlInput.value || image.getAttribute('src')) {
+    var src = currentImageDataUrlInput.value || image.getAttribute('src') || imageUrlInput.value;
     setImageSource(src);
     image.onload = function () {
       calculateBaseScale();
