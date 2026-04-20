@@ -4,12 +4,14 @@ from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 from apps.foods.views import FoodImageView, FavoriteListView, FavoriteToggleView
+from apps.authentication.admin_home_hero import home_hero_view
 from coziyoo.admin_search import admin_global_search
 from coziyoo.dashboard_views import dashboard_data
 
 urlpatterns = [
     # Django Admin UI (django-unfold)
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
+    path("admin/home-hero/", admin.site.admin_view(home_hero_view), name="admin_home_hero"),
     path("admin/global-search/", admin_global_search, name="admin_global_search"),
     path("admin/dashboard/data/", admin.site.admin_view(dashboard_data), name="admin_dashboard_data"),
     path("admin/", admin.site.urls),

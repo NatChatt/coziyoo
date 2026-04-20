@@ -1,0 +1,243 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto p-4" data-saved="{% if saved %}1{% else %}0{% endif %}">
+  <div class="mb-4">
+    <h1 class="text-2xl font-semibold text-base-900 dark:text-base-100">Home Hero</h1>
+    <p class="text-sm text-base-500 dark:text-base-400">Görsel URL gir, ön izle, beğenirsen onayla. İstersen düzenleye dönüp tekrar değiştirebilirsin.</p>
+  </div>
+
+  <form method="post" class="space-y-4" id="home-hero-form" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="action" id="hero-action" value="approve" />
+
+    <div class="rounded-xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div>
+          <label for="hero-url-input" class="block text-sm font-medium mb-2">Home Hero Görsel URL</label>
+          <input
+            id="hero-url-input"
+            name="mobile_home_header_image_url"
+            type="url"
+            value="{{ current_url }}"
+            placeholder="https://..."
+            class="w-full rounded-lg border border-base-300 dark:border-base-700 bg-white dark:bg-base-950 px-3 py-2 text-sm"
+          />
+          <p class="mt-2 text-xs text-base-500 dark:text-base-400">
+            Onayla butonu URL kaydeder. Yerel dosya seçersen sadece önizleme için görünür.
+          </p>
+        </div>
+
+        <div>
+          <label for="hero-file-input" class="block text-sm font-medium mb-2">Görsel Ekle (Önizleme)</label>
+          <input id="hero-file-input" type="file" accept="image/*" class="hidden" />
+          <button
+            type="button"
+            id="hero-file-trigger"
+            class="w-full rounded-lg border border-dashed border-base-300 dark:border-base-700 bg-base-50 dark:bg-base-950/60 px-4 py-3 text-sm text-base-700 dark:text-base-200 text-left"
+          >
+            Dosya seçmek için tıkla (sadece önizleme)
+          </button>
+          <p id="hero-file-name" class="mt-2 text-xs text-base-500 dark:text-base-400"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="rounded-xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+        <div class="text-sm font-medium mb-3">Önizleme</div>
+        <div class="relative rounded-xl overflow-hidden border border-base-200 dark:border-base-700 bg-[#FFFBF4] h-[260px]">
+          <div id="preview-empty" class="absolute inset-0 flex items-center justify-center text-sm text-base-400">
+            Burada önizleme görünecek
+          </div>
+          <img id="hero-preview-image" src="{% if current_url %}{{ current_url }}{% endif %}" alt="" class="absolute right-[-64px] top-[-14px] h-[122%] w-[100%] object-cover {% if not current_url %}hidden{% endif %}">
+          <div class="absolute inset-0 bg-[linear-gradient(90deg,#FDDEB7_0%,rgba(253,222,183,0.92)_43%,rgba(253,222,183,0.58)_67%,rgba(253,222,183,0.2)_84%,rgba(253,222,183,0)_100%)]"></div>
+          <div class="absolute left-4 top-4 z-20">
+            <div class="flex items-center gap-2">
+              <div class="w-10 h-10 rounded-full bg-white/80 border border-white/70"></div>
+              <div class="text-base font-semibold text-[#2A1B15]">Tünaydın, Demo</div>
+            </div>
+            <div class="mt-2 text-sm font-semibold text-[#B15735]">Bugün ne yemek istersin?</div>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-24 bg-[linear-gradient(to_bottom,rgba(255,251,244,0)_0%,rgba(255,251,244,0.86)_62%,#FFFBF4_100%)]"></div>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+        <div class="text-sm font-medium mb-3">Mobil Ekran Önizleme</div>
+        <div class="mx-auto w-[285px] rounded-[36px] border-[10px] border-black bg-[#FFFBF4] overflow-hidden">
+          <div class="h-7 bg-[#FFFBF4]"></div>
+          <div class="relative h-[220px] bg-[#FFFBF4]">
+            <div id="mobile-empty" class="absolute inset-0 flex items-center justify-center text-xs text-base-400 z-20">
+              Burada mobil önizleme görünecek
+            </div>
+            <img id="hero-mobile-image" src="{% if current_url %}{{ current_url }}{% endif %}" alt="" class="absolute right-[-72px] top-[-12px] h-[124%] w-[102%] object-cover {% if not current_url %}hidden{% endif %}">
+            <div class="absolute inset-0 bg-[linear-gradient(90deg,#FDDEB7_0%,rgba(253,222,183,0.92)_45%,rgba(253,222,183,0.55)_68%,rgba(253,222,183,0.16)_84%,rgba(253,222,183,0)_100%)]"></div>
+            <div class="absolute left-4 top-5 z-30">
+              <div class="flex items-center gap-2">
+                <div class="w-9 h-9 rounded-full bg-white/80 border border-white/70"></div>
+                <div class="text-xl font-bold text-[#2A1B15]">Tünaydın, Demo</div>
+              </div>
+              <div class="mt-2 text-[18px] leading-5 font-semibold text-[#B15735]">Sana güzel bir şey öneririm.</div>
+              <div class="mt-2 text-sm text-[#B15735] font-semibold">Kadıköy • 2.5 km çevre</div>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 h-24 bg-[linear-gradient(to_bottom,rgba(255,251,244,0)_0%,rgba(255,251,244,0.9)_58%,#FFFBF4_100%)]"></div>
+          </div>
+          <div class="px-4 pb-4 pt-2">
+            <div class="h-11 rounded-full border border-base-200 bg-white"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button type="submit" id="approve-btn" class="px-4 py-2 rounded-lg bg-primary-600 text-white text-sm">Onayla</button>
+      <button type="button" id="edit-btn" class="px-4 py-2 rounded-lg border border-base-300 dark:border-base-700 text-sm">Düzenle</button>
+      <span id="hero-mode-label" class="text-xs text-base-500 dark:text-base-400"></span>
+    </div>
+  </form>
+</div>
+
+<script>
+  (function () {
+    const container = document.querySelector('[data-saved]');
+    const wasSaved = container && container.getAttribute('data-saved') === '1';
+
+    const input = document.getElementById('hero-url-input');
+    const fileInput = document.getElementById('hero-file-input');
+    const fileTrigger = document.getElementById('hero-file-trigger');
+    const fileName = document.getElementById('hero-file-name');
+
+    const image = document.getElementById('hero-preview-image');
+    const mobileImage = document.getElementById('hero-mobile-image');
+    const previewEmpty = document.getElementById('preview-empty');
+    const mobileEmpty = document.getElementById('mobile-empty');
+
+    const approveBtn = document.getElementById('approve-btn');
+    const editBtn = document.getElementById('edit-btn');
+    const modeLabel = document.getElementById('hero-mode-label');
+
+    const form = document.getElementById('home-hero-form');
+    const actionInput = document.getElementById('hero-action');
+
+    let localPreviewActive = false;
+
+    function isValidUrl(value) {
+      const raw = String(value || '').trim();
+      return raw.startsWith('http://') || raw.startsWith('https://');
+    }
+
+    function showEmptyPreview(show) {
+      if (show) {
+        previewEmpty.classList.remove('hidden');
+        mobileEmpty.classList.remove('hidden');
+      } else {
+        previewEmpty.classList.add('hidden');
+        mobileEmpty.classList.add('hidden');
+      }
+    }
+
+    function applyPreviewFromSource(value) {
+      if (!value) {
+        image.classList.add('hidden');
+        mobileImage.classList.add('hidden');
+        image.removeAttribute('src');
+        mobileImage.removeAttribute('src');
+        showEmptyPreview(true);
+        return;
+      }
+
+      image.src = value;
+      mobileImage.src = value;
+      image.classList.remove('hidden');
+      mobileImage.classList.remove('hidden');
+      showEmptyPreview(false);
+    }
+
+    function applyPreviewFromInput() {
+      const value = (input.value || '').trim();
+      if (!isValidUrl(value)) {
+        if (!localPreviewActive) {
+          applyPreviewFromSource('');
+        }
+        return;
+      }
+      localPreviewActive = false;
+      fileName.textContent = '';
+      fileInput.value = '';
+      applyPreviewFromSource(value);
+    }
+
+    function setMode(editable) {
+      input.disabled = !editable;
+      fileInput.disabled = !editable;
+      fileTrigger.disabled = !editable;
+      approveBtn.disabled = !editable;
+
+      if (editable) {
+        modeLabel.textContent = 'Düzenleme modu açık';
+        modeLabel.className = 'text-xs text-amber-600 dark:text-amber-400';
+      } else {
+        modeLabel.textContent = 'Onaylandı. Değiştirmek için Düzenle.';
+        modeLabel.className = 'text-xs text-emerald-600 dark:text-emerald-400';
+      }
+    }
+
+    fileTrigger.addEventListener('click', function () {
+      if (!fileInput.disabled) {
+        fileInput.click();
+      }
+    });
+
+    input.addEventListener('input', function () {
+      localPreviewActive = false;
+      actionInput.value = 'edit';
+      applyPreviewFromInput();
+    });
+
+    fileInput.addEventListener('change', function () {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      fileName.textContent = file.name + ' (önizleme)';
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        localPreviewActive = true;
+        actionInput.value = 'edit';
+        applyPreviewFromSource(event.target && event.target.result ? String(event.target.result) : '');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    editBtn.addEventListener('click', function () {
+      actionInput.value = 'edit';
+      setMode(true);
+      input.focus();
+    });
+
+    approveBtn.addEventListener('click', function () {
+      actionInput.value = 'approve';
+    });
+
+    form.addEventListener('submit', function (event) {
+      actionInput.value = 'approve';
+      const value = (input.value || '').trim();
+      if (value && !isValidUrl(value)) {
+        event.preventDefault();
+        alert('Onaylamak için geçerli bir görsel URL gir.');
+        return;
+      }
+      if (!value && localPreviewActive) {
+        event.preventDefault();
+        alert('Yerel dosya sadece önizleme içindir. Onaylamak için görsel URL gir.');
+      }
+    });
+
+    applyPreviewFromInput();
+    if (!image.getAttribute('src')) {
+      showEmptyPreview(true);
+    }
+    setMode(!wasSaved);
+  })();
+</script>
+{% endblock %}

@@ -271,6 +271,12 @@ UNFOLD = {
                     },
                     {
                         "title": "Home Hero",
+                        "icon": "image",
+                        "link": "/admin/home-hero/",
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": "Commission Settings",
                         "icon": "percent",
                         "link": "/admin/authentication/adminsalescommissionsettings/",
                         "permission": lambda request: request.user.is_staff,
