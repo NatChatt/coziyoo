@@ -4237,7 +4237,6 @@ export default function HomeScreen({
               style={styles.heroFeatherRight}
             />
           ) : null}
-          <View style={styles.heroRightEdgeCover} />
           <View style={styles.heroTextArea}>
             <View style={styles.heroIdentityRow}>
               <TouchableOpacity
@@ -5952,7 +5951,7 @@ const styles = StyleSheet.create({
   heroFoodBgImg: {
     position: 'absolute',
     top: -12,
-    right: -18,
+    right: -24,
     width: '92%',
     height: 238,
     opacity: 1,
@@ -5985,15 +5984,6 @@ const styles = StyleSheet.create({
     right: 0,
     width: 36,
     height: 210,
-  },
-  heroRightEdgeCover: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 8,
-    height: 210,
-    backgroundColor: '#FDDEB7',
-    opacity: 0.9,
   },
   heroTextArea: {
     zIndex: 3,
