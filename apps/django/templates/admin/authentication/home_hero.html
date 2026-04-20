@@ -3,7 +3,7 @@
 {% block content %}
 <style>
   .hero-editor-wrap {
-    max-width: 1100px;
+    max-width: 1120px;
     margin: 0 auto;
     padding: 16px;
   }
@@ -57,11 +57,35 @@
     background: #fff;
     color: #344054;
   }
+  .hero-layout {
+    display: grid;
+    grid-template-columns: minmax(300px, 390px) 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .hero-controls {
+    border: 1px solid #d0d5dd;
+    border-radius: 12px;
+    padding: 12px;
+    background: #fcfcfd;
+  }
+  .hero-control-group + .hero-control-group {
+    margin-top: 12px;
+  }
+  .hero-control-label {
+    font-size: 12px;
+    color: #344054;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .hero-range {
+    width: 100%;
+  }
   .hero-stage {
     position: relative;
-    width: min(100%, 390px);
+    width: 390px;
+    max-width: 100%;
     height: 420px;
-    margin: 0 auto;
     border: 1px solid #d0d5dd;
     border-radius: 16px;
     overflow: hidden;
@@ -94,7 +118,6 @@
   .hero-overlay-left {
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, #fddeb7 0%, rgba(253, 222, 183, 0.92) 42%, rgba(253, 222, 183, 0.58) 66%, rgba(253, 222, 183, 0.18) 84%, rgba(253, 222, 183, 0) 100%);
     pointer-events: none;
     z-index: 20;
   }
@@ -103,8 +126,6 @@
     left: 0;
     right: 0;
     bottom: 0;
-    height: 120px;
-    background: linear-gradient(to bottom, rgba(255, 251, 244, 0) 0%, rgba(255, 251, 244, 0.9) 58%, #fffbf4 100%);
     pointer-events: none;
     z-index: 25;
   }
@@ -157,9 +178,12 @@
       flex-direction: column;
       align-items: flex-start;
     }
+    .hero-layout {
+      grid-template-columns: 1fr;
+    }
     .hero-stage {
-      width: min(100%, 390px);
-      height: 320px;
+      margin: 0 auto;
+      height: 360px;
     }
     .hero-greet {
       font-size: 26px;
@@ -175,12 +199,14 @@
 
 <div class="hero-editor-wrap">
   <div class="hero-editor-title">Home Hero</div>
-  <div class="hero-editor-subtitle">Resim ekle. Önizleme içinde mouse ile taşı. Mouse tekerleği ile büyüt/küçült. Sonra yayınla.</div>
+  <div class="hero-editor-subtitle">Resim ekle, sahnede taşı, zoom ve fade ayarla. Sonra yayınla.</div>
 
   <form method="post" id="home-hero-form" novalidate>
     {% csrf_token %}
     <input type="hidden" name="action" id="hero-action" value="approve" />
-    <input type="hidden" name="mobile_home_header_image_url" id="hero-image-value" value="{{ current_url|default:'' }}" />
+    <input type="hidden" name="mobile_home_header_image_data" id="hero-image-data" value="" />
+    <input type="hidden" name="mobile_home_header_image_url" id="hero-image-url" value="{{ current_url_raw|default:'' }}" />
+    <input type="hidden" name="mobile_home_header_edit_json" id="hero-edit-json" value="{{ current_edit_json|default:''|escape }}" />
 
     <div class="hero-preview-panel">
       <div class="hero-preview-header">
@@ -192,62 +218,116 @@
         </div>
       </div>
 
-      <div id="hero-stage" class="hero-stage">
-        <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
-        <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
-        <div class="hero-overlay-left"></div>
-        <div class="hero-copy">
-          <div class="hero-copy-top">
-            <div class="hero-avatar"></div>
-            <div class="hero-greet">Tünaydın, Demo</div>
+      <div class="hero-layout">
+        <div class="hero-stage" id="hero-stage">
+          <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
+          <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
+          <div class="hero-overlay-left" id="hero-overlay-left"></div>
+          <div class="hero-copy">
+            <div class="hero-copy-top">
+              <div class="hero-avatar"></div>
+              <div class="hero-greet">Tünaydın, Demo</div>
+            </div>
+            <div class="hero-headline">Sana güzel bir şey öneririm.</div>
+            <div class="hero-location">Kadıköy • 2.5 km çevre</div>
           </div>
-          <div class="hero-headline">Sana güzel bir şey öneririm.</div>
-          <div class="hero-location">Kadıköy • 2.5 km çevre</div>
+          <div class="hero-overlay-bottom" id="hero-overlay-bottom"></div>
         </div>
-        <div class="hero-overlay-bottom"></div>
+
+        <div class="hero-controls">
+          <div class="hero-control-group">
+            <div class="hero-control-label">Zoom</div>
+            <input id="hero-zoom" class="hero-range" type="range" min="0.35" max="3.20" step="0.01" value="1.00" />
+          </div>
+          <div class="hero-control-group">
+            <div class="hero-control-label">Yatay Fade</div>
+            <input id="hero-fade-x" class="hero-range" type="range" min="0" max="100" step="1" value="48" />
+          </div>
+          <div class="hero-control-group">
+            <div class="hero-control-label">Dikey Fade</div>
+            <input id="hero-fade-y" class="hero-range" type="range" min="0" max="100" step="1" value="58" />
+          </div>
+          <div class="hero-control-group">
+            <button type="button" id="hero-reset" class="hero-btn-secondary">Reset</button>
+          </div>
+          <div class="hero-help" id="hero-help-text">Ipuçlari: Sahneyi sürükle, mouse tekerleği ile ince zoom yap.</div>
+        </div>
       </div>
-      <div class="hero-help" id="hero-help-text">İpucu: Sürükleyerek taşı. Mouse tekerleği ile zoom yap.</div>
     </div>
   </form>
 </div>
 
 <script>
 (function () {
-  var imageValue = document.getElementById('hero-image-value');
   var fileInput = document.getElementById('hero-file-input');
   var fileTrigger = document.getElementById('hero-file-trigger');
   var form = document.getElementById('home-hero-form');
   var actionInput = document.getElementById('hero-action');
-  var helpText = document.getElementById('hero-help-text');
 
+  var imageDataInput = document.getElementById('hero-image-data');
+  var imageUrlInput = document.getElementById('hero-image-url');
+  var editJsonInput = document.getElementById('hero-edit-json');
+
+  var helpText = document.getElementById('hero-help-text');
   var stage = document.getElementById('hero-stage');
   var image = document.getElementById('hero-preview-image');
   var empty = document.getElementById('hero-empty');
+  var overlayLeft = document.getElementById('hero-overlay-left');
+  var overlayBottom = document.getElementById('hero-overlay-bottom');
 
-  var userScale = 1;
+  var zoomInput = document.getElementById('hero-zoom');
+  var fadeXInput = document.getElementById('hero-fade-x');
+  var fadeYInput = document.getElementById('hero-fade-y');
+  var resetBtn = document.getElementById('hero-reset');
+
+  var wheelStep = 0.02;
   var minScale = 0.35;
   var maxScale = 3.2;
-  var wheelStep = 0.02;
-  var offsetX = 0;
-  var offsetY = 0;
+  var baseScale = 1;
+  var dragging = false;
   var startX = 0;
   var startY = 0;
-  var dragging = false;
-  var baseScale = 1;
+
+  var state = {
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+    fadeX: 48,
+    fadeY: 58,
+  };
+
+  function clamp(value, min, max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+  }
 
   function hasImage() {
     return image.style.display !== 'none' && !!image.src;
   }
 
-  function showImage(src) {
-    if (!src) {
-      image.style.display = 'none';
-      empty.style.display = 'flex';
-      return;
-    }
-    image.src = src;
-    image.style.display = 'block';
-    empty.style.display = 'none';
+  function setEmpty(show) {
+    empty.style.display = show ? 'flex' : 'none';
+  }
+
+  function parseSavedState() {
+    var raw = String(editJsonInput.value || '').trim();
+    if (!raw) return;
+    try {
+      var parsed = JSON.parse(raw);
+      if (typeof parsed !== 'object' || parsed === null) return;
+      if (typeof parsed.scale === 'number') state.scale = clamp(parsed.scale, minScale, maxScale);
+      if (typeof parsed.offsetX === 'number') state.offsetX = parsed.offsetX;
+      if (typeof parsed.offsetY === 'number') state.offsetY = parsed.offsetY;
+      if (typeof parsed.fadeX === 'number') state.fadeX = clamp(parsed.fadeX, 0, 100);
+      if (typeof parsed.fadeY === 'number') state.fadeY = clamp(parsed.fadeY, 0, 100);
+    } catch (_) {}
+  }
+
+  function syncControlsFromState() {
+    zoomInput.value = state.scale.toFixed(2);
+    fadeXInput.value = String(Math.round(state.fadeX));
+    fadeYInput.value = String(Math.round(state.fadeY));
   }
 
   function calculateBaseScale() {
@@ -258,24 +338,19 @@
     baseScale = Math.max(vw / iw, vh / ih);
   }
 
-  function clamp(val, min, max) {
-    if (val < min) return min;
-    if (val > max) return max;
-    return val;
-  }
-
-  function renderTransform() {
+  function applyImageTransform() {
     if (!hasImage()) return;
+
     var vw = stage.clientWidth || 1;
     var vh = stage.clientHeight || 1;
     var iw = image.naturalWidth || vw;
     var ih = image.naturalHeight || vh;
 
-    var finalScale = baseScale * userScale;
+    var finalScale = baseScale * state.scale;
     var drawW = iw * finalScale;
     var drawH = ih * finalScale;
-    var drawX = (vw - drawW) / 2 + offsetX;
-    var drawY = (vh - drawH) / 2 + offsetY;
+    var drawX = (vw - drawW) / 2 + state.offsetX;
+    var drawY = (vh - drawH) / 2 + state.offsetY;
 
     image.style.width = drawW + 'px';
     image.style.height = drawH + 'px';
@@ -283,37 +358,90 @@
     image.style.top = drawY + 'px';
   }
 
-  function resetView() {
-    userScale = 1;
-    offsetX = 0;
-    offsetY = 0;
-    renderTransform();
+  function applyFadePreview() {
+    var x = clamp(state.fadeX, 0, 100);
+    var y = clamp(state.fadeY, 0, 100);
+
+    var xStrong = (0.12 + (x / 100) * 0.83).toFixed(3);
+    var xMid = (0.05 + (x / 100) * 0.45).toFixed(3);
+    var xStopMid = (42 + x * 0.25).toFixed(1);
+
+    overlayLeft.style.background =
+      'linear-gradient(90deg, ' +
+      'rgba(253, 222, 183, ' + xStrong + ') 0%, ' +
+      'rgba(253, 222, 183, ' + xStrong + ') 22%, ' +
+      'rgba(253, 222, 183, ' + xMid + ') ' + xStopMid + '%, ' +
+      'rgba(253, 222, 183, 0) 100%)';
+
+    var yStrong = (0.12 + (y / 100) * 0.88).toFixed(3);
+    var yStart = (52 - y * 0.20).toFixed(1);
+
+    overlayBottom.style.background =
+      'linear-gradient(to bottom, ' +
+      'rgba(255, 251, 244, 0) 0%, ' +
+      'rgba(255, 251, 244, ' + yStrong + ') ' + yStart + '%, ' +
+      'rgba(255, 251, 244, 1) 100%)';
   }
 
-  function fitNewImage() {
-    calculateBaseScale();
-    resetView();
+  function applyAll() {
+    applyImageTransform();
+    applyFadePreview();
+    syncControlsFromState();
   }
 
-  function exportComposedImage() {
-    if (!hasImage()) return;
+  function saveEditState() {
+    editJsonInput.value = JSON.stringify({
+      scale: state.scale,
+      offsetX: state.offsetX,
+      offsetY: state.offsetY,
+      fadeX: state.fadeX,
+      fadeY: state.fadeY,
+      updatedAt: new Date().toISOString(),
+    });
+  }
 
-    var canvas = document.createElement('canvas');
+  function resetState() {
+    state.scale = 1;
+    state.offsetX = 0;
+    state.offsetY = 0;
+    state.fadeX = 48;
+    state.fadeY = 58;
+    applyAll();
+    saveEditState();
+  }
+
+  function setImageSource(src) {
+    if (!src) {
+      image.style.display = 'none';
+      setEmpty(true);
+      return;
+    }
+    image.src = src;
+    image.style.display = 'block';
+    setEmpty(false);
+  }
+
+  function exportCanvasToInput() {
+    if (!hasImage()) return false;
+
     var vw = stage.clientWidth || 1;
     var vh = stage.clientHeight || 1;
     var exportScale = 2;
+
+    var canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(vw * exportScale));
     canvas.height = Math.max(1, Math.round(vh * exportScale));
+
     var ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return false;
+
     var iw = image.naturalWidth || vw;
     var ih = image.naturalHeight || vh;
-
-    var finalScale = baseScale * userScale;
+    var finalScale = baseScale * state.scale;
     var drawW = iw * finalScale;
     var drawH = ih * finalScale;
-    var drawX = (vw - drawW) / 2 + offsetX;
-    var drawY = (vh - drawH) / 2 + offsetY;
+    var drawX = (vw - drawW) / 2 + state.offsetX;
+    var drawY = (vh - drawH) / 2 + state.offsetY;
 
     var sx = canvas.width / vw;
     var sy = canvas.height / vh;
@@ -322,14 +450,42 @@
       ctx.fillStyle = '#fffbf4';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(image, drawX * sx, drawY * sy, drawW * sx, drawH * sy);
-      imageValue.value = canvas.toDataURL('image/jpeg', 0.92);
-    } catch (err) {
-      // canvas export may fail for some remote images
+
+      var x = clamp(state.fadeX, 0, 100);
+      var y = clamp(state.fadeY, 0, 100);
+
+      var gx = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      var xStrong = 0.12 + (x / 100) * 0.83;
+      var xMid = 0.05 + (x / 100) * 0.45;
+      var xStopMid = (42 + x * 0.25) / 100;
+      gx.addColorStop(0, 'rgba(253,222,183,' + xStrong.toFixed(3) + ')');
+      gx.addColorStop(0.22, 'rgba(253,222,183,' + xStrong.toFixed(3) + ')');
+      gx.addColorStop(clamp(xStopMid, 0, 1), 'rgba(253,222,183,' + xMid.toFixed(3) + ')');
+      gx.addColorStop(1, 'rgba(253,222,183,0)');
+      ctx.fillStyle = gx;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      var gy = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      var yStrong = 0.12 + (y / 100) * 0.88;
+      var yStart = (52 - y * 0.20) / 100;
+      gy.addColorStop(0, 'rgba(255,251,244,0)');
+      gy.addColorStop(clamp(yStart, 0, 1), 'rgba(255,251,244,' + yStrong.toFixed(3) + ')');
+      gy.addColorStop(1, 'rgba(255,251,244,1)');
+      ctx.fillStyle = gy;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      imageDataInput.value = canvas.toDataURL('image/jpeg', 0.92);
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
+  image.addEventListener('dragstart', function (e) {
+    e.preventDefault();
+  });
+
   fileTrigger.addEventListener('click', function () {
-    // Selecting the same file again should still trigger "change".
     fileInput.value = '';
     fileInput.click();
   });
@@ -341,12 +497,18 @@
     var reader = new FileReader();
     reader.onload = function (ev) {
       var dataUrl = ev.target && ev.target.result ? String(ev.target.result) : '';
-      imageValue.value = dataUrl;
-      showImage(dataUrl);
+      imageDataInput.value = dataUrl;
+      imageUrlInput.value = '';
+      setImageSource(dataUrl);
       image.onload = function () {
-        fitNewImage();
+        calculateBaseScale();
+        state.scale = 1;
+        state.offsetX = 0;
+        state.offsetY = 0;
+        applyAll();
+        saveEditState();
       };
-      helpText.textContent = 'Resim yüklendi. Sürükleyebilir ve tekerlekle zoom yapabilirsin.';
+      helpText.textContent = 'Resim yuklendi. Surukle, zoom ve fade ile ayarla.';
       actionInput.value = 'edit';
     };
     reader.readAsDataURL(file);
@@ -356,29 +518,31 @@
     if (!hasImage()) return;
     e.preventDefault();
     var delta = e.deltaY > 0 ? -wheelStep : wheelStep;
-    userScale = clamp(userScale + delta, minScale, maxScale);
-    renderTransform();
+    state.scale = clamp(state.scale + delta, minScale, maxScale);
+    applyAll();
+    saveEditState();
   }, { passive: false });
 
   stage.addEventListener('pointerdown', function (e) {
     if (!hasImage()) return;
     dragging = true;
     stage.classList.add('dragging');
-    startX = e.clientX - offsetX;
-    startY = e.clientY - offsetY;
+    startX = e.clientX - state.offsetX;
+    startY = e.clientY - state.offsetY;
     stage.setPointerCapture(e.pointerId);
   });
 
   stage.addEventListener('pointermove', function (e) {
     if (!dragging) return;
-    offsetX = e.clientX - startX;
-    offsetY = e.clientY - startY;
-    renderTransform();
+    state.offsetX = e.clientX - startX;
+    state.offsetY = e.clientY - startY;
+    applyAll();
   });
 
   function stopDrag(e) {
     dragging = false;
     stage.classList.remove('dragging');
+    saveEditState();
     try {
       stage.releasePointerCapture(e.pointerId);
     } catch (_) {}
@@ -387,31 +551,65 @@
   stage.addEventListener('pointerup', stopDrag);
   stage.addEventListener('pointercancel', stopDrag);
 
-  form.addEventListener('submit', function (e) {
-    actionInput.value = 'approve';
-    if (!imageValue.value) {
-      e.preventDefault();
-      alert('Önce bir görsel ekle.');
-      return;
-    }
-    exportComposedImage();
-    helpText.textContent = 'Yayınlanıyor...';
+  zoomInput.addEventListener('input', function () {
+    state.scale = clamp(parseFloat(zoomInput.value) || 1, minScale, maxScale);
+    applyAll();
+    saveEditState();
   });
 
-  if (imageValue.value) {
-    showImage(imageValue.value);
+  fadeXInput.addEventListener('input', function () {
+    state.fadeX = clamp(parseFloat(fadeXInput.value) || 0, 0, 100);
+    applyAll();
+    saveEditState();
+  });
+
+  fadeYInput.addEventListener('input', function () {
+    state.fadeY = clamp(parseFloat(fadeYInput.value) || 0, 0, 100);
+    applyAll();
+    saveEditState();
+  });
+
+  resetBtn.addEventListener('click', function () {
+    resetState();
+    helpText.textContent = 'Reset tamam. Surukle, zoom ve fade ile tekrar ayarla.';
+  });
+
+  form.addEventListener('submit', function (e) {
+    actionInput.value = 'approve';
+    if (!hasImage() && !imageUrlInput.value) {
+      e.preventDefault();
+      alert('Once bir gorsel ekle.');
+      return;
+    }
+
+    saveEditState();
+    var ok = exportCanvasToInput();
+    if (!ok && !imageUrlInput.value) {
+      e.preventDefault();
+      alert('Gorsel yayinlanamadi. Lutfen tekrar dene.');
+      return;
+    }
+    helpText.textContent = 'Yayinlaniyor...';
+  });
+
+  parseSavedState();
+  applyFadePreview();
+
+  if (imageUrlInput.value || image.getAttribute('src')) {
+    var src = image.getAttribute('src') || imageUrlInput.value;
+    setImageSource(src);
     image.onload = function () {
-      fitNewImage();
+      calculateBaseScale();
+      applyAll();
     };
     if (image.complete) {
-      fitNewImage();
+      calculateBaseScale();
+      applyAll();
     }
   } else {
-    showImage('');
+    setImageSource('');
+    syncControlsFromState();
   }
 })();
 </script>
 {% endblock %}
-  image.addEventListener('dragstart', function (e) {
-    e.preventDefault();
-  });

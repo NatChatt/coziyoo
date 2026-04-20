@@ -120,6 +120,26 @@ def presign_put(bucket: str, key: str, content_type: str = "application/octet-st
     )
 
 
+def put_bytes(bucket: str, key: str, content: bytes, content_type: str = "application/octet-stream") -> str:
+    """Upload raw bytes and return the storage pointer."""
+    client = get_client()
+    client.put_object(Bucket=bucket, Key=key, Body=content, ContentType=content_type)
+    return to_storage_pointer(bucket, key)
+
+
+def delete_object(storage_pointer: str | None) -> bool:
+    """Delete object pointed by s3://bucket/key. Returns False when not deletable."""
+    parsed = parse_storage_pointer(storage_pointer)
+    if parsed is None:
+        return False
+    try:
+        client = get_client()
+        client.delete_object(Bucket=parsed["bucket"], Key=parsed["key"])
+        return True
+    except (RuntimeError, ClientError):
+        return False
+
+
 def hydrate_file_url(value: str | None) -> str | None:
     """If value is an s3:// pointer, return a presigned GET URL; otherwise return as-is."""
     if not is_configured():

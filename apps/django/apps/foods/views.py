@@ -13,6 +13,7 @@ from django.urls import reverse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from coziyoo import s3 as s3_utils
 
 _COLUMN_EXISTS_CACHE = {}
 
@@ -91,9 +92,12 @@ def _resolve_mobile_home_header_image_url():
     if not row or not row[0]:
         return None
     value = str(row[0]).strip()
-    if not value.startswith(("http://", "https://", "data:image/")):
-        return None
-    return value
+    if value.startswith("s3://"):
+        hydrated = s3_utils.hydrate_file_url(value)
+        return hydrated or None
+    if value.startswith(("http://", "https://", "data:image/")):
+        return value
+    return None
 
 
 def _parse_text_list(value):
