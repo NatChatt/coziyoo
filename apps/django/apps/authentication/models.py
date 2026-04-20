@@ -63,8 +63,6 @@ class AdminSalesCommissionSettings(models.Model):
     id = models.UUIDField(primary_key=True)
     commission_rate_percent = models.DecimalField(max_digits=5, decimal_places=2)
     mobile_home_header_image_url = models.TextField(blank=True, null=True, verbose_name="Home Hero")
-    mobile_home_header_edit_json = models.TextField(blank=True, null=True, verbose_name="Home Hero Edit")
-    mobile_home_header_asset_key = models.TextField(blank=True, null=True, verbose_name="Home Hero Asset Key")
     created_by_admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
     created_at = models.DateTimeField()
 

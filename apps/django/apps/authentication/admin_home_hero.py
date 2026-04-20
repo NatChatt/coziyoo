@@ -7,6 +7,7 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.db import connection
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
@@ -17,6 +18,7 @@ from coziyoo import s3 as s3_utils
 
 _DATA_URL_RE = re.compile(r"^data:(image/[a-zA-Z0-9.+-]+);base64,(.+)$")
 _MAX_IMAGE_BYTES = 12 * 1024 * 1024
+_COLUMN_EXISTS_CACHE = {}
 
 
 def _normalize_hero_url(value: str) -> str:
@@ -79,6 +81,62 @@ def _resolve_admin_user(request: HttpRequest):
     return admin_user
 
 
+def _has_public_column(table_name: str, column_name: str) -> bool:
+    cache_key = (table_name, column_name)
+    if cache_key in _COLUMN_EXISTS_CACHE:
+        return _COLUMN_EXISTS_CACHE[cache_key]
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = %s
+                  AND column_name = %s
+            )
+            """,
+            [table_name, column_name],
+        )
+        exists = bool(cursor.fetchone()[0])
+
+    _COLUMN_EXISTS_CACHE[cache_key] = exists
+    return exists
+
+
+def _get_latest_optional_field(latest_id, column_name: str) -> str:
+    if not latest_id:
+        return ""
+    if not _has_public_column("admin_sales_commission_settings", column_name):
+        return ""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"SELECT {column_name} FROM admin_sales_commission_settings WHERE id = %s LIMIT 1",
+            [latest_id],
+        )
+        row = cursor.fetchone()
+    if not row or row[0] is None:
+        return ""
+    return str(row[0]).strip()
+
+
+def _set_latest_optional_fields(latest_id, edit_json: str, asset_key: str) -> None:
+    if not latest_id:
+        return
+    with connection.cursor() as cursor:
+        if _has_public_column("admin_sales_commission_settings", "mobile_home_header_edit_json"):
+            cursor.execute(
+                "UPDATE admin_sales_commission_settings SET mobile_home_header_edit_json = %s WHERE id = %s",
+                [edit_json or None, latest_id],
+            )
+        if _has_public_column("admin_sales_commission_settings", "mobile_home_header_asset_key"):
+            cursor.execute(
+                "UPDATE admin_sales_commission_settings SET mobile_home_header_asset_key = %s WHERE id = %s",
+                [asset_key or None, latest_id],
+            )
+
+
 def _hydrate_for_admin(value: str) -> str:
     if not value:
         return ""
@@ -115,7 +173,7 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
                 )
 
             old_pointer = str(getattr(latest, "mobile_home_header_image_url", "") or "").strip()
-            old_asset_key = str(getattr(latest, "mobile_home_header_asset_key", "") or "").strip()
+            old_asset_key = _get_latest_optional_field(latest.id, "mobile_home_header_asset_key")
             next_pointer = image_data
             next_asset_key = old_asset_key or None
 
@@ -136,15 +194,8 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
                     next_asset_key = None
 
             latest.mobile_home_header_image_url = next_pointer or None
-            latest.mobile_home_header_edit_json = edit_json or None
-            latest.mobile_home_header_asset_key = next_asset_key or None
-            latest.save(
-                update_fields=[
-                    "mobile_home_header_image_url",
-                    "mobile_home_header_edit_json",
-                    "mobile_home_header_asset_key",
-                ]
-            )
+            latest.save(update_fields=["mobile_home_header_image_url"])
+            _set_latest_optional_fields(latest.id, edit_json, next_asset_key or "")
 
             if (
                 old_pointer
@@ -164,8 +215,8 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
     current_edit_json = ""
     if latest and latest.mobile_home_header_image_url:
         current_url_raw = str(latest.mobile_home_header_image_url).strip()
-    if latest and getattr(latest, "mobile_home_header_edit_json", None):
-        current_edit_json = str(latest.mobile_home_header_edit_json).strip()
+    if latest:
+        current_edit_json = _get_latest_optional_field(latest.id, "mobile_home_header_edit_json")
 
     context = {
         "title": "Home Hero",
