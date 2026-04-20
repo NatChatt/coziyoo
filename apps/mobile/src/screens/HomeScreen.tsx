@@ -4189,8 +4189,8 @@ export default function HomeScreen({
         <View style={[styles.heroWrap, { backgroundColor: heroColors.bg }]}>
           {LinearGradient ? (
             <LinearGradient
-              colors={['#F8DFC2', '#F6D6B4', toRgba(heroColors.gradLight, 0.78), toRgba(heroColors.gradLight, 0.22)]}
-              locations={[0, 0.48, 0.78, 1]}
+              colors={['#F3D8B8', '#F3D8B8', toRgba(heroColors.gradLight, 0.8)]}
+              locations={[0, 0.6, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.heroBaseGradient}
@@ -4201,18 +4201,20 @@ export default function HomeScreen({
             style={styles.heroFoodBgImg}
             onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
           />
+          <View style={styles.heroImageGlassPrimary} />
+          <View style={styles.heroImageGlassSecondary} />
           {LinearGradient ? (
             <>
               <LinearGradient
-                colors={['transparent', toRgba(heroColors.bg, 0.28), toRgba(heroColors.bg, 0.76), heroColors.bg]}
-                locations={[0, 0.44, 0.8, 1]}
-                start={{ x: 1, y: 0.5 }}
-                end={{ x: 0, y: 0.5 }}
+                colors={[heroColors.bg, toRgba(heroColors.bg, 0.93), toRgba(heroColors.bg, 0.28), 'transparent']}
+                locations={[0, 0.45, 0.8, 1]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
                 style={styles.heroFeatherLeft}
               />
               <LinearGradient
-                colors={['transparent', toRgba(heroColors.bg, 0.16), toRgba(heroColors.bg, 0.54)]}
-                locations={[0, 0.52, 1]}
+                colors={['transparent', toRgba(heroColors.bg, 0.45), toRgba(heroColors.bg, 0.82)]}
+                locations={[0, 0.55, 1]}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
                 style={styles.heroFeatherBottom}
@@ -4248,7 +4250,6 @@ export default function HomeScreen({
                   >
                     {dynamicGreetingTitle.text}
                   </Text>
-                  <Text style={styles.greetingEmoji}>{dynamicGreetingTitle.emoji}</Text>
                 </View>
               </View>
             </View>
@@ -5911,12 +5912,12 @@ const styles = StyleSheet.create({
   /* --- Hero Header with Gradient + Food Image --- */
   heroWrap: {
     position: 'relative',
-    height: 284,
-    paddingHorizontal: 20,
-    paddingTop: 58,
+    height: 274,
+    paddingHorizontal: 16,
+    paddingTop: 34,
     marginHorizontal: -18,
-    marginTop: -24,
-    backgroundColor: '#F6D9B7',
+    marginTop: 0,
+    backgroundColor: '#F3D8B8',
     overflow: 'hidden',
   },
   heroBaseGradient: {
@@ -5924,33 +5925,49 @@ const styles = StyleSheet.create({
   },
   heroFoodBgImg: {
     position: 'absolute',
-    top: -14,
-    right: -34,
-    width: '68%',
-    height: '112%',
+    top: 0,
+    right: -8,
+    width: '78%',
+    height: '86%',
     opacity: 1,
     resizeMode: 'cover',
+  },
+  heroImageGlassPrimary: {
+    position: 'absolute',
+    top: 0,
+    right: 54,
+    width: '36%',
+    height: '70%',
+    backgroundColor: 'rgba(255,255,255,0.24)',
+  },
+  heroImageGlassSecondary: {
+    position: 'absolute',
+    top: 18,
+    right: 10,
+    width: '50%',
+    height: '64%',
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   heroFeatherLeft: {
     position: 'absolute',
     top: 0,
-    right: 0,
-    width: '84%',
+    left: 0,
+    width: '100%',
     height: '100%',
   },
   heroFeatherBottom: {
     position: 'absolute',
-    left: 0,
+    right: 0,
     bottom: 0,
-    width: '100%',
-    height: '40%',
+    width: '78%',
+    height: '48%',
   },
   heroTextArea: {
     zIndex: 3,
-    width: '62%',
-    paddingTop: 2,
-    paddingBottom: 22,
-    paddingLeft: 2,
+    width: '58%',
+    paddingTop: 18,
+    paddingBottom: 20,
+    paddingLeft: 4,
   },
   heroIdentityRow: {
     flexDirection: 'row',
@@ -5962,19 +5979,19 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   greetingTitleWrap: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', maxWidth: '100%' },
-  greetingEmoji: { fontSize: 20, opacity: 0.9, marginLeft: 4 },
   greetingTitle: {
     color: '#17140F',
-    fontSize: 37,
-    lineHeight: 43,
+    fontSize: 40,
+    lineHeight: 44,
     fontWeight: '900',
-    letterSpacing: -1.1,
+    letterSpacing: -0.9,
   },
   heroSubtitle: {
-    color: '#B95E39',
-    fontSize: 20,
+    color: '#BF643A',
+    fontSize: 17,
     fontWeight: '900',
     marginTop: 14,
+    lineHeight: 22,
   },
   heroLocationRow: {
     flexDirection: 'row',
@@ -5984,14 +6001,14 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   heroLocationText: {
-    color: '#B95E39',
-    fontSize: 15,
+    color: '#C06940',
+    fontSize: 13,
     fontWeight: '700',
   },
   heroAvatarCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#E2E0DC',
     alignItems: 'center',
     justifyContent: 'center',
@@ -6005,7 +6022,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 3,
   },
-  heroAvatarImage: { width: 56, height: 56, borderRadius: 28 },
+  heroAvatarImage: { width: 52, height: 52, borderRadius: 26 },
   avatarEmoji: { fontSize: 24 },
   
   /* --- Sticky Search + Chips wrapper --- */
