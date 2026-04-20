@@ -438,6 +438,7 @@
     image.style.height = drawH + 'px';
     image.style.left = drawX + 'px';
     image.style.top = drawY + 'px';
+    image.style.filter = 'brightness(1.06) saturate(1.08) contrast(1.03)';
   }
 
   function getStagePoint(e) {
@@ -558,9 +559,9 @@
 
     overlayLeft.style.background =
       'linear-gradient(90deg, ' +
-      'rgba(253, 222, 183, ' + fade.xStrong.toFixed(3) + ') 0%, ' +
-      'rgba(253, 222, 183, ' + fade.xStrong.toFixed(3) + ') ' + (fade.xStop1 * 100).toFixed(1) + '%, ' +
-      'rgba(253, 222, 183, ' + fade.xMid.toFixed(3) + ') ' + (fade.xStop2 * 100).toFixed(1) + '%, ' +
+      'rgba(253, 222, 183, ' + (fade.xStrong * 0.78).toFixed(3) + ') 0%, ' +
+      'rgba(253, 222, 183, ' + (fade.xStrong * 0.78).toFixed(3) + ') ' + (fade.xStop1 * 100).toFixed(1) + '%, ' +
+      'rgba(253, 222, 183, ' + (fade.xMid * 0.70).toFixed(3) + ') ' + (fade.xStop2 * 100).toFixed(1) + '%, ' +
       'rgba(253, 222, 183, 0) 100%)';
 
     overlayCorners.style.background =
@@ -571,14 +572,14 @@
 
     overlayTop.style.background =
       'linear-gradient(to bottom, ' +
-      'rgba(255, 251, 244, ' + fade.yTopStrong.toFixed(3) + ') 0%, ' +
-      'rgba(255, 251, 244, ' + (fade.yTopStrong * 0.45).toFixed(3) + ') ' + (fade.yTopEnd * 100).toFixed(1) + '%, ' +
+      'rgba(255, 251, 244, ' + (fade.yTopStrong * 0.80).toFixed(3) + ') 0%, ' +
+      'rgba(255, 251, 244, ' + (fade.yTopStrong * 0.34).toFixed(3) + ') ' + (fade.yTopEnd * 100).toFixed(1) + '%, ' +
       'rgba(255, 251, 244, 0) 100%)';
 
     overlayBottom.style.background =
       'linear-gradient(to bottom, ' +
       'rgba(255, 251, 244, 0) 0%, ' +
-      'rgba(255, 251, 244, ' + fade.yStrong.toFixed(3) + ') ' + (fade.yStart * 100).toFixed(1) + '%, ' +
+      'rgba(255, 251, 244, ' + (fade.yStrong * 0.82).toFixed(3) + ') ' + (fade.yStart * 100).toFixed(1) + '%, ' +
       'rgba(255, 251, 244, 1) 100%)';
   }
 
@@ -748,29 +749,29 @@
       var fade = getFadeModel();
 
       var gx = ctx.createLinearGradient(0, 0, canvas.width, 0);
-      gx.addColorStop(0, 'rgba(253,222,183,' + fade.xStrong.toFixed(3) + ')');
-      gx.addColorStop(clamp(fade.xStop1, 0, 1), 'rgba(253,222,183,' + fade.xStrong.toFixed(3) + ')');
-      gx.addColorStop(clamp(fade.xStop2, 0, 1), 'rgba(253,222,183,' + fade.xMid.toFixed(3) + ')');
+      gx.addColorStop(0, 'rgba(253,222,183,' + (fade.xStrong * 0.78).toFixed(3) + ')');
+      gx.addColorStop(clamp(fade.xStop1, 0, 1), 'rgba(253,222,183,' + (fade.xStrong * 0.78).toFixed(3) + ')');
+      gx.addColorStop(clamp(fade.xStop2, 0, 1), 'rgba(253,222,183,' + (fade.xMid * 0.70).toFixed(3) + ')');
       gx.addColorStop(1, 'rgba(253,222,183,0)');
       ctx.fillStyle = gx;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       var gy = ctx.createLinearGradient(0, 0, 0, canvas.height);
       gy.addColorStop(0, 'rgba(255,251,244,0)');
-      gy.addColorStop(clamp(fade.yStart, 0, 1), 'rgba(255,251,244,' + fade.yStrong.toFixed(3) + ')');
+      gy.addColorStop(clamp(fade.yStart, 0, 1), 'rgba(255,251,244,' + (fade.yStrong * 0.82).toFixed(3) + ')');
       gy.addColorStop(1, 'rgba(255,251,244,1)');
       ctx.fillStyle = gy;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       var gTop = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gTop.addColorStop(0, 'rgba(255,251,244,' + fade.yTopStrong.toFixed(3) + ')');
-      gTop.addColorStop(clamp(fade.yTopEnd, 0, 1), 'rgba(255,251,244,' + (fade.yTopStrong * 0.45).toFixed(3) + ')');
+      gTop.addColorStop(0, 'rgba(255,251,244,' + (fade.yTopStrong * 0.80).toFixed(3) + ')');
+      gTop.addColorStop(clamp(fade.yTopEnd, 0, 1), 'rgba(255,251,244,' + (fade.yTopStrong * 0.34).toFixed(3) + ')');
       gTop.addColorStop(1, 'rgba(255,251,244,0)');
       ctx.fillStyle = gTop;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       var cornerR = Math.max(canvas.width, canvas.height) * (fade.cornerRadius / 100);
-      var cornerAlpha = fade.cornerOpacity;
+      var cornerAlpha = fade.cornerOpacity * 0.72;
       var corners = [
         [0, 0],
         [canvas.width, 0],
@@ -788,7 +789,7 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      imageDataInput.value = canvas.toDataURL('image/jpeg', 0.92);
+      imageDataInput.value = canvas.toDataURL('image/png');
       return true;
     } catch (_) {
       return false;
