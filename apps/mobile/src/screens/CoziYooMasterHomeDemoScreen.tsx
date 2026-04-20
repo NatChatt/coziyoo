@@ -125,7 +125,7 @@ export default function CoziYooMasterHomeDemoScreen() {
 
 const styles = StyleSheet.create({
   safe: {
-    backgroundColor: '#F3EFE6',
+    backgroundColor: '#fddfb9',
     flex: 1,
   },
   scrollContent: {
