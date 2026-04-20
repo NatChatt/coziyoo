@@ -73,6 +73,30 @@ export default function CoziYooMasterHomeDemoScreen() {
               style={styles.heroLeftGradient}
             />
 
+            <LinearGradient
+              colors={['rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0)']}
+              locations={[0, 1]}
+              start={{ x: 1, y: 0.5 }}
+              end={{ x: 0, y: 0.5 }}
+              style={styles.heroRightLift}
+            />
+
+            <LinearGradient
+              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.30)', 'rgba(253, 222, 183, 0)']}
+              locations={[0, 0.5, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.plateHaloHorizontal}
+            />
+
+            <LinearGradient
+              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.24)', 'rgba(253, 222, 183, 0)']}
+              locations={[0, 0.5, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.plateHaloVertical}
+            />
+
             <View style={styles.heroOverlayContent}>
               <View>
                 <View style={styles.heroRow}>
@@ -153,6 +177,32 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 210,
+  },
+  heroRightLift: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '44%',
+    height: 210,
+    zIndex: 1,
+  },
+  plateHaloHorizontal: {
+    position: 'absolute',
+    top: 4,
+    right: 10,
+    width: 194,
+    height: 194,
+    borderRadius: 97,
+    zIndex: 2,
+  },
+  plateHaloVertical: {
+    position: 'absolute',
+    top: 4,
+    right: 10,
+    width: 194,
+    height: 194,
+    borderRadius: 97,
+    zIndex: 2,
   },
   heroOverlayContent: {
     position: 'absolute',
