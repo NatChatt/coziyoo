@@ -273,6 +273,10 @@
             <input id="hero-fade-y" class="hero-range" type="range" min="0" max="100" step="1" value="58" />
           </div>
           <div class="hero-control-group">
+            <div class="hero-control-label">Doku Yogunlugu</div>
+            <input id="hero-texture-strength" class="hero-range" type="range" min="0" max="100" step="1" value="55" />
+          </div>
+          <div class="hero-control-group">
             <button type="button" id="hero-reset" class="hero-btn-secondary">Reset</button>
           </div>
           <div class="hero-control-group">
@@ -325,6 +329,7 @@
   var zoomInput = document.getElementById('hero-zoom');
   var fadeXInput = document.getElementById('hero-fade-x');
   var fadeYInput = document.getElementById('hero-fade-y');
+  var textureStrengthInput = document.getElementById('hero-texture-strength');
   var resetBtn = document.getElementById('hero-reset');
   var eraseSizeInput = document.getElementById('hero-erase-size');
   var eraseToggleBtn = document.getElementById('hero-erase-toggle');
@@ -350,6 +355,7 @@
     offsetY: 0,
     fadeX: 48,
     fadeY: 58,
+    textureStrength: 55,
     overlayOpacity: 100,
     brightness: 100,
   };
@@ -401,6 +407,7 @@
       if (typeof parsed.offsetY === 'number') state.offsetY = parsed.offsetY;
       if (typeof parsed.fadeX === 'number') state.fadeX = clamp(parsed.fadeX, 0, 100);
       if (typeof parsed.fadeY === 'number') state.fadeY = clamp(parsed.fadeY, 0, 100);
+      if (typeof parsed.textureStrength === 'number') state.textureStrength = clamp(parsed.textureStrength, 0, 100);
       if (typeof parsed.overlayOpacity === 'number') state.overlayOpacity = clamp(parsed.overlayOpacity, 0, 100);
       if (typeof parsed.brightness === 'number') state.brightness = clamp(parsed.brightness, 100, 170);
     } catch (_) {}
@@ -410,6 +417,7 @@
     zoomInput.value = state.scale.toFixed(2);
     fadeXInput.value = String(Math.round(state.fadeX));
     fadeYInput.value = String(Math.round(state.fadeY));
+    textureStrengthInput.value = String(Math.round(state.textureStrength));
     eraseSizeInput.value = String(Math.round(state.brightness));
   }
 
@@ -480,6 +488,7 @@
 
   function applyFadePreview() {
     var fade = getFadeModel();
+    var textureFactor = clamp(state.textureStrength, 0, 100) / 100;
 
     overlayLeft.style.background =
       'linear-gradient(90deg, ' +
@@ -507,8 +516,8 @@
       'rgba(255, 251, 244, 1) 100%)';
 
     // Parchment-like grain: dotted + aged paper fibers
-    var grainAlpha = (0.06 + (fade.xStrong * 0.08) + (fade.yStrong * 0.08));
-    var warmAlpha = (0.04 + fade.cornerOpacity * 0.12);
+    var grainAlpha = (0.02 + (fade.xStrong * 0.06) + (fade.yStrong * 0.06)) * textureFactor;
+    var warmAlpha = (0.02 + fade.cornerOpacity * 0.10) * textureFactor;
     overlayPaper.style.background =
       'radial-gradient(circle at 12% 18%, rgba(133, 97, 58, ' + grainAlpha.toFixed(3) + ') 0 0.9px, transparent 1.3px),' +
       'radial-gradient(circle at 74% 32%, rgba(122, 88, 49, ' + (grainAlpha * 0.85).toFixed(3) + ') 0 0.8px, transparent 1.2px),' +
@@ -516,7 +525,7 @@
       'linear-gradient(115deg, rgba(198, 150, 94, ' + warmAlpha.toFixed(3) + ') 0%, rgba(255, 246, 230, 0) 56%),' +
       'linear-gradient(12deg, rgba(181, 138, 84, ' + (warmAlpha * 0.7).toFixed(3) + ') 0%, rgba(255, 250, 240, 0) 70%)';
     overlayPaper.style.backgroundSize = '7px 7px, 9px 9px, 11px 11px, 100% 100%, 100% 100%';
-    overlayPaper.style.opacity = '1';
+    overlayPaper.style.opacity = textureFactor.toFixed(3);
   }
 
   function applyAll() {
@@ -532,6 +541,7 @@
       offsetY: state.offsetY,
       fadeX: state.fadeX,
       fadeY: state.fadeY,
+      textureStrength: state.textureStrength,
       overlayOpacity: state.overlayOpacity,
       brightness: state.brightness,
       updatedAt: new Date().toISOString(),
@@ -546,6 +556,7 @@
     state.offsetY = 0;
     state.fadeX = 48;
     state.fadeY = 58;
+    state.textureStrength = 55;
     state.overlayOpacity = 100;
     state.brightness = 100;
     applyAll();
@@ -824,6 +835,12 @@
 
   fadeYInput.addEventListener('input', function () {
     state.fadeY = clamp(parseFloat(fadeYInput.value) || 0, 0, 100);
+    applyAll();
+    saveEditState();
+  });
+
+  textureStrengthInput.addEventListener('input', function () {
+    state.textureStrength = clamp(parseFloat(textureStrengthInput.value) || 0, 0, 100);
     applyAll();
     saveEditState();
   });
