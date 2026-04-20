@@ -121,6 +121,12 @@
     pointer-events: none;
     z-index: 20;
   }
+  .hero-overlay-corners {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 21;
+  }
   .hero-overlay-bottom {
     position: absolute;
     inset: 0;
@@ -228,6 +234,7 @@
           <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
           <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
           <div class="hero-overlay-left" id="hero-overlay-left"></div>
+          <div class="hero-overlay-corners" id="hero-overlay-corners"></div>
           <div class="hero-overlay-top" id="hero-overlay-top"></div>
           <div class="hero-copy">
             <div class="hero-copy-top">
@@ -280,6 +287,7 @@
   var image = document.getElementById('hero-preview-image');
   var empty = document.getElementById('hero-empty');
   var overlayLeft = document.getElementById('hero-overlay-left');
+  var overlayCorners = document.getElementById('hero-overlay-corners');
   var overlayTop = document.getElementById('hero-overlay-top');
   var overlayBottom = document.getElementById('hero-overlay-bottom');
 
@@ -378,15 +386,22 @@
     var xEase = Math.pow(xRaw, 1.65);
     var yEase = Math.pow(yRaw, 1.65);
 
+    // Corner-first behavior:
+    // corners react immediately, center strips react later.
+    var centerX = Math.pow(clamp((xRaw - 0.30) / 0.70, 0, 1), 1.25);
+    var centerY = Math.pow(clamp((yRaw - 0.30) / 0.70, 0, 1), 1.25);
+
     return {
-      xStrong: 0.08 + xEase * 0.90,
-      xMid: 0.02 + xEase * 0.52,
-      xStop1: 0.12 + xEase * 0.18,
-      xStop2: 0.46 + xEase * 0.30,
-      yStrong: Math.min(1, 0.18 + yEase * 0.92),
-      yTopStrong: Math.min(0.95, 0.08 + yEase * 0.78),
-      yTopEnd: 0.18 + yEase * 0.22,
-      yStart: 0.72 - yEase * 0.62,
+      cornerOpacity: Math.min(1, 0.05 + Math.max(xEase, yEase) * 0.95),
+      cornerRadius: 28 + Math.max(xRaw, yRaw) * 52,
+      xStrong: 0.04 + centerX * 0.88,
+      xMid: 0.01 + centerX * 0.50,
+      xStop1: 0.10 + centerX * 0.18,
+      xStop2: 0.44 + centerX * 0.30,
+      yStrong: Math.min(1, 0.10 + centerY * 0.90),
+      yTopStrong: Math.min(0.95, 0.05 + centerY * 0.75),
+      yTopEnd: 0.16 + centerY * 0.24,
+      yStart: 0.72 - centerY * 0.62,
     };
   }
 
@@ -399,6 +414,12 @@
       'rgba(253, 222, 183, ' + fade.xStrong.toFixed(3) + ') ' + (fade.xStop1 * 100).toFixed(1) + '%, ' +
       'rgba(253, 222, 183, ' + fade.xMid.toFixed(3) + ') ' + (fade.xStop2 * 100).toFixed(1) + '%, ' +
       'rgba(253, 222, 183, 0) 100%)';
+
+    overlayCorners.style.background =
+      'radial-gradient(' + fade.cornerRadius.toFixed(1) + '% ' + fade.cornerRadius.toFixed(1) + '% at 0% 0%, rgba(255, 251, 244, ' + fade.cornerOpacity.toFixed(3) + ') 0%, rgba(255, 251, 244, 0) 72%),' +
+      'radial-gradient(' + fade.cornerRadius.toFixed(1) + '% ' + fade.cornerRadius.toFixed(1) + '% at 100% 0%, rgba(255, 251, 244, ' + fade.cornerOpacity.toFixed(3) + ') 0%, rgba(255, 251, 244, 0) 72%),' +
+      'radial-gradient(' + fade.cornerRadius.toFixed(1) + '% ' + fade.cornerRadius.toFixed(1) + '% at 0% 100%, rgba(255, 251, 244, ' + fade.cornerOpacity.toFixed(3) + ') 0%, rgba(255, 251, 244, 0) 72%),' +
+      'radial-gradient(' + fade.cornerRadius.toFixed(1) + '% ' + fade.cornerRadius.toFixed(1) + '% at 100% 100%, rgba(255, 251, 244, ' + fade.cornerOpacity.toFixed(3) + ') 0%, rgba(255, 251, 244, 0) 72%)';
 
     overlayTop.style.background =
       'linear-gradient(to bottom, ' +
@@ -506,6 +527,25 @@
       gTop.addColorStop(1, 'rgba(255,251,244,0)');
       ctx.fillStyle = gTop;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      var cornerR = Math.max(canvas.width, canvas.height) * (fade.cornerRadius / 100);
+      var cornerAlpha = fade.cornerOpacity;
+      var corners = [
+        [0, 0],
+        [canvas.width, 0],
+        [0, canvas.height],
+        [canvas.width, canvas.height],
+      ];
+      for (var i = 0; i < corners.length; i += 1) {
+        var cx = corners[i][0];
+        var cy = corners[i][1];
+        var gCorner = ctx.createRadialGradient(cx, cy, 0, cx, cy, cornerR);
+        gCorner.addColorStop(0, 'rgba(255,251,244,' + cornerAlpha.toFixed(3) + ')');
+        gCorner.addColorStop(0.72, 'rgba(255,251,244,0)');
+        gCorner.addColorStop(1, 'rgba(255,251,244,0)');
+        ctx.fillStyle = gCorner;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
 
       imageDataInput.value = canvas.toDataURL('image/jpeg', 0.92);
       return true;
