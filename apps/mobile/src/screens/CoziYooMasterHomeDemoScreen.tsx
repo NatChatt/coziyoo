@@ -1,22 +1,22 @@
-import { Feather, Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
+import { Feather, Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import {
   Dimensions,
   Image,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   View,
-} from 'react-native';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
-const categories = ['Pizza', 'Sushi', 'Burger', 'Pasta', 'Salad'];
+const categories = ["Pizza", "Sushi", "Burger", "Pasta", "Salad"];
 
-function CategoriesBlock() {
+const CategoriesBlock = () => {
   return (
     <View style={styles.sectionWrap}>
       <View style={styles.sectionHeader}>
@@ -33,7 +33,7 @@ function CategoriesBlock() {
         ))}
       </ScrollView>
 
-      <View style={[styles.sectionHeader, { marginTop: 12 }]}>
+      <View style={[styles.sectionHeader, { marginTop: 12 }]}> 
         <Text style={styles.sectionTitle}>Newby Flavours</Text>
         <Text style={styles.sectionLink}>View All</Text>
       </View>
@@ -42,7 +42,7 @@ function CategoriesBlock() {
         {[...Array(3)].map((_, index) => (
           <View key={index} style={styles.flavourCard}>
             <Image
-              source={require('../../assets/images/coziyoo-demo-burgur.webp')}
+              source={require("../../assets/images/burgur.webp")}
               style={styles.flavourImage}
             />
             <Text style={styles.flavourTitle}>Burger</Text>
@@ -52,36 +52,36 @@ function CategoriesBlock() {
       </ScrollView>
     </View>
   );
-}
+};
 
-export default function CoziYooMasterHomeDemoScreen() {
-  const topInset = StatusBar.currentHeight ?? 0;
+export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar style="dark" translucent />
       <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.heroSection, { height: 244 + topInset }]}>
+        <View style={[styles.heroSection, { height: 244 + insets.top }]}>
           <View style={styles.heroArtWrap}>
             <LinearGradient
-              colors={['#f3d5be', '#f6dfcd', '#f9ece2']}
+              colors={["#f3d5be", "#f6dfcd", "#f9ece2"]}
               start={{ x: 0, y: 0.2 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFillObject}
             />
 
             <Image
-              source={require('../../assets/images/hero-food-fade.png')}
+              source={require("../../assets/images/hero-food-fade.png")}
               style={styles.heroFoodImage}
               resizeMode="cover"
             />
 
             <LinearGradient
               colors={[
-                'rgba(243,213,190,0.98)',
-                'rgba(243,213,190,0.82)',
-                'rgba(243,213,190,0.38)',
-                'rgba(243,213,190,0)',
+                "rgba(243,213,190,0.98)",
+                "rgba(243,213,190,0.82)",
+                "rgba(243,213,190,0.38)",
+                "rgba(243,213,190,0)",
               ]}
               locations={[0, 0.45, 0.72, 1]}
               start={{ x: 0, y: 0.5 }}
@@ -92,10 +92,10 @@ export default function CoziYooMasterHomeDemoScreen() {
 
             <LinearGradient
               colors={[
-                'rgba(255,251,244,0)',
-                'rgba(255,251,244,0.35)',
-                'rgba(255,251,244,0.92)',
-                '#fffbf4',
+                "rgba(255,251,244,0)",
+                "rgba(255,251,244,0.35)",
+                "rgba(255,251,244,0.92)",
+                "#fffbf4",
               ]}
               locations={[0, 0.35, 0.8, 1]}
               start={{ x: 0.5, y: 0 }}
@@ -105,10 +105,10 @@ export default function CoziYooMasterHomeDemoScreen() {
             />
           </View>
 
-          <View style={[styles.heroContent, { paddingTop: topInset + 20 }]}>
+          <View style={[styles.heroContent, { paddingTop: insets.top + 20 }]}>
             <View style={styles.profileRow}>
               <Image
-                source={require('../../assets/images/coziyoo-demo-avatar.jpeg')}
+                source={require("../../assets/images/images1.jpeg")}
                 style={styles.avatar}
               />
               <Text style={styles.greeting}>Hi, John Doe</Text>
@@ -148,15 +148,15 @@ export default function CoziYooMasterHomeDemoScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f3d5be',
+    backgroundColor: "#f3d5be",
   },
   scrollContent: {
-    backgroundColor: '#fffbf4',
+    backgroundColor: "#fffbf4",
   },
   heroSection: {
     height: 244,
-    backgroundColor: '#f3d5be',
-    overflow: 'hidden',
+    backgroundColor: "#f3d5be",
+    overflow: "hidden",
     borderBottomLeftRadius: 22,
     borderBottomRightRadius: 22,
   },
@@ -164,21 +164,21 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   heroFoodImage: {
-    position: 'absolute',
-    right: -42,
-    top: 10,
-    width: width * 0.74,
-    height: 214,
+    position: "absolute",
+    right: -56,
+    top: -4,
+    width: width * 0.86,
+    height: 244,
   },
   heroSoftBlend: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     top: 0,
     width: width * 0.72,
     height: 244,
   },
   heroBottomFade: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
@@ -188,12 +188,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 18,
     paddingTop: 20,
-    width: '61%',
+    width: "61%",
     zIndex: 2,
   },
   profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   avatar: {
@@ -203,29 +203,29 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#2f2822',
+    fontWeight: "800",
+    color: "#2f2822",
   },
   headline: {
     marginTop: 18,
     fontSize: 15,
     lineHeight: 21,
-    fontWeight: '800',
-    color: '#d06e45',
+    fontWeight: "800",
+    color: "#d06e45",
   },
   locationRow: {
     marginTop: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   locationPrimary: {
     fontSize: 12,
-    color: '#c46b48',
+    color: "#c46b48",
   },
   locationSecondary: {
     fontSize: 11,
-    color: '#3f3a37',
+    color: "#3f3a37",
     opacity: 0.78,
   },
   searchWrap: {
@@ -236,14 +236,14 @@ const styles = StyleSheet.create({
   searchBar: {
     minHeight: 50,
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: "rgba(255,255,255,0.92)",
     borderWidth: 1,
-    borderColor: 'rgba(135, 111, 98, 0.08)',
-    shadowColor: '#8f7969',
+    borderColor: "rgba(135, 111, 98, 0.08)",
+    shadowColor: "#8f7969",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 18,
@@ -253,28 +253,28 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#3d3d3d',
+    color: "#3d3d3d",
   },
   sectionWrap: {
-    width: '90%',
-    alignSelf: 'center',
+    width: "90%",
+    alignSelf: "center",
     marginTop: 18,
     paddingBottom: 24,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#2e2926',
+    fontWeight: "800",
+    color: "#2e2926",
   },
   sectionLink: {
     fontSize: 12,
-    color: '#c46b48',
+    color: "#c46b48",
   },
   rowScroll: {
     paddingRight: 8,
@@ -282,39 +282,39 @@ const styles = StyleSheet.create({
   categoryCard: {
     width: 86,
     marginRight: 10,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     paddingHorizontal: 10,
     paddingVertical: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   categoryLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
     marginTop: 8,
-    color: '#3b3531',
+    color: "#3b3531",
   },
   flavourCard: {
     width: 124,
     marginRight: 12,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   flavourImage: {
     width: 54,
@@ -323,15 +323,15 @@ const styles = StyleSheet.create({
   },
   flavourTitle: {
     fontSize: 14,
-    fontWeight: '800',
-    textAlign: 'center',
+    fontWeight: "800",
+    textAlign: "center",
     marginTop: 8,
-    color: '#2e2926',
+    color: "#2e2926",
   },
   flavourSubtitle: {
     fontSize: 11,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 4,
-    color: '#6a625c',
+    color: "#6a625c",
   },
 });
