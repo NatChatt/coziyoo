@@ -17,62 +17,49 @@
     color: #667085;
     margin-bottom: 16px;
   }
-  .hero-editor-grid {
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 16px;
-  }
-  .hero-panel,
   .hero-preview-panel {
     border: 1px solid #d0d5dd;
     border-radius: 14px;
     background: #fff;
     padding: 14px;
   }
-  .hero-label {
-    display: block;
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-  .hero-file-btn {
-    width: 100%;
-    border: 1px dashed #98a2b3;
-    border-radius: 10px;
-    padding: 11px 12px;
-    background: #f8fafc;
-    cursor: pointer;
-    text-align: left;
-    font-size: 14px;
-    color: #344054;
-  }
-  .hero-file-btn:hover {
-    background: #f1f5f9;
-  }
-  .hero-file-name {
-    margin-top: 8px;
-    font-size: 12px;
-    color: #667085;
-    min-height: 18px;
-  }
-  .hero-range {
-    width: 100%;
-    margin-top: 6px;
-  }
-  .hero-help {
-    margin-top: 8px;
-    font-size: 12px;
-    color: #667085;
-    line-height: 1.4;
+  .hero-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
   }
   .hero-preview-title {
     font-size: 15px;
     font-weight: 700;
-    margin-bottom: 10px;
+  }
+  .hero-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hero-btn-primary,
+  .hero-btn-secondary {
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .hero-btn-primary {
+    border: none;
+    background: #7f56d9;
+    color: #fff;
+  }
+  .hero-btn-secondary {
+    border: 1px solid #d0d5dd;
+    background: #fff;
+    color: #344054;
   }
   .hero-stage {
     position: relative;
-    height: 360px;
+    height: 420px;
     border: 1px solid #d0d5dd;
     border-radius: 16px;
     overflow: hidden;
@@ -88,11 +75,7 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform-origin: center center;
-    will-change: transform;
+    will-change: left, top, width, height;
   }
   .hero-empty {
     position: absolute;
@@ -104,6 +87,7 @@
     font-size: 14px;
     z-index: 50;
     background: rgba(255, 251, 244, 0.85);
+    pointer-events: none;
   }
   .hero-overlay-left {
     position: absolute;
@@ -117,7 +101,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    height: 108px;
+    height: 120px;
     background: linear-gradient(to bottom, rgba(255, 251, 244, 0) 0%, rgba(255, 251, 244, 0.9) 58%, #fffbf4 100%);
     pointer-events: none;
     z-index: 25;
@@ -161,35 +145,18 @@
     font-weight: 700;
     color: #b15735;
   }
-  .hero-actions {
-    margin-top: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .hero-btn-primary,
-  .hero-btn-secondary {
-    border-radius: 10px;
-    padding: 9px 14px;
-    font-size: 14px;
-    cursor: pointer;
-  }
-  .hero-btn-primary {
-    border: none;
-    background: #7f56d9;
-    color: #fff;
-  }
-  .hero-btn-secondary {
-    border: 1px solid #d0d5dd;
-    background: #fff;
-    color: #344054;
+  .hero-help {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #667085;
   }
   @media (max-width: 980px) {
-    .hero-editor-grid {
-      grid-template-columns: 1fr;
+    .hero-preview-header {
+      flex-direction: column;
+      align-items: flex-start;
     }
     .hero-stage {
-      height: 300px;
+      height: 320px;
     }
     .hero-greet {
       font-size: 26px;
@@ -205,48 +172,38 @@
 
 <div class="hero-editor-wrap">
   <div class="hero-editor-title">Home Hero</div>
-  <div class="hero-editor-subtitle">Tek butonla görsel ekle, ekranda sürükleyip büyüt-küçült, beğenirsen onayla.</div>
+  <div class="hero-editor-subtitle">Resim ekle. Önizleme içinde mouse ile taşı. Mouse tekerleği ile büyüt/küçült. Sonra yayınla.</div>
 
   <form method="post" id="home-hero-form" novalidate>
     {% csrf_token %}
     <input type="hidden" name="action" id="hero-action" value="approve" />
     <input type="hidden" name="mobile_home_header_image_url" id="hero-image-value" value="{{ current_url|default:'' }}" />
 
-    <div class="hero-editor-grid">
-      <div class="hero-panel">
-        <label class="hero-label" for="hero-file-input">Home Hero Görseli</label>
-        <input id="hero-file-input" type="file" accept="image/*" style="display:none" />
-        <button type="button" id="hero-file-trigger" class="hero-file-btn">Resim Ekle</button>
-        <div id="hero-file-name" class="hero-file-name"></div>
-
-        <label class="hero-label" for="hero-zoom" style="margin-top: 12px;">Boyut</label>
-        <input id="hero-zoom" class="hero-range" type="range" min="0.7" max="3" step="0.01" value="1.2" />
-        <div class="hero-help">Görseli sahnede tutup sağa-sola-yukarı-aşağı sürükleyebilirsin.</div>
-
-        <div class="hero-actions">
-          <button type="button" id="hero-reset" class="hero-btn-secondary">Sıfırla</button>
-          <button type="submit" id="approve-btn" class="hero-btn-primary">Onayla</button>
-          <button type="button" id="edit-btn" class="hero-btn-secondary">Düzenle</button>
-        </div>
-      </div>
-
-      <div class="hero-preview-panel">
+    <div class="hero-preview-panel">
+      <div class="hero-preview-header">
         <div class="hero-preview-title">Ana Ekran Hero Önizleme</div>
-        <div id="hero-stage" class="hero-stage">
-          <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" {% if not current_url %}style="display:none"{% endif %}>
-          <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekleyince burada birebir görünecek</div>
-          <div class="hero-overlay-left"></div>
-          <div class="hero-copy">
-            <div class="hero-copy-top">
-              <div class="hero-avatar"></div>
-              <div class="hero-greet">Tünaydın, Demo</div>
-            </div>
-            <div class="hero-headline">Sana güzel bir şey öneririm.</div>
-            <div class="hero-location">Kadıköy • 2.5 km çevre</div>
-          </div>
-          <div class="hero-overlay-bottom"></div>
+        <div class="hero-header-actions">
+          <input id="hero-file-input" type="file" accept="image/*" style="display:none" />
+          <button type="button" id="hero-file-trigger" class="hero-btn-secondary">Resim Ekle</button>
+          <button type="submit" id="approve-btn" class="hero-btn-primary">Yayınla</button>
         </div>
       </div>
+
+      <div id="hero-stage" class="hero-stage">
+        <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" {% if not current_url %}style="display:none"{% endif %}>
+        <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
+        <div class="hero-overlay-left"></div>
+        <div class="hero-copy">
+          <div class="hero-copy-top">
+            <div class="hero-avatar"></div>
+            <div class="hero-greet">Tünaydın, Demo</div>
+          </div>
+          <div class="hero-headline">Sana güzel bir şey öneririm.</div>
+          <div class="hero-location">Kadıköy • 2.5 km çevre</div>
+        </div>
+        <div class="hero-overlay-bottom"></div>
+      </div>
+      <div class="hero-help" id="hero-help-text">İpucu: Sürükleyerek taşı. Mouse tekerleği ile zoom yap.</div>
     </div>
   </form>
 </div>
@@ -256,23 +213,27 @@
   var imageValue = document.getElementById('hero-image-value');
   var fileInput = document.getElementById('hero-file-input');
   var fileTrigger = document.getElementById('hero-file-trigger');
-  var fileName = document.getElementById('hero-file-name');
-  var zoomInput = document.getElementById('hero-zoom');
-  var resetBtn = document.getElementById('hero-reset');
-  var editBtn = document.getElementById('edit-btn');
   var form = document.getElementById('home-hero-form');
   var actionInput = document.getElementById('hero-action');
+  var helpText = document.getElementById('hero-help-text');
 
   var stage = document.getElementById('hero-stage');
   var image = document.getElementById('hero-preview-image');
   var empty = document.getElementById('hero-empty');
 
-  var scale = parseFloat(zoomInput.value) || 1.2;
+  var userScale = 1;
+  var minScale = 0.35;
+  var maxScale = 3.2;
   var offsetX = 0;
   var offsetY = 0;
   var startX = 0;
   var startY = 0;
   var dragging = false;
+  var baseScale = 1;
+
+  function hasImage() {
+    return image.style.display !== 'none' && !!image.src;
+  }
 
   function showImage(src) {
     if (!src) {
@@ -283,23 +244,55 @@
     image.src = src;
     image.style.display = 'block';
     empty.style.display = 'none';
-    renderTransform();
+  }
+
+  function calculateBaseScale() {
+    var vw = stage.clientWidth || 1;
+    var vh = stage.clientHeight || 1;
+    var iw = image.naturalWidth || vw;
+    var ih = image.naturalHeight || vh;
+    baseScale = Math.max(vw / iw, vh / ih);
+  }
+
+  function clamp(val, min, max) {
+    if (val < min) return min;
+    if (val > max) return max;
+    return val;
   }
 
   function renderTransform() {
-    image.style.transform = 'translate(' + offsetX + 'px,' + offsetY + 'px) scale(' + scale + ')';
+    if (!hasImage()) return;
+    var vw = stage.clientWidth || 1;
+    var vh = stage.clientHeight || 1;
+    var iw = image.naturalWidth || vw;
+    var ih = image.naturalHeight || vh;
+
+    var finalScale = baseScale * userScale;
+    var drawW = iw * finalScale;
+    var drawH = ih * finalScale;
+    var drawX = (vw - drawW) / 2 + offsetX;
+    var drawY = (vh - drawH) / 2 + offsetY;
+
+    image.style.width = drawW + 'px';
+    image.style.height = drawH + 'px';
+    image.style.left = drawX + 'px';
+    image.style.top = drawY + 'px';
   }
 
-  function resetTransform() {
-    scale = 1.2;
+  function resetView() {
+    userScale = 1;
     offsetX = 0;
     offsetY = 0;
-    zoomInput.value = String(scale);
     renderTransform();
   }
 
+  function fitNewImage() {
+    calculateBaseScale();
+    resetView();
+  }
+
   function exportComposedImage() {
-    if (!image.src) return;
+    if (!hasImage()) return;
 
     var canvas = document.createElement('canvas');
     canvas.width = 1400;
@@ -312,8 +305,7 @@
     var iw = image.naturalWidth || vw;
     var ih = image.naturalHeight || vh;
 
-    var cover = Math.max(vw / iw, vh / ih);
-    var finalScale = cover * scale;
+    var finalScale = baseScale * userScale;
     var drawW = iw * finalScale;
     var drawH = ih * finalScale;
     var drawX = (vw - drawW) / 2 + offsetX;
@@ -328,7 +320,7 @@
       ctx.drawImage(image, drawX * sx, drawY * sy, drawW * sx, drawH * sy);
       imageValue.value = canvas.toDataURL('image/jpeg', 0.92);
     } catch (err) {
-      // Remote images may block canvas export (CORS). Keep original value.
+      // canvas export may fail for some remote images
     }
   }
 
@@ -339,33 +331,31 @@
   fileInput.addEventListener('change', function () {
     var file = fileInput.files && fileInput.files[0];
     if (!file) return;
-    fileName.textContent = file.name;
+
     var reader = new FileReader();
     reader.onload = function (ev) {
       var dataUrl = ev.target && ev.target.result ? String(ev.target.result) : '';
       imageValue.value = dataUrl;
       showImage(dataUrl);
-      resetTransform();
+      image.onload = function () {
+        fitNewImage();
+      };
+      helpText.textContent = 'Resim yüklendi. Sürükleyebilir ve tekerlekle zoom yapabilirsin.';
       actionInput.value = 'edit';
     };
     reader.readAsDataURL(file);
   });
 
-  zoomInput.addEventListener('input', function () {
-    scale = parseFloat(zoomInput.value) || 1.2;
+  stage.addEventListener('wheel', function (e) {
+    if (!hasImage()) return;
+    e.preventDefault();
+    var delta = e.deltaY > 0 ? -0.08 : 0.08;
+    userScale = clamp(userScale + delta, minScale, maxScale);
     renderTransform();
-  });
-
-  resetBtn.addEventListener('click', function () {
-    resetTransform();
-  });
-
-  editBtn.addEventListener('click', function () {
-    actionInput.value = 'edit';
-  });
+  }, { passive: false });
 
   stage.addEventListener('pointerdown', function (e) {
-    if (!image.src || image.style.display === 'none') return;
+    if (!hasImage()) return;
     dragging = true;
     stage.classList.add('dragging');
     startX = e.clientX - offsetX;
@@ -383,12 +373,13 @@
   function stopDrag(e) {
     dragging = false;
     stage.classList.remove('dragging');
-    try { stage.releasePointerCapture(e.pointerId); } catch (_) {}
+    try {
+      stage.releasePointerCapture(e.pointerId);
+    } catch (_) {}
   }
 
   stage.addEventListener('pointerup', stopDrag);
   stage.addEventListener('pointercancel', stopDrag);
-  stage.addEventListener('pointerleave', function () { if (!dragging) stage.classList.remove('dragging'); });
 
   form.addEventListener('submit', function (e) {
     actionInput.value = 'approve';
@@ -402,10 +393,15 @@
 
   if (imageValue.value) {
     showImage(imageValue.value);
+    image.onload = function () {
+      fitNewImage();
+    };
+    if (image.complete) {
+      fitNewImage();
+    }
   } else {
     showImage('');
   }
-  renderTransform();
 })();
 </script>
 {% endblock %}
