@@ -54,14 +54,14 @@ export default function CoziYooMasterHomeDemoScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.topArea}>
-          <LinearGradient
-            colors={['#FDE7C8', '#F7D7AF', '#F4D3A7']}
-            locations={[0, 0.55, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.topAreaWarmGradient}
-          />
           <View style={styles.heroWrap}>
+            <LinearGradient
+              colors={['#F5D2B3', '#F5D2B3', 'rgba(245,210,179,0.7)', 'rgba(245,210,179,0)']}
+              locations={[0, 0.6, 0.75, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.heroBackgroundGradient}
+            />
             <Image
               source={require('../../assets/images/coziyoo-demo-cover1.jpg')}
               style={styles.heroImage}
@@ -144,14 +144,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fddfb9',
     position: 'relative',
   },
-  topAreaWarmGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
   heroWrap: {
     position: 'relative',
     height: 210,
     overflow: 'visible',
-    backgroundColor: '#fddfb9',
+    backgroundColor: '#F5D2B3',
+  },
+  heroBackgroundGradient: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
   },
   heroImage: {
     position: 'absolute',
