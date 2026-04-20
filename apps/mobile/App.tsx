@@ -15,7 +15,6 @@ import Constants from 'expo-constants';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
-import CoziYooMasterHomeDemoScreen from './src/screens/CoziYooMasterHomeDemoScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ProfileEditScreen from './src/screens/ProfileEditScreen';
 import AddressScreen from './src/screens/AddressScreen';
@@ -152,7 +151,6 @@ async function unregisterPushToken(auth: AuthSession, apiUrl: string, token?: st
 
 type Screen =
   | 'loading' | 'onboarding' | 'login' | 'home'
-  | 'coziYooHomeDemo'
   | 'settings' | 'profileEdit' | 'addresses'
   | 'notifications'
   | 'orders' | 'orderDetail' | 'complaintOrders' | 'ticketList' | 'ticketDetail'
@@ -456,16 +454,11 @@ export default function App() {
     );
   }
 
-  if (screen === 'coziYooHomeDemo') {
-    return <CoziYooMasterHomeDemoScreen />;
-  }
-
   if (screen === 'login' || !auth) {
     return (
       <LoginScreen
         onLogin={handleLogin}
         onGoToRegister={() => setScreen('onboarding')}
-        onGoToDemo={() => setScreen('coziYooHomeDemo')}
       />
     );
   }
