@@ -4195,6 +4195,8 @@ export default function HomeScreen({
       <ScrollView
         ref={feedScrollRef}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        alwaysBounceVertical={false}
         contentContainerStyle={styles.scrollContent}
         style={styles.scroll}
         stickyHeaderIndices={[1]}
