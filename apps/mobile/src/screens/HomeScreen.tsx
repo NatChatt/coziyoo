@@ -4203,50 +4203,13 @@ export default function HomeScreen({
           />
           {LinearGradient ? (
             <LinearGradient
-              colors={['rgba(191, 132, 91, 0.22)', 'rgba(191, 132, 91, 0.1)', 'rgba(191, 132, 91, 0)']}
-              locations={[0, 0.16, 0.34]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroFoodBgEdgeFade}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(255, 228, 196, 1)', 'rgba(255, 228, 196, 0.9)', 'rgba(255, 228, 196, 0.42)', 'rgba(255, 228, 196, 0)']}
-              locations={[0, 0.32, 0.72, 1]}
+              colors={['rgba(176, 120, 84, 0.26)', 'rgba(244, 214, 191, 0.62)', 'rgba(244, 214, 191, 0.2)', 'transparent']}
+              locations={[0, 0.38, 0.76, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
-              style={styles.heroFeatherLeft}
+              style={styles.heroOverlaySoft}
             />
           ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(253, 222, 183, 0.98)', 'rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0)']}
-              locations={[0, 0.52, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.heroFeatherTop}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']}
-              locations={[0, 1]}
-              start={{ x: 0.5, y: 1 }}
-              end={{ x: 0.5, y: 0 }}
-              style={styles.heroFeatherBottom}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.28)', 'rgba(253, 222, 183, 0.58)']}
-              locations={[0, 0.5, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.heroFeatherRight}
-            />
-          ) : null}
-          <View pointerEvents="none" style={styles.heroRightSeamCover} />
           <View style={styles.heroTextArea}>
             <View style={styles.heroIdentityRow}>
               <TouchableOpacity
@@ -5970,48 +5933,8 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 44,
     resizeMode: 'cover',
   },
-  heroFoodBgEdgeFade: {
-    position: 'absolute',
-    top: 16,
-    right: -38,
-    width: '64%',
-    height: '78%',
-    borderTopLeftRadius: 44,
-    borderBottomLeftRadius: 44,
-  },
-  heroFeatherLeft: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-  },
-  heroFeatherTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: 78,
-  },
-  heroFeatherBottom: {
-    position: 'absolute',
-    left: 0,
-    bottom: 0,
-    width: '100%',
-    height: 96,
-  },
-  heroFeatherRight: {
-    position: 'absolute',
-    top: 0,
-    right: -6,
-    width: 24,
-    height: '100%',
-  },
-  heroRightSeamCover: {
+  heroOverlaySoft: {
     ...StyleSheet.absoluteFillObject,
-    left: undefined,
-    width: 40,
-    backgroundColor: '#FDDEB7',
   },
   heroTextArea: {
     zIndex: 3,
