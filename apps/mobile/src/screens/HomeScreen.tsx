@@ -4186,11 +4186,11 @@ export default function HomeScreen({
         stickyHeaderIndices={[1]}
       >
         {/* Hero Header */}
-        <View style={[styles.heroWrap, { backgroundColor: heroColors.bg }]}>
+        <View style={styles.heroWrap}>
           {LinearGradient ? (
             <LinearGradient
-              colors={['#F3D8B8', '#F3D8B8', toRgba(heroColors.gradLight, 0.8)]}
-              locations={[0, 0.6, 1]}
+              colors={['rgba(253, 222, 183, 1)', 'rgba(253, 222, 183, 1)', 'rgba(253, 222, 183, 0)']}
+              locations={[0, 0.5, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.heroBaseGradient}
@@ -4201,25 +4201,14 @@ export default function HomeScreen({
             style={styles.heroFoodBgImg}
             onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
           />
-          <View style={styles.heroImageGlassPrimary} />
-          <View style={styles.heroImageGlassSecondary} />
           {LinearGradient ? (
-            <>
-              <LinearGradient
-                colors={[heroColors.bg, toRgba(heroColors.bg, 0.93), toRgba(heroColors.bg, 0.28), 'transparent']}
-                locations={[0, 0.45, 0.8, 1]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={styles.heroFeatherLeft}
-              />
-              <LinearGradient
-                colors={['transparent', toRgba(heroColors.bg, 0.45), toRgba(heroColors.bg, 0.82)]}
-                locations={[0, 0.55, 1]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={styles.heroFeatherBottom}
-              />
-            </>
+            <LinearGradient
+              colors={['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']}
+              locations={[0, 1]}
+              start={{ x: 0.5, y: 1 }}
+              end={{ x: 0.5, y: 0 }}
+              style={styles.heroFeatherBottom}
+            />
           ) : null}
           <View style={styles.heroTextArea}>
             <View style={styles.heroIdentityRow}>
@@ -4260,9 +4249,9 @@ export default function HomeScreen({
               hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
               style={styles.heroLocationRow}
             >
-              <Ionicons name="location-outline" size={16} color="#C86D45" />
+              <Ionicons name="location-outline" size={15} color="#B15735" />
               <Text style={styles.heroLocationText}>{selectedLocationLabel}</Text>
-              <Ionicons name="chevron-down" size={14} color="#C86D45" style={{ marginLeft: 2 }} />
+              <Ionicons name="chevron-down" size={14} color="#B15735" style={{ marginLeft: 2 }} />
             </TouchableOpacity>
           </View>
         </View>
@@ -4891,7 +4880,7 @@ export default function HomeScreen({
   return (
     <>
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F3EFE6" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFBF4" />
       {paymentError ? (
         <View style={styles.topErrorBanner}>
           <Text style={styles.topErrorBannerText}>{paymentError}</Text>
@@ -5892,7 +5881,7 @@ const cpStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   /* --- Layout --- */
-  safe: { flex: 1, backgroundColor: '#F3EFE6' },
+  safe: { flex: 1, backgroundColor: '#FFFBF4' },
   topErrorBanner: {
     backgroundColor: theme.error,
     paddingHorizontal: 14,
@@ -5904,7 +5893,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  container: { flex: 1, backgroundColor: '#F3EFE6' },
+  container: { flex: 1, backgroundColor: '#FFFBF4' },
   content: { flex: 1, zIndex: 10 },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 130 },
@@ -5912,12 +5901,12 @@ const styles = StyleSheet.create({
   /* --- Hero Header with Gradient + Food Image --- */
   heroWrap: {
     position: 'relative',
-    height: 274,
-    paddingHorizontal: 16,
-    paddingTop: 34,
+    height: 226,
+    paddingHorizontal: 20,
+    paddingTop: 8,
     marginHorizontal: -18,
     marginTop: 0,
-    backgroundColor: '#F3D8B8',
+    backgroundColor: '#FDDEB7',
     overflow: 'hidden',
   },
   heroBaseGradient: {
@@ -5926,48 +5915,25 @@ const styles = StyleSheet.create({
   heroFoodBgImg: {
     position: 'absolute',
     top: 0,
-    right: -8,
-    width: '78%',
-    height: '86%',
+    right: 0,
+    width: '100%',
+    height: 210,
     opacity: 1,
     resizeMode: 'cover',
   },
-  heroImageGlassPrimary: {
-    position: 'absolute',
-    top: 0,
-    right: 54,
-    width: '36%',
-    height: '70%',
-    backgroundColor: 'rgba(255,255,255,0.24)',
-  },
-  heroImageGlassSecondary: {
-    position: 'absolute',
-    top: 18,
-    right: 10,
-    width: '50%',
-    height: '64%',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-  },
-  heroFeatherLeft: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-  },
   heroFeatherBottom: {
     position: 'absolute',
-    right: 0,
+    left: 0,
     bottom: 0,
-    width: '78%',
-    height: '48%',
+    width: '100%',
+    height: 70,
   },
   heroTextArea: {
     zIndex: 3,
-    width: '58%',
-    paddingTop: 18,
-    paddingBottom: 20,
-    paddingLeft: 4,
+    width: '60%',
+    paddingTop: 36,
+    paddingBottom: 12,
+    paddingLeft: 0,
   },
   heroIdentityRow: {
     flexDirection: 'row',
@@ -5980,54 +5946,54 @@ const styles = StyleSheet.create({
   },
   greetingTitleWrap: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', maxWidth: '100%' },
   greetingTitle: {
-    color: '#17140F',
-    fontSize: 40,
-    lineHeight: 44,
-    fontWeight: '900',
-    letterSpacing: -0.9,
+    color: '#1E1B18',
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
   heroSubtitle: {
-    color: '#BF643A',
-    fontSize: 17,
-    fontWeight: '900',
-    marginTop: 14,
-    lineHeight: 22,
+    color: '#B15735',
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 12,
+    lineHeight: 21,
   },
   heroLocationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 8,
     gap: 4,
     alignSelf: 'flex-start',
   },
   heroLocationText: {
-    color: '#C06940',
-    fontSize: 13,
+    color: '#B15735',
+    fontSize: 12,
     fontWeight: '700',
   },
   heroAvatarCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#E2E0DC',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1.2,
     borderColor: '#fff',
     zIndex: 5,
     overflow: 'hidden',
     shadowColor: '#5A3E2B',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  heroAvatarImage: { width: 52, height: 52, borderRadius: 26 },
+  heroAvatarImage: { width: 40, height: 40, borderRadius: 20 },
   avatarEmoji: { fontSize: 24 },
   
   /* --- Sticky Search + Chips wrapper --- */
   stickySearchChips: {
-    backgroundColor: '#F3EFE6',
+    backgroundColor: '#FFFBF4',
     paddingTop: 18,
     paddingBottom: 4,
     zIndex: 10,
