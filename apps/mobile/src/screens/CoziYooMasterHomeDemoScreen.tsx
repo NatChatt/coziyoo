@@ -1,16 +1,15 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { StatusBar } from "expo-status-bar";
 import {
   Dimensions,
   Image,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
@@ -55,13 +54,13 @@ const CategoriesBlock = () => {
 };
 
 export default function HomeScreen() {
-  const insets = useSafeAreaInsets();
+  const topInset = StatusBar.currentHeight ?? 0;
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="dark" translucent />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.heroSection, { height: 244 + insets.top }]}>
+        <View style={[styles.heroSection, { height: 244 + topInset }]}>
           <View style={styles.heroArtWrap}>
             <LinearGradient
               colors={["#f3d5be", "#f6dfcd", "#f9ece2"]}
@@ -105,7 +104,7 @@ export default function HomeScreen() {
             />
           </View>
 
-          <View style={[styles.heroContent, { paddingTop: insets.top + 20 }]}>
+          <View style={[styles.heroContent, { paddingTop: topInset + 20 }]}>
             <View style={styles.profileRow}>
               <Image
                 source={require("../../assets/images/images1.jpeg")}
