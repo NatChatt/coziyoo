@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -23,6 +22,7 @@ import {
   type GestureResponderEvent,
   type ImageSourcePropType,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 let LinearGradient: React.ComponentType<{
   colors: string[];
@@ -4938,7 +4938,7 @@ export default function HomeScreen({
 
   return (
     <>
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={['top']} style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#FDDEB7" />
       {paymentError ? (
         <View style={styles.topErrorBanner}>
@@ -5954,7 +5954,7 @@ const styles = StyleSheet.create({
   },
   container: { flex: 1, backgroundColor: '#FFFBF4' },
   content: { flex: 1, zIndex: 10 },
-  scroll: { flex: 1 },
+  scroll: { flex: 1, backgroundColor: '#FDDEB7' },
   scrollContent: { paddingBottom: 130 },
 
   /* --- Hero Header with Gradient + Food Image --- */
