@@ -1,19 +1,18 @@
-import { StatusBar } from "expo-status-bar";
 import { Dimensions, Image, ScrollView, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "react-native";
 
 const { width } = Dimensions.get("window");
 const referenceAspectRatio = 1365 / 1024;
 
 export default function HomeScreen() {
-  const insets = useSafeAreaInsets();
+  const topInset = StatusBar.currentHeight ?? 0;
   const imageHeight = width / referenceAspectRatio;
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="dark" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.imageFrame, { paddingTop: insets.top + 8 }]}> 
+        <View style={[styles.imageFrame, { paddingTop: topInset + 8 }]}> 
           <Image
             source={require("../../assets/images/reference-home-screen.jpeg")}
             style={[styles.referenceImage, { height: imageHeight }]}
