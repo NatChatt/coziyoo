@@ -108,7 +108,7 @@ export default function CoziYooMasterHomeDemoScreen() {
             </View>
           </View>
           <LinearGradient
-            colors={['#fddfb9', '#fffbf4']}
+            colors={['#fddfb9', '#F3EFE6']}
             locations={[0, 1]}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    backgroundColor: '#fffbf4',
+    backgroundColor: '#F3EFE6',
   },
   topArea: {
     backgroundColor: '#fddfb9',
