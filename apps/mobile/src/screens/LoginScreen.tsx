@@ -24,7 +24,6 @@ import { t } from '../copy/brandCopy';
 type Props = {
   onLogin: (session: AuthSession) => void;
   onGoToRegister?: () => void;
-  onGoToDemo?: () => void;
 };
 
 type LoginResponse = {
@@ -35,7 +34,7 @@ type LoginResponse = {
   error?: { code?: string; message?: string };
 };
 
-export default function LoginScreen({ onLogin, onGoToRegister, onGoToDemo }: Props) {
+export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -309,12 +308,6 @@ export default function LoginScreen({ onLogin, onGoToRegister, onGoToDemo }: Pro
             </TouchableOpacity>
           </View>
 
-          {onGoToDemo ? (
-            <TouchableOpacity onPress={onGoToDemo} style={styles.demoLink} activeOpacity={0.8}>
-              <Text style={styles.demoLinkText}>Demo</Text>
-            </TouchableOpacity>
-          ) : null}
-
           {onGoToRegister && (
             <TouchableOpacity onPress={onGoToRegister} style={styles.registerLink} activeOpacity={0.7}>
               <Text style={styles.registerLinkText}>{t('helper.login.noAccount')} <Text style={styles.registerLinkBold}>{t('cta.login.register')}</Text></Text>
@@ -554,20 +547,6 @@ const styles = StyleSheet.create({
   },
   quickLoginText: {
     color: theme.primary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  demoLink: {
-    alignItems: 'center',
-    marginTop: 6,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.border,
-    backgroundColor: theme.surface,
-  },
-  demoLinkText: {
-    color: theme.textSecondary,
     fontSize: 14,
     fontWeight: '700',
   },
