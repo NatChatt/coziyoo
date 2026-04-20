@@ -296,13 +296,13 @@
     if (!hasImage()) return;
 
     var canvas = document.createElement('canvas');
-    canvas.width = 1400;
-    canvas.height = 700;
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
     var vw = stage.clientWidth || 1;
     var vh = stage.clientHeight || 1;
+    var exportScale = 2;
+    canvas.width = Math.max(1, Math.round(vw * exportScale));
+    canvas.height = Math.max(1, Math.round(vh * exportScale));
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
     var iw = image.naturalWidth || vw;
     var ih = image.naturalHeight || vh;
 
@@ -326,6 +326,8 @@
   }
 
   fileTrigger.addEventListener('click', function () {
+    // Selecting the same file again should still trigger "change".
+    fileInput.value = '';
     fileInput.click();
   });
 
@@ -390,6 +392,7 @@
       return;
     }
     exportComposedImage();
+    helpText.textContent = 'Yayınlanıyor...';
   });
 
   if (imageValue.value) {
