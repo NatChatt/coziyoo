@@ -1055,8 +1055,8 @@ function deriveCardColors(dominant: string): CardColors {
   const price = darken(safe, 0.56);
   const metaBase = darken(safe, 0.38);
   return {
-    bg: lighten(safe, 0.82),
-    border: lighten(safe, 0.68),
+    bg: lighten(safe, 0.96),
+    border: lighten(safe, 0.88),
     title,
     subtitle,
     price,
@@ -6747,7 +6747,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   foodInfo: {
-    backgroundColor: '#FFF8F0',
+    backgroundColor: '#FAFAF8',
     borderTopWidth: 1,
     borderTopColor: 'rgba(125,95,71,0.1)',
     overflow: 'visible',
