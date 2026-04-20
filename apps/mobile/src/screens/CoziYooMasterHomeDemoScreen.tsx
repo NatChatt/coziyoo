@@ -74,14 +74,6 @@ export default function CoziYooMasterHomeDemoScreen() {
               end={{ x: 0, y: 0.5 }}
               style={styles.imageEdgeFadeLeft}
             />
-            <LinearGradient
-              colors={['rgba(252, 230, 195, 1)', 'rgba(249, 217, 171, 0.86)', 'rgba(249, 217, 171, 0)']}
-              locations={[0, 0.58, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.leftWarmFlow}
-            />
-
             <View style={styles.heroOverlayContent}>
               <View>
                 <View style={styles.heroRow}>
@@ -166,14 +158,6 @@ const styles = StyleSheet.create({
     top: 0,
     right: 0,
     width: '58%',
-    height: 210,
-    zIndex: 1,
-  },
-  leftWarmFlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     height: 210,
     zIndex: 1,
   },
