@@ -4230,13 +4230,14 @@ export default function HomeScreen({
           ) : null}
           {LinearGradient ? (
             <LinearGradient
-              colors={['rgba(253, 222, 183, 0.24)', 'rgba(253, 222, 183, 0.84)', 'rgba(253, 222, 183, 1)']}
+              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.28)', 'rgba(253, 222, 183, 0.58)']}
               locations={[0, 0.5, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.heroFeatherRight}
             />
           ) : null}
+          <View style={styles.heroRightEdgeCover} />
           <View style={styles.heroTextArea}>
             <View style={styles.heroIdentityRow}>
               <TouchableOpacity
@@ -5951,8 +5952,8 @@ const styles = StyleSheet.create({
   heroFoodBgImg: {
     position: 'absolute',
     top: -12,
-    right: -26,
-    width: '94%',
+    right: -18,
+    width: '92%',
     height: 238,
     opacity: 1,
     resizeMode: 'cover',
@@ -5982,8 +5983,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     right: 0,
-    width: 64,
+    width: 36,
     height: 210,
+  },
+  heroRightEdgeCover: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 8,
+    height: 210,
+    backgroundColor: '#FDDEB7',
+    opacity: 0.9,
   },
   heroTextArea: {
     zIndex: 3,
