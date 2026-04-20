@@ -358,28 +358,38 @@
     image.style.top = drawY + 'px';
   }
 
-  function applyFadePreview() {
-    var x = clamp(state.fadeX, 0, 100);
-    var y = clamp(state.fadeY, 0, 100);
+  function getFadeModel() {
+    var xRaw = clamp(state.fadeX, 0, 100) / 100;
+    var yRaw = clamp(state.fadeY, 0, 100) / 100;
 
-    var xStrong = (0.12 + (x / 100) * 0.83).toFixed(3);
-    var xMid = (0.05 + (x / 100) * 0.45).toFixed(3);
-    var xStopMid = (42 + x * 0.25).toFixed(1);
+    // Non-linear response for better fine control in low-mid range.
+    var xEase = Math.pow(xRaw, 1.65);
+    var yEase = Math.pow(yRaw, 1.65);
+
+    return {
+      xStrong: 0.08 + xEase * 0.90,
+      xMid: 0.02 + xEase * 0.52,
+      xStop1: 0.12 + xEase * 0.18,
+      xStop2: 0.46 + xEase * 0.30,
+      yStrong: 0.08 + yEase * 0.92,
+      yStart: 0.42 - yEase * 0.20,
+    };
+  }
+
+  function applyFadePreview() {
+    var fade = getFadeModel();
 
     overlayLeft.style.background =
       'linear-gradient(90deg, ' +
-      'rgba(253, 222, 183, ' + xStrong + ') 0%, ' +
-      'rgba(253, 222, 183, ' + xStrong + ') 22%, ' +
-      'rgba(253, 222, 183, ' + xMid + ') ' + xStopMid + '%, ' +
+      'rgba(253, 222, 183, ' + fade.xStrong.toFixed(3) + ') 0%, ' +
+      'rgba(253, 222, 183, ' + fade.xStrong.toFixed(3) + ') ' + (fade.xStop1 * 100).toFixed(1) + '%, ' +
+      'rgba(253, 222, 183, ' + fade.xMid.toFixed(3) + ') ' + (fade.xStop2 * 100).toFixed(1) + '%, ' +
       'rgba(253, 222, 183, 0) 100%)';
-
-    var yStrong = (0.12 + (y / 100) * 0.88).toFixed(3);
-    var yStart = (52 - y * 0.20).toFixed(1);
 
     overlayBottom.style.background =
       'linear-gradient(to bottom, ' +
       'rgba(255, 251, 244, 0) 0%, ' +
-      'rgba(255, 251, 244, ' + yStrong + ') ' + yStart + '%, ' +
+      'rgba(255, 251, 244, ' + fade.yStrong.toFixed(3) + ') ' + (fade.yStart * 100).toFixed(1) + '%, ' +
       'rgba(255, 251, 244, 1) 100%)';
   }
 
@@ -451,25 +461,19 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(image, drawX * sx, drawY * sy, drawW * sx, drawH * sy);
 
-      var x = clamp(state.fadeX, 0, 100);
-      var y = clamp(state.fadeY, 0, 100);
+      var fade = getFadeModel();
 
       var gx = ctx.createLinearGradient(0, 0, canvas.width, 0);
-      var xStrong = 0.12 + (x / 100) * 0.83;
-      var xMid = 0.05 + (x / 100) * 0.45;
-      var xStopMid = (42 + x * 0.25) / 100;
-      gx.addColorStop(0, 'rgba(253,222,183,' + xStrong.toFixed(3) + ')');
-      gx.addColorStop(0.22, 'rgba(253,222,183,' + xStrong.toFixed(3) + ')');
-      gx.addColorStop(clamp(xStopMid, 0, 1), 'rgba(253,222,183,' + xMid.toFixed(3) + ')');
+      gx.addColorStop(0, 'rgba(253,222,183,' + fade.xStrong.toFixed(3) + ')');
+      gx.addColorStop(clamp(fade.xStop1, 0, 1), 'rgba(253,222,183,' + fade.xStrong.toFixed(3) + ')');
+      gx.addColorStop(clamp(fade.xStop2, 0, 1), 'rgba(253,222,183,' + fade.xMid.toFixed(3) + ')');
       gx.addColorStop(1, 'rgba(253,222,183,0)');
       ctx.fillStyle = gx;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       var gy = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      var yStrong = 0.12 + (y / 100) * 0.88;
-      var yStart = (52 - y * 0.20) / 100;
       gy.addColorStop(0, 'rgba(255,251,244,0)');
-      gy.addColorStop(clamp(yStart, 0, 1), 'rgba(255,251,244,' + yStrong.toFixed(3) + ')');
+      gy.addColorStop(clamp(fade.yStart, 0, 1), 'rgba(255,251,244,' + fade.yStrong.toFixed(3) + ')');
       gy.addColorStop(1, 'rgba(255,251,244,1)');
       ctx.fillStyle = gy;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
