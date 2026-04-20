@@ -2,63 +2,46 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
-  Dimensions,
   Image,
   SafeAreaView,
   ScrollView,
-  StyleSheet,
   StatusBar,
+  StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 
-const { width } = Dimensions.get('window');
-const HERO_HEIGHT = 252;
-const HERO_BG = '#F4D5BD';
-const PAGE_BG = '#FFF8F1';
-const ACCENT = '#C86E4B';
-const TEXT_DARK = '#2F241E';
-
 const categories = ['Pizza', 'Sushi', 'Burger', 'Pasta', 'Salad'];
 const flavours = [
-  { title: 'Burger', subtitle: 'Hot and spicy burger' },
-  { title: 'Pasta', subtitle: 'Creamy mushroom pasta' },
-  { title: 'Noodles', subtitle: 'Asian stir-fried noodles' },
+  { title: 'Burger', subtitle: 'Hot and Spicy Burger' },
+  { title: 'Pasta', subtitle: 'Creamy Alfredo Pasta' },
+  { title: 'Salad', subtitle: 'Fresh and Green Bowl' },
 ];
-
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.sectionAction}>View All</Text>
-    </View>
-  );
-}
 
 function CategoriesBlock() {
   return (
     <View style={styles.sectionWrap}>
-      <SectionHeader title="Categories" />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoryRow}
-      >
-        {categories.map((item) => (
-          <View key={item} style={styles.categoryCard}>
-            <Ionicons name="pizza-outline" size={24} color={ACCENT} />
-            <Text style={styles.categoryLabel}>{item}</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Categories</Text>
+        <Text style={styles.viewAll}>View All</Text>
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowScroll}>
+        {categories.map((label) => (
+          <View key={label} style={styles.categoryCard}>
+            <Ionicons name="pizza-outline" size={24} color="#c96f48" />
+            <Text style={styles.categoryLabel}>{label}</Text>
           </View>
         ))}
       </ScrollView>
 
-      <SectionHeader title="Newby Flavours" />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.flavourRow}
-      >
+      <View style={[styles.sectionHeader, { marginTop: 8 }]}>
+        <Text style={styles.sectionTitle}>Newby Flavours</Text>
+        <Text style={styles.viewAll}>View All</Text>
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowScroll}>
         {flavours.map((item) => (
           <View key={item.title} style={styles.flavourCard}>
             <Image
@@ -76,47 +59,45 @@ function CategoriesBlock() {
 
 export default function CoziYooMasterHomeDemoScreen() {
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar translucent barStyle="dark-content" backgroundColor="transparent" />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <View style={styles.heroImageLayer}>
+          <View style={styles.heroImageWrap}>
             <Image
               source={require('../../assets/images/coziyoo-demo-cover1.jpg')}
               style={styles.heroImage}
               resizeMode="cover"
             />
 
+            <View style={styles.globalWarmTint} />
+
             <LinearGradient
               colors={[
-                HERO_BG,
-                'rgba(244, 213, 189, 0.96)',
-                'rgba(244, 213, 189, 0.82)',
-                'rgba(244, 213, 189, 0.42)',
-                'rgba(244, 213, 189, 0.08)',
+                '#f4d9c2',
+                'rgba(244, 217, 194, 0.98)',
+                'rgba(244, 217, 194, 0.92)',
+                'rgba(244, 217, 194, 0.72)',
+                'rgba(244, 217, 194, 0.35)',
                 'transparent',
               ]}
-              locations={[0, 0.3, 0.52, 0.72, 0.86, 1]}
+              locations={[0, 0.2, 0.42, 0.64, 0.82, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
-              style={styles.heroLeftBlend}
+              style={styles.leftBlend}
             />
 
             <LinearGradient
               colors={[
-                'rgba(255, 248, 241, 0)',
-                'rgba(255, 248, 241, 0.28)',
-                'rgba(255, 248, 241, 0.76)',
-                PAGE_BG,
+                'rgba(255, 248, 243, 0)',
+                'rgba(255, 248, 243, 0.38)',
+                'rgba(255, 248, 243, 0.78)',
+                '#fff8f3',
               ]}
               locations={[0, 0.45, 0.8, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
-              style={styles.heroBottomBlend}
-              pointerEvents="none"
+              style={styles.bottomBlend}
             />
           </View>
 
@@ -132,19 +113,19 @@ export default function CoziYooMasterHomeDemoScreen() {
             <Text style={styles.heroTitle}>What should we eat today?</Text>
 
             <View style={styles.locationRow}>
-              <Feather name="map-pin" size={15} color={ACCENT} />
-              <View style={styles.locationTextWrap}>
-                <Text style={styles.locationTitle}>London, 3km radius</Text>
-                <Text style={styles.locationSubtitle}>London, 3km radius</Text>
+              <Feather name="map-pin" size={16} color="#c96f48" />
+              <View>
+                <Text style={styles.locationPrimary}>London, 3km radius</Text>
+                <Text style={styles.locationSecondary}>London, 3km radius</Text>
               </View>
-              <Feather name="chevron-down" size={16} color={ACCENT} />
+              <Feather name="chevron-down" size={16} color="#c96f48" />
             </View>
 
             <View style={styles.searchBar}>
-              <Feather name="search" size={18} color="#A5A0A0" />
+              <Feather name="search" size={18} color="#a8a0a0" />
               <TextInput
                 placeholder="Search food, restaurants..."
-                placeholderTextColor="#B1ABAB"
+                placeholderTextColor="#aaa3a3"
                 style={styles.searchInput}
                 returnKeyType="search"
               />
@@ -159,189 +140,184 @@ export default function CoziYooMasterHomeDemoScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: PAGE_BG,
-  },
-  scrollContent: {
-    paddingBottom: 32,
+    backgroundColor: '#fff8f3',
   },
   hero: {
-    height: HERO_HEIGHT,
-    backgroundColor: HERO_BG,
+    height: 290,
+    backgroundColor: '#f4d9c2',
     overflow: 'hidden',
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
   },
-  heroImageLayer: {
+  heroImageWrap: {
     ...StyleSheet.absoluteFillObject,
   },
   heroImage: {
     position: 'absolute',
-    right: -18,
-    top: -4,
-    width: width * 0.72,
-    height: HERO_HEIGHT + 24,
+    top: -6,
+    right: -74,
+    width: '82%',
+    height: 240,
   },
-  heroLeftBlend: {
+  globalWarmTint: {
     position: 'absolute',
-    left: 0,
     top: 0,
-    width: width * 0.76,
-    height: HERO_HEIGHT,
+    right: 0,
+    width: '82%',
+    height: 240,
+    backgroundColor: 'rgba(244, 217, 194, 0.20)',
   },
-  heroBottomBlend: {
+  leftBlend: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '84%',
+    height: 240,
+  },
+  bottomBlend: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: 90,
+    height: 108,
   },
   heroContent: {
     flex: 1,
-    zIndex: 2,
-    paddingTop: 18,
     paddingHorizontal: 18,
+    paddingTop: 18,
     justifyContent: 'space-between',
   },
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginTop: 6,
   },
   avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   greeting: {
     fontSize: 17,
     fontWeight: '700',
-    color: TEXT_DARK,
+    color: '#2f2620',
   },
   heroTitle: {
-    marginTop: 10,
-    fontSize: 18,
-    lineHeight: 24,
+    marginTop: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: ACCENT,
+    color: '#d26f4a',
   },
   locationRow: {
-    marginTop: 8,
+    marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-  locationTextWrap: {
-    marginLeft: 10,
-    flex: 1,
-  },
-  locationTitle: {
+  locationPrimary: {
     fontSize: 13,
-    fontWeight: '500',
-    color: ACCENT,
+    color: '#c96f48',
   },
-  locationSubtitle: {
-    marginTop: 1,
+  locationSecondary: {
     fontSize: 11,
-    color: '#6B5448',
+    color: '#5b524b',
+    marginTop: 1,
   },
   searchBar: {
-    marginTop: 18,
-    marginBottom: 18,
-    minHeight: 44,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    marginTop: 20,
+    marginBottom: 24,
+    minHeight: 56,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    gap: 10,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderWidth: 1,
-    borderColor: 'rgba(114, 74, 56, 0.08)',
-    shadowColor: '#9B6D54',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 3,
+    borderColor: 'rgba(122, 87, 67, 0.08)',
   },
   searchInput: {
     flex: 1,
-    marginLeft: 10,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: TEXT_DARK,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#3d3d3d',
   },
   sectionWrap: {
+    width: '100%',
     paddingHorizontal: 18,
-    paddingTop: 18,
-    backgroundColor: PAGE_BG,
+    marginTop: 16,
+    paddingBottom: 28,
   },
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 10,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#251D19',
+    color: '#2f2620',
   },
-  sectionAction: {
-    fontSize: 12,
-    color: ACCENT,
+  viewAll: {
+    fontSize: 13,
+    color: '#c96f48',
   },
-  categoryRow: {
-    paddingBottom: 6,
-    gap: 10,
+  rowScroll: {
+    paddingRight: 8,
   },
   categoryCard: {
-    width: 72,
+    width: 86,
+    height: 98,
+    marginRight: 10,
+    backgroundColor: '#fff',
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#7C5E50',
-    shadowOffset: { width: 0, height: 6 },
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
-    shadowRadius: 14,
+    shadowRadius: 10,
     elevation: 3,
   },
   categoryLabel: {
-    marginTop: 6,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
-    color: TEXT_DARK,
-  },
-  flavourRow: {
-    paddingTop: 4,
-    gap: 12,
+    color: '#3a312b',
+    marginTop: 8,
   },
   flavourCard: {
-    width: 148,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    shadowColor: '#7C5E50',
-    shadowOffset: { width: 0, height: 8 },
+    width: 138,
+    marginRight: 12,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
-    shadowRadius: 16,
+    shadowRadius: 10,
     elevation: 3,
   },
   flavourImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginBottom: 10,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
   },
   flavourTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: TEXT_DARK,
+    color: '#2f2620',
+    marginTop: 8,
   },
   flavourSubtitle: {
-    marginTop: 4,
     fontSize: 11,
-    lineHeight: 16,
-    color: '#7A6A62',
+    color: '#6b625c',
+    marginTop: 4,
+    textAlign: 'center',
   },
 });
