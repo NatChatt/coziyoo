@@ -2372,6 +2372,7 @@ export default function HomeScreen({
   const [headerImageSource, setHeaderImageSource] = useState<ImageSourcePropType>(() => (
     { uri: HERO_AKCABAT_IMAGE_URL }
   ));
+  const [adminHeroImageUrl, setAdminHeroImageUrl] = useState<string | null>(null);
   const [heroColors, setHeroColors] = useState<HeroColors>(() => deriveHeroColors(DEFAULT_HERO_SEED));
   const [profileDisplayName, setProfileDisplayName] = useState<string>(() =>
     resolveProfileDisplayName(null, auth.email),
@@ -2831,14 +2832,16 @@ export default function HomeScreen({
   }, [cartItems.length, cartSupportedDeliveryOptions.delivery, cartSupportedDeliveryOptions.pickup, deliveryType]);
 
   useEffect(() => {
-    const heroCandidate = meals.find((meal) => {
-      const normalized = normalizeDishText(meal.title ?? '');
-      const hasImage = Boolean(meal.imageUrl && meal.imageUrl.trim());
-      const isAkcaabat = normalized.includes('akcabat') && normalized.includes('kofte');
-      return hasImage && !isAkcaabat;
-    });
+    const heroCandidate = !adminHeroImageUrl
+      ? meals.find((meal) => {
+          const normalized = normalizeDishText(meal.title ?? '');
+          const hasImage = Boolean(meal.imageUrl && meal.imageUrl.trim());
+          const isAkcaabat = normalized.includes('akcabat') && normalized.includes('kofte');
+          return hasImage && !isAkcaabat;
+        })
+      : null;
 
-    const heroUrl = heroCandidate?.imageUrl?.trim() || HERO_AKCABAT_IMAGE_URL;
+    const heroUrl = adminHeroImageUrl || heroCandidate?.imageUrl?.trim() || HERO_AKCABAT_IMAGE_URL;
     setHeaderImageSource({ uri: heroUrl });
 
     if (getColors) {
@@ -2849,7 +2852,7 @@ export default function HomeScreen({
         })
         .catch(() => {});
     }
-  }, [meals]);
+  }, [adminHeroImageUrl, meals]);
 
   useEffect(() => {
     setGreetingName(resolveGreetingName(null, currentAuth.email));
@@ -3116,6 +3119,7 @@ export default function HomeScreen({
         }>(response);
 
         if (response.ok) {
+          setAdminHeroImageUrl(resolveHomeHeaderImageUrl(json));
           if (!Array.isArray(json.data)) {
             if (!silent) setMealsError(t('error.home.noMealsInResponse'));
             return;
