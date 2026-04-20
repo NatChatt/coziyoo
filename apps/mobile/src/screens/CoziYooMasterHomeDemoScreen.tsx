@@ -53,67 +53,68 @@ export default function CoziYooMasterHomeDemoScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.heroWrap}>
-          <Image
-            source={require('../../assets/images/coziyoo-demo-cover1.jpg')}
-            style={styles.heroImage}
-            resizeMode="cover"
-          />
+        <View style={styles.topArea}>
+          <View style={styles.heroWrap}>
+            <Image
+              source={require('../../assets/images/coziyoo-demo-cover1.jpg')}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
 
-          <LinearGradient
-            colors={[
-              'rgba(253, 222, 183, 1)',
-              'rgba(253, 222, 183, 1)',
-              'rgba(253, 222, 183, 0)',
-            ]}
-            locations={[0, 0.5, 1]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.heroLeftGradient}
-          />
+            <LinearGradient
+              colors={[
+                'rgba(253, 222, 183, 1)',
+                'rgba(253, 222, 183, 1)',
+                'rgba(253, 222, 183, 0)',
+              ]}
+              locations={[0, 0.5, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.heroLeftGradient}
+            />
 
-          <LinearGradient
-            colors={['rgba(253, 222, 183, 0)', '#fffbf4']}
-            locations={[0, 1]}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={styles.heroBottomBlend}
-            pointerEvents="none"
-          />
-
-          <View style={styles.heroOverlayContent}>
-            <View>
-              <View style={styles.heroRow}>
-                <Image
-                  source={require('../../assets/images/coziyoo-demo-avatar.jpeg')}
-                  style={styles.avatar}
-                />
-                <Text style={styles.greeting}>Hi, John Doe</Text>
-              </View>
-
-              <Text style={styles.heroQuestion}>What should we eat today?</Text>
-
-              <View style={styles.locationRow}>
-                <Feather name="map-pin" size={16} color="#b15735" />
-                <View>
-                  <Text style={styles.locationTop}>London, 3km radius</Text>
-                  <Text style={styles.locationBottom}>London, 3km radius</Text>
+            <View style={styles.heroOverlayContent}>
+              <View>
+                <View style={styles.heroRow}>
+                  <Image
+                    source={require('../../assets/images/coziyoo-demo-avatar.jpeg')}
+                    style={styles.avatar}
+                  />
+                  <Text style={styles.greeting}>Hi, John Doe</Text>
                 </View>
-                <Feather name="chevron-down" size={16} color="#b15735" />
+
+                <Text style={styles.heroQuestion}>What should we eat today?</Text>
+
+                <View style={styles.locationRow}>
+                  <Feather name="map-pin" size={16} color="#b15735" />
+                  <View>
+                    <Text style={styles.locationTop}>London, 3km radius</Text>
+                    <Text style={styles.locationBottom}>London, 3km radius</Text>
+                  </View>
+                  <Feather name="chevron-down" size={16} color="#b15735" />
+                </View>
               </View>
             </View>
           </View>
-        </View>
-        <View style={styles.searchBarWrap}>
-          <View style={styles.searchBar}>
-            <Feather name="search" size={18} color="#8a8a8a" />
-            <TextInput
-              placeholder="Search food, restaurants..."
-              placeholderTextColor="#9a9a9a"
-              style={styles.searchInput}
-              returnKeyType="search"
-            />
+          <View style={styles.searchBarWrap}>
+            <View style={styles.searchBar}>
+              <Feather name="search" size={18} color="#8a8a8a" />
+              <TextInput
+                placeholder="Search food, restaurants..."
+                placeholderTextColor="#9a9a9a"
+                style={styles.searchInput}
+                returnKeyType="search"
+              />
+            </View>
           </View>
+          <LinearGradient
+            colors={['#fddfb9', '#fffbf4']}
+            locations={[0, 1]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.topAreaFade}
+            pointerEvents="none"
+          />
         </View>
 
         <CategoriesBlock />
@@ -124,11 +125,14 @@ export default function CoziYooMasterHomeDemoScreen() {
 
 const styles = StyleSheet.create({
   safe: {
-    backgroundColor: '#fffbf4',
+    backgroundColor: '#fddfb9',
     flex: 1,
   },
   scrollContent: {
     backgroundColor: '#fffbf4',
+  },
+  topArea: {
+    backgroundColor: '#fddfb9',
   },
   heroWrap: {
     position: 'relative',
@@ -149,14 +153,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 210,
-  },
-  heroBottomBlend: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: -24,
-    height: 78,
-    zIndex: 2,
   },
   heroOverlayContent: {
     position: 'absolute',
@@ -215,8 +211,12 @@ const styles = StyleSheet.create({
   searchBarWrap: {
     paddingHorizontal: 20,
     marginTop: -2,
-    marginBottom: 4,
+    marginBottom: 0,
     zIndex: 5,
+  },
+  topAreaFade: {
+    height: 46,
+    marginTop: -2,
   },
   searchInput: {
     flex: 1,
