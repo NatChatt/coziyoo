@@ -57,6 +57,7 @@ export default function CoziYooMasterHomeDemoScreen() {
           <Image
             source={require('../../assets/images/coziyoo-demo-cover1.jpg')}
             style={styles.heroImage}
+            resizeMode="cover"
           />
 
           <LinearGradient
@@ -127,9 +128,15 @@ const styles = StyleSheet.create({
   },
   heroWrap: {
     position: 'relative',
+    height: 210,
+    overflow: 'hidden',
+    backgroundColor: '#fddfb9',
   },
   heroImage: {
-    width: '100%',
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '58%',
     height: 210,
   },
   heroLeftGradient: {
