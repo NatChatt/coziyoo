@@ -68,10 +68,10 @@ export default function CoziYooMasterHomeDemoScreen() {
               resizeMode="cover"
             />
             <LinearGradient
-              colors={['rgba(244, 211, 167, 0.92)', 'rgba(244, 211, 167, 0.42)', 'rgba(244, 211, 167, 0)']}
-              locations={[0, 0.52, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
+              colors={['rgba(253, 223, 185, 0)', 'rgba(253, 223, 185, 0.60)', 'rgba(253, 223, 185, 1)']}
+              locations={[0.7, 0.85, 1]}
+              start={{ x: 1, y: 0.5 }}
+              end={{ x: 0, y: 0.5 }}
               style={styles.imageEdgeFadeLeft}
             />
             <LinearGradient
