@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   searchBar: {
     width: '100%',
     minHeight: 44,
-    marginTop: 16,
+    marginTop: 24,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
