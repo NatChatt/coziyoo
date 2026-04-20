@@ -1616,9 +1616,10 @@ class CoziyooUserAdmin(ModelAdmin):
 
 @admin.register(AdminSalesCommissionSettings)
 class AdminSalesCommissionSettingsAdmin(ModelAdmin):
-    list_display = ["commission_rate_percent", "created_by_admin", "created_at"]
+    list_display = ["commission_rate_percent", "mobile_home_header_image_url", "created_by_admin", "created_at"]
     list_select_related = ["created_by_admin"]
     readonly_fields = ["id", "created_at", "created_by_admin"]
+    fields = ["commission_rate_percent", "mobile_home_header_image_url", "created_by_admin", "created_at"]
     ordering = ["-created_at"]
 
     def has_delete_permission(self, request, obj=None):

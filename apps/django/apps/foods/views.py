@@ -71,6 +71,31 @@ def _has_public_column(table_name, column_name):
     return exists
 
 
+def _resolve_mobile_home_header_image_url():
+    if not _has_public_column("admin_sales_commission_settings", "mobile_home_header_image_url"):
+        return None
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+                SELECT mobile_home_header_image_url
+                FROM admin_sales_commission_settings
+                WHERE mobile_home_header_image_url IS NOT NULL
+                  AND TRIM(mobile_home_header_image_url) <> ''
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+        )
+        row = cursor.fetchone()
+
+    if not row or not row[0]:
+        return None
+    value = str(row[0]).strip()
+    if not value.startswith(("http://", "https://")):
+        return None
+    return value
+
+
 def _parse_text_list(value):
     value = _coerce_json(value)
     if not value:
@@ -543,7 +568,10 @@ class FoodListView(APIView):
             for secondary_id in _coerce_json(item.get("secondary_category_ids_json")) or []:
                 category_ids.append(secondary_id)
         category_map = _load_category_map(category_ids)
-        return Response({"data": [_serialize_food_row(item, category_map, request) for item in items]})
+        return Response({
+            "data": [_serialize_food_row(item, category_map, request) for item in items],
+            "mobileHomeHeaderImageUrl": _resolve_mobile_home_header_image_url(),
+        })
 
 
 class TopSoldFoodsView(APIView):
