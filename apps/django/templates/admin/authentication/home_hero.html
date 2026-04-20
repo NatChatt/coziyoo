@@ -190,7 +190,7 @@
       </div>
 
       <div id="hero-stage" class="hero-stage">
-        <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" {% if not current_url %}style="display:none"{% endif %}>
+        <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
         <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
         <div class="hero-overlay-left"></div>
         <div class="hero-copy">
@@ -405,3 +405,6 @@
 })();
 </script>
 {% endblock %}
+  image.addEventListener('dragstart', function (e) {
+    e.preventDefault();
+  });
