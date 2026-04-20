@@ -97,6 +97,9 @@
   .hero-stage.dragging {
     cursor: grabbing;
   }
+  .hero-stage.erase-mode {
+    cursor: crosshair;
+  }
   .hero-photo {
     position: absolute;
     left: 0;
@@ -232,6 +235,7 @@
       <div class="hero-layout">
         <div class="hero-stage" id="hero-stage">
           <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
+          <canvas id="hero-edit-canvas" class="hero-photo" style="display:none"></canvas>
           <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
           <div class="hero-overlay-left" id="hero-overlay-left"></div>
           <div class="hero-overlay-corners" id="hero-overlay-corners"></div>
@@ -264,13 +268,20 @@
             <button type="button" id="hero-reset" class="hero-btn-secondary">Reset</button>
           </div>
           <div class="hero-control-group">
+            <div class="hero-control-label">Silgi (Manuel)</div>
+            <input id="hero-erase-size" class="hero-range" type="range" min="8" max="140" step="1" value="36" />
+            <div style="display:flex; gap:8px; margin-top:10px;">
+              <button type="button" id="hero-erase-toggle" class="hero-btn-secondary">Silgi Ac</button>
+              <button type="button" id="hero-bg-undo" class="hero-btn-secondary">Geri Al</button>
+            </div>
+          </div>
+          <div class="hero-control-group">
             <div class="hero-control-label">Arka Plan Silme</div>
             <input id="hero-bg-tolerance" class="hero-range" type="range" min="5" max="180" step="1" value="52" />
             <div class="hero-control-label" style="margin-top:8px;">Yumusatma</div>
             <input id="hero-bg-softness" class="hero-range" type="range" min="0" max="120" step="1" value="28" />
             <div style="display:flex; gap:8px; margin-top:10px;">
               <button type="button" id="hero-bg-remove" class="hero-btn-secondary">Arka Plani Sil</button>
-              <button type="button" id="hero-bg-undo" class="hero-btn-secondary">Geri Al</button>
             </div>
           </div>
           <div class="hero-help" id="hero-help-text">Ipuçlari: Sahneyi sürükle, mouse tekerleği ile ince zoom yap.</div>
@@ -295,6 +306,7 @@
   var helpText = document.getElementById('hero-help-text');
   var stage = document.getElementById('hero-stage');
   var image = document.getElementById('hero-preview-image');
+  var editCanvas = document.getElementById('hero-edit-canvas');
   var empty = document.getElementById('hero-empty');
   var overlayLeft = document.getElementById('hero-overlay-left');
   var overlayCorners = document.getElementById('hero-overlay-corners');
@@ -305,6 +317,8 @@
   var fadeXInput = document.getElementById('hero-fade-x');
   var fadeYInput = document.getElementById('hero-fade-y');
   var resetBtn = document.getElementById('hero-reset');
+  var eraseSizeInput = document.getElementById('hero-erase-size');
+  var eraseToggleBtn = document.getElementById('hero-erase-toggle');
   var bgToleranceInput = document.getElementById('hero-bg-tolerance');
   var bgSoftnessInput = document.getElementById('hero-bg-softness');
   var bgRemoveBtn = document.getElementById('hero-bg-remove');
@@ -315,6 +329,12 @@
   var maxScale = 3.2;
   var baseScale = 1;
   var dragging = false;
+  var eraseMode = false;
+  var eraseSessionActive = false;
+  var eraseChanged = false;
+  var erasePointerDown = false;
+  var eraseLastPoint = null;
+  var eraseCtx = null;
   var backgroundPickMode = false;
   var startX = 0;
   var startY = 0;
@@ -347,6 +367,28 @@
 
   function setEmpty(show) {
     empty.style.display = show ? 'flex' : 'none';
+  }
+
+  function pushUndoSnapshot() {
+    bgUndoStack.push(imageDataInput.value || imageUrlInput.value || image.src || '');
+  }
+
+  function setEraseMode(enabled) {
+    if (!enabled && eraseSessionActive) {
+      finishEraseSession();
+    }
+    eraseMode = !!enabled;
+    backgroundPickMode = false;
+    eraseSessionActive = false;
+    erasePointerDown = false;
+    eraseLastPoint = null;
+    stage.classList.toggle('erase-mode', eraseMode);
+    eraseToggleBtn.textContent = eraseMode ? 'Silgi Kapat' : 'Silgi Ac';
+    if (!eraseMode) {
+      editCanvas.style.display = 'none';
+      eraseCtx = null;
+      if (image.src) image.style.display = 'block';
+    }
   }
 
   function parseSavedState() {
@@ -398,6 +440,92 @@
     image.style.height = drawH + 'px';
     image.style.left = drawX + 'px';
     image.style.top = drawY + 'px';
+  }
+
+  function getStagePoint(e) {
+    var rect = stage.getBoundingClientRect();
+    return {
+      x: clamp(e.clientX - rect.left, 0, stage.clientWidth || 1),
+      y: clamp(e.clientY - rect.top, 0, stage.clientHeight || 1),
+    };
+  }
+
+  function startEraseSession() {
+    if (!hasImage()) return false;
+    var vw = Math.max(1, stage.clientWidth || 1);
+    var vh = Math.max(1, stage.clientHeight || 1);
+    var sourceCanvas = renderImageOnlyCanvas(vw, vh);
+    if (!sourceCanvas) return false;
+    eraseCtx = editCanvas.getContext('2d');
+    if (!eraseCtx) return false;
+    editCanvas.width = vw;
+    editCanvas.height = vh;
+    editCanvas.style.left = '0px';
+    editCanvas.style.top = '0px';
+    editCanvas.style.width = vw + 'px';
+    editCanvas.style.height = vh + 'px';
+    eraseCtx.clearRect(0, 0, vw, vh);
+    eraseCtx.drawImage(sourceCanvas, 0, 0, vw, vh);
+    image.style.display = 'none';
+    editCanvas.style.display = 'block';
+    eraseSessionActive = true;
+    eraseChanged = false;
+    eraseLastPoint = null;
+    return true;
+  }
+
+  function erasePoint(x, y) {
+    if (!eraseCtx) return;
+    var radius = Math.max(4, parseFloat(eraseSizeInput.value || '36') / 2);
+    eraseCtx.save();
+    eraseCtx.globalCompositeOperation = 'destination-out';
+    eraseCtx.fillStyle = 'rgba(0,0,0,1)';
+    eraseCtx.beginPath();
+    eraseCtx.arc(x, y, radius, 0, Math.PI * 2);
+    eraseCtx.fill();
+    eraseCtx.restore();
+  }
+
+  function eraseStroke(fromPoint, toPoint) {
+    if (!toPoint) return;
+    if (!fromPoint) {
+      erasePoint(toPoint.x, toPoint.y);
+      return;
+    }
+    var dx = toPoint.x - fromPoint.x;
+    var dy = toPoint.y - fromPoint.y;
+    var dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+    var step = Math.max(2, (parseFloat(eraseSizeInput.value || '36') / 4));
+    var steps = Math.max(1, Math.ceil(dist / step));
+    for (var i = 0; i <= steps; i += 1) {
+      var t = i / steps;
+      erasePoint(fromPoint.x + dx * t, fromPoint.y + dy * t);
+    }
+  }
+
+  function finishEraseSession() {
+    if (!eraseSessionActive) return;
+    if (eraseChanged) {
+      var out = editCanvas.toDataURL('image/png');
+      imageDataInput.value = out;
+      imageUrlInput.value = '';
+      setImageSource(out);
+      image.onload = function () {
+        calculateBaseScale();
+        state.scale = 1;
+        state.offsetX = 0;
+        state.offsetY = 0;
+        applyAll();
+        saveEditState();
+      };
+    } else {
+      if (image.src) image.style.display = 'block';
+    }
+    editCanvas.style.display = 'none';
+    eraseCtx = null;
+    eraseSessionActive = false;
+    erasePointerDown = false;
+    eraseLastPoint = null;
   }
 
   function getFadeModel() {
@@ -553,7 +681,7 @@
 
     sourceCtx.putImageData(imageData, 0, 0);
     var out = sourceCanvas.toDataURL('image/png');
-    bgUndoStack.push(imageDataInput.value || imageUrlInput.value || image.src || '');
+    pushUndoSnapshot();
     imageDataInput.value = out;
     imageUrlInput.value = '';
     setImageSource(out);
@@ -682,6 +810,7 @@
       var dataUrl = ev.target && ev.target.result ? String(ev.target.result) : '';
       imageDataInput.value = dataUrl;
       imageUrlInput.value = '';
+      setEraseMode(false);
       setImageSource(dataUrl);
       image.onload = function () {
         calculateBaseScale();
@@ -698,6 +827,7 @@
   });
 
   stage.addEventListener('wheel', function (e) {
+    if (eraseMode) return;
     if (!hasImage()) return;
     e.preventDefault();
     var delta = e.deltaY > 0 ? -wheelStep : wheelStep;
@@ -707,14 +837,27 @@
   }, { passive: false });
 
   stage.addEventListener('pointerdown', function (e) {
+    if (eraseMode) {
+      if (!hasImage() && !eraseSessionActive) return;
+      if (!eraseSessionActive) {
+        pushUndoSnapshot();
+        if (!startEraseSession()) return;
+      }
+      erasePointerDown = true;
+      var eraseStartPoint = getStagePoint(e);
+      eraseStroke(null, eraseStartPoint);
+      eraseLastPoint = eraseStartPoint;
+      eraseChanged = true;
+      stage.setPointerCapture(e.pointerId);
+      helpText.textContent = 'Silgi aktif: mouse ile istedigin alanlari temizleyebilirsin.';
+      return;
+    }
     if (!hasImage()) return;
     if (backgroundPickMode) {
-      var rect = stage.getBoundingClientRect();
-      var x = e.clientX - rect.left;
-      var y = e.clientY - rect.top;
+      var point = getStagePoint(e);
       backgroundPickMode = false;
       stage.classList.remove('dragging');
-      removeBackgroundBySample(x, y);
+      removeBackgroundBySample(point.x, point.y);
       return;
     }
     dragging = true;
@@ -725,6 +868,13 @@
   });
 
   stage.addEventListener('pointermove', function (e) {
+    if (eraseMode && erasePointerDown && eraseSessionActive) {
+      var point = getStagePoint(e);
+      eraseStroke(eraseLastPoint, point);
+      eraseLastPoint = point;
+      eraseChanged = true;
+      return;
+    }
     if (!dragging) return;
     state.offsetX = e.clientX - startX;
     state.offsetY = e.clientY - startY;
@@ -732,6 +882,13 @@
   });
 
   function stopDrag(e) {
+    if (eraseMode && erasePointerDown) {
+      finishEraseSession();
+      try {
+        stage.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      return;
+    }
     dragging = false;
     stage.classList.remove('dragging');
     saveEditState();
@@ -762,11 +919,24 @@
   });
 
   resetBtn.addEventListener('click', function () {
+    setEraseMode(false);
     resetState();
     helpText.textContent = 'Reset tamam. Surukle, zoom ve fade ile tekrar ayarla.';
   });
 
+  eraseToggleBtn.addEventListener('click', function () {
+    if (!eraseMode && !hasImage()) {
+      helpText.textContent = 'Once bir gorsel ekle.';
+      return;
+    }
+    setEraseMode(!eraseMode);
+    helpText.textContent = eraseMode
+      ? 'Silgi acik. Mouse ile surukleyerek resmi temizleyebilirsin.'
+      : 'Silgi kapali. Surukle, zoom ve fade ile devam edebilirsin.';
+  });
+
   bgRemoveBtn.addEventListener('click', function () {
+    setEraseMode(false);
     if (!hasImage()) {
       helpText.textContent = 'Once bir gorsel ekle.';
       return;
@@ -782,6 +952,7 @@
     }
     var prev = bgUndoStack.pop() || '';
     if (!prev) return;
+    setEraseMode(false);
     imageDataInput.value = prev;
     imageUrlInput.value = '';
     setImageSource(prev);
@@ -794,6 +965,7 @@
   });
 
   form.addEventListener('submit', function (e) {
+    setEraseMode(false);
     actionInput.value = 'approve';
     if (!hasImage()) {
       e.preventDefault();
