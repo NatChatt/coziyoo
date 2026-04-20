@@ -4228,6 +4228,15 @@ export default function HomeScreen({
               style={styles.heroFeatherBottom}
             />
           ) : null}
+          {LinearGradient ? (
+            <LinearGradient
+              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0.96)']}
+              locations={[0, 0.52, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.heroFeatherRight}
+            />
+          ) : null}
           <View style={styles.heroTextArea}>
             <View style={styles.heroIdentityRow}>
               <TouchableOpacity
@@ -5968,6 +5977,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: '100%',
     height: 96,
+  },
+  heroFeatherRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 28,
+    height: 210,
   },
   heroTextArea: {
     zIndex: 3,
