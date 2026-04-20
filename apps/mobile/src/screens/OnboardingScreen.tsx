@@ -20,47 +20,76 @@ type Props = {
 export default function OnboardingScreen({ onGoToLogin }: Props) {
   const [isHovered, setIsHovered] = useState(false);
   const logoAnim = useRef(new Animated.Value(0)).current;
+  const [typedSubtitle, setTypedSubtitle] = useState('');
+  const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fullSubtitle = 'Homemade Food Near You';
 
   useEffect(() => {
     logoAnim.setValue(0);
+    setTypedSubtitle('');
+
     Animated.timing(logoAnim, {
       toValue: 1,
-      duration: 950,
-      easing: Easing.out(Easing.cubic),
+      duration: 1700,
+      easing: Easing.out(Easing.back(1.4)),
       useNativeDriver: true,
-    }).start();
+    }).start(({ finished }) => {
+      if (!finished) return;
+      let index = 0;
+      typingTimerRef.current = setInterval(() => {
+        index += 1;
+        setTypedSubtitle(fullSubtitle.slice(0, index));
+        if (index >= fullSubtitle.length && typingTimerRef.current) {
+          clearInterval(typingTimerRef.current);
+          typingTimerRef.current = null;
+        }
+      }, 58);
+    });
+
+    return () => {
+      if (typingTimerRef.current) {
+        clearInterval(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
+    };
   }, [logoAnim]);
 
   const logoAnimatedStyle = {
     opacity: logoAnim,
     transform: [
-      { perspective: 900 },
+      { perspective: 1200 },
       {
         rotateY: logoAnim.interpolate({
           inputRange: [0, 1],
-          outputRange: ['-70deg', '0deg'],
+          outputRange: ['-1080deg', '0deg'],
         }),
       },
       {
         rotateX: logoAnim.interpolate({
           inputRange: [0, 1],
-          outputRange: ['14deg', '0deg'],
+          outputRange: ['58deg', '0deg'],
         }),
       },
       {
         rotateZ: logoAnim.interpolate({
           inputRange: [0, 1],
-          outputRange: ['-6deg', '0deg'],
+          outputRange: ['720deg', '0deg'],
         }),
       },
       {
         scale: logoAnim.interpolate({
           inputRange: [0, 1],
-          outputRange: [0.78, 1],
+          outputRange: [0.28, 1],
+        }),
+      },
+      {
+        translateY: logoAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [120, 0],
         }),
       },
     ],
-  } as const;
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -74,7 +103,7 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
               resizeMode="contain"
             />
           </Animated.View>
-          <Text style={styles.welcomeSubtitle}>Homemade Food Near You</Text>
+          <Text style={styles.welcomeSubtitle}>{typedSubtitle}</Text>
         </View>
 
         <View style={styles.welcomeBottomWrap}>
