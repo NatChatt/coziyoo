@@ -109,8 +109,8 @@ export default function CoziYooMasterHomeDemoScreen() {
             </View>
           </View>
           <LinearGradient
-            colors={['rgba(243, 239, 230, 0)', 'rgba(243, 239, 230, 0.28)', '#F3EFE6']}
-            locations={[0, 0.72, 1]}
+            colors={['rgba(245,210,179,0)', 'rgba(245,210,179,0.6)', '#F5D2B3']}
+            locations={[0, 0.6, 1]}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={styles.topAreaFade}
