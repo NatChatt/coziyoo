@@ -4,7 +4,6 @@ import React from 'react';
 import {
   Dimensions,
   Image,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -56,11 +55,13 @@ function CategoriesBlock() {
 }
 
 export default function CoziYooMasterHomeDemoScreen() {
+  const topInset = StatusBar.currentHeight ?? 0;
+
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar translucent barStyle="dark-content" backgroundColor="transparent" />
-      <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroSection}>
+    <View style={styles.screen}>
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <View style={[styles.heroSection, { height: 244 + topInset }]}>
           <View style={styles.heroArtWrap}>
             <LinearGradient
               colors={['#f3d5be', '#f6dfcd', '#f9ece2']}
@@ -104,7 +105,7 @@ export default function CoziYooMasterHomeDemoScreen() {
             />
           </View>
 
-          <View style={styles.heroContent}>
+          <View style={[styles.heroContent, { paddingTop: topInset + 20 }]}>
             <View style={styles.profileRow}>
               <Image
                 source={require('../../assets/images/coziyoo-demo-avatar.jpeg')}
@@ -140,13 +141,16 @@ export default function CoziYooMasterHomeDemoScreen() {
 
         <CategoriesBlock />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    backgroundColor: '#f3d5be',
+  },
+  scrollContent: {
     backgroundColor: '#fffbf4',
   },
   heroSection: {
