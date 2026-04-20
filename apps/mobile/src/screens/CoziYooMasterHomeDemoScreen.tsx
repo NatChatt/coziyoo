@@ -68,30 +68,18 @@ export default function CoziYooMasterHomeDemoScreen() {
               resizeMode="cover"
             />
             <LinearGradient
-              colors={['#fddfb9', 'rgba(253, 223, 185, 0)']}
-              locations={[0, 1]}
+              colors={['rgba(244, 211, 167, 0.92)', 'rgba(244, 211, 167, 0.42)', 'rgba(244, 211, 167, 0)']}
+              locations={[0, 0.52, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.imageEdgeFadeLeft}
             />
             <LinearGradient
-              colors={['rgba(253, 223, 185, 0)', 'rgba(253, 223, 185, 0.28)']}
-              locations={[0.4, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.imageEdgeFadeBottom}
-            />
-
-            <LinearGradient
-              colors={[
-                'rgba(253, 222, 183, 1)',
-                'rgba(253, 222, 183, 1)',
-                'rgba(253, 222, 183, 0)',
-              ]}
-              locations={[0, 0.5, 1]}
+              colors={['rgba(252, 230, 195, 1)', 'rgba(249, 217, 171, 0.86)', 'rgba(249, 217, 171, 0)']}
+              locations={[0, 0.58, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
-              style={styles.heroLeftGradient}
+              style={styles.leftWarmFlow}
             />
 
             <View style={styles.heroOverlayContent}>
@@ -129,8 +117,8 @@ export default function CoziYooMasterHomeDemoScreen() {
             </View>
           </View>
           <LinearGradient
-            colors={['rgba(243, 239, 230, 0)', 'rgba(243, 239, 230, 0.58)', '#F3EFE6']}
-            locations={[0, 0.68, 1]}
+            colors={['rgba(243, 239, 230, 0)', 'rgba(243, 239, 230, 0.28)', '#F3EFE6']}
+            locations={[0, 0.72, 1]}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
             style={styles.topAreaFade}
@@ -180,20 +168,13 @@ const styles = StyleSheet.create({
     height: 210,
     zIndex: 1,
   },
-  imageEdgeFadeBottom: {
+  leftWarmFlow: {
     position: 'absolute',
     top: 0,
-    right: 0,
-    width: '58%',
-    height: 210,
-    zIndex: 1,
-  },
-  heroLeftGradient: {
-    position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
     height: 210,
+    zIndex: 1,
   },
   heroOverlayContent: {
     position: 'absolute',
@@ -256,7 +237,7 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   topAreaFade: {
-    height: 44,
+    height: 34,
     marginTop: 0,
   },
   searchInput: {
