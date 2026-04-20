@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -218,8 +219,12 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
-          <View style={styles.logoCircle}>
-          <Text style={styles.logoText}>C</Text>
+          <View style={styles.logoWrap}>
+          <Image
+            source={require('../../assets/images/coziyoo-onboarding-logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           </View>
           <Text style={styles.title}>{t('headline.login.title')}</Text>
           <Text style={styles.subtitle}>{t('headline.login.subtitle')}</Text>
@@ -435,19 +440,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  logoCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: theme.primary,
+  logoWrap: {
+    width: 286,
+    height: 82,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
-  logoText: {
-    color: theme.onPrimary,
-    fontSize: 38,
-    fontWeight: '700',
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     color: theme.text,

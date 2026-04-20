@@ -30,7 +30,7 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
 
     Animated.timing(logoAnim, {
       toValue: 1,
-      duration: 1700,
+      duration: 2800,
       easing: Easing.out(Easing.back(1.4)),
       useNativeDriver: true,
     }).start(({ finished }) => {
