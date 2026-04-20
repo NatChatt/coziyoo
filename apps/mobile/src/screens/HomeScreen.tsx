@@ -5932,7 +5932,7 @@ const cpStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   /* --- Layout --- */
-  safe: { flex: 1, backgroundColor: '#FFFBF4' },
+  safe: { flex: 1, backgroundColor: '#FDDEB7' },
   topErrorBanner: {
     backgroundColor: theme.error,
     paddingHorizontal: 14,
