@@ -5951,9 +5951,9 @@ const styles = StyleSheet.create({
   heroFoodBgImg: {
     position: 'absolute',
     top: -12,
-    right: -24,
-    width: '92%',
-    height: 238,
+    right: -56,
+    width: '114%',
+    height: 246,
     opacity: 1,
     resizeMode: 'cover',
   },
@@ -5982,7 +5982,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     right: 0,
-    width: 36,
+    width: 18,
     height: 210,
   },
   heroTextArea: {
