@@ -270,7 +270,7 @@ UNFOLD = {
                         "permission": lambda request: request.user.is_staff,
                     },
                     {
-                        "title": "Commission Settings",
+                        "title": "Home Hero",
                         "icon": "percent",
                         "link": "/admin/authentication/adminsalescommissionsettings/",
                         "permission": lambda request: request.user.is_staff,

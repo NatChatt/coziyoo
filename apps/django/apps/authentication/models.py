@@ -62,7 +62,7 @@ class AdminAuditLogs(models.Model):
 class AdminSalesCommissionSettings(models.Model):
     id = models.UUIDField(primary_key=True)
     commission_rate_percent = models.DecimalField(max_digits=5, decimal_places=2)
-    mobile_home_header_image_url = models.TextField(blank=True, null=True, verbose_name="Home Hero Görsel URL (Mobil)")
+    mobile_home_header_image_url = models.TextField(blank=True, null=True, verbose_name="Home Hero")
     created_by_admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
     created_at = models.DateTimeField()
 
@@ -415,4 +415,3 @@ class SellerTags(models.Model):
         managed = False
         db_table = 'seller_tags'
         unique_together = (('seller', 'tag'),)
-
