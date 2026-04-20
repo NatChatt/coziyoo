@@ -25,7 +25,12 @@ def _normalize_hero_url(value: str) -> str:
     raw = str(value or "").strip()
     if not raw:
         return ""
-    if raw.startswith("http://") or raw.startswith("https://") or raw.startswith("data:image/"):
+    if (
+        raw.startswith("http://")
+        or raw.startswith("https://")
+        or raw.startswith("data:image/")
+        or raw.startswith("s3://")
+    ):
         return raw
     return ""
 
