@@ -4230,8 +4230,8 @@ export default function HomeScreen({
           ) : null}
           {LinearGradient ? (
             <LinearGradient
-              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0.96)']}
-              locations={[0, 0.52, 1]}
+              colors={['rgba(253, 222, 183, 0.24)', 'rgba(253, 222, 183, 0.84)', 'rgba(253, 222, 183, 1)']}
+              locations={[0, 0.5, 1]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.heroFeatherRight}
@@ -5951,8 +5951,8 @@ const styles = StyleSheet.create({
   heroFoodBgImg: {
     position: 'absolute',
     top: -12,
-    right: -8,
-    width: '88%',
+    right: -26,
+    width: '94%',
     height: 238,
     opacity: 1,
     resizeMode: 'cover',
@@ -5982,7 +5982,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     right: 0,
-    width: 28,
+    width: 64,
     height: 210,
   },
   heroTextArea: {
