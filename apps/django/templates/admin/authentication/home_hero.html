@@ -130,13 +130,6 @@
     pointer-events: none;
     z-index: 21;
   }
-  .hero-overlay-paper {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 22;
-    mix-blend-mode: multiply;
-  }
   .hero-overlay-bottom {
     position: absolute;
     inset: 0;
@@ -227,7 +220,6 @@
     <input type="hidden" name="mobile_home_header_image_data" id="hero-image-data" value="" />
     <input type="hidden" name="mobile_home_header_image_url" id="hero-image-url" value="{{ current_url_raw|default:'' }}" />
     <input type="hidden" name="mobile_home_header_edit_json" id="hero-edit-json" value="{{ current_edit_json|default:''|escape }}" />
-    <input type="hidden" id="hero-current-image-data-url" value="{{ current_image_data_url|default:''|escape }}" />
 
     <div class="hero-preview-panel">
       <div class="hero-preview-header">
@@ -246,7 +238,6 @@
           <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
           <div class="hero-overlay-left" id="hero-overlay-left"></div>
           <div class="hero-overlay-corners" id="hero-overlay-corners"></div>
-          <div class="hero-overlay-paper" id="hero-overlay-paper"></div>
           <div class="hero-overlay-top" id="hero-overlay-top"></div>
           <div class="hero-copy">
             <div class="hero-copy-top">
@@ -273,17 +264,13 @@
             <input id="hero-fade-y" class="hero-range" type="range" min="0" max="100" step="1" value="58" />
           </div>
           <div class="hero-control-group">
-            <div class="hero-control-label">Doku Yogunlugu</div>
-            <input id="hero-texture-strength" class="hero-range" type="range" min="0" max="100" step="1" value="55" />
-          </div>
-          <div class="hero-control-group">
             <button type="button" id="hero-reset" class="hero-btn-secondary">Reset</button>
           </div>
           <div class="hero-control-group">
-            <div class="hero-control-label">Parlaklik</div>
-            <input id="hero-erase-size" class="hero-range" type="range" min="100" max="170" step="1" value="100" />
+            <div class="hero-control-label">Silgi (Manuel)</div>
+            <input id="hero-erase-size" class="hero-range" type="range" min="8" max="140" step="1" value="36" />
             <div style="display:flex; gap:8px; margin-top:10px;">
-              <button type="button" id="hero-erase-toggle" class="hero-btn-secondary">Perdeyi Azalt</button>
+              <button type="button" id="hero-erase-toggle" class="hero-btn-secondary">Silgi Ac</button>
               <button type="button" id="hero-bg-undo" class="hero-btn-secondary">Geri Al</button>
             </div>
           </div>
@@ -313,7 +300,6 @@
   var imageDataInput = document.getElementById('hero-image-data');
   var imageUrlInput = document.getElementById('hero-image-url');
   var editJsonInput = document.getElementById('hero-edit-json');
-  var currentImageDataUrlInput = document.getElementById('hero-current-image-data-url');
 
   var helpText = document.getElementById('hero-help-text');
   var stage = document.getElementById('hero-stage');
@@ -322,14 +308,12 @@
   var empty = document.getElementById('hero-empty');
   var overlayLeft = document.getElementById('hero-overlay-left');
   var overlayCorners = document.getElementById('hero-overlay-corners');
-  var overlayPaper = document.getElementById('hero-overlay-paper');
   var overlayTop = document.getElementById('hero-overlay-top');
   var overlayBottom = document.getElementById('hero-overlay-bottom');
 
   var zoomInput = document.getElementById('hero-zoom');
   var fadeXInput = document.getElementById('hero-fade-x');
   var fadeYInput = document.getElementById('hero-fade-y');
-  var textureStrengthInput = document.getElementById('hero-texture-strength');
   var resetBtn = document.getElementById('hero-reset');
   var eraseSizeInput = document.getElementById('hero-erase-size');
   var eraseToggleBtn = document.getElementById('hero-erase-toggle');
@@ -344,6 +328,11 @@
   var baseScale = 1;
   var dragging = false;
   var eraseMode = false;
+  var eraseSessionActive = false;
+  var eraseChanged = false;
+  var erasePointerDown = false;
+  var eraseLastPoint = null;
+  var eraseCtx = null;
   var backgroundPickMode = false;
   var startX = 0;
   var startY = 0;
@@ -355,9 +344,6 @@
     offsetY: 0,
     fadeX: 48,
     fadeY: 58,
-    textureStrength: 55,
-    overlayOpacity: 100,
-    brightness: 100,
   };
   var LOCAL_STATE_KEY = 'coziyoo_admin_home_hero_editor_state_v1';
 
@@ -386,11 +372,21 @@
   }
 
   function setEraseMode(enabled) {
-    eraseMode = false;
+    if (!enabled && eraseSessionActive) {
+      finishEraseSession();
+    }
+    eraseMode = !!enabled;
     backgroundPickMode = false;
-    stage.classList.remove('erase-mode');
-    if (editCanvas) editCanvas.style.display = 'none';
-    if (image.src) image.style.display = 'block';
+    eraseSessionActive = false;
+    erasePointerDown = false;
+    eraseLastPoint = null;
+    stage.classList.toggle('erase-mode', eraseMode);
+    eraseToggleBtn.textContent = eraseMode ? 'Silgi Kapat' : 'Silgi Ac';
+    if (!eraseMode) {
+      editCanvas.style.display = 'none';
+      eraseCtx = null;
+      if (image.src) image.style.display = 'block';
+    }
   }
 
   function parseSavedState() {
@@ -407,9 +403,6 @@
       if (typeof parsed.offsetY === 'number') state.offsetY = parsed.offsetY;
       if (typeof parsed.fadeX === 'number') state.fadeX = clamp(parsed.fadeX, 0, 100);
       if (typeof parsed.fadeY === 'number') state.fadeY = clamp(parsed.fadeY, 0, 100);
-      if (typeof parsed.textureStrength === 'number') state.textureStrength = clamp(parsed.textureStrength, 0, 100);
-      if (typeof parsed.overlayOpacity === 'number') state.overlayOpacity = clamp(parsed.overlayOpacity, 0, 100);
-      if (typeof parsed.brightness === 'number') state.brightness = clamp(parsed.brightness, 100, 170);
     } catch (_) {}
   }
 
@@ -417,8 +410,6 @@
     zoomInput.value = state.scale.toFixed(2);
     fadeXInput.value = String(Math.round(state.fadeX));
     fadeYInput.value = String(Math.round(state.fadeY));
-    textureStrengthInput.value = String(Math.round(state.textureStrength));
-    eraseSizeInput.value = String(Math.round(state.brightness));
   }
 
   function calculateBaseScale() {
@@ -447,7 +438,6 @@
     image.style.height = drawH + 'px';
     image.style.left = drawX + 'px';
     image.style.top = drawY + 'px';
-    image.style.filter = 'brightness(' + clamp(state.brightness, 100, 170).toFixed(0) + '%)';
   }
 
   function getStagePoint(e) {
@@ -456,6 +446,84 @@
       x: clamp(e.clientX - rect.left, 0, stage.clientWidth || 1),
       y: clamp(e.clientY - rect.top, 0, stage.clientHeight || 1),
     };
+  }
+
+  function startEraseSession() {
+    if (!hasImage()) return false;
+    var vw = Math.max(1, stage.clientWidth || 1);
+    var vh = Math.max(1, stage.clientHeight || 1);
+    var sourceCanvas = renderImageOnlyCanvas(vw, vh);
+    if (!sourceCanvas) return false;
+    eraseCtx = editCanvas.getContext('2d');
+    if (!eraseCtx) return false;
+    editCanvas.width = vw;
+    editCanvas.height = vh;
+    editCanvas.style.left = '0px';
+    editCanvas.style.top = '0px';
+    editCanvas.style.width = vw + 'px';
+    editCanvas.style.height = vh + 'px';
+    eraseCtx.clearRect(0, 0, vw, vh);
+    eraseCtx.drawImage(sourceCanvas, 0, 0, vw, vh);
+    image.style.display = 'none';
+    editCanvas.style.display = 'block';
+    eraseSessionActive = true;
+    eraseChanged = false;
+    eraseLastPoint = null;
+    return true;
+  }
+
+  function erasePoint(x, y) {
+    if (!eraseCtx) return;
+    var radius = Math.max(4, parseFloat(eraseSizeInput.value || '36') / 2);
+    eraseCtx.save();
+    eraseCtx.globalCompositeOperation = 'destination-out';
+    eraseCtx.fillStyle = 'rgba(0,0,0,1)';
+    eraseCtx.beginPath();
+    eraseCtx.arc(x, y, radius, 0, Math.PI * 2);
+    eraseCtx.fill();
+    eraseCtx.restore();
+  }
+
+  function eraseStroke(fromPoint, toPoint) {
+    if (!toPoint) return;
+    if (!fromPoint) {
+      erasePoint(toPoint.x, toPoint.y);
+      return;
+    }
+    var dx = toPoint.x - fromPoint.x;
+    var dy = toPoint.y - fromPoint.y;
+    var dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+    var step = Math.max(2, (parseFloat(eraseSizeInput.value || '36') / 4));
+    var steps = Math.max(1, Math.ceil(dist / step));
+    for (var i = 0; i <= steps; i += 1) {
+      var t = i / steps;
+      erasePoint(fromPoint.x + dx * t, fromPoint.y + dy * t);
+    }
+  }
+
+  function finishEraseSession() {
+    if (!eraseSessionActive) return;
+    if (eraseChanged) {
+      var out = editCanvas.toDataURL('image/png');
+      imageDataInput.value = out;
+      imageUrlInput.value = '';
+      setImageSource(out);
+      image.onload = function () {
+        calculateBaseScale();
+        state.scale = 1;
+        state.offsetX = 0;
+        state.offsetY = 0;
+        applyAll();
+        saveEditState();
+      };
+    } else {
+      if (image.src) image.style.display = 'block';
+    }
+    editCanvas.style.display = 'none';
+    eraseCtx = null;
+    eraseSessionActive = false;
+    erasePointerDown = false;
+    eraseLastPoint = null;
   }
 
   function getFadeModel() {
@@ -470,17 +538,16 @@
     // corners react immediately, center strips react later.
     var centerX = Math.pow(clamp((xRaw - 0.30) / 0.70, 0, 1), 1.25);
     var centerY = Math.pow(clamp((yRaw - 0.30) / 0.70, 0, 1), 1.25);
-    var overlayFactor = clamp(state.overlayOpacity, 0, 100) / 100;
 
     return {
-      cornerOpacity: Math.min(1, (0.05 + Math.max(xEase, yEase) * 0.95) * overlayFactor),
+      cornerOpacity: Math.min(1, 0.05 + Math.max(xEase, yEase) * 0.95),
       cornerRadius: 28 + Math.max(xRaw, yRaw) * 52,
-      xStrong: (0.04 + centerX * 0.88) * overlayFactor,
-      xMid: (0.01 + centerX * 0.50) * overlayFactor,
+      xStrong: 0.04 + centerX * 0.88,
+      xMid: 0.01 + centerX * 0.50,
       xStop1: 0.10 + centerX * 0.18,
       xStop2: 0.44 + centerX * 0.30,
-      yStrong: Math.min(1, (0.10 + centerY * 0.90) * overlayFactor),
-      yTopStrong: Math.min(0.95, (0.05 + centerY * 0.75) * overlayFactor),
+      yStrong: Math.min(1, 0.10 + centerY * 0.90),
+      yTopStrong: Math.min(0.95, 0.05 + centerY * 0.75),
       yTopEnd: 0.16 + centerY * 0.24,
       yStart: 0.72 - centerY * 0.62,
     };
@@ -488,7 +555,6 @@
 
   function applyFadePreview() {
     var fade = getFadeModel();
-    var textureFactor = clamp(state.textureStrength, 0, 100) / 100;
 
     overlayLeft.style.background =
       'linear-gradient(90deg, ' +
@@ -514,18 +580,6 @@
       'rgba(255, 251, 244, 0) 0%, ' +
       'rgba(255, 251, 244, ' + fade.yStrong.toFixed(3) + ') ' + (fade.yStart * 100).toFixed(1) + '%, ' +
       'rgba(255, 251, 244, 1) 100%)';
-
-    // Parchment-like grain: dotted + aged paper fibers
-    var grainAlpha = (0.02 + (fade.xStrong * 0.06) + (fade.yStrong * 0.06)) * textureFactor;
-    var warmAlpha = (0.02 + fade.cornerOpacity * 0.10) * textureFactor;
-    overlayPaper.style.background =
-      'radial-gradient(circle at 12% 18%, rgba(133, 97, 58, ' + grainAlpha.toFixed(3) + ') 0 0.9px, transparent 1.3px),' +
-      'radial-gradient(circle at 74% 32%, rgba(122, 88, 49, ' + (grainAlpha * 0.85).toFixed(3) + ') 0 0.8px, transparent 1.2px),' +
-      'radial-gradient(circle at 36% 76%, rgba(147, 110, 67, ' + (grainAlpha * 0.75).toFixed(3) + ') 0 1px, transparent 1.5px),' +
-      'linear-gradient(115deg, rgba(198, 150, 94, ' + warmAlpha.toFixed(3) + ') 0%, rgba(255, 246, 230, 0) 56%),' +
-      'linear-gradient(12deg, rgba(181, 138, 84, ' + (warmAlpha * 0.7).toFixed(3) + ') 0%, rgba(255, 250, 240, 0) 70%)';
-    overlayPaper.style.backgroundSize = '7px 7px, 9px 9px, 11px 11px, 100% 100%, 100% 100%';
-    overlayPaper.style.opacity = textureFactor.toFixed(3);
   }
 
   function applyAll() {
@@ -541,9 +595,6 @@
       offsetY: state.offsetY,
       fadeX: state.fadeX,
       fadeY: state.fadeY,
-      textureStrength: state.textureStrength,
-      overlayOpacity: state.overlayOpacity,
-      brightness: state.brightness,
       updatedAt: new Date().toISOString(),
     });
     editJsonInput.value = json;
@@ -556,9 +607,6 @@
     state.offsetY = 0;
     state.fadeX = 48;
     state.fadeY = 58;
-    state.textureStrength = 55;
-    state.overlayOpacity = 100;
-    state.brightness = 100;
     applyAll();
     saveEditState();
   }
@@ -634,12 +682,17 @@
     pushUndoSnapshot();
     imageDataInput.value = out;
     imageUrlInput.value = '';
-    setImageSource(out);
     image.onload = function () {
       calculateBaseScale();
       applyAll();
       saveEditState();
     };
+    setImageSource(out);
+    if (image.complete && image.naturalWidth > 1) {
+      calculateBaseScale();
+      applyAll();
+      saveEditState();
+    }
     helpText.textContent = 'Arka plan temizlendi. Gerekirse tekrar tikla veya Geri Al.';
     return true;
   }
@@ -761,7 +814,7 @@
       imageDataInput.value = dataUrl;
       imageUrlInput.value = '';
       setEraseMode(false);
-      setImageSource(dataUrl);
+      // Set onload before src to avoid race condition with synchronous data URL processing.
       image.onload = function () {
         calculateBaseScale();
         state.scale = 1;
@@ -770,8 +823,16 @@
         applyAll();
         saveEditState();
       };
+      setImageSource(dataUrl);
+      if (image.complete && image.naturalWidth > 1) {
+        calculateBaseScale();
+        state.scale = 1;
+        state.offsetX = 0;
+        state.offsetY = 0;
+        applyAll();
+        saveEditState();
+      }
       helpText.textContent = 'Resim yuklendi. Surukle, zoom ve fade ile ayarla.';
-      actionInput.value = 'edit';
     };
     reader.readAsDataURL(file);
   });
@@ -787,6 +848,21 @@
   }, { passive: false });
 
   stage.addEventListener('pointerdown', function (e) {
+    if (eraseMode) {
+      if (!hasImage() && !eraseSessionActive) return;
+      if (!eraseSessionActive) {
+        pushUndoSnapshot();
+        if (!startEraseSession()) return;
+      }
+      erasePointerDown = true;
+      var eraseStartPoint = getStagePoint(e);
+      eraseStroke(null, eraseStartPoint);
+      eraseLastPoint = eraseStartPoint;
+      eraseChanged = true;
+      stage.setPointerCapture(e.pointerId);
+      helpText.textContent = 'Silgi aktif: mouse ile istedigin alanlari temizleyebilirsin.';
+      return;
+    }
     if (!hasImage()) return;
     if (backgroundPickMode) {
       var point = getStagePoint(e);
@@ -803,6 +879,13 @@
   });
 
   stage.addEventListener('pointermove', function (e) {
+    if (eraseMode && erasePointerDown && eraseSessionActive) {
+      var point = getStagePoint(e);
+      eraseStroke(eraseLastPoint, point);
+      eraseLastPoint = point;
+      eraseChanged = true;
+      return;
+    }
     if (!dragging) return;
     state.offsetX = e.clientX - startX;
     state.offsetY = e.clientY - startY;
@@ -810,6 +893,13 @@
   });
 
   function stopDrag(e) {
+    if (eraseMode && erasePointerDown) {
+      finishEraseSession();
+      try {
+        stage.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      return;
+    }
     dragging = false;
     stage.classList.remove('dragging');
     saveEditState();
@@ -839,12 +929,6 @@
     saveEditState();
   });
 
-  textureStrengthInput.addEventListener('input', function () {
-    state.textureStrength = clamp(parseFloat(textureStrengthInput.value) || 0, 0, 100);
-    applyAll();
-    saveEditState();
-  });
-
   resetBtn.addEventListener('click', function () {
     setEraseMode(false);
     resetState();
@@ -852,21 +936,14 @@
   });
 
   eraseToggleBtn.addEventListener('click', function () {
-    if (!hasImage()) {
+    if (!eraseMode && !hasImage()) {
       helpText.textContent = 'Once bir gorsel ekle.';
       return;
     }
-    state.overlayOpacity = clamp(state.overlayOpacity - 15, 0, 100);
-    state.brightness = clamp(state.brightness + 5, 100, 170);
-    applyAll();
-    saveEditState();
-    helpText.textContent = 'Perde azaltildi, resim parlatildi.';
-  });
-
-  eraseSizeInput.addEventListener('input', function () {
-    state.brightness = clamp(parseFloat(eraseSizeInput.value) || 100, 100, 170);
-    applyAll();
-    saveEditState();
+    setEraseMode(!eraseMode);
+    helpText.textContent = eraseMode
+      ? 'Silgi acik. Mouse ile surukleyerek resmi temizleyebilirsin.'
+      : 'Silgi kapali. Surukle, zoom ve fade ile devam edebilirsin.';
   });
 
   bgRemoveBtn.addEventListener('click', function () {
@@ -889,12 +966,17 @@
     setEraseMode(false);
     imageDataInput.value = prev;
     imageUrlInput.value = '';
-    setImageSource(prev);
     image.onload = function () {
       calculateBaseScale();
       applyAll();
       saveEditState();
     };
+    setImageSource(prev);
+    if (image.complete && image.naturalWidth > 1) {
+      calculateBaseScale();
+      applyAll();
+      saveEditState();
+    }
     helpText.textContent = 'Son arka plan silme islemi geri alindi.';
   });
 
@@ -910,6 +992,14 @@
     saveEditState();
     var ok = exportCanvasToInput();
     if (!ok) {
+      // Canvas export failed (e.g. cross-origin taint from proxy image).
+      // Fall back to re-saving the existing stored pointer without re-uploading.
+      var existingPointer = imageUrlInput.value || '';
+      if (existingPointer) {
+        imageDataInput.value = '';
+        helpText.textContent = 'Yayinlaniyor...';
+        return;
+      }
       e.preventDefault();
       alert('Gorsel islenemedi. Resmi tekrar secip yeniden dene.');
       return;
@@ -920,14 +1010,20 @@
   parseSavedState();
   applyFadePreview();
 
-  if (currentImageDataUrlInput.value || imageUrlInput.value || image.getAttribute('src')) {
-    var src = currentImageDataUrlInput.value || image.getAttribute('src') || imageUrlInput.value;
-    setImageSource(src);
+  var initSrc = image.getAttribute('src') || '';
+  if (initSrc) {
+    // Set onload before assigning src to avoid race condition.
     image.onload = function () {
       calculateBaseScale();
       applyAll();
     };
-    if (image.complete) {
+    image.onerror = function () {
+      image.style.display = 'none';
+      setEmpty(true);
+      helpText.textContent = 'Gorsel yuklenemedi. Sayfayi yenile veya yeni resim ekle.';
+    };
+    setImageSource(initSrc);
+    if (image.complete && image.naturalWidth > 1) {
       calculateBaseScale();
       applyAll();
     }

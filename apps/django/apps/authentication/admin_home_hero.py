@@ -170,6 +170,44 @@ def _storage_pointer_to_data_url(pointer: str) -> str:
 
 
 @staff_member_required
+def hero_image_proxy_view(request: HttpRequest) -> HttpResponse:
+    """Serve the current hero image through Django (same-origin) so canvas can draw it."""
+    latest = AdminSalesCommissionSettings.objects.order_by("-created_at").first()
+    if not latest or not latest.mobile_home_header_image_url:
+        from django.http import Http404
+        raise Http404("No hero image")
+
+    pointer = str(latest.mobile_home_header_image_url).strip()
+    if not pointer.startswith("s3://"):
+        from django.http import Http404
+        raise Http404("Not an S3 pointer")
+
+    parsed = s3_utils.parse_storage_pointer(pointer)
+    if not parsed:
+        from django.http import Http404
+        raise Http404("Bad pointer")
+
+    if not s3_utils.is_configured():
+        from django.http import Http404
+        raise Http404("S3 not configured")
+
+    try:
+        client = s3_utils.get_client()
+        response = client.get_object(Bucket=parsed["bucket"], Key=parsed["key"])
+        content_type = str(response.get("ContentType") or "image/jpeg").strip() or "image/jpeg"
+        body = response["Body"].read()
+        if not body:
+            from django.http import Http404
+            raise Http404("Empty body")
+        http_response = HttpResponse(body, content_type=content_type)
+        http_response["Cache-Control"] = "no-store"
+        return http_response
+    except Exception:
+        from django.http import Http404
+        raise Http404("S3 fetch failed")
+
+
+@staff_member_required
 def home_hero_view(request: HttpRequest) -> HttpResponse:
     latest = AdminSalesCommissionSettings.objects.order_by("-created_at").first()
 
@@ -244,11 +282,14 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
     if latest:
         current_edit_json = _get_latest_optional_field(latest.id, "mobile_home_header_edit_json")
 
+    # Use same-origin proxy URL so canvas can draw the image without CORS issues.
+    has_image = bool(current_url_raw and current_url_raw.startswith("s3://"))
+    proxy_image_url = "/admin/home-hero/image/" if has_image else ""
+
     context = {
         "title": "Home Hero",
-        "current_url": _hydrate_for_admin(current_url_raw),
+        "current_url": proxy_image_url,
         "current_url_raw": current_url_raw,
-        "current_image_data_url": _storage_pointer_to_data_url(current_url_raw),
         "current_edit_json": current_edit_json,
         "saved": request.GET.get("saved") == "1",
         "opts": AdminSalesCommissionSettings._meta,
