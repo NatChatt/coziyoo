@@ -72,15 +72,6 @@ export default function CoziYooMasterHomeDemoScreen() {
             style={styles.heroLeftGradient}
           />
 
-          <LinearGradient
-            colors={['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']}
-            locations={[0, 1]}
-            start={{ x: 0.5, y: 1 }}
-            end={{ x: 0.5, y: 0 }}
-            style={styles.heroBottomGradient}
-            pointerEvents="none"
-          />
-
           <View style={styles.heroOverlayContent}>
             <View>
               <View style={styles.heroRow}>
@@ -104,6 +95,14 @@ export default function CoziYooMasterHomeDemoScreen() {
             </View>
           </View>
         </View>
+        <LinearGradient
+          colors={['#fddfb9', '#fffbf4']}
+          locations={[0, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.heroToBodyFade}
+          pointerEvents="none"
+        />
         <View style={styles.searchBarWrap}>
           <View style={styles.searchBar}>
             <Feather name="search" size={18} color="#8a8a8a" />
@@ -147,12 +146,9 @@ const styles = StyleSheet.create({
     right: 0,
     height: 210,
   },
-  heroBottomGradient: {
-    position: 'absolute',
-    bottom: -52,
-    left: 0,
-    right: 0,
-    height: 122,
+  heroToBodyFade: {
+    height: 52,
+    marginTop: -4,
   },
   heroOverlayContent: {
     position: 'absolute',
@@ -210,7 +206,7 @@ const styles = StyleSheet.create({
   },
   searchBarWrap: {
     paddingHorizontal: 20,
-    marginTop: 0,
+    marginTop: -8,
     marginBottom: 4,
     zIndex: 5,
   },
