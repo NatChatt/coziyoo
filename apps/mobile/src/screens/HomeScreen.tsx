@@ -1416,7 +1416,14 @@ function apiToMealCard(item: ApiFoodItem): MealCard {
 function resolveHomeHeaderImageUrl(payload: unknown): string | null {
   if (!payload || typeof payload !== 'object') return null;
   const root = payload as Record<string, unknown>;
-  const data = (root.data && typeof root.data === 'object' ? root.data : root) as Record<string, unknown>;
+  const nestedDataCandidate = root.data;
+  const data = (
+    nestedDataCandidate
+    && typeof nestedDataCandidate === 'object'
+    && !Array.isArray(nestedDataCandidate)
+      ? nestedDataCandidate
+      : root
+  ) as Record<string, unknown>;
   const branding = (data.branding && typeof data.branding === 'object' ? data.branding : null) as Record<string, unknown> | null;
   const home = (data.home && typeof data.home === 'object' ? data.home : null) as Record<string, unknown> | null;
   const themeConfig = (data.theme && typeof data.theme === 'object' ? data.theme : null) as Record<string, unknown> | null;
