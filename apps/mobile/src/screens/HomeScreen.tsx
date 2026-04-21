@@ -2240,9 +2240,17 @@ export default function HomeScreen({
   onAuthRefresh,
   onSwitchToSeller,
 }: Props) {
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const heroDynamicHeight = useMemo(
-    () => Math.max(226, Math.min(300, Math.round(screenWidth * 0.58))),
+    () => Math.max(210, Math.min(360, Math.round(screenHeight * 0.32))),
+    [screenHeight],
+  );
+  const heroImageFrame = useMemo(
+    () => ({
+      right: -(screenWidth * 0.25),
+      width: screenWidth * 1.3,
+      leftFadeWidth: screenWidth * 0.7,
+    }),
     [screenWidth],
   );
   const [currentAuth, setCurrentAuth] = useState<AuthSession>(auth);
@@ -4265,14 +4273,37 @@ export default function HomeScreen({
           stickyHeaderIndices={[1]}
         >
         {/* Hero Header */}
-        <View style={[styles.heroWrap, { height: heroDynamicHeight }]}>
+        <View style={[styles.heroWrap, { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
           {USE_NEW_HOME_HERO ? (
             <ImageBackground
                 source={headerImageSource}
-                style={styles.heroBgFullImage}
+                style={[
+                  styles.heroBgFullImage,
+                  {
+                    left: undefined,
+                    right: heroImageFrame.right,
+                    top: 0,
+                    width: heroImageFrame.width,
+                    height: heroDynamicHeight,
+                  },
+                ]}
                 imageStyle={styles.heroBgFullImageInner}
                 onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
               >
+              {LinearGradient ? (
+                <LinearGradient
+                  colors={['#F4D6BF', 'rgba(244,214,191,0.6)', 'rgba(244,214,191,0.2)', 'transparent']}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    width: heroImageFrame.leftFadeWidth,
+                    height: heroDynamicHeight,
+                  }}
+                />
+              ) : null}
               {LinearGradient ? (
                 <LinearGradient
                   colors={['rgba(255, 251, 244, 1)', 'rgba(255, 251, 244, 0)']}
