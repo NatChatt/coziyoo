@@ -5006,8 +5006,8 @@ export default function HomeScreen({
 
   /* ---------- Main render ---------- */
   const homeTopHybrid = useMemo(
-    () => blendHexColors(heroColors.gradTop, '#F4D6BF', 0.30),
-    [heroColors.gradTop],
+    () => blendHexColors(heroColors.gradMid, heroColors.gradTop, 0.20),
+    [heroColors.gradMid, heroColors.gradTop],
   );
   const topChromeBg = activeTab === 'home'
     ? (USE_NEW_HOME_HERO ? homeTopHybrid : '#FDDEB7')
