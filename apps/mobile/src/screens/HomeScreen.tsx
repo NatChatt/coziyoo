@@ -4366,11 +4366,11 @@ export default function HomeScreen({
               {LinearGradient ? (
                 <LinearGradient
                   colors={[
-                    toRgba(heroTopBandColor, 0.58),
-                    toRgba(heroTopBandColor, 0.28),
+                    toRgba(heroTopBandColor, 0.52),
+                    toRgba(heroTopBandColor, 0.24),
                     toRgba(heroTopBandColor, 0),
                   ]}
-                  locations={[0, 0.48, 1]}
+                  locations={[0, 0.54, 1]}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
                   style={styles.heroNewTopFade}
@@ -4379,11 +4379,13 @@ export default function HomeScreen({
               {LinearGradient ? (
                 <LinearGradient
                   colors={[
-                    toRgba(heroBottomBandColor, 0),
-                    toRgba(heroBottomBandColor, 0.28),
-                    toRgba(heroBottomBandColor, 0.58),
+                    toRgba(heroBottomBandColor, 0.00),
+                    toRgba(heroBottomBandColor, 0.20),
+                    toRgba(heroBottomBandColor, 0.45),
+                    toRgba(heroBottomBandColor, 0.72),
+                    '#FFFBF4',
                   ]}
-                  locations={[0, 0.52, 1]}
+                  locations={[0, 0.28, 0.52, 0.78, 1]}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
                   style={styles.heroNewBottomFade}
@@ -4504,12 +4506,11 @@ export default function HomeScreen({
           {LinearGradient ? (
             <LinearGradient
               colors={[
-                toRgba(heroBottomBandColor, 0.58),
-                toRgba(heroBottomBandColor, 0.34),
+                toRgba(heroBottomBandColor, 0.28),
                 toRgba(heroBottomBandColor, 0.14),
                 'rgba(255, 251, 244, 0.00)',
               ]}
-              locations={[0, 0.38, 0.72, 1]}
+              locations={[0, 0.46, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.stickySearchFade}
@@ -6170,7 +6171,7 @@ const styles = StyleSheet.create({
     marginRight: -40,
     marginTop: 0,
     backgroundColor: '#FDDEB7',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   heroBaseGradient: {
     ...StyleSheet.absoluteFillObject,
@@ -6192,8 +6193,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: -3,
-    height: 92,
+    top: 120,
+    height: 220,
+    zIndex: 2,
   },
   heroFoodBgImg: {
     position: 'absolute',
@@ -6312,8 +6314,8 @@ const styles = StyleSheet.create({
   stickySearchChips: {
     position: 'relative',
     backgroundColor: 'transparent',
-    marginTop: -8,
-    paddingTop: 8,
+    marginTop: -34,
+    paddingTop: 0,
     paddingBottom: 4,
     zIndex: 10,
     shadowColor: '#000',
@@ -6324,7 +6326,7 @@ const styles = StyleSheet.create({
   },
   stickySearchFade: {
     position: 'absolute',
-    top: -8,
+    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
