@@ -4299,30 +4299,13 @@ export default function HomeScreen({
 
     return (
       <Animated.View style={[styles.scroll, { backgroundColor: homeSurfaceBg }]}>
-        {USE_NEW_HOME_HERO ? (
-          <View pointerEvents="none" style={styles.heroOverscrollFillWrap}>
-            <ImageBackground
-              source={headerImageSource}
-              style={styles.heroOverscrollFillImage}
-              imageStyle={styles.heroOverscrollFillImageInner}
-              onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
-            />
-            {LinearGradient ? (
-              <LinearGradient
-                colors={['#E9C8AA', 'rgba(233, 200, 170, 0.84)', 'rgba(233, 200, 170, 0.36)', 'rgba(233, 200, 170, 0)']}
-                locations={[0, 0.22, 0.62, 1]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={styles.heroOverscrollFillFade}
-              />
-            ) : null}
-          </View>
-        ) : null}
         <ScrollView
           ref={feedScrollRef}
           showsVerticalScrollIndicator={false}
           onScroll={handleFeedScroll}
           scrollEventThrottle={16}
+          bounces={false}
+          alwaysBounceVertical={false}
           contentInsetAdjustmentBehavior="never"
           automaticallyAdjustContentInsets={false}
           contentContainerStyle={styles.scrollContent}
@@ -6150,23 +6133,6 @@ const styles = StyleSheet.create({
   },
   heroBgFullImageInner: {
     resizeMode: 'stretch',
-  },
-  heroOverscrollFillWrap: {
-    position: 'absolute',
-    top: -320,
-    left: 0,
-    right: 0,
-    height: 320,
-    overflow: 'hidden',
-  },
-  heroOverscrollFillImage: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  heroOverscrollFillImageInner: {
-    resizeMode: 'stretch',
-  },
-  heroOverscrollFillFade: {
-    ...StyleSheet.absoluteFillObject,
   },
   heroNewTopFade: {
     position: 'absolute',
