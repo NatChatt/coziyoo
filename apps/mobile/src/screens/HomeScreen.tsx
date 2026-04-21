@@ -922,6 +922,33 @@ function getImageSizeAsync(uri: string): Promise<{ width: number; height: number
   });
 }
 
+async function sampleImageTopBandColor(uri: string, fallback: string): Promise<string> {
+  if (!uri || !manipulateAsync || !ManipulatorSaveFormat || !getColors) {
+    return normalizeHexColor(fallback);
+  }
+  try {
+    const { width, height } = await getImageSizeAsync(uri);
+    if (width < 4 || height < 4) return normalizeHexColor(fallback);
+    const cropHeight = Math.max(24, Math.min(height, Math.round(height * 0.18)));
+    const cropped = await manipulateAsync(
+      uri,
+      [{ crop: { originX: 0, originY: 0, width, height: cropHeight } }],
+      { compress: 0.5, format: ManipulatorSaveFormat.JPEG, base64: false },
+    );
+    const colors = await getColors(cropped.uri, {
+      fallback: normalizeHexColor(fallback),
+      cache: true,
+      key: `${uri}#safe-top:${width}:${cropHeight}`,
+    });
+    let sampled = normalizeHexColor(fallback);
+    if (Platform.OS === 'ios' && 'background' in colors) sampled = normalizeHexColor(colors.background, sampled);
+    else if (Platform.OS === 'android' && 'dominant' in colors) sampled = normalizeHexColor(colors.dominant, sampled);
+    return sampled;
+  } catch {
+    return normalizeHexColor(fallback);
+  }
+}
+
 function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
   const rn = r / 255;
   const gn = g / 255;
@@ -2410,6 +2437,7 @@ export default function HomeScreen({
   const [adminHeroImageUrl, setAdminHeroImageUrl] = useState<string | null>(null);
   const [heroImageResolved, setHeroImageResolved] = useState(false);
   const [heroColors, setHeroColors] = useState<HeroColors>(() => deriveHeroColors(DEFAULT_HERO_SEED));
+  const [heroTopBandColor, setHeroTopBandColor] = useState('#FDDEB7');
   const [profileDisplayName, setProfileDisplayName] = useState<string>(() =>
     resolveProfileDisplayName(null, auth.email),
   );
@@ -2878,8 +2906,10 @@ export default function HomeScreen({
   }, [cartItems.length, cartSupportedDeliveryOptions.delivery, cartSupportedDeliveryOptions.pickup, deliveryType]);
 
   useEffect(() => {
+    let cancelled = false;
     if (!heroImageResolved) {
       setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK);
+      setHeroTopBandColor('#FDDEB7');
       return;
     }
 
@@ -2895,6 +2925,7 @@ export default function HomeScreen({
     const heroUrl = adminHeroImageUrl || heroCandidate?.imageUrl?.trim();
     if (!heroUrl) {
       setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK);
+      setHeroTopBandColor('#FDDEB7');
       return;
     }
     setHeaderImageSource({ uri: heroUrl });
@@ -2902,11 +2933,24 @@ export default function HomeScreen({
     if (getColors) {
       getColors(heroUrl, { fallback: DEFAULT_HERO_SEED, cache: true, key: `hero:${heroUrl}` })
         .then((result) => {
+          if (cancelled) return;
           const seed = pickImagePaletteColor(result, DEFAULT_HERO_SEED);
           setHeroColors(deriveHeroColors(seed));
         })
         .catch(() => {});
     }
+    sampleImageTopBandColor(heroUrl, '#FDDEB7')
+      .then((tone) => {
+        if (cancelled) return;
+        setHeroTopBandColor(tone);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHeroTopBandColor('#FDDEB7');
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [adminHeroImageUrl, meals, heroImageResolved]);
 
   useEffect(() => {
@@ -5006,8 +5050,8 @@ export default function HomeScreen({
 
   /* ---------- Main render ---------- */
   const homeTopHybrid = useMemo(
-    () => blendHexColors(heroColors.gradMid, heroColors.gradTop, 0.20),
-    [heroColors.gradMid, heroColors.gradTop],
+    () => blendHexColors(heroTopBandColor, heroColors.gradTop, 0.10),
+    [heroTopBandColor, heroColors.gradTop],
   );
   const topChromeBg = activeTab === 'home'
     ? (USE_NEW_HOME_HERO ? homeTopHybrid : '#FDDEB7')
