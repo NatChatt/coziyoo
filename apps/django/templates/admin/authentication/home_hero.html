@@ -202,13 +202,6 @@
     );
   }
 
-  function getBalancedInitialScale(iw, ih, vw, vh) {
-    var imageRatio = (iw || 1) / (ih || 1);
-    var viewRatio = (vw || 1) / (vh || 1);
-    var mismatch = Math.abs(Math.log(imageRatio / viewRatio));
-    return clamp(1 - (mismatch * 0.22), 0.82, 1);
-  }
-
   function calculateBaseScale() {
     var vw = stage.clientWidth || 1;
     var vh = stage.clientHeight || 1;
@@ -240,11 +233,7 @@
   function resetTransform() {
     if (!hasImage()) return;
     calculateBaseScale();
-    var vw = stage.clientWidth || 1;
-    var vh = stage.clientHeight || 1;
-    var iw = previewImage.naturalWidth || vw;
-    var ih = previewImage.naturalHeight || vh;
-    state.scale = getBalancedInitialScale(iw, ih, vw, vh);
+    state.scale = 1;
     state.offsetX = 0;
     state.offsetY = 0;
     applyTransform();
