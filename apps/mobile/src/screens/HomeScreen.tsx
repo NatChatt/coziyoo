@@ -5011,7 +5011,7 @@ export default function HomeScreen({
   }
 
   /* ---------- Main render ---------- */
-  const topChromeBg = activeTab === 'home' ? scrollSurfaceBg : '#FFFBF4';
+  const topChromeBg = activeTab === 'home' ? '#FDDEB7' : '#FFFBF4';
 
   return (
     <>
