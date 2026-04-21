@@ -4365,10 +4365,14 @@ export default function HomeScreen({
               </ImageBackground>
               {LinearGradient ? (
                 <LinearGradient
-                  colors={[toRgba(heroTopBandColor, 0), toRgba(heroTopBandColor, 0.12), toRgba(heroTopBandColor, 0.34)]}
-                  locations={[0, 0.64, 1]}
-                  start={{ x: 0.5, y: 1 }}
-                  end={{ x: 0.5, y: 0 }}
+                  colors={[
+                    toRgba(heroTopBandColor, 0.58),
+                    toRgba(heroTopBandColor, 0.28),
+                    toRgba(heroTopBandColor, 0),
+                  ]}
+                  locations={[0, 0.48, 1]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
                   style={styles.heroNewTopFade}
                 />
               ) : null}
@@ -4376,11 +4380,10 @@ export default function HomeScreen({
                 <LinearGradient
                   colors={[
                     toRgba(heroBottomBandColor, 0),
-                    toRgba(heroBottomBandColor, 0.24),
+                    toRgba(heroBottomBandColor, 0.28),
                     toRgba(heroBottomBandColor, 0.58),
-                    toRgba(heroBottomBandColor, 0.88),
                   ]}
-                  locations={[0, 0.46, 0.78, 1]}
+                  locations={[0, 0.52, 1]}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
                   style={styles.heroNewBottomFade}
@@ -4501,27 +4504,12 @@ export default function HomeScreen({
           {LinearGradient ? (
             <LinearGradient
               colors={[
-                heroBottomBandColor,
-                toRgba(heroBottomBandColor, 0.72),
-                toRgba(heroBottomBandColor, 0.20),
-                toRgba(heroBottomBandColor, 0),
-              ]}
-              locations={[0, 0.28, 0.68, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.stickySeamBlend}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={[
-                toRgba(heroBottomBandColor, 0.78),
-                toRgba(heroBottomBandColor, 0.52),
-                toRgba(heroBottomBandColor, 0.26),
-                toRgba(heroBottomBandColor, 0.08),
+                toRgba(heroBottomBandColor, 0.58),
+                toRgba(heroBottomBandColor, 0.34),
+                toRgba(heroBottomBandColor, 0.14),
                 'rgba(255, 251, 244, 0.00)',
               ]}
-              locations={[0, 0.26, 0.56, 0.82, 1]}
+              locations={[0, 0.38, 0.72, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.stickySearchFade}
@@ -6198,14 +6186,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: 84,
+    height: 92,
   },
   heroNewBottomFade: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: -4,
-    height: 126,
+    bottom: -3,
+    height: 92,
   },
   heroFoodBgImg: {
     position: 'absolute',
@@ -6324,8 +6312,8 @@ const styles = StyleSheet.create({
   stickySearchChips: {
     position: 'relative',
     backgroundColor: 'transparent',
-    marginTop: -10,
-    paddingTop: 10,
+    marginTop: -8,
+    paddingTop: 8,
     paddingBottom: 4,
     zIndex: 10,
     shadowColor: '#000',
@@ -6336,17 +6324,10 @@ const styles = StyleSheet.create({
   },
   stickySearchFade: {
     position: 'absolute',
-    top: -6,
-    left: -2,
-    right: -2,
-    bottom: 0,
-  },
-  stickySeamBlend: {
-    position: 'absolute',
-    top: -16,
+    top: -8,
     left: 0,
     right: 0,
-    height: 30,
+    bottom: 0,
   },
 
   /* --- Floating Search Bar (premium shadow) --- */
