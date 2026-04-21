@@ -5005,7 +5005,13 @@ export default function HomeScreen({
   }
 
   /* ---------- Main render ---------- */
-  const topChromeBg = activeTab === 'home' ? '#FDDEB7' : '#FFFBF4';
+  const homeTopHybrid = useMemo(
+    () => blendHexColors(heroColors.gradTop, '#F4D6BF', 0.30),
+    [heroColors.gradTop],
+  );
+  const topChromeBg = activeTab === 'home'
+    ? (USE_NEW_HOME_HERO ? homeTopHybrid : '#FDDEB7')
+    : '#FFFBF4';
 
   return (
     <>
