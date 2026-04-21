@@ -4267,20 +4267,9 @@ export default function HomeScreen({
         setScrollSurfaceBg(nextBg);
       }
 
-      // Keep top chrome transition very soft so the change is less noticeable.
-      const TOP_BLEND_START_Y = 170;
-      const TOP_BLEND_END_Y = 270;
-      let nextTopBg = HERO_TONE;
-      if (y < 0) {
-        nextTopBg = HERO_TONE;
-      } else if (y >= TOP_BLEND_END_Y) {
-        nextTopBg = SURFACE_TONE;
-      } else if (y > TOP_BLEND_START_Y) {
-        const raw = (y - TOP_BLEND_START_Y) / (TOP_BLEND_END_Y - TOP_BLEND_START_Y);
-        const eased = smoothstep01(raw);
-        const quantized = Math.round(eased * BLEND_STEPS) / BLEND_STEPS;
-        nextTopBg = blendHexColors(HERO_TONE, SURFACE_TONE, quantized);
-      }
+      // Sticky search noktasına gelir gelmez top chrome anlık değişsin.
+      const STICKY_SWITCH_Y = HERO_ZONE_Y;
+      const nextTopBg = y >= STICKY_SWITCH_Y ? SURFACE_TONE : HERO_TONE;
       if (nextTopBg !== homeTopChromeBgRef.current) {
         homeTopChromeBgRef.current = nextTopBg;
         setHomeTopChromeBg(nextTopBg);
