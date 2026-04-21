@@ -3,7 +3,7 @@
 {% block content %}
 <style>
   .hero-simple-wrap {
-    max-width: 760px;
+    max-width: 900px;
     margin: 0 auto;
     padding: 16px;
   }
@@ -41,6 +41,50 @@
     cursor: pointer;
     text-align: left;
   }
+  .hero-editor-row {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) 220px;
+    gap: 12px;
+    align-items: start;
+  }
+  .hero-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 390 / 226;
+    border: 1px solid #d0d5dd;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fddeb7;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+  }
+  .hero-stage.dragging {
+    cursor: grabbing;
+  }
+  .hero-stage img {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: left, top, width, height;
+    pointer-events: none;
+  }
+  .hero-controls {
+    border: 1px solid #d0d5dd;
+    border-radius: 12px;
+    background: #fcfcfd;
+    padding: 12px;
+  }
+  .hero-control-label {
+    font-size: 12px;
+    color: #344054;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .hero-range {
+    width: 100%;
+  }
   .hero-actions {
     margin-top: 12px;
     display: flex;
@@ -56,51 +100,61 @@
     color: #fff;
     cursor: pointer;
   }
-  .hero-preview {
-    margin-top: 12px;
+  .hero-btn-secondary {
     border: 1px solid #d0d5dd;
     border-radius: 10px;
-    overflow: hidden;
-    background: #f2f4f7;
-  }
-  .hero-preview img {
-    width: 100%;
-    max-height: 280px;
-    object-fit: cover;
-    display: block;
+    padding: 10px 16px;
+    font-size: 14px;
+    background: #fff;
+    color: #344054;
+    cursor: pointer;
   }
   .hero-help {
     margin-top: 10px;
     font-size: 12px;
     color: #667085;
   }
+  @media (max-width: 860px) {
+    .hero-editor-row {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 
 <div class="hero-simple-wrap">
   <div class="hero-simple-title">Home Hero</div>
-  <div class="hero-simple-subtitle">Sadece resim ekle ve Yayınla.</div>
+  <div class="hero-simple-subtitle">Resim ekle, zoom yap, mouse ile kaydır ve yayınla.</div>
 
   <form method="post" id="home-hero-form" enctype="multipart/form-data" novalidate>
     {% csrf_token %}
     <input type="hidden" name="action" value="approve" />
+    <input type="hidden" name="mobile_home_header_image_data" id="hero-image-data" value="" />
     <input type="hidden" name="mobile_home_header_image_url" id="hero-image-url" value="{{ current_url_raw|default:'' }}" />
     <input type="hidden" name="mobile_home_header_edit_json" value="" />
 
     <div class="hero-simple-panel">
       <div class="hero-field-label">Telefon Home Hero Resmi</div>
       <input id="hero-file-input" name="mobile_home_header_file" type="file" accept="image/*" style="display:none" />
-      <button type="button" id="hero-file-trigger" class="hero-dropzone">
-        Dosya seçmek için tıkla
-      </button>
+      <button type="button" id="hero-file-trigger" class="hero-dropzone">Dosya seçmek için tıkla</button>
 
-      <div class="hero-preview" id="hero-preview-wrap" {% if not current_url %}style="display:none"{% endif %}>
-        <img id="hero-preview-image" src="{{ current_url|default:'' }}" alt="Hero önizleme" />
+      <div class="hero-editor-row">
+        <div class="hero-stage" id="hero-stage">
+          <img id="hero-preview-image" src="{{ current_url|default:'' }}" alt="Hero önizleme" {% if not current_url %}style="display:none"{% endif %} />
+        </div>
+        <div class="hero-controls">
+          <div class="hero-control-label">Zoom</div>
+          <input id="hero-zoom" class="hero-range" type="range" min="0.70" max="1.80" step="0.001" value="1.000" />
+          <div style="margin-top: 10px;">
+            <button type="button" id="hero-reset" class="hero-btn-secondary">Reset</button>
+          </div>
+          <div class="hero-help">Mouse ile resmi sürükle. Tekerlek ile zoom yap.</div>
+        </div>
       </div>
 
       <div class="hero-actions">
         <button type="submit" class="hero-btn-primary">Yayınla</button>
       </div>
-      <div class="hero-help" id="hero-help-text">Resim seçtikten sonra Yayınla.</div>
+      <div class="hero-help" id="hero-help-text">Resim seç, konumlandır, sonra Yayınla.</div>
     </div>
   </form>
 </div>
@@ -110,10 +164,122 @@
   var fileInput = document.getElementById('hero-file-input');
   var fileTrigger = document.getElementById('hero-file-trigger');
   var form = document.getElementById('home-hero-form');
+  var imageDataInput = document.getElementById('hero-image-data');
   var imageUrlInput = document.getElementById('hero-image-url');
-  var previewWrap = document.getElementById('hero-preview-wrap');
   var previewImage = document.getElementById('hero-preview-image');
+  var stage = document.getElementById('hero-stage');
+  var zoomInput = document.getElementById('hero-zoom');
+  var resetBtn = document.getElementById('hero-reset');
   var helpText = document.getElementById('hero-help-text');
+
+  var minScale = 0.70;
+  var maxScale = 1.80;
+  var wheelStep = 0.006;
+  var baseScale = 1;
+  var objectUrl = '';
+  var dragging = false;
+  var startX = 0;
+  var startY = 0;
+  var state = {
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+  };
+
+  function clamp(v, min, max) {
+    if (v < min) return min;
+    if (v > max) return max;
+    return v;
+  }
+
+  function hasImage() {
+    return (
+      previewImage.style.display !== 'none' &&
+      !!previewImage.src &&
+      previewImage.complete === true &&
+      (previewImage.naturalWidth || 0) > 1 &&
+      (previewImage.naturalHeight || 0) > 1
+    );
+  }
+
+  function getBalancedInitialScale(iw, ih, vw, vh) {
+    var imageRatio = (iw || 1) / (ih || 1);
+    var viewRatio = (vw || 1) / (vh || 1);
+    var mismatch = Math.abs(Math.log(imageRatio / viewRatio));
+    return clamp(1 - (mismatch * 0.22), 0.82, 1);
+  }
+
+  function calculateBaseScale() {
+    var vw = stage.clientWidth || 1;
+    var vh = stage.clientHeight || 1;
+    var iw = previewImage.naturalWidth || vw;
+    var ih = previewImage.naturalHeight || vh;
+    baseScale = Math.max(vw / iw, vh / ih);
+  }
+
+  function applyTransform() {
+    if (!hasImage()) return;
+    var vw = stage.clientWidth || 1;
+    var vh = stage.clientHeight || 1;
+    var iw = previewImage.naturalWidth || vw;
+    var ih = previewImage.naturalHeight || vh;
+    var finalScale = baseScale * state.scale;
+    var drawW = iw * finalScale;
+    var drawH = ih * finalScale;
+    var drawX = (vw - drawW) / 2 + state.offsetX;
+    var drawY = (vh - drawH) / 2 + state.offsetY;
+
+    previewImage.style.display = 'block';
+    previewImage.style.width = drawW + 'px';
+    previewImage.style.height = drawH + 'px';
+    previewImage.style.left = drawX + 'px';
+    previewImage.style.top = drawY + 'px';
+    zoomInput.value = state.scale.toFixed(3);
+  }
+
+  function resetTransform() {
+    if (!hasImage()) return;
+    calculateBaseScale();
+    var vw = stage.clientWidth || 1;
+    var vh = stage.clientHeight || 1;
+    var iw = previewImage.naturalWidth || vw;
+    var ih = previewImage.naturalHeight || vh;
+    state.scale = getBalancedInitialScale(iw, ih, vw, vh);
+    state.offsetX = 0;
+    state.offsetY = 0;
+    applyTransform();
+  }
+
+  function renderExportDataUrl() {
+    if (!hasImage()) return '';
+    var vw = stage.clientWidth || 1;
+    var vh = stage.clientHeight || 1;
+    var exportScale = 2;
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(vw * exportScale));
+    canvas.height = Math.max(1, Math.round(vh * exportScale));
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    var iw = previewImage.naturalWidth || 0;
+    var ih = previewImage.naturalHeight || 0;
+    if (iw <= 1 || ih <= 1) return '';
+    var finalScale = baseScale * state.scale;
+    var drawW = iw * finalScale;
+    var drawH = ih * finalScale;
+    var drawX = (vw - drawW) / 2 + state.offsetX;
+    var drawY = (vh - drawH) / 2 + state.offsetY;
+    var sx = canvas.width / vw;
+    var sy = canvas.height / vh;
+
+    ctx.fillStyle = '#fddeb7';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(previewImage, drawX * sx, drawY * sy, drawW * sx, drawH * sy);
+
+    var jpg = canvas.toDataURL('image/jpeg', 0.82);
+    if (jpg && jpg.length < 1_900_000) return jpg;
+    return canvas.toDataURL('image/jpeg', 0.70);
+  }
 
   fileTrigger.addEventListener('click', function () {
     fileInput.value = '';
@@ -123,22 +289,93 @@
   fileInput.addEventListener('change', function () {
     var file = fileInput.files && fileInput.files[0];
     if (!file) return;
-    var objectUrl = URL.createObjectURL(file);
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+    previewImage.onload = function () {
+      resetTransform();
+      imageDataInput.value = '';
+      imageUrlInput.value = '';
+      helpText.textContent = 'Resim secildi. Zoom/konum ayarindan sonra Yayinla.';
+    };
     previewImage.src = objectUrl;
-    previewWrap.style.display = 'block';
     fileTrigger.textContent = file.name || 'Resim seçildi';
-    helpText.textContent = 'Resim secildi. Simdi Yayinla.';
+  });
+
+  stage.addEventListener('wheel', function (e) {
+    if (!hasImage()) return;
+    e.preventDefault();
+    var step = wheelStep;
+    if (e.altKey) step = 0.002;
+    else if (e.shiftKey) step = wheelStep * 0.5;
+    var delta = e.deltaY > 0 ? -step : step;
+    state.scale = clamp(state.scale + delta, minScale, maxScale);
+    applyTransform();
+  }, { passive: false });
+
+  stage.addEventListener('pointerdown', function (e) {
+    if (!hasImage()) return;
+    dragging = true;
+    stage.classList.add('dragging');
+    startX = e.clientX - state.offsetX;
+    startY = e.clientY - state.offsetY;
+    stage.setPointerCapture(e.pointerId);
+  });
+
+  stage.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    state.offsetX = e.clientX - startX;
+    state.offsetY = e.clientY - startY;
+    applyTransform();
+  });
+
+  function stopDrag(e) {
+    dragging = false;
+    stage.classList.remove('dragging');
+    try { stage.releasePointerCapture(e.pointerId); } catch (_) {}
+  }
+  stage.addEventListener('pointerup', stopDrag);
+  stage.addEventListener('pointercancel', stopDrag);
+
+  zoomInput.addEventListener('input', function () {
+    state.scale = clamp(parseFloat(zoomInput.value) || 1, minScale, maxScale);
+    applyTransform();
+  });
+
+  resetBtn.addEventListener('click', function () {
+    resetTransform();
+    helpText.textContent = 'Konum ve zoom sifirlandi.';
   });
 
   form.addEventListener('submit', function (e) {
-    var hasNewFile = Boolean(fileInput.files && fileInput.files[0]);
-    if (!hasNewFile && !imageUrlInput.value) {
+    var hasExisting = Boolean(imageUrlInput.value);
+    if (!hasImage() && !hasExisting) {
       e.preventDefault();
       alert('Once bir gorsel secmelisin.');
       return;
     }
+    if (hasImage()) {
+      var dataUrl = renderExportDataUrl();
+      if (!dataUrl) {
+        e.preventDefault();
+        alert('Gorsel islenemedi. Tekrar dene.');
+        return;
+      }
+      imageDataInput.value = dataUrl;
+      imageUrlInput.value = '';
+    }
     helpText.textContent = 'Yayinlaniyor...';
   });
+
+  if (previewImage.src) {
+    previewImage.onload = function () {
+      resetTransform();
+    };
+    if (previewImage.complete && previewImage.naturalWidth > 1) {
+      resetTransform();
+    }
+  } else {
+    previewImage.style.display = 'none';
+  }
 })();
 </script>
 {% endblock %}

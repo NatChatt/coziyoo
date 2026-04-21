@@ -269,7 +269,22 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
             next_pointer = image_data
             next_asset_key = old_asset_key or None
 
-            if uploaded_file:
+            # Priority: client-rendered data URL (includes drag/zoom placement) wins.
+            if image_data.startswith("data:image/"):
+                decoded, content_type, ext = _decode_data_url(image_data)
+                if not decoded:
+                    messages.error(request, "Görsel verisi geçersiz veya dosya boyutu çok büyük.")
+                    return redirect(request.path)
+
+                if s3_utils.is_configured() and getattr(settings, "S3_BUCKET_SELLER_DOCS", ""):
+                    bucket = settings.S3_BUCKET_SELLER_DOCS
+                    key = _build_hero_asset_key(ext)
+                    next_pointer = s3_utils.put_bytes(bucket, key, decoded, content_type)
+                    next_asset_key = key
+                else:
+                    next_pointer = image_data
+                    next_asset_key = None
+            elif uploaded_file:
                 decoded, content_type, ext = _decode_uploaded_file(uploaded_file)
                 if not decoded:
                     messages.error(request, "Görsel dosyası geçersiz veya dosya boyutu çok büyük.")
@@ -284,22 +299,6 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
                     encoded = base64.b64encode(decoded).decode("ascii")
                     next_pointer = f"data:{content_type};base64,{encoded}"
                     next_asset_key = None
-            elif image_data.startswith("data:image/"):
-                decoded, content_type, ext = _decode_data_url(image_data)
-                if not decoded:
-                    messages.error(request, "Görsel verisi geçersiz veya dosya boyutu çok büyük.")
-                    return redirect(request.path)
-
-                if s3_utils.is_configured() and getattr(settings, "S3_BUCKET_SELLER_DOCS", ""):
-                    bucket = settings.S3_BUCKET_SELLER_DOCS
-                    key = _build_hero_asset_key(ext)
-                    next_pointer = s3_utils.put_bytes(bucket, key, decoded, content_type)
-                    next_asset_key = key
-                else:
-                    # Fallback: keep data URL if storage is not configured.
-                    next_pointer = image_data
-                    next_asset_key = None
-
             latest.mobile_home_header_image_url = next_pointer or None
             latest.save(update_fields=["mobile_home_header_image_url"])
             _set_latest_optional_fields(latest.id, edit_json, next_asset_key or "")
