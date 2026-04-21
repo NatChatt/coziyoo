@@ -880,6 +880,25 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${safeAlpha})`;
 }
 
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function smoothstep01(value: number): number {
+  const t = clamp01(value);
+  return t * t * (3 - 2 * t);
+}
+
+function blendHexColors(fromHex: string, toHex: string, ratio: number): string {
+  const a = hexToRgb(fromHex);
+  const b = hexToRgb(toHex);
+  const t = clamp01(ratio);
+  const r = Math.round(a.r + (b.r - a.r) * t);
+  const g = Math.round(a.g + (b.g - a.g) * t);
+  const bch = Math.round(a.b + (b.b - a.b) * t);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bch.toString(16).padStart(2, '0')}`.toUpperCase();
+}
+
 function relativeLuminanceFromHex(hex: string): number {
   const { r, g, b } = hexToRgb(hex);
   const [rs, gs, bs] = [r, g, b].map((channel) => {
@@ -4212,8 +4231,11 @@ export default function HomeScreen({
       const maxY = Math.max(0, contentH - viewportH);
       const EXIT_THRESHOLD = 24;
       const HERO_ZONE_Y = 250;
+      const HERO_TONE = '#FDDEB7';
+      const SURFACE_TONE = '#FFFBF4';
+      const BLEND_STEPS = 24;
 
-      let nextBg = '#FFFBF4';
+      let nextBg = SURFACE_TONE;
       let zone = overscrollZoneRef.current;
 
       if (zone === 'top') {
@@ -4228,9 +4250,16 @@ export default function HomeScreen({
       overscrollZoneRef.current = zone;
 
       if (zone === 'top') {
-        nextBg = '#FDDEB7'; // top overscroll: hero tonu
+        if (y <= 0) {
+          nextBg = HERO_TONE;
+        } else {
+          const raw = y / (HERO_ZONE_Y + EXIT_THRESHOLD);
+          const eased = smoothstep01(raw);
+          const quantized = Math.round(eased * BLEND_STEPS) / BLEND_STEPS;
+          nextBg = blendHexColors(HERO_TONE, SURFACE_TONE, quantized);
+        }
       } else if (zone === 'bottom') {
-        nextBg = '#FFFBF4'; // bottom overscroll: kart zemini tonu
+        nextBg = SURFACE_TONE; // bottom overscroll: kart zemini tonu
       }
 
       if (nextBg !== scrollSurfaceBgRef.current) {
@@ -4238,9 +4267,20 @@ export default function HomeScreen({
         setScrollSurfaceBg(nextBg);
       }
 
-      // When search area becomes sticky, top chrome should match search background.
-      var nextTopBg = y >= HERO_ZONE_Y ? '#FFFBF4' : '#FDDEB7';
-      if (y < 0) nextTopBg = '#FDDEB7';
+      // Keep top chrome transition very soft so the change is less noticeable.
+      const TOP_BLEND_START_Y = 170;
+      const TOP_BLEND_END_Y = 270;
+      let nextTopBg = HERO_TONE;
+      if (y < 0) {
+        nextTopBg = HERO_TONE;
+      } else if (y >= TOP_BLEND_END_Y) {
+        nextTopBg = SURFACE_TONE;
+      } else if (y > TOP_BLEND_START_Y) {
+        const raw = (y - TOP_BLEND_START_Y) / (TOP_BLEND_END_Y - TOP_BLEND_START_Y);
+        const eased = smoothstep01(raw);
+        const quantized = Math.round(eased * BLEND_STEPS) / BLEND_STEPS;
+        nextTopBg = blendHexColors(HERO_TONE, SURFACE_TONE, quantized);
+      }
       if (nextTopBg !== homeTopChromeBgRef.current) {
         homeTopChromeBgRef.current = nextTopBg;
         setHomeTopChromeBg(nextTopBg);
