@@ -4273,8 +4273,8 @@ export default function HomeScreen({
         setScrollSurfaceBg(nextBg);
       }
 
-      // Hero->sticky ve sticky->hero ayni fade egirisini kullansin (iki yon de stabil).
-      const nextTopBg = y < 0 ? HERO_TONE : blendedTopTone;
+      // En ustteki SafeArea/StatusBar katmani scroll yuzeyiyle ayni renkten beslensin.
+      const nextTopBg = y < 0 ? HERO_TONE : nextBg;
       if (nextTopBg !== homeTopChromeBgRef.current) {
         homeTopChromeBgRef.current = nextTopBg;
         setHomeTopChromeBg(nextTopBg);
