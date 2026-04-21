@@ -4311,7 +4311,7 @@ export default function HomeScreen({
           stickyHeaderIndices={[1]}
         >
         {/* Hero Header */}
-        <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, backgroundColor: '#F4D6BF' } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
+        <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, backgroundColor: '#E9C8AA' } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
           {USE_NEW_HOME_HERO ? (
             <>
               <ImageBackground
@@ -4323,7 +4323,7 @@ export default function HomeScreen({
               </ImageBackground>
               {LinearGradient ? (
                 <LinearGradient
-                  colors={['#F4D6BF', 'rgba(244, 214, 191, 0.82)', 'rgba(244, 214, 191, 0.32)', 'rgba(244, 214, 191, 0)']}
+                  colors={['#E9C8AA', 'rgba(233, 200, 170, 0.84)', 'rgba(233, 200, 170, 0.36)', 'rgba(233, 200, 170, 0)']}
                   locations={[0, 0.22, 0.62, 1]}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
@@ -5087,7 +5087,7 @@ export default function HomeScreen({
 
   /* ---------- Main render ---------- */
   const topChromeBg = activeTab === 'home'
-    ? (USE_NEW_HOME_HERO ? '#F4D6BF' : '#FDDEB7')
+    ? (USE_NEW_HOME_HERO ? '#E9C8AA' : '#FDDEB7')
     : '#FFFBF4';
 
   return (
