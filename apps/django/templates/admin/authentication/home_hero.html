@@ -385,6 +385,22 @@
               <button type="button" id="hero-bg-remove" class="hero-btn-secondary">Arka Plani Sil</button>
             </div>
           </div>
+          <div class="hero-control-group">
+            <div class="hero-control-label">Pro Renk (Curves/HSL)</div>
+            <div class="hero-control-label" style="margin-top:8px;">Pozlama</div>
+            <input id="hero-pro-exposure" class="hero-range" type="range" min="-80" max="80" step="1" value="0" />
+            <div class="hero-control-label" style="margin-top:8px;">Kontrast</div>
+            <input id="hero-pro-contrast" class="hero-range" type="range" min="-80" max="80" step="1" value="0" />
+            <div class="hero-control-label" style="margin-top:8px;">Doygunluk</div>
+            <input id="hero-pro-saturation" class="hero-range" type="range" min="0" max="220" step="1" value="108" />
+            <div class="hero-control-label" style="margin-top:8px;">Hue</div>
+            <input id="hero-pro-hue" class="hero-range" type="range" min="-180" max="180" step="1" value="0" />
+            <div class="hero-control-label" style="margin-top:8px;">Sicaklik</div>
+            <input id="hero-pro-warmth" class="hero-range" type="range" min="-100" max="100" step="1" value="0" />
+            <div style="display:flex; gap:8px; margin-top:10px;">
+              <button type="button" id="hero-pro-reset" class="hero-btn-secondary">Pro Ayar Reset</button>
+            </div>
+          </div>
           <div class="hero-help" id="hero-help-text">Ipuçlari: Sahneyi sürükle, mouse tekerleği ile ince zoom yap.</div>
         </div>
 
@@ -462,6 +478,12 @@
   var bgSoftnessInput = document.getElementById('hero-bg-softness');
   var bgRemoveBtn = document.getElementById('hero-bg-remove');
   var bgUndoBtn = document.getElementById('hero-bg-undo');
+  var proExposureInput = document.getElementById('hero-pro-exposure');
+  var proContrastInput = document.getElementById('hero-pro-contrast');
+  var proSaturationInput = document.getElementById('hero-pro-saturation');
+  var proHueInput = document.getElementById('hero-pro-hue');
+  var proWarmthInput = document.getElementById('hero-pro-warmth');
+  var proResetBtn = document.getElementById('hero-pro-reset');
   var publishStage = document.getElementById('hero-publish-stage');
   var publishImage = document.getElementById('hero-publish-image');
   var publishEmpty = document.getElementById('hero-publish-empty');
@@ -503,6 +525,11 @@
     offsetY: 0,
     fadeX: 48,
     fadeY: 58,
+    proExposure: 0,
+    proContrast: 0,
+    proSaturation: 108,
+    proHue: 0,
+    proWarmth: 0,
   };
   var publishState = {
     scale: 1,
@@ -600,6 +627,11 @@
       if (typeof parsed.offsetY === 'number') state.offsetY = parsed.offsetY;
       if (typeof parsed.fadeX === 'number') state.fadeX = clamp(parsed.fadeX, 0, 100);
       if (typeof parsed.fadeY === 'number') state.fadeY = clamp(parsed.fadeY, 0, 100);
+      if (typeof parsed.proExposure === 'number') state.proExposure = clamp(parsed.proExposure, -80, 80);
+      if (typeof parsed.proContrast === 'number') state.proContrast = clamp(parsed.proContrast, -80, 80);
+      if (typeof parsed.proSaturation === 'number') state.proSaturation = clamp(parsed.proSaturation, 0, 220);
+      if (typeof parsed.proHue === 'number') state.proHue = clamp(parsed.proHue, -180, 180);
+      if (typeof parsed.proWarmth === 'number') state.proWarmth = clamp(parsed.proWarmth, -100, 100);
     } catch (_) {}
   }
 
@@ -607,6 +639,32 @@
     zoomInput.value = state.scale.toFixed(2);
     fadeXInput.value = String(Math.round(state.fadeX));
     fadeYInput.value = String(Math.round(state.fadeY));
+    proExposureInput.value = String(Math.round(state.proExposure));
+    proContrastInput.value = String(Math.round(state.proContrast));
+    proSaturationInput.value = String(Math.round(state.proSaturation));
+    proHueInput.value = String(Math.round(state.proHue));
+    proWarmthInput.value = String(Math.round(state.proWarmth));
+  }
+
+  function buildProCssFilter() {
+    var exposure = clamp(state.proExposure, -80, 80);
+    var contrast = clamp(state.proContrast, -80, 80);
+    var saturation = clamp(state.proSaturation, 0, 220);
+    var hue = clamp(state.proHue, -180, 180);
+    var warmth = clamp(state.proWarmth, -100, 100);
+
+    var brightnessPct = clamp(100 + exposure, 30, 220);
+    var contrastPct = clamp(100 + contrast, 20, 220);
+    var warmthSepiaPct = warmth > 0 ? clamp(warmth * 0.8, 0, 80) : 0;
+    var coolShift = warmth < 0 ? Math.abs(warmth) * 0.18 : 0;
+    var hueDeg = hue + coolShift;
+    var saturationPct = clamp(saturation + (warmth > 0 ? warmth * 0.25 : -Math.abs(warmth) * 0.1), 0, 260);
+
+    return 'brightness(' + brightnessPct.toFixed(1) + '%) '
+      + 'contrast(' + contrastPct.toFixed(1) + '%) '
+      + 'saturate(' + saturationPct.toFixed(1) + '%) '
+      + 'hue-rotate(' + hueDeg.toFixed(2) + 'deg) '
+      + 'sepia(' + warmthSepiaPct.toFixed(1) + '%)';
   }
 
   function calculateBaseScale() {
@@ -643,7 +701,7 @@
     image.style.height = drawH + 'px';
     image.style.left = drawX + 'px';
     image.style.top = drawY + 'px';
-    image.style.filter = 'brightness(1.06) saturate(1.08) contrast(1.03)';
+    image.style.filter = buildProCssFilter();
   }
 
   function applyPublishTransform() {
@@ -916,6 +974,11 @@
       offsetY: state.offsetY,
       fadeX: state.fadeX,
       fadeY: state.fadeY,
+      proExposure: state.proExposure,
+      proContrast: state.proContrast,
+      proSaturation: state.proSaturation,
+      proHue: state.proHue,
+      proWarmth: state.proWarmth,
       updatedAt: new Date().toISOString(),
     });
     editJsonInput.value = json;
@@ -928,6 +991,11 @@
     state.offsetY = 0;
     state.fadeX = 48;
     state.fadeY = 58;
+    state.proExposure = 0;
+    state.proContrast = 0;
+    state.proSaturation = 108;
+    state.proHue = 0;
+    state.proWarmth = 0;
     applyAll();
     saveEditState();
   }
@@ -952,7 +1020,9 @@
 
     var sx = canvas.width / vw;
     var sy = canvas.height / vh;
+    ctx.filter = buildProCssFilter();
     ctx.drawImage(image, drawX * sx, drawY * sy, drawW * sx, drawH * sy);
+    ctx.filter = 'none';
     return canvas;
   }
 
@@ -1074,7 +1144,9 @@
     try {
       ctx.fillStyle = '#fddeb7';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.filter = buildProCssFilter();
       ctx.drawImage(image, drawX * sx, drawY * sy, drawW * sx, drawH * sy);
+      ctx.filter = 'none';
 
       var fade = getFadeModel();
 
@@ -1391,6 +1463,42 @@
     state.fadeY = clamp(parseFloat(fadeYInput.value) || 0, 0, 100);
     applyAll();
     saveEditState();
+  });
+
+  proExposureInput.addEventListener('input', function () {
+    state.proExposure = clamp(parseFloat(proExposureInput.value) || 0, -80, 80);
+    applyAll();
+    saveEditState();
+  });
+  proContrastInput.addEventListener('input', function () {
+    state.proContrast = clamp(parseFloat(proContrastInput.value) || 0, -80, 80);
+    applyAll();
+    saveEditState();
+  });
+  proSaturationInput.addEventListener('input', function () {
+    state.proSaturation = clamp(parseFloat(proSaturationInput.value) || 108, 0, 220);
+    applyAll();
+    saveEditState();
+  });
+  proHueInput.addEventListener('input', function () {
+    state.proHue = clamp(parseFloat(proHueInput.value) || 0, -180, 180);
+    applyAll();
+    saveEditState();
+  });
+  proWarmthInput.addEventListener('input', function () {
+    state.proWarmth = clamp(parseFloat(proWarmthInput.value) || 0, -100, 100);
+    applyAll();
+    saveEditState();
+  });
+  proResetBtn.addEventListener('click', function () {
+    state.proExposure = 0;
+    state.proContrast = 0;
+    state.proSaturation = 108;
+    state.proHue = 0;
+    state.proWarmth = 0;
+    applyAll();
+    saveEditState();
+    helpText.textContent = 'Pro renk ayarlari sifirlandi.';
   });
 
   resetBtn.addEventListener('click', function () {
