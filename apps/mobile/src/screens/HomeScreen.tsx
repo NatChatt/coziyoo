@@ -4313,13 +4313,24 @@ export default function HomeScreen({
         {/* Hero Header */}
         <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, backgroundColor: '#F4D6BF' } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
           {USE_NEW_HOME_HERO ? (
-            <ImageBackground
-                source={headerImageSource}
-                style={styles.heroBgFullImage}
-                imageStyle={styles.heroBgFullImageInner}
-                onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
-              >
-            </ImageBackground>
+            <>
+              <ImageBackground
+                  source={headerImageSource}
+                  style={styles.heroBgFullImage}
+                  imageStyle={styles.heroBgFullImageInner}
+                  onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
+                >
+              </ImageBackground>
+              {LinearGradient ? (
+                <LinearGradient
+                  colors={['rgba(255, 251, 244, 0)', 'rgba(255, 251, 244, 0.7)', '#FFFBF4']}
+                  locations={[0, 0.66, 1]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.heroNewBottomFade}
+                />
+              ) : null}
+            </>
           ) : (
             <>
               {LinearGradient ? (
@@ -6096,6 +6107,13 @@ const styles = StyleSheet.create({
   },
   heroBgFullImageInner: {
     resizeMode: 'cover',
+  },
+  heroNewBottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 110,
   },
   heroFoodBgImg: {
     position: 'absolute',
