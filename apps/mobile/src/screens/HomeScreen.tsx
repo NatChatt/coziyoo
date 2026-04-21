@@ -2267,10 +2267,10 @@ export default function HomeScreen({
   onAuthRefresh,
   onSwitchToSeller,
 }: Props) {
-  const { height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
   const heroDynamicHeight = useMemo(
-    () => Math.max(210, Math.min(360, Math.round(screenHeight * 0.32))),
-    [screenHeight],
+    () => Math.max(220, Math.min(252, Math.round(screenWidth * 0.60))),
+    [screenWidth],
   );
   const [currentAuth, setCurrentAuth] = useState<AuthSession>(auth);
   const [apiUrl, setApiUrl] = useState('http://localhost:3000');
@@ -4304,6 +4304,8 @@ export default function HomeScreen({
           showsVerticalScrollIndicator={false}
           onScroll={handleFeedScroll}
           scrollEventThrottle={16}
+          contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false}
           contentContainerStyle={styles.scrollContent}
           style={[styles.scroll, { backgroundColor: 'transparent' }]}
           stickyHeaderIndices={[1]}
