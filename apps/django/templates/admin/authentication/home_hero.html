@@ -275,6 +275,16 @@
             </div>
           </div>
           <div class="hero-control-group">
+            <div class="hero-control-label">Ton Fircasi (Yeni)</div>
+            <input id="hero-tone-size" class="hero-range" type="range" min="8" max="140" step="1" value="38" />
+            <div class="hero-control-label" style="margin-top:8px;">Etki</div>
+            <input id="hero-tone-strength" class="hero-range" type="range" min="2" max="40" step="1" value="14" />
+            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+              <button type="button" id="hero-tone-toggle" class="hero-btn-secondary">Ton Fircasi Ac</button>
+              <button type="button" id="hero-tone-mode" class="hero-btn-secondary">Mod: Ac</button>
+            </div>
+          </div>
+          <div class="hero-control-group">
             <div class="hero-control-label">Arka Plan Silme</div>
             <input id="hero-bg-tolerance" class="hero-range" type="range" min="5" max="180" step="1" value="52" />
             <div class="hero-control-label" style="margin-top:8px;">Yumusatma</div>
@@ -317,6 +327,10 @@
   var resetBtn = document.getElementById('hero-reset');
   var eraseSizeInput = document.getElementById('hero-erase-size');
   var eraseToggleBtn = document.getElementById('hero-erase-toggle');
+  var toneSizeInput = document.getElementById('hero-tone-size');
+  var toneStrengthInput = document.getElementById('hero-tone-strength');
+  var toneToggleBtn = document.getElementById('hero-tone-toggle');
+  var toneModeBtn = document.getElementById('hero-tone-mode');
   var bgToleranceInput = document.getElementById('hero-bg-tolerance');
   var bgSoftnessInput = document.getElementById('hero-bg-softness');
   var bgRemoveBtn = document.getElementById('hero-bg-remove');
@@ -328,11 +342,18 @@
   var baseScale = 1;
   var dragging = false;
   var eraseMode = false;
+  var toneMode = false;
+  var toneLightMode = true;
   var eraseSessionActive = false;
   var eraseChanged = false;
   var erasePointerDown = false;
   var eraseLastPoint = null;
   var eraseCtx = null;
+  var toneSessionActive = false;
+  var toneChanged = false;
+  var tonePointerDown = false;
+  var toneLastPoint = null;
+  var toneCtx = null;
   var backgroundPickMode = false;
   var startX = 0;
   var startY = 0;
@@ -385,6 +406,25 @@
     if (!eraseMode) {
       editCanvas.style.display = 'none';
       eraseCtx = null;
+      if (image.src) image.style.display = 'block';
+    }
+  }
+
+  function setToneMode(enabled) {
+    if (!enabled && toneSessionActive) {
+      finishToneSession();
+    }
+    toneMode = !!enabled;
+    backgroundPickMode = false;
+    toneSessionActive = false;
+    tonePointerDown = false;
+    toneLastPoint = null;
+    stage.classList.toggle('erase-mode', toneMode);
+    toneToggleBtn.textContent = toneMode ? 'Ton Fircasi Kapat' : 'Ton Fircasi Ac';
+    toneModeBtn.textContent = toneLightMode ? 'Mod: Ac' : 'Mod: Koyu';
+    if (!toneMode) {
+      editCanvas.style.display = 'none';
+      toneCtx = null;
       if (image.src) image.style.display = 'block';
     }
   }
@@ -525,6 +565,93 @@
     eraseSessionActive = false;
     erasePointerDown = false;
     eraseLastPoint = null;
+  }
+
+  function startToneSession() {
+    if (!hasImage()) return false;
+    var vw = Math.max(1, stage.clientWidth || 1);
+    var vh = Math.max(1, stage.clientHeight || 1);
+    var sourceCanvas = renderImageOnlyCanvas(vw, vh);
+    if (!sourceCanvas) return false;
+    toneCtx = editCanvas.getContext('2d');
+    if (!toneCtx) return false;
+    editCanvas.width = vw;
+    editCanvas.height = vh;
+    editCanvas.style.left = '0px';
+    editCanvas.style.top = '0px';
+    editCanvas.style.width = vw + 'px';
+    editCanvas.style.height = vh + 'px';
+    toneCtx.clearRect(0, 0, vw, vh);
+    toneCtx.drawImage(sourceCanvas, 0, 0, vw, vh);
+    image.style.display = 'none';
+    editCanvas.style.display = 'block';
+    toneSessionActive = true;
+    toneChanged = false;
+    toneLastPoint = null;
+    return true;
+  }
+
+  function tonePoint(x, y) {
+    if (!toneCtx) return;
+    var radius = Math.max(4, parseFloat(toneSizeInput.value || '38') / 2);
+    var strength = clamp(parseFloat(toneStrengthInput.value || '14'), 2, 40) / 100;
+    var gradient = toneCtx.createRadialGradient(x, y, 0, x, y, radius);
+    if (toneLightMode) {
+      gradient.addColorStop(0, 'rgba(255,255,255,' + strength.toFixed(3) + ')');
+      gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    } else {
+      gradient.addColorStop(0, 'rgba(0,0,0,' + strength.toFixed(3) + ')');
+      gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    }
+    toneCtx.save();
+    toneCtx.globalCompositeOperation = 'source-over';
+    toneCtx.fillStyle = gradient;
+    toneCtx.beginPath();
+    toneCtx.arc(x, y, radius, 0, Math.PI * 2);
+    toneCtx.fill();
+    toneCtx.restore();
+  }
+
+  function toneStroke(fromPoint, toPoint) {
+    if (!toPoint) return;
+    if (!fromPoint) {
+      tonePoint(toPoint.x, toPoint.y);
+      return;
+    }
+    var dx = toPoint.x - fromPoint.x;
+    var dy = toPoint.y - fromPoint.y;
+    var dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+    var step = Math.max(2, (parseFloat(toneSizeInput.value || '38') / 4));
+    var steps = Math.max(1, Math.ceil(dist / step));
+    for (var i = 0; i <= steps; i += 1) {
+      var t = i / steps;
+      tonePoint(fromPoint.x + dx * t, fromPoint.y + dy * t);
+    }
+  }
+
+  function finishToneSession() {
+    if (!toneSessionActive) return;
+    if (toneChanged) {
+      var out = editCanvas.toDataURL('image/png');
+      imageDataInput.value = out;
+      imageUrlInput.value = '';
+      setImageSource(out);
+      image.onload = function () {
+        calculateBaseScale();
+        state.scale = 1;
+        state.offsetX = 0;
+        state.offsetY = 0;
+        applyAll();
+        saveEditState();
+      };
+    } else {
+      if (image.src) image.style.display = 'block';
+    }
+    editCanvas.style.display = 'none';
+    toneCtx = null;
+    toneSessionActive = false;
+    tonePointerDown = false;
+    toneLastPoint = null;
   }
 
   function getFadeModel() {
@@ -839,7 +966,7 @@
   });
 
   stage.addEventListener('wheel', function (e) {
-    if (eraseMode) return;
+    if (eraseMode || toneMode) return;
     if (!hasImage()) return;
     e.preventDefault();
     var delta = e.deltaY > 0 ? -wheelStep : wheelStep;
@@ -849,6 +976,22 @@
   }, { passive: false });
 
   stage.addEventListener('pointerdown', function (e) {
+    if (toneMode) {
+      if (!hasImage() && !toneSessionActive) return;
+      if (!toneSessionActive) {
+        pushUndoSnapshot();
+        if (!startToneSession()) return;
+      }
+      tonePointerDown = true;
+      var toneStartPoint = getStagePoint(e);
+      toneStroke(null, toneStartPoint);
+      toneLastPoint = toneStartPoint;
+      toneChanged = true;
+      stage.setPointerCapture(e.pointerId);
+      helpText.textContent = 'Ton fircasi aktif: secilen bolgede tonu ac/koyu yapar.';
+      return;
+    }
+
     if (eraseMode) {
       if (!hasImage() && !eraseSessionActive) return;
       if (!eraseSessionActive) {
@@ -880,6 +1023,14 @@
   });
 
   stage.addEventListener('pointermove', function (e) {
+    if (toneMode && tonePointerDown && toneSessionActive) {
+      var tonePointNow = getStagePoint(e);
+      toneStroke(toneLastPoint, tonePointNow);
+      toneLastPoint = tonePointNow;
+      toneChanged = true;
+      return;
+    }
+
     if (eraseMode && erasePointerDown && eraseSessionActive) {
       var point = getStagePoint(e);
       eraseStroke(eraseLastPoint, point);
@@ -894,6 +1045,14 @@
   });
 
   function stopDrag(e) {
+    if (toneMode && tonePointerDown) {
+      finishToneSession();
+      try {
+        stage.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      return;
+    }
+
     if (eraseMode && erasePointerDown) {
       finishEraseSession();
       try {
@@ -932,6 +1091,7 @@
 
   resetBtn.addEventListener('click', function () {
     setEraseMode(false);
+    setToneMode(false);
     resetState();
     helpText.textContent = 'Reset tamam. Surukle, zoom ve fade ile tekrar ayarla.';
   });
@@ -941,6 +1101,7 @@
       helpText.textContent = 'Once bir gorsel ekle.';
       return;
     }
+    if (!eraseMode) setToneMode(false);
     setEraseMode(!eraseMode);
     helpText.textContent = eraseMode
       ? 'Silgi acik. Mouse ile surukleyerek resmi temizleyebilirsin.'
@@ -949,6 +1110,7 @@
 
   bgRemoveBtn.addEventListener('click', function () {
     setEraseMode(false);
+    setToneMode(false);
     if (!hasImage()) {
       helpText.textContent = 'Once bir gorsel ekle.';
       return;
@@ -965,6 +1127,7 @@
     var prev = bgUndoStack.pop() || '';
     if (!prev) return;
     setEraseMode(false);
+    setToneMode(false);
     imageDataInput.value = prev;
     imageUrlInput.value = '';
     image.onload = function () {
@@ -983,6 +1146,7 @@
 
   form.addEventListener('submit', function (e) {
     setEraseMode(false);
+    setToneMode(false);
     actionInput.value = 'approve';
     if (!hasImage()) {
       e.preventDefault();
@@ -1010,6 +1174,26 @@
 
   parseSavedState();
   applyFadePreview();
+
+  toneToggleBtn.addEventListener('click', function () {
+    if (!toneMode && !hasImage()) {
+      helpText.textContent = 'Once bir gorsel ekle.';
+      return;
+    }
+    if (!toneMode) setEraseMode(false);
+    setToneMode(!toneMode);
+    helpText.textContent = toneMode
+      ? 'Ton fircasi acik. Secilen bolgede tonu ac/koyu yapabilirsin.'
+      : 'Ton fircasi kapali.';
+  });
+
+  toneModeBtn.addEventListener('click', function () {
+    toneLightMode = !toneLightMode;
+    toneModeBtn.textContent = toneLightMode ? 'Mod: Ac' : 'Mod: Koyu';
+    helpText.textContent = toneLightMode
+      ? 'Mod acik: firca secilen bolgeyi aydinlatir.'
+      : 'Mod koyu: firca secilen bolgeyi koyulastirir.';
+  });
 
   var initSrc = image.getAttribute('src') || '';
   if (initSrc) {
