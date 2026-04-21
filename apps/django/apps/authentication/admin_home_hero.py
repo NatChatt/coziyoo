@@ -21,6 +21,17 @@ _MAX_IMAGE_BYTES = 12 * 1024 * 1024
 _COLUMN_EXISTS_CACHE = {}
 
 
+def _content_type_to_ext(content_type: str) -> str:
+    ct = str(content_type or "").lower().strip()
+    if ct == "image/png":
+        return "png"
+    if ct == "image/webp":
+        return "webp"
+    if ct in ("image/jpg", "image/jpeg"):
+        return "jpg"
+    return "jpg"
+
+
 def _normalize_hero_url(value: str) -> str:
     raw = str(value or "").strip()
     if not raw:
@@ -70,6 +81,22 @@ def _decode_data_url(data_url: str):
     elif content_type == "image/webp":
         ext = "webp"
 
+    return binary, content_type, ext
+
+
+def _decode_uploaded_file(uploaded_file):
+    if not uploaded_file:
+        return None, None, None
+    content_type = str(getattr(uploaded_file, "content_type", "") or "").lower().strip()
+    if not content_type.startswith("image/"):
+        return None, None, None
+    try:
+        binary = uploaded_file.read()
+    except Exception:
+        return None, None, None
+    if not binary or len(binary) > _MAX_IMAGE_BYTES:
+        return None, None, None
+    ext = _content_type_to_ext(content_type)
     return binary, content_type, ext
 
 
@@ -214,12 +241,13 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         action = str(request.POST.get("action") or "").strip().lower()
         if action == "approve":
+            uploaded_file = request.FILES.get("mobile_home_header_file")
             image_data = _normalize_hero_url(request.POST.get("mobile_home_header_image_data", ""))
             if not image_data:
                 image_data = _normalize_hero_url(request.POST.get("mobile_home_header_image_url", ""))
             edit_json = _normalize_edit_json(request.POST.get("mobile_home_header_edit_json", ""))
 
-            if not image_data:
+            if not uploaded_file and not image_data:
                 messages.error(request, "Yayınlamak için geçerli bir görsel seç.")
                 return redirect(request.path)
 
@@ -241,7 +269,22 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
             next_pointer = image_data
             next_asset_key = old_asset_key or None
 
-            if image_data.startswith("data:image/"):
+            if uploaded_file:
+                decoded, content_type, ext = _decode_uploaded_file(uploaded_file)
+                if not decoded:
+                    messages.error(request, "Görsel dosyası geçersiz veya dosya boyutu çok büyük.")
+                    return redirect(request.path)
+
+                if s3_utils.is_configured() and getattr(settings, "S3_BUCKET_SELLER_DOCS", ""):
+                    bucket = settings.S3_BUCKET_SELLER_DOCS
+                    key = _build_hero_asset_key(ext)
+                    next_pointer = s3_utils.put_bytes(bucket, key, decoded, content_type)
+                    next_asset_key = key
+                else:
+                    encoded = base64.b64encode(decoded).decode("ascii")
+                    next_pointer = f"data:{content_type};base64,{encoded}"
+                    next_asset_key = None
+            elif image_data.startswith("data:image/"):
                 decoded, content_type, ext = _decode_data_url(image_data)
                 if not decoded:
                     messages.error(request, "Görsel verisi geçersiz veya dosya boyutu çok büyük.")

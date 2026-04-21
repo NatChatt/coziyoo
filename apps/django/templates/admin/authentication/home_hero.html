@@ -80,16 +80,15 @@
   <div class="hero-simple-title">Home Hero</div>
   <div class="hero-simple-subtitle">Sadece resim ekle ve Yayınla.</div>
 
-  <form method="post" id="home-hero-form" novalidate>
+  <form method="post" id="home-hero-form" enctype="multipart/form-data" novalidate>
     {% csrf_token %}
     <input type="hidden" name="action" value="approve" />
-    <input type="hidden" name="mobile_home_header_image_data" id="hero-image-data" value="" />
     <input type="hidden" name="mobile_home_header_image_url" id="hero-image-url" value="{{ current_url_raw|default:'' }}" />
     <input type="hidden" name="mobile_home_header_edit_json" value="" />
 
     <div class="hero-simple-panel">
       <div class="hero-field-label">Telefon Home Hero Resmi</div>
-      <input id="hero-file-input" type="file" accept="image/*" style="display:none" />
+      <input id="hero-file-input" name="mobile_home_header_file" type="file" accept="image/*" style="display:none" />
       <button type="button" id="hero-file-trigger" class="hero-dropzone">
         Dosya seçmek için tıkla
       </button>
@@ -111,7 +110,6 @@
   var fileInput = document.getElementById('hero-file-input');
   var fileTrigger = document.getElementById('hero-file-trigger');
   var form = document.getElementById('home-hero-form');
-  var imageDataInput = document.getElementById('hero-image-data');
   var imageUrlInput = document.getElementById('hero-image-url');
   var previewWrap = document.getElementById('hero-preview-wrap');
   var previewImage = document.getElementById('hero-preview-image');
@@ -125,25 +123,16 @@
   fileInput.addEventListener('change', function () {
     var file = fileInput.files && fileInput.files[0];
     if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function (ev) {
-      var dataUrl = ev.target && ev.target.result ? String(ev.target.result) : '';
-      if (!dataUrl || !dataUrl.startsWith('data:image/')) {
-        helpText.textContent = 'Gorsel okunamadi. Lutfen tekrar dene.';
-        return;
-      }
-      imageDataInput.value = dataUrl;
-      imageUrlInput.value = '';
-      previewImage.src = dataUrl;
-      previewWrap.style.display = 'block';
-      fileTrigger.textContent = file.name || 'Resim seçildi';
-      helpText.textContent = 'Resim secildi. Simdi Yayinla.';
-    };
-    reader.readAsDataURL(file);
+    var objectUrl = URL.createObjectURL(file);
+    previewImage.src = objectUrl;
+    previewWrap.style.display = 'block';
+    fileTrigger.textContent = file.name || 'Resim seçildi';
+    helpText.textContent = 'Resim secildi. Simdi Yayinla.';
   });
 
   form.addEventListener('submit', function (e) {
-    if (!imageDataInput.value && !imageUrlInput.value) {
+    var hasNewFile = Boolean(fileInput.files && fileInput.files[0]);
+    if (!hasNewFile && !imageUrlInput.value) {
       e.preventDefault();
       alert('Once bir gorsel secmelisin.');
       return;
