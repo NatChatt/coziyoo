@@ -2240,17 +2240,10 @@ export default function HomeScreen({
   onAuthRefresh,
   onSwitchToSeller,
 }: Props) {
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight } = useWindowDimensions();
   const heroDynamicHeight = useMemo(
     () => Math.max(210, Math.min(360, Math.round(screenHeight * 0.32))),
     [screenHeight],
-  );
-  const heroImageFrame = useMemo(
-    () => ({
-      right: -(screenWidth * 0.25),
-      width: screenWidth * 1.3,
-    }),
-    [screenWidth],
   );
   const [currentAuth, setCurrentAuth] = useState<AuthSession>(auth);
   const [apiUrl, setApiUrl] = useState('http://localhost:3000');
@@ -4276,16 +4269,7 @@ export default function HomeScreen({
           {USE_NEW_HOME_HERO ? (
             <ImageBackground
                 source={headerImageSource}
-                style={[
-                  styles.heroBgFullImage,
-                  {
-                    left: undefined,
-                    right: heroImageFrame.right,
-                    top: 0,
-                    width: heroImageFrame.width,
-                    height: heroDynamicHeight,
-                  },
-                ]}
+                style={styles.heroBgFullImage}
                 imageStyle={styles.heroBgFullImageInner}
                 onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
               >
