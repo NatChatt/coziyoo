@@ -2426,7 +2426,6 @@ export default function HomeScreen({
   const overscrollZoneRef = useRef<'none' | 'top' | 'bottom'>('none');
   const [homeTopChromeBg, setHomeTopChromeBg] = useState('#FDDEB7');
   const homeTopChromeBgRef = useRef('#FDDEB7');
-  const stickyTopChromeRef = useRef(false);
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
     () => DAILY_FLASH_MEALS.join(' • '),
@@ -4268,19 +4267,17 @@ export default function HomeScreen({
         setScrollSurfaceBg(nextBg);
       }
 
-      // Sticky search'te anlık geçiş; geri dönüşte küçük histerezis ile blink'i engelle.
-      const STICKY_ENTER_Y = HERO_ZONE_Y;
-      const STICKY_EXIT_Y = HERO_ZONE_Y - 40;
-      let isStickyTop = stickyTopChromeRef.current;
-      if (y < 0) {
-        isStickyTop = false;
-      } else if (isStickyTop) {
-        if (y <= STICKY_EXIT_Y) isStickyTop = false;
-      } else if (y >= STICKY_ENTER_Y) {
-        isStickyTop = true;
+      // Sticky'den hemen once ince fade baslat; iki yonlu kaydirmada da gecis fark edilmesin.
+      const TOP_FADE_START_Y = HERO_ZONE_Y - 64;
+      const TOP_FADE_END_Y = HERO_ZONE_Y;
+      let nextTopBg = HERO_TONE;
+      if (y >= TOP_FADE_END_Y) {
+        nextTopBg = SURFACE_TONE;
+      } else if (y > TOP_FADE_START_Y) {
+        const raw = (y - TOP_FADE_START_Y) / (TOP_FADE_END_Y - TOP_FADE_START_Y);
+        const eased = smoothstep01(raw);
+        nextTopBg = blendHexColors(HERO_TONE, SURFACE_TONE, eased);
       }
-      stickyTopChromeRef.current = isStickyTop;
-      const nextTopBg = isStickyTop ? SURFACE_TONE : HERO_TONE;
       if (nextTopBg !== homeTopChromeBgRef.current) {
         homeTopChromeBgRef.current = nextTopBg;
         setHomeTopChromeBg(nextTopBg);
