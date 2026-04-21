@@ -2424,8 +2424,6 @@ export default function HomeScreen({
   const [scrollSurfaceBg, setScrollSurfaceBg] = useState('#FDDEB7');
   const scrollSurfaceBgRef = useRef('#FDDEB7');
   const overscrollZoneRef = useRef<'none' | 'top' | 'bottom'>('none');
-  const [homeTopChromeBg, setHomeTopChromeBg] = useState('#FDDEB7');
-  const homeTopChromeBgRef = useRef('#FDDEB7');
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
     () => DAILY_FLASH_MEALS.join(' • '),
@@ -4273,12 +4271,6 @@ export default function HomeScreen({
         setScrollSurfaceBg(nextBg);
       }
 
-      // En ustteki SafeArea/StatusBar katmani scroll yuzeyiyle ayni renkten beslensin.
-      const nextTopBg = y < 0 ? HERO_TONE : nextBg;
-      if (nextTopBg !== homeTopChromeBgRef.current) {
-        homeTopChromeBgRef.current = nextTopBg;
-        setHomeTopChromeBg(nextTopBg);
-      }
     };
 
     return (
@@ -5019,7 +5011,7 @@ export default function HomeScreen({
   }
 
   /* ---------- Main render ---------- */
-  const topChromeBg = activeTab === 'home' ? homeTopChromeBg : '#FFFBF4';
+  const topChromeBg = activeTab === 'home' ? scrollSurfaceBg : '#FFFBF4';
 
   return (
     <>
