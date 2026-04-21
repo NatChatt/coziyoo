@@ -6038,8 +6038,6 @@ const styles = StyleSheet.create({
     right: -38,
     width: '64%',
     height: '78%',
-    borderTopLeftRadius: 44,
-    borderBottomLeftRadius: 44,
   },
   heroFeatherLeft: {
     position: 'absolute',
