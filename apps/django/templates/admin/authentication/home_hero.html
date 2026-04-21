@@ -143,7 +143,7 @@
         </div>
         <div class="hero-controls">
           <div class="hero-control-label">Zoom</div>
-          <input id="hero-zoom" class="hero-range" type="range" min="0.70" max="1.80" step="0.001" value="1.000" />
+          <input id="hero-zoom" class="hero-range" type="range" min="0.30" max="3.00" step="0.001" value="1.000" />
           <div style="margin-top: 10px;">
             <button type="button" id="hero-reset" class="hero-btn-secondary">Reset</button>
           </div>
@@ -172,8 +172,8 @@
   var resetBtn = document.getElementById('hero-reset');
   var helpText = document.getElementById('hero-help-text');
 
-  var minScale = 0.70;
-  var maxScale = 1.80;
+  var minScale = 0.30;
+  var maxScale = 3.00;
   var wheelStep = 0.006;
   var baseScale = 1;
   var objectUrl = '';
@@ -207,7 +207,7 @@
     var vh = stage.clientHeight || 1;
     var iw = previewImage.naturalWidth || vw;
     var ih = previewImage.naturalHeight || vh;
-    baseScale = Math.max(vw / iw, vh / ih);
+    baseScale = Math.min(vw / iw, vh / ih);
   }
 
   function applyTransform() {
