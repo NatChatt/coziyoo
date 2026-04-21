@@ -1078,6 +1078,23 @@
     return canvas;
   }
 
+  function canvasToOptimizedDataUrl(canvas) {
+    // Keep request payload small to avoid Django 400 (request body too large).
+    var LIMIT = 1_800_000;
+    var jpgQualities = [0.88, 0.78, 0.68, 0.58];
+    for (var i = 0; i < jpgQualities.length; i += 1) {
+      var jpg = canvas.toDataURL('image/jpeg', jpgQualities[i]);
+      if (jpg && jpg.length <= LIMIT) return jpg;
+    }
+    var webp = '';
+    try {
+      webp = canvas.toDataURL('image/webp', 0.78);
+      if (webp && webp.length <= LIMIT) return webp;
+    } catch (_) {}
+    // Last fallback: still return a compressed JPEG.
+    return canvas.toDataURL('image/jpeg', 0.58);
+  }
+
   function removeBackgroundBySample(sampleX, sampleY) {
     if (!hasImage()) return false;
 
@@ -1275,7 +1292,7 @@
     ctx.fillStyle = '#fddeb7';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(publishImage, drawX * sx, drawY * sy, drawW * sx, drawH * sy);
-    imageDataInput.value = canvas.toDataURL('image/png');
+    imageDataInput.value = canvasToOptimizedDataUrl(canvas);
     imageUrlInput.value = '';
     return true;
   }
@@ -1633,6 +1650,11 @@
     if (!ok) {
       e.preventDefault();
       alert('Gorsel islenemedi. Resmi tekrar secip yeniden dene.');
+      return;
+    }
+    if ((imageDataInput.value || '').length > 2_100_000) {
+      e.preventDefault();
+      alert('Gorsel boyutu cok buyuk. Zoomu biraz azalt veya daha kucuk bir kaynak resim sec.');
       return;
     }
     helpText.textContent = 'Yayinlaniyor...';
