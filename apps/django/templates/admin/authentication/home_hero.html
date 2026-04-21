@@ -230,13 +230,25 @@
     zoomInput.value = state.scale.toFixed(3);
   }
 
-  function resetTransform() {
-    if (!hasImage()) return;
+  function doReset() {
     calculateBaseScale();
     state.scale = 1;
     state.offsetX = 0;
     state.offsetY = 0;
     applyTransform();
+  }
+
+  function resetTransform() {
+    if (!hasImage()) return;
+    requestAnimationFrame(function () {
+      if (!hasImage()) return;
+      doReset();
+      // Second rAF guards against browsers that report clientWidth=0 on first frame
+      requestAnimationFrame(function () {
+        if (!hasImage()) return;
+        doReset();
+      });
+    });
   }
 
   function renderExportDataUrl() {
@@ -354,6 +366,12 @@
     }
     helpText.textContent = 'Yayinlaniyor...';
   });
+
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(function () {
+      if (hasImage()) { calculateBaseScale(); applyTransform(); }
+    }).observe(stage);
+  }
 
   if (previewImage.src) {
     previewImage.onload = function () {
