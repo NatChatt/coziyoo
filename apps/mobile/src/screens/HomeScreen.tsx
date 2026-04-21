@@ -2402,8 +2402,8 @@ export default function HomeScreen({
   const [recommendedMealsLoading, setRecommendedMealsLoading] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Record<string, true>>({});
   const [favoritePendingIds, setFavoritePendingIds] = useState<Record<string, true>>({});
-  const [scrollSurfaceBg, setScrollSurfaceBg] = useState('#FFFBF4');
-  const scrollSurfaceBgRef = useRef('#FFFBF4');
+  const [scrollSurfaceBg, setScrollSurfaceBg] = useState('#FDDEB7');
+  const scrollSurfaceBgRef = useRef('#FDDEB7');
   const overscrollZoneRef = useRef<'none' | 'top' | 'bottom'>('none');
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
