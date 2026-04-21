@@ -393,7 +393,7 @@
             <div class="hero-panel-title">Düzenleme Araçları</div>
           <div class="hero-control-group">
             <div class="hero-control-label">Zoom</div>
-            <input id="hero-zoom" class="hero-range" type="range" min="0.35" max="3.20" step="0.01" value="1.00" />
+            <input id="hero-zoom" class="hero-range" type="range" min="0.70" max="1.80" step="0.001" value="1.000" />
           </div>
           <div class="hero-control-group">
             <div class="hero-control-label">Yatay Fade</div>
@@ -455,7 +455,7 @@
             <div class="hero-panel-title">Ana Ekran Yerleşimi</div>
           <div class="hero-control-group">
             <div class="hero-control-label">Ana Ekran Zoom</div>
-            <input id="hero-publish-zoom" class="hero-range" type="range" min="0.35" max="3.20" step="0.01" value="1.00" />
+            <input id="hero-publish-zoom" class="hero-range" type="range" min="0.70" max="1.80" step="0.001" value="1.000" />
           </div>
           <div class="hero-control-group">
             <button type="button" id="hero-publish-reset" class="hero-btn-secondary">Konum/Zoom Reset</button>
@@ -517,9 +517,9 @@
   var publishResetBtn = document.getElementById('hero-publish-reset');
   var publishHelpText = document.getElementById('hero-publish-help-text');
 
-  var wheelStep = 0.02;
-  var minScale = 0.35;
-  var maxScale = 3.2;
+  var wheelStep = 0.006;
+  var minScale = 0.70;
+  var maxScale = 1.8;
   var baseScale = 1;
   var dragging = false;
   var publishDragging = false;
@@ -568,6 +568,22 @@
     if (value < min) return min;
     if (value > max) return max;
     return value;
+  }
+
+  function getBalancedInitialScale(iw, ih, vw, vh) {
+    var imageRatio = (iw || 1) / (ih || 1);
+    var viewRatio = (vw || 1) / (vh || 1);
+    var mismatch = Math.abs(Math.log(imageRatio / viewRatio));
+    // Aspect oran farkinda baslangici biraz yumusat: ne asiri buyuk ne asiri kucuk.
+    var suggested = 1 - (mismatch * 0.22);
+    return clamp(suggested, 0.82, 1);
+  }
+
+  function getWheelScaleDelta(e) {
+    var base = wheelStep;
+    if (e && e.altKey) return e.deltaY > 0 ? -0.002 : 0.002;
+    if (e && e.shiftKey) return e.deltaY > 0 ? -(base * 0.5) : (base * 0.5);
+    return e.deltaY > 0 ? -base : base;
   }
 
   function hasImage() {
@@ -709,6 +725,22 @@
     publishBaseScale = Math.max(vw / iw, vh / ih);
   }
 
+  function setBalancedEditStartScale() {
+    var vw = stage.clientWidth || 1;
+    var vh = stage.clientHeight || 1;
+    var iw = image.naturalWidth || vw;
+    var ih = image.naturalHeight || vh;
+    state.scale = getBalancedInitialScale(iw, ih, vw, vh);
+  }
+
+  function setBalancedPublishStartScale() {
+    var vw = publishStage.clientWidth || 1;
+    var vh = publishStage.clientHeight || 1;
+    var iw = publishImage.naturalWidth || vw;
+    var ih = publishImage.naturalHeight || vh;
+    publishState.scale = getBalancedInitialScale(iw, ih, vw, vh);
+  }
+
   function applyImageTransform() {
     if (!hasImage()) return;
 
@@ -828,9 +860,6 @@
       setImageSource(out);
       image.onload = function () {
         calculateBaseScale();
-        state.scale = 1;
-        state.offsetX = 0;
-        state.offsetY = 0;
         applyAll();
         saveEditState();
       };
@@ -915,9 +944,6 @@
       setImageSource(out);
       image.onload = function () {
         calculateBaseScale();
-        state.scale = 1;
-        state.offsetX = 0;
-        state.offsetY = 0;
         applyAll();
         saveEditState();
       };
@@ -1281,11 +1307,13 @@
     publishState.offsetY = 0;
     publishImage.onload = function () {
       calculatePublishBaseScale();
+      setBalancedPublishStartScale();
       applyPublishTransform();
     };
     setPublishImageSource(publishPreparedDataUrl);
     if (publishImage.complete && publishImage.naturalWidth > 1) {
       calculatePublishBaseScale();
+      setBalancedPublishStartScale();
       applyPublishTransform();
     }
     publishHelpText.textContent = 'Aktarildi. Bu alanda sadece boyut ve konum ayarla.';
@@ -1307,7 +1335,7 @@
       // Set onload before src to avoid race condition with synchronous data URL processing.
       image.onload = function () {
         calculateBaseScale();
-        state.scale = 1;
+        setBalancedEditStartScale();
         state.offsetX = 0;
         state.offsetY = 0;
         applyAll();
@@ -1316,7 +1344,7 @@
       setImageSource(dataUrl);
       if (image.complete && image.naturalWidth > 1) {
         calculateBaseScale();
-        state.scale = 1;
+        setBalancedEditStartScale();
         state.offsetX = 0;
         state.offsetY = 0;
         applyAll();
@@ -1332,7 +1360,7 @@
     if (eraseMode || toneMode) return;
     if (!hasImage()) return;
     e.preventDefault();
-    var delta = e.deltaY > 0 ? -wheelStep : wheelStep;
+    var delta = getWheelScaleDelta(e);
     state.scale = clamp(state.scale + delta, minScale, maxScale);
     applyAll();
     saveEditState();
@@ -1341,7 +1369,7 @@
   publishStage.addEventListener('wheel', function (e) {
     if (!hasPublishImage()) return;
     e.preventDefault();
-    var delta = e.deltaY > 0 ? -wheelStep : wheelStep;
+    var delta = getWheelScaleDelta(e);
     publishState.scale = clamp(publishState.scale + delta, minScale, maxScale);
     applyPublishTransform();
   }, { passive: false });
@@ -1535,7 +1563,7 @@
   });
 
   publishResetBtn.addEventListener('click', function () {
-    publishState.scale = 1;
+    setBalancedPublishStartScale();
     publishState.offsetX = 0;
     publishState.offsetY = 0;
     applyPublishTransform();
