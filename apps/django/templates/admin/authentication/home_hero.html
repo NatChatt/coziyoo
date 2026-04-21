@@ -207,7 +207,7 @@
     var vh = stage.clientHeight || 1;
     var iw = previewImage.naturalWidth || vw;
     var ih = previewImage.naturalHeight || vh;
-    baseScale = Math.min(vw / iw, vh / ih);
+    baseScale = Math.max(vw / iw, vh / ih);
   }
 
   function applyTransform() {
