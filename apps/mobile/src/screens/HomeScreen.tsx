@@ -4304,8 +4304,8 @@ export default function HomeScreen({
           showsVerticalScrollIndicator={false}
           onScroll={handleFeedScroll}
           scrollEventThrottle={16}
-          bounces={false}
-          alwaysBounceVertical={false}
+          bounces
+          alwaysBounceVertical
           contentInsetAdjustmentBehavior="never"
           automaticallyAdjustContentInsets={false}
           contentContainerStyle={styles.scrollContent}
