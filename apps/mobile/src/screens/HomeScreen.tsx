@@ -949,6 +949,34 @@ async function sampleImageTopBandColor(uri: string, fallback: string): Promise<s
   }
 }
 
+async function sampleImageBottomBandColor(uri: string, fallback: string): Promise<string> {
+  if (!uri || !manipulateAsync || !ManipulatorSaveFormat || !getColors) {
+    return normalizeHexColor(fallback);
+  }
+  try {
+    const { width, height } = await getImageSizeAsync(uri);
+    if (width < 4 || height < 4) return normalizeHexColor(fallback);
+    const cropHeight = Math.max(24, Math.min(height, Math.round(height * 0.22)));
+    const originY = Math.max(0, height - cropHeight);
+    const cropped = await manipulateAsync(
+      uri,
+      [{ crop: { originX: 0, originY, width, height: cropHeight } }],
+      { compress: 0.5, format: ManipulatorSaveFormat.JPEG, base64: false },
+    );
+    const colors = await getColors(cropped.uri, {
+      fallback: normalizeHexColor(fallback),
+      cache: true,
+      key: `${uri}#safe-bottom:${width}:${cropHeight}`,
+    });
+    let sampled = normalizeHexColor(fallback);
+    if (Platform.OS === 'ios' && 'background' in colors) sampled = normalizeHexColor(colors.background, sampled);
+    else if (Platform.OS === 'android' && 'dominant' in colors) sampled = normalizeHexColor(colors.dominant, sampled);
+    return sampled;
+  } catch {
+    return normalizeHexColor(fallback);
+  }
+}
+
 function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
   const rn = r / 255;
   const gn = g / 255;
@@ -2438,6 +2466,7 @@ export default function HomeScreen({
   const [heroImageResolved, setHeroImageResolved] = useState(false);
   const [heroColors, setHeroColors] = useState<HeroColors>(() => deriveHeroColors(DEFAULT_HERO_SEED));
   const [heroTopBandColor, setHeroTopBandColor] = useState('#FDDEB7');
+  const [heroBottomBandColor, setHeroBottomBandColor] = useState('#FFFBF4');
   const [profileDisplayName, setProfileDisplayName] = useState<string>(() =>
     resolveProfileDisplayName(null, auth.email),
   );
@@ -2463,9 +2492,9 @@ export default function HomeScreen({
     () =>
       homeSurfaceAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: ['#F4D6BF', '#FFFBF4'],
+        outputRange: [heroTopBandColor, '#FFFBF4'],
       }),
-    [homeSurfaceAnim],
+    [heroTopBandColor, homeSurfaceAnim],
   );
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
@@ -2910,6 +2939,7 @@ export default function HomeScreen({
     if (!heroImageResolved) {
       setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK);
       setHeroTopBandColor('#FDDEB7');
+      setHeroBottomBandColor('#FFFBF4');
       return;
     }
 
@@ -2926,6 +2956,7 @@ export default function HomeScreen({
     if (!heroUrl) {
       setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK);
       setHeroTopBandColor('#FDDEB7');
+      setHeroBottomBandColor('#FFFBF4');
       return;
     }
     setHeaderImageSource({ uri: heroUrl });
@@ -2947,6 +2978,15 @@ export default function HomeScreen({
       .catch(() => {
         if (cancelled) return;
         setHeroTopBandColor('#FDDEB7');
+      });
+    sampleImageBottomBandColor(heroUrl, '#FFFBF4')
+      .then((tone) => {
+        if (cancelled) return;
+        setHeroBottomBandColor(tone);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHeroBottomBandColor('#FFFBF4');
       });
     return () => {
       cancelled = true;
@@ -4313,7 +4353,7 @@ export default function HomeScreen({
           stickyHeaderIndices={[1]}
         >
         {/* Hero Header */}
-        <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, backgroundColor: '#E9C8AA' } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
+        <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, backgroundColor: heroTopBandColor } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
           {USE_NEW_HOME_HERO ? (
             <>
               <ImageBackground
@@ -4325,8 +4365,8 @@ export default function HomeScreen({
               </ImageBackground>
               {LinearGradient ? (
                 <LinearGradient
-                  colors={['#E9C8AA', 'rgba(233, 200, 170, 0.84)', 'rgba(233, 200, 170, 0.36)', 'rgba(233, 200, 170, 0)']}
-                  locations={[0, 0.22, 0.62, 1]}
+                  colors={[heroTopBandColor, toRgba(heroTopBandColor, 0.88), toRgba(heroTopBandColor, 0.52), toRgba(heroTopBandColor, 0.18), toRgba(heroTopBandColor, 0)]}
+                  locations={[0, 0.22, 0.48, 0.76, 1]}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
                   style={styles.heroNewTopFade}
@@ -4456,9 +4496,9 @@ export default function HomeScreen({
           {LinearGradient ? (
             <LinearGradient
               colors={[
-                'rgba(244, 214, 191, 0.80)',
-                'rgba(244, 214, 191, 0.58)',
-                'rgba(244, 214, 191, 0.30)',
+                toRgba(heroBottomBandColor, 0.80),
+                toRgba(heroBottomBandColor, 0.58),
+                toRgba(heroBottomBandColor, 0.30),
                 'rgba(255, 251, 244, 0.10)',
                 'rgba(255, 251, 244, 0)',
               ]}
@@ -5089,7 +5129,7 @@ export default function HomeScreen({
 
   /* ---------- Main render ---------- */
   const topChromeBg = activeTab === 'home'
-    ? (USE_NEW_HOME_HERO ? '#E9C8AA' : '#FDDEB7')
+    ? (USE_NEW_HOME_HERO ? heroTopBandColor : '#FDDEB7')
     : '#FFFBF4';
 
   return (
@@ -6139,7 +6179,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: 56,
+    height: 88,
   },
   heroNewBottomFade: {
     position: 'absolute',
