@@ -4323,6 +4323,15 @@ export default function HomeScreen({
               </ImageBackground>
               {LinearGradient ? (
                 <LinearGradient
+                  colors={['#F4D6BF', 'rgba(244, 214, 191, 0.82)', 'rgba(244, 214, 191, 0.32)', 'rgba(244, 214, 191, 0)']}
+                  locations={[0, 0.22, 0.62, 1]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.heroNewTopFade}
+                />
+              ) : null}
+              {LinearGradient ? (
+                <LinearGradient
                   colors={['rgba(255, 251, 244, 0)', 'rgba(255, 251, 244, 0.34)', 'rgba(255, 251, 244, 0.62)']}
                   locations={[0, 0.6, 1]}
                   start={{ x: 0.5, y: 0 }}
@@ -6122,6 +6131,13 @@ const styles = StyleSheet.create({
   },
   heroBgFullImageInner: {
     resizeMode: 'cover',
+  },
+  heroNewTopFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 56,
   },
   heroNewBottomFade: {
     position: 'absolute',
