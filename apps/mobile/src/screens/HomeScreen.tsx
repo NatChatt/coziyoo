@@ -4205,7 +4205,7 @@ export default function HomeScreen({
         ref={feedScrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        style={[styles.scroll, { backgroundColor: '#FDDEB7' }]}
+        style={styles.scroll}
         stickyHeaderIndices={[1]}
       >
         {/* Hero Header */}
@@ -5956,8 +5956,8 @@ const styles = StyleSheet.create({
   },
   container: { flex: 1, backgroundColor: '#FFFBF4' },
   content: { flex: 1, zIndex: 10 },
-  scroll: { flex: 1, backgroundColor: '#FFFBF4' },
-  scrollContent: { paddingBottom: 130 },
+  scroll: { flex: 1, backgroundColor: '#FDDEB7' },
+  scrollContent: { paddingBottom: 130, backgroundColor: '#FFFBF4', minHeight: '100%' },
 
   /* --- Hero Header with Gradient + Food Image --- */
   heroWrap: {
