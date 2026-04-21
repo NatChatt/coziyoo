@@ -4323,8 +4323,8 @@ export default function HomeScreen({
               </ImageBackground>
               {LinearGradient ? (
                 <LinearGradient
-                  colors={['rgba(255, 251, 244, 0)', 'rgba(255, 251, 244, 0.7)', '#FFFBF4']}
-                  locations={[0, 0.66, 1]}
+                  colors={['rgba(244, 214, 191, 0)', 'rgba(244, 214, 191, 0.45)', 'rgba(255, 251, 244, 0.92)', '#FFFBF4']}
+                  locations={[0, 0.42, 0.78, 1]}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
                   style={styles.heroNewBottomFade}
@@ -6113,7 +6113,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 110,
+    height: 160,
   },
   heroFoodBgImg: {
     position: 'absolute',
