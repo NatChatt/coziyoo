@@ -2404,6 +2404,7 @@ export default function HomeScreen({
   const [favoritePendingIds, setFavoritePendingIds] = useState<Record<string, true>>({});
   const [scrollSurfaceBg, setScrollSurfaceBg] = useState('#FFFBF4');
   const scrollSurfaceBgRef = useRef('#FFFBF4');
+  const overscrollZoneRef = useRef<'none' | 'top' | 'bottom'>('none');
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
     () => DAILY_FLASH_MEALS.join(' • '),
@@ -4207,11 +4208,25 @@ export default function HomeScreen({
       const contentH = Number(event?.nativeEvent?.contentSize?.height ?? 0);
       const viewportH = Number(event?.nativeEvent?.layoutMeasurement?.height ?? 0);
       const maxY = Math.max(0, contentH - viewportH);
+      const EXIT_THRESHOLD = 24;
 
       let nextBg = '#FFFBF4';
-      if (y < 0) {
+      let zone = overscrollZoneRef.current;
+
+      if (zone === 'top') {
+        if (y > EXIT_THRESHOLD) zone = 'none';
+      } else if (zone === 'bottom') {
+        if (y < maxY - EXIT_THRESHOLD) zone = 'none';
+      } else {
+        if (y < 0) zone = 'top';
+        else if (y > maxY) zone = 'bottom';
+      }
+
+      overscrollZoneRef.current = zone;
+
+      if (zone === 'top') {
         nextBg = '#FDDEB7'; // top overscroll: hero tonu
-      } else if (y > maxY) {
+      } else if (zone === 'bottom') {
         nextBg = '#FFFBF4'; // bottom overscroll: kart zemini tonu
       }
 
