@@ -4501,6 +4501,19 @@ export default function HomeScreen({
             <LinearGradient
               colors={[
                 toRgba(heroBottomBandColor, 0.92),
+                toRgba(heroBottomBandColor, 0.52),
+                toRgba(heroBottomBandColor, 0),
+              ]}
+              locations={[0, 0.5, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.stickySeamBlend}
+            />
+          ) : null}
+          {LinearGradient ? (
+            <LinearGradient
+              colors={[
+                toRgba(heroBottomBandColor, 0.92),
                 toRgba(heroBottomBandColor, 0.72),
                 toRgba(heroBottomBandColor, 0.42),
                 toRgba(heroBottomBandColor, 0.16),
@@ -6309,8 +6322,8 @@ const styles = StyleSheet.create({
   stickySearchChips: {
     position: 'relative',
     backgroundColor: '#FFFBF4',
-    marginTop: -4,
-    paddingTop: 4,
+    marginTop: -6,
+    paddingTop: 6,
     paddingBottom: 4,
     zIndex: 10,
     shadowColor: '#000',
@@ -6325,6 +6338,13 @@ const styles = StyleSheet.create({
     left: -1,
     right: -1,
     bottom: 0,
+  },
+  stickySeamBlend: {
+    position: 'absolute',
+    top: -8,
+    left: 0,
+    right: 0,
+    height: 14,
   },
 
   /* --- Floating Search Bar (premium shadow) --- */
