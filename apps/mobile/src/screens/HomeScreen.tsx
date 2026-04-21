@@ -2463,7 +2463,7 @@ export default function HomeScreen({
     () =>
       homeSurfaceAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: ['#FDDEB7', '#FFFBF4'],
+        outputRange: ['#F4D6BF', '#FFFBF4'],
       }),
     [homeSurfaceAnim],
   );
@@ -4450,7 +4450,7 @@ export default function HomeScreen({
           </View>
         </View>
         {/* Sticky: Search Bar + Category Chips */}
-        <Animated.View style={[styles.stickySearchChips, { backgroundColor: homeSurfaceBg }]}>
+        <View style={styles.stickySearchChips}>
           {LinearGradient ? (
             <LinearGradient
               colors={[
@@ -4527,7 +4527,7 @@ export default function HomeScreen({
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </Animated.View>
+        </View>
         {showHomeOrderPromo ? renderQuickOrderCard('home') : renderPromoFallbackCard('home')}
         <View onLayout={(e) => setFoodSectionOffsetY(e.nativeEvent.layout.y)} />
         <View style={styles.recommendationsSection}>
