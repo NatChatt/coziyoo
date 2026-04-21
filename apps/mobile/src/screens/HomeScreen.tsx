@@ -4323,8 +4323,8 @@ export default function HomeScreen({
               </ImageBackground>
               {LinearGradient ? (
                 <LinearGradient
-                  colors={['rgba(244, 214, 191, 0)', 'rgba(244, 214, 191, 0.45)', 'rgba(255, 251, 244, 0.92)', '#FFFBF4']}
-                  locations={[0, 0.42, 0.78, 1]}
+                  colors={['rgba(255, 251, 244, 0)', 'rgba(255, 251, 244, 0.34)', 'rgba(255, 251, 244, 0.62)']}
+                  locations={[0, 0.6, 1]}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
                   style={styles.heroNewBottomFade}
@@ -4442,6 +4442,15 @@ export default function HomeScreen({
         </View>
         {/* Sticky: Search Bar + Category Chips */}
         <View style={styles.stickySearchChips}>
+          {LinearGradient ? (
+            <LinearGradient
+              colors={['rgba(244, 214, 191, 0.74)', 'rgba(255, 251, 244, 0.72)', '#FFFBF4']}
+              locations={[0, 0.56, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.stickySearchFade}
+            />
+          ) : null}
           <View style={styles.floatingSearchWrap}>
             <TouchableOpacity
               style={[styles.floatingSearchBar, searchMode && styles.floatingSearchBarActive]}
@@ -6113,7 +6122,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 160,
+    height: 96,
   },
   heroFoodBgImg: {
     position: 'absolute',
@@ -6243,7 +6252,7 @@ const styles = StyleSheet.create({
   },
   stickySearchFade: {
     ...StyleSheet.absoluteFillObject,
-    height: 172,
+    height: 184,
   },
 
   /* --- Floating Search Bar (premium shadow) --- */
