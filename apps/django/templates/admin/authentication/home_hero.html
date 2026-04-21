@@ -65,9 +65,12 @@
   }
   .hero-stage img {
     position: absolute;
-    left: 0;
-    top: 0;
-    will-change: left, top, width, height;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform-origin: center center;
+    will-change: transform;
     pointer-events: none;
   }
   .hero-controls {
@@ -174,23 +177,14 @@
 
   var minScale = 1.00;
   var maxScale = 3.00;
-  var wheelStep = 0.006;
-  var baseScale = 1;
+  var wheelStep = 0.05;
   var objectUrl = '';
   var dragging = false;
   var startX = 0;
   var startY = 0;
-  var state = {
-    scale: 1,
-    offsetX: 0,
-    offsetY: 0,
-  };
+  var state = { scale: 1, offsetX: 0, offsetY: 0 };
 
-  function clamp(v, min, max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
-  }
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
   function hasImage() {
     return (
@@ -202,70 +196,40 @@
     );
   }
 
-  function calculateBaseScale() {
-    var vw = stage.clientWidth || 1;
-    var vh = stage.clientHeight || 1;
-    var iw = previewImage.naturalWidth || vw;
-    var ih = previewImage.naturalHeight || vh;
-    baseScale = Math.max(vw / iw, vh / ih);
-  }
-
+  // CSS object-fit:cover fills the stage automatically — JS only sets transform for drag/zoom.
   function applyTransform() {
-    if (!hasImage()) return;
-    var vw = stage.clientWidth || 1;
-    var vh = stage.clientHeight || 1;
-    var iw = previewImage.naturalWidth || vw;
-    var ih = previewImage.naturalHeight || vh;
-    var finalScale = baseScale * state.scale;
-    var drawW = iw * finalScale;
-    var drawH = ih * finalScale;
-    var drawX = (vw - drawW) / 2 + state.offsetX;
-    var drawY = (vh - drawH) / 2 + state.offsetY;
-
-    previewImage.style.display = 'block';
-    previewImage.style.width = drawW + 'px';
-    previewImage.style.height = drawH + 'px';
-    previewImage.style.left = drawX + 'px';
-    previewImage.style.top = drawY + 'px';
+    previewImage.style.transform =
+      'translate(' + state.offsetX + 'px, ' + state.offsetY + 'px) scale(' + state.scale + ')';
     zoomInput.value = state.scale.toFixed(3);
   }
 
-  function doReset() {
-    calculateBaseScale();
+  function resetTransform() {
     state.scale = 1;
     state.offsetX = 0;
     state.offsetY = 0;
     applyTransform();
   }
 
-  function resetTransform() {
-    if (!hasImage()) return;
-    requestAnimationFrame(function () {
-      if (!hasImage()) return;
-      doReset();
-      // Second rAF guards against browsers that report clientWidth=0 on first frame
-      requestAnimationFrame(function () {
-        if (!hasImage()) return;
-        doReset();
-      });
-    });
-  }
-
+  // Canvas export: replicate what CSS object-fit:cover + transform produces.
   function renderExportDataUrl() {
     if (!hasImage()) return '';
     var vw = stage.clientWidth || 1;
     var vh = stage.clientHeight || 1;
-    var exportScale = 2;
-    var canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(vw * exportScale));
-    canvas.height = Math.max(1, Math.round(vh * exportScale));
-    var ctx = canvas.getContext('2d');
-    if (!ctx) return '';
-
     var iw = previewImage.naturalWidth || 0;
     var ih = previewImage.naturalHeight || 0;
     if (iw <= 1 || ih <= 1) return '';
-    var finalScale = baseScale * state.scale;
+
+    var exportScale = 2;
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.round(vw * exportScale);
+    canvas.height = Math.round(vh * exportScale);
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    // Replicate CSS object-fit:cover
+    var baseS = Math.max(vw / iw, vh / ih);
+    // Replicate CSS scale(state.scale) around center + translate(offsetX, offsetY)
+    var finalScale = baseS * state.scale;
     var drawW = iw * finalScale;
     var drawH = ih * finalScale;
     var drawX = (vw - drawW) / 2 + state.offsetX;
@@ -278,7 +242,7 @@
     ctx.drawImage(previewImage, drawX * sx, drawY * sy, drawW * sx, drawH * sy);
 
     var jpg = canvas.toDataURL('image/jpeg', 0.82);
-    if (jpg && jpg.length < 1_900_000) return jpg;
+    if (jpg && jpg.length < 1900000) return jpg;
     return canvas.toDataURL('image/jpeg', 0.70);
   }
 
@@ -293,6 +257,7 @@
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = URL.createObjectURL(file);
     previewImage.onload = function () {
+      previewImage.style.display = 'block';
       resetTransform();
       imageDataInput.value = '';
       imageUrlInput.value = '';
@@ -305,10 +270,7 @@
   stage.addEventListener('wheel', function (e) {
     if (!hasImage()) return;
     e.preventDefault();
-    var step = wheelStep;
-    if (e.altKey) step = 0.002;
-    else if (e.shiftKey) step = wheelStep * 0.5;
-    var delta = e.deltaY > 0 ? -step : step;
+    var delta = e.deltaY > 0 ? -wheelStep : wheelStep;
     state.scale = clamp(state.scale + delta, minScale, maxScale);
     applyTransform();
   }, { passive: false });
@@ -367,18 +329,15 @@
     helpText.textContent = 'Yayinlaniyor...';
   });
 
-  if (typeof ResizeObserver !== 'undefined') {
-    new ResizeObserver(function () {
-      if (hasImage()) { calculateBaseScale(); applyTransform(); }
-    }).observe(stage);
-  }
-
-  if (previewImage.src) {
-    previewImage.onload = function () {
-      resetTransform();
-    };
+  if (previewImage.src && previewImage.src !== window.location.href) {
     if (previewImage.complete && previewImage.naturalWidth > 1) {
+      previewImage.style.display = 'block';
       resetTransform();
+    } else {
+      previewImage.onload = function () {
+        previewImage.style.display = 'block';
+        resetTransform();
+      };
     }
   } else {
     previewImage.style.display = 'none';
