@@ -4376,10 +4376,11 @@ export default function HomeScreen({
                 <LinearGradient
                   colors={[
                     toRgba(heroBottomBandColor, 0),
-                    toRgba(heroBottomBandColor, 0.34),
-                    toRgba(heroBottomBandColor, 0.72),
+                    toRgba(heroBottomBandColor, 0.36),
+                    toRgba(heroBottomBandColor, 0.78),
+                    heroBottomBandColor,
                   ]}
-                  locations={[0, 0.58, 1]}
+                  locations={[0, 0.5, 0.84, 1]}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
                   style={styles.heroNewBottomFade}
@@ -4500,11 +4501,11 @@ export default function HomeScreen({
           {LinearGradient ? (
             <LinearGradient
               colors={[
-                toRgba(heroBottomBandColor, 0.92),
-                toRgba(heroBottomBandColor, 0.52),
+                heroBottomBandColor,
+                toRgba(heroBottomBandColor, 0.58),
                 toRgba(heroBottomBandColor, 0),
               ]}
-              locations={[0, 0.5, 1]}
+              locations={[0, 0.44, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.stickySeamBlend}
@@ -6202,8 +6203,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
-    height: 96,
+    bottom: -2,
+    height: 112,
   },
   heroFoodBgImg: {
     position: 'absolute',
@@ -6341,10 +6342,10 @@ const styles = StyleSheet.create({
   },
   stickySeamBlend: {
     position: 'absolute',
-    top: -8,
+    top: -10,
     left: 0,
     right: 0,
-    height: 14,
+    height: 18,
   },
 
   /* --- Floating Search Bar (premium shadow) --- */
