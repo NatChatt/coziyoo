@@ -4265,7 +4265,7 @@ export default function HomeScreen({
           stickyHeaderIndices={[1]}
         >
         {/* Hero Header */}
-        <View style={[styles.heroWrap, { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
+        <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, backgroundColor: '#F4D6BF' } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
           {USE_NEW_HOME_HERO ? (
             <ImageBackground
                 source={headerImageSource}
