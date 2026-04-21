@@ -8,6 +8,7 @@ import {
   Easing,
   FlatList,
   Image,
+  ImageBackground,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -20,6 +21,7 @@ import {
   TouchableOpacity as RNTouchableOpacity,
   UIManager,
   View,
+  useWindowDimensions,
   type GestureResponderEvent,
   type ImageSourcePropType,
 } from 'react-native';
@@ -2238,6 +2240,11 @@ export default function HomeScreen({
   onAuthRefresh,
   onSwitchToSeller,
 }: Props) {
+  const { width: screenWidth } = useWindowDimensions();
+  const heroDynamicHeight = useMemo(
+    () => Math.max(226, Math.min(300, Math.round(screenWidth * 0.58))),
+    [screenWidth],
+  );
   const [currentAuth, setCurrentAuth] = useState<AuthSession>(auth);
   const [apiUrl, setApiUrl] = useState('http://localhost:3000');
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'home');
@@ -4258,14 +4265,14 @@ export default function HomeScreen({
           stickyHeaderIndices={[1]}
         >
         {/* Hero Header */}
-        <View style={styles.heroWrap}>
+        <View style={[styles.heroWrap, { height: heroDynamicHeight }]}>
           {USE_NEW_HOME_HERO ? (
-            <>
-              <Image
+            <ImageBackground
                 source={headerImageSource}
                 style={styles.heroBgFullImage}
+                imageStyle={styles.heroBgFullImageInner}
                 onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
-              />
+              >
               {LinearGradient ? (
                 <LinearGradient
                   colors={['rgba(255, 251, 244, 1)', 'rgba(255, 251, 244, 0)']}
@@ -4275,7 +4282,7 @@ export default function HomeScreen({
                   style={styles.heroBottomOnlyFade}
                 />
               ) : null}
-            </>
+            </ImageBackground>
           ) : (
             <>
               {LinearGradient ? (
@@ -6047,8 +6054,8 @@ const styles = StyleSheet.create({
   },
   heroBgFullImage: {
     ...StyleSheet.absoluteFillObject,
-    width: undefined,
-    height: undefined,
+  },
+  heroBgFullImageInner: {
     resizeMode: 'cover',
   },
   heroBottomOnlyFade: {
