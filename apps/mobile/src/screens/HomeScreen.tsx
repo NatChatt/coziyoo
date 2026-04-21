@@ -6241,7 +6241,8 @@ const styles = StyleSheet.create({
   stickySearchChips: {
     position: 'relative',
     backgroundColor: '#FFFBF4',
-    paddingTop: 0,
+    marginTop: -2,
+    paddingTop: 2,
     paddingBottom: 4,
     zIndex: 10,
     shadowColor: '#000',
@@ -6252,9 +6253,9 @@ const styles = StyleSheet.create({
   },
   stickySearchFade: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    top: -2,
+    left: -1,
+    right: -1,
     bottom: 0,
   },
 
