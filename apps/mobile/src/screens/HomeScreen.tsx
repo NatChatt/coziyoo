@@ -6153,10 +6153,10 @@ const styles = StyleSheet.create({
   },
   heroOverscrollFillWrap: {
     position: 'absolute',
-    top: 0,
+    top: -320,
     left: 0,
     right: 0,
-    height: 260,
+    height: 320,
     overflow: 'hidden',
   },
   heroOverscrollFillImage: {
