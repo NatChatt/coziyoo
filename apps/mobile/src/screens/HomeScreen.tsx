@@ -6251,8 +6251,11 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   stickySearchFade: {
-    ...StyleSheet.absoluteFillObject,
-    height: 184,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 
   /* --- Floating Search Bar (premium shadow) --- */
