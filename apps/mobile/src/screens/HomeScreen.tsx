@@ -2379,10 +2379,9 @@ export default function HomeScreen({
   }, []);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocationLabel, setSelectedLocationLabel] = useState(() => `Kadıköy • 2.5 km ${t('helper.home.locationRadius')}`);
-  const [headerImageSource, setHeaderImageSource] = useState<ImageSourcePropType>(() => (
-    { uri: HERO_AKCABAT_IMAGE_URL }
-  ));
+  const [headerImageSource, setHeaderImageSource] = useState<ImageSourcePropType>(LOCAL_HOME_HEADER_FALLBACK);
   const [adminHeroImageUrl, setAdminHeroImageUrl] = useState<string | null>(null);
+  const [heroImageResolved, setHeroImageResolved] = useState(false);
   const [heroColors, setHeroColors] = useState<HeroColors>(() => deriveHeroColors(DEFAULT_HERO_SEED));
   const [profileDisplayName, setProfileDisplayName] = useState<string>(() =>
     resolveProfileDisplayName(null, auth.email),
@@ -2842,6 +2841,11 @@ export default function HomeScreen({
   }, [cartItems.length, cartSupportedDeliveryOptions.delivery, cartSupportedDeliveryOptions.pickup, deliveryType]);
 
   useEffect(() => {
+    if (!heroImageResolved) {
+      setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK);
+      return;
+    }
+
     const heroCandidate = !adminHeroImageUrl
       ? meals.find((meal) => {
           const normalized = normalizeDishText(meal.title ?? '');
@@ -2851,7 +2855,11 @@ export default function HomeScreen({
         })
       : null;
 
-    const heroUrl = adminHeroImageUrl || heroCandidate?.imageUrl?.trim() || HERO_AKCABAT_IMAGE_URL;
+    const heroUrl = adminHeroImageUrl || heroCandidate?.imageUrl?.trim();
+    if (!heroUrl) {
+      setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK);
+      return;
+    }
     setHeaderImageSource({ uri: heroUrl });
 
     if (getColors) {
@@ -2862,7 +2870,7 @@ export default function HomeScreen({
         })
         .catch(() => {});
     }
-  }, [adminHeroImageUrl, meals]);
+  }, [adminHeroImageUrl, meals, heroImageResolved]);
 
   useEffect(() => {
     setGreetingName(resolveGreetingName(null, currentAuth.email));
@@ -3130,6 +3138,7 @@ export default function HomeScreen({
 
         if (response.ok) {
           setAdminHeroImageUrl(resolveHomeHeaderImageUrl(json));
+          setHeroImageResolved(true);
           if (!Array.isArray(json.data)) {
             if (!silent) setMealsError(t('error.home.noMealsInResponse'));
             return;
