@@ -2249,7 +2249,6 @@ export default function HomeScreen({
     () => ({
       right: -(screenWidth * 0.25),
       width: screenWidth * 1.3,
-      leftFadeWidth: screenWidth * 0.7,
     }),
     [screenWidth],
   );
@@ -4290,29 +4289,6 @@ export default function HomeScreen({
                 imageStyle={styles.heroBgFullImageInner}
                 onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
               >
-              {LinearGradient ? (
-                <LinearGradient
-                  colors={['#F4D6BF', 'rgba(244,214,191,0.6)', 'rgba(244,214,191,0.2)', 'transparent']}
-                  start={{ x: 0, y: 0.5 }}
-                  end={{ x: 1, y: 0.5 }}
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    width: heroImageFrame.leftFadeWidth,
-                    height: heroDynamicHeight,
-                  }}
-                />
-              ) : null}
-              {LinearGradient ? (
-                <LinearGradient
-                  colors={['rgba(255, 251, 244, 1)', 'rgba(255, 251, 244, 0)']}
-                  locations={[0, 1]}
-                  start={{ x: 0.5, y: 1 }}
-                  end={{ x: 0.5, y: 0 }}
-                  style={styles.heroBottomOnlyFade}
-                />
-              ) : null}
             </ImageBackground>
           ) : (
             <>
@@ -6088,13 +6064,6 @@ const styles = StyleSheet.create({
   },
   heroBgFullImageInner: {
     resizeMode: 'cover',
-  },
-  heroBottomOnlyFade: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 108,
   },
   heroFoodBgImg: {
     position: 'absolute',
