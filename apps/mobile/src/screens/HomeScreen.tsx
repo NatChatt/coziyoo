@@ -2496,6 +2496,10 @@ export default function HomeScreen({
       }),
     [heroTopBandColor, homeSurfaceAnim],
   );
+  const homeBaseBg = useMemo(
+    () => blendHexColors(heroBottomBandColor, '#FFFBF4', 0.16),
+    [heroBottomBandColor],
+  );
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
     () => DAILY_FLASH_MEALS.join(' • '),
@@ -4348,12 +4352,12 @@ export default function HomeScreen({
           alwaysBounceVertical
           contentInsetAdjustmentBehavior="never"
           automaticallyAdjustContentInsets={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { backgroundColor: homeBaseBg }]}
           style={[styles.scroll, { backgroundColor: 'transparent' }]}
           stickyHeaderIndices={[1]}
         >
         {/* Hero Header */}
-        <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, backgroundColor: heroTopBandColor } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
+        <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, marginTop: -1, paddingTop: 9, backgroundColor: heroTopBandColor } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
           {USE_NEW_HOME_HERO ? (
             <>
               <ImageBackground
@@ -4503,7 +4507,7 @@ export default function HomeScreen({
           </View>
         </View>
         {/* Sticky: Search Bar + Category Chips */}
-        <View style={styles.stickySearchChips}>
+        <View style={[styles.stickySearchChips, { backgroundColor: homeBaseBg }]}>
           {LinearGradient ? (
             <LinearGradient
               colors={[
@@ -6315,9 +6319,9 @@ const styles = StyleSheet.create({
   /* --- Sticky Search + Chips wrapper --- */
   stickySearchChips: {
     position: 'relative',
-    backgroundColor: 'transparent',
-    marginTop: -8,
-    paddingTop: 8,
+    backgroundColor: '#FFFBF4',
+    marginTop: -10,
+    paddingTop: 10,
     paddingBottom: 4,
     zIndex: 10,
     shadowColor: '#000',
@@ -6328,7 +6332,7 @@ const styles = StyleSheet.create({
   },
   stickySearchFade: {
     position: 'absolute',
-    top: -8,
+    top: -12,
     left: 0,
     right: 0,
     bottom: 0,
