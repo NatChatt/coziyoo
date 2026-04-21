@@ -4379,13 +4379,14 @@ export default function HomeScreen({
               {LinearGradient ? (
                 <LinearGradient
                   colors={[
-                    toRgba(heroBottomBandColor, 0.00),
-                    toRgba(heroBottomBandColor, 0.20),
-                    toRgba(heroBottomBandColor, 0.45),
-                    toRgba(heroBottomBandColor, 0.72),
-                    '#FFFBF4',
+                    'rgba(242, 228, 191, 0.00)',
+                    'rgba(242, 228, 191, 0.12)',
+                    'rgba(242, 228, 191, 0.28)',
+                    'rgba(242, 228, 191, 0.46)',
+                    'rgba(242, 228, 191, 0.68)',
+                    '#F3EEE4',
                   ]}
-                  locations={[0, 0.28, 0.52, 0.78, 1]}
+                  locations={[0, 0.18, 0.36, 0.56, 0.78, 1]}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
                   style={styles.heroNewBottomFade}
@@ -4506,11 +4507,12 @@ export default function HomeScreen({
           {LinearGradient ? (
             <LinearGradient
               colors={[
-                toRgba(heroBottomBandColor, 0.28),
-                toRgba(heroBottomBandColor, 0.14),
+                toRgba(heroBottomBandColor, 0.52),
+                toRgba(heroBottomBandColor, 0.30),
+                toRgba(heroBottomBandColor, 0.12),
                 'rgba(255, 251, 244, 0.00)',
               ]}
-              locations={[0, 0.46, 1]}
+              locations={[0, 0.34, 0.70, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.stickySearchFade}
@@ -6171,7 +6173,7 @@ const styles = StyleSheet.create({
     marginRight: -40,
     marginTop: 0,
     backgroundColor: '#FDDEB7',
-    overflow: 'visible',
+    overflow: 'hidden',
   },
   heroBaseGradient: {
     ...StyleSheet.absoluteFillObject,
@@ -6193,9 +6195,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    top: 120,
-    height: 220,
-    zIndex: 2,
+    bottom: -3,
+    height: 92,
   },
   heroFoodBgImg: {
     position: 'absolute',
@@ -6314,8 +6315,8 @@ const styles = StyleSheet.create({
   stickySearchChips: {
     position: 'relative',
     backgroundColor: 'transparent',
-    marginTop: -34,
-    paddingTop: 0,
+    marginTop: -8,
+    paddingTop: 8,
     paddingBottom: 4,
     zIndex: 10,
     shadowColor: '#000',
@@ -6326,7 +6327,7 @@ const styles = StyleSheet.create({
   },
   stickySearchFade: {
     position: 'absolute',
-    top: 0,
+    top: -8,
     left: 0,
     right: 0,
     bottom: 0,
