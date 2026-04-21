@@ -98,7 +98,7 @@ import { HOME_FEED_CATEGORIES } from '../constants/foodCategories';
 const AnimatedTouchableOpacity: any = Animated.createAnimatedComponent(RNTouchableOpacity as any);
 const PICKUP_ADDRESS_REQUEST_TIMEOUT_MS = 12000;
 const BUYER_HOME_TAB_BAR_HEIGHT = 70;
-const USE_NEW_HOME_HERO = false; // Deneme modu kapali: eski hero aktif.
+const USE_NEW_HOME_HERO = true; // Deneme modu acik: yeni hero aktif, eski hero kodda yedek.
 
 function shouldDisableGlobalPressFx(style: unknown, activeOpacity?: number): boolean {
   if (activeOpacity === 1) return true;
