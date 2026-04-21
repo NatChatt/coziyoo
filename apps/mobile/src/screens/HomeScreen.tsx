@@ -4938,11 +4938,12 @@ export default function HomeScreen({
   }
 
   /* ---------- Main render ---------- */
+  const topChromeBg = activeTab === 'home' ? '#FDDEB7' : '#FFFBF4';
 
   return (
     <>
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FDDEB7" />
+    <SafeAreaView style={[styles.safe, { backgroundColor: topChromeBg }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={topChromeBg} />
       {paymentError ? (
         <View style={styles.topErrorBanner}>
           <Text style={styles.topErrorBannerText}>{paymentError}</Text>
