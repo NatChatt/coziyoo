@@ -59,9 +59,15 @@
   }
   .hero-layout {
     display: grid;
-    grid-template-columns: minmax(300px, 390px) 1fr;
+    grid-template-columns: minmax(300px, 390px) 1fr minmax(300px, 390px) 1fr;
     gap: 14px;
     align-items: start;
+  }
+  .hero-panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 8px;
   }
   .hero-controls {
     border: 1px solid #d0d5dd;
@@ -205,7 +211,7 @@
 
 <div class="hero-editor-wrap">
   <div class="hero-editor-title">Home Hero</div>
-  <div class="hero-editor-subtitle">Resim ekle, sahnede taşı, zoom ve fade ayarla. Sonra yayınla.</div>
+  <div class="hero-editor-subtitle">1) Resmi düzenle 2) Ana ekrana aktar 3) Gerçek ekranda sadece konum/zoom ayarla 4) Yayınla.</div>
 
   <form method="post" id="home-hero-form" novalidate>
     {% csrf_token %}
@@ -220,27 +226,31 @@
         <div class="hero-header-actions">
           <input id="hero-file-input" type="file" accept="image/*" style="display:none" />
           <button type="button" id="hero-file-trigger" class="hero-btn-secondary">Resim Ekle</button>
+          <button type="button" id="hero-transfer-btn" class="hero-btn-secondary">Ana Ekrana Aktar</button>
           <button type="submit" id="approve-btn" class="hero-btn-primary">Yayınla</button>
         </div>
       </div>
 
       <div class="hero-layout">
-        <div class="hero-stage" id="hero-stage">
-          <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
-          <canvas id="hero-edit-canvas" class="hero-photo" style="display:none"></canvas>
-          <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
-          <div class="hero-overlay-left" id="hero-overlay-left"></div>
-          <div class="hero-overlay-corners" id="hero-overlay-corners"></div>
-          <div class="hero-overlay-top" id="hero-overlay-top"></div>
-          <div class="hero-copy">
-            <div class="hero-copy-top">
-              <div class="hero-avatar"></div>
-              <div class="hero-greet">Tünaydın, Demo</div>
+        <div>
+          <div class="hero-panel-title">1) Resmi Düzenleme</div>
+          <div class="hero-stage" id="hero-stage">
+            <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
+            <canvas id="hero-edit-canvas" class="hero-photo" style="display:none"></canvas>
+            <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
+            <div class="hero-overlay-left" id="hero-overlay-left"></div>
+            <div class="hero-overlay-corners" id="hero-overlay-corners"></div>
+            <div class="hero-overlay-top" id="hero-overlay-top"></div>
+            <div class="hero-copy">
+              <div class="hero-copy-top">
+                <div class="hero-avatar"></div>
+                <div class="hero-greet">Tünaydın, Demo</div>
+              </div>
+              <div class="hero-headline">Sana güzel bir şey öneririm.</div>
+              <div class="hero-location">Kadıköy • 2.5 km çevre</div>
             </div>
-            <div class="hero-headline">Sana güzel bir şey öneririm.</div>
-            <div class="hero-location">Kadıköy • 2.5 km çevre</div>
+            <div class="hero-overlay-bottom" id="hero-overlay-bottom"></div>
           </div>
-          <div class="hero-overlay-bottom" id="hero-overlay-bottom"></div>
         </div>
 
         <div class="hero-controls">
@@ -288,6 +298,33 @@
           </div>
           <div class="hero-help" id="hero-help-text">Ipuçlari: Sahneyi sürükle, mouse tekerleği ile ince zoom yap.</div>
         </div>
+
+        <div>
+          <div class="hero-panel-title">2) Gerçek Ana Ekran (Sadece Boyut/Konum)</div>
+          <div class="hero-stage" id="hero-publish-stage">
+            <img id="hero-publish-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
+            <div id="hero-publish-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Önce “Ana Ekrana Aktar”</div>
+            <div class="hero-copy">
+              <div class="hero-copy-top">
+                <div class="hero-avatar"></div>
+                <div class="hero-greet">Tünaydın, Demo</div>
+              </div>
+              <div class="hero-headline">Sana güzel bir şey öneririm.</div>
+              <div class="hero-location">Kadıköy • 2.5 km çevre</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-controls">
+          <div class="hero-control-group">
+            <div class="hero-control-label">Ana Ekran Zoom</div>
+            <input id="hero-publish-zoom" class="hero-range" type="range" min="0.35" max="3.20" step="0.01" value="1.00" />
+          </div>
+          <div class="hero-control-group">
+            <button type="button" id="hero-publish-reset" class="hero-btn-secondary">Konum/Zoom Reset</button>
+          </div>
+          <div class="hero-help" id="hero-publish-help-text">Bu alanda sadece sürükle + zoom var. Ayar bitince Yayınla.</div>
+        </div>
       </div>
     </div>
   </form>
@@ -297,6 +334,7 @@
 (function () {
   var fileInput = document.getElementById('hero-file-input');
   var fileTrigger = document.getElementById('hero-file-trigger');
+  var transferBtn = document.getElementById('hero-transfer-btn');
   var form = document.getElementById('home-hero-form');
   var actionInput = document.getElementById('hero-action');
 
@@ -328,12 +366,19 @@
   var bgSoftnessInput = document.getElementById('hero-bg-softness');
   var bgRemoveBtn = document.getElementById('hero-bg-remove');
   var bgUndoBtn = document.getElementById('hero-bg-undo');
+  var publishStage = document.getElementById('hero-publish-stage');
+  var publishImage = document.getElementById('hero-publish-image');
+  var publishEmpty = document.getElementById('hero-publish-empty');
+  var publishZoomInput = document.getElementById('hero-publish-zoom');
+  var publishResetBtn = document.getElementById('hero-publish-reset');
+  var publishHelpText = document.getElementById('hero-publish-help-text');
 
   var wheelStep = 0.02;
   var minScale = 0.35;
   var maxScale = 3.2;
   var baseScale = 1;
   var dragging = false;
+  var publishDragging = false;
   var eraseMode = false;
   var toneMode = false;
   var toneLightMode = true;
@@ -350,7 +395,11 @@
   var backgroundPickMode = false;
   var startX = 0;
   var startY = 0;
+  var publishStartX = 0;
+  var publishStartY = 0;
   var bgUndoStack = [];
+  var publishBaseScale = 1;
+  var publishPreparedDataUrl = '';
 
   var state = {
     scale: 1,
@@ -358,6 +407,11 @@
     offsetY: 0,
     fadeX: 48,
     fadeY: 58,
+  };
+  var publishState = {
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
   };
   var LOCAL_STATE_KEY = 'coziyoo_admin_home_hero_editor_state_v1';
 
@@ -377,8 +431,22 @@
     );
   }
 
+  function hasPublishImage() {
+    return (
+      publishImage.style.display !== 'none' &&
+      !!publishImage.src &&
+      publishImage.complete === true &&
+      (publishImage.naturalWidth || 0) > 1 &&
+      (publishImage.naturalHeight || 0) > 1
+    );
+  }
+
   function setEmpty(show) {
     empty.style.display = show ? 'flex' : 'none';
+  }
+
+  function setPublishEmpty(show) {
+    publishEmpty.style.display = show ? 'flex' : 'none';
   }
 
   function pushUndoSnapshot() {
@@ -453,6 +521,14 @@
     baseScale = Math.max(vw / iw, vh / ih);
   }
 
+  function calculatePublishBaseScale() {
+    var vw = publishStage.clientWidth || 1;
+    var vh = publishStage.clientHeight || 1;
+    var iw = publishImage.naturalWidth || vw;
+    var ih = publishImage.naturalHeight || vh;
+    publishBaseScale = Math.max(vw / iw, vh / ih);
+  }
+
   function applyImageTransform() {
     if (!hasImage()) return;
 
@@ -474,11 +550,39 @@
     image.style.filter = 'brightness(1.06) saturate(1.08) contrast(1.03)';
   }
 
+  function applyPublishTransform() {
+    if (!hasPublishImage()) return;
+    var vw = publishStage.clientWidth || 1;
+    var vh = publishStage.clientHeight || 1;
+    var iw = publishImage.naturalWidth || vw;
+    var ih = publishImage.naturalHeight || vh;
+    var finalScale = publishBaseScale * publishState.scale;
+    var drawW = iw * finalScale;
+    var drawH = ih * finalScale;
+    var drawX = (vw - drawW) / 2 + publishState.offsetX;
+    var drawY = (vh - drawH) / 2 + publishState.offsetY;
+
+    publishImage.style.width = drawW + 'px';
+    publishImage.style.height = drawH + 'px';
+    publishImage.style.left = drawX + 'px';
+    publishImage.style.top = drawY + 'px';
+    publishImage.style.filter = 'none';
+    publishZoomInput.value = publishState.scale.toFixed(2);
+  }
+
   function getStagePoint(e) {
     var rect = stage.getBoundingClientRect();
     return {
       x: clamp(e.clientX - rect.left, 0, stage.clientWidth || 1),
       y: clamp(e.clientY - rect.top, 0, stage.clientHeight || 1),
+    };
+  }
+
+  function getPublishStagePoint(e) {
+    var rect = publishStage.getBoundingClientRect();
+    return {
+      x: clamp(e.clientX - rect.left, 0, publishStage.clientWidth || 1),
+      y: clamp(e.clientY - rect.top, 0, publishStage.clientHeight || 1),
     };
   }
 
@@ -829,29 +933,39 @@
     setEmpty(false);
   }
 
+  function setPublishImageSource(src) {
+    if (!src) {
+      publishImage.style.display = 'none';
+      setPublishEmpty(true);
+      return;
+    }
+    publishImage.src = src;
+    publishImage.style.display = 'block';
+    setPublishEmpty(false);
+  }
+
   image.addEventListener('error', function () {
     image.style.display = 'none';
     setEmpty(true);
     helpText.textContent = 'Gorsel yuklenemedi. Resmi tekrar secip yeniden dene.';
   });
 
-  function exportCanvasToInput() {
+  function renderEditOutputCanvas(width, height) {
     if (!hasImage()) return false;
 
     var vw = stage.clientWidth || 1;
     var vh = stage.clientHeight || 1;
-    var exportScale = 2;
 
     var canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(vw * exportScale));
-    canvas.height = Math.max(1, Math.round(vh * exportScale));
+    canvas.width = Math.max(1, Math.round(width || vw));
+    canvas.height = Math.max(1, Math.round(height || vh));
 
     var ctx = canvas.getContext('2d');
-    if (!ctx) return false;
+    if (!ctx) return null;
 
     var iw = image.naturalWidth || 0;
     var ih = image.naturalHeight || 0;
-    if (iw <= 1 || ih <= 1) return false;
+    if (iw <= 1 || ih <= 1) return null;
     var finalScale = baseScale * state.scale;
     var drawW = iw * finalScale;
     var drawH = ih * finalScale;
@@ -909,11 +1023,41 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      imageDataInput.value = canvas.toDataURL('image/png');
-      return true;
+      return canvas;
     } catch (_) {
-      return false;
+      return null;
     }
+  }
+
+  function exportPublishCanvasToInput() {
+    if (!hasPublishImage()) return false;
+    var vw = publishStage.clientWidth || 1;
+    var vh = publishStage.clientHeight || 1;
+    var exportScale = 2;
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(vw * exportScale));
+    canvas.height = Math.max(1, Math.round(vh * exportScale));
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+
+    var iw = publishImage.naturalWidth || 0;
+    var ih = publishImage.naturalHeight || 0;
+    if (iw <= 1 || ih <= 1) return false;
+
+    var finalScale = publishBaseScale * publishState.scale;
+    var drawW = iw * finalScale;
+    var drawH = ih * finalScale;
+    var drawX = (vw - drawW) / 2 + publishState.offsetX;
+    var drawY = (vh - drawH) / 2 + publishState.offsetY;
+
+    var sx = canvas.width / vw;
+    var sy = canvas.height / vh;
+    ctx.fillStyle = '#fffbf4';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(publishImage, drawX * sx, drawY * sy, drawW * sx, drawH * sy);
+    imageDataInput.value = canvas.toDataURL('image/png');
+    imageUrlInput.value = '';
+    return true;
   }
 
   image.addEventListener('dragstart', function (e) {
@@ -925,6 +1069,34 @@
     fileInput.click();
   });
 
+  transferBtn.addEventListener('click', function () {
+    if (!hasImage()) {
+      helpText.textContent = 'Once bir gorsel ekle ve duzenle.';
+      return;
+    }
+    var targetW = Math.max(1, publishStage.clientWidth || 1);
+    var targetH = Math.max(1, publishStage.clientHeight || 1);
+    var canvas = renderEditOutputCanvas(targetW, targetH);
+    if (!canvas) {
+      helpText.textContent = 'Aktarim basarisiz. Gorseli yeniden dene.';
+      return;
+    }
+    publishPreparedDataUrl = canvas.toDataURL('image/png');
+    publishState.scale = 1;
+    publishState.offsetX = 0;
+    publishState.offsetY = 0;
+    publishImage.onload = function () {
+      calculatePublishBaseScale();
+      applyPublishTransform();
+    };
+    setPublishImageSource(publishPreparedDataUrl);
+    if (publishImage.complete && publishImage.naturalWidth > 1) {
+      calculatePublishBaseScale();
+      applyPublishTransform();
+    }
+    publishHelpText.textContent = 'Aktarildi. Bu alanda sadece boyut ve konum ayarla.';
+  });
+
   fileInput.addEventListener('change', function () {
     var file = fileInput.files && fileInput.files[0];
     if (!file) return;
@@ -934,7 +1106,10 @@
       var dataUrl = ev.target && ev.target.result ? String(ev.target.result) : '';
       imageDataInput.value = dataUrl;
       imageUrlInput.value = '';
+      publishPreparedDataUrl = '';
+      setPublishImageSource('');
       setEraseMode(false);
+      setToneMode(false);
       // Set onload before src to avoid race condition with synchronous data URL processing.
       image.onload = function () {
         calculateBaseScale();
@@ -954,6 +1129,7 @@
         saveEditState();
       }
       helpText.textContent = 'Resim yuklendi. Surukle, zoom ve fade ile ayarla.';
+      publishHelpText.textContent = 'Duzeltme bittiginde "Ana Ekrana Aktar" ile ikinci alana gec.';
     };
     reader.readAsDataURL(file);
   });
@@ -966,6 +1142,14 @@
     state.scale = clamp(state.scale + delta, minScale, maxScale);
     applyAll();
     saveEditState();
+  }, { passive: false });
+
+  publishStage.addEventListener('wheel', function (e) {
+    if (!hasPublishImage()) return;
+    e.preventDefault();
+    var delta = e.deltaY > 0 ? -wheelStep : wheelStep;
+    publishState.scale = clamp(publishState.scale + delta, minScale, maxScale);
+    applyPublishTransform();
   }, { passive: false });
 
   stage.addEventListener('pointerdown', function (e) {
@@ -1037,6 +1221,22 @@
     applyAll();
   });
 
+  publishStage.addEventListener('pointerdown', function (e) {
+    if (!hasPublishImage()) return;
+    publishDragging = true;
+    publishStage.classList.add('dragging');
+    publishStartX = e.clientX - publishState.offsetX;
+    publishStartY = e.clientY - publishState.offsetY;
+    publishStage.setPointerCapture(e.pointerId);
+  });
+
+  publishStage.addEventListener('pointermove', function (e) {
+    if (!publishDragging) return;
+    publishState.offsetX = e.clientX - publishStartX;
+    publishState.offsetY = e.clientY - publishStartY;
+    applyPublishTransform();
+  });
+
   function stopDrag(e) {
     if (toneMode && tonePointerDown) {
       finishToneSession();
@@ -1064,10 +1264,25 @@
   stage.addEventListener('pointerup', stopDrag);
   stage.addEventListener('pointercancel', stopDrag);
 
+  function stopPublishDrag(e) {
+    publishDragging = false;
+    publishStage.classList.remove('dragging');
+    try {
+      publishStage.releasePointerCapture(e.pointerId);
+    } catch (_) {}
+  }
+  publishStage.addEventListener('pointerup', stopPublishDrag);
+  publishStage.addEventListener('pointercancel', stopPublishDrag);
+
   zoomInput.addEventListener('input', function () {
     state.scale = clamp(parseFloat(zoomInput.value) || 1, minScale, maxScale);
     applyAll();
     saveEditState();
+  });
+
+  publishZoomInput.addEventListener('input', function () {
+    publishState.scale = clamp(parseFloat(publishZoomInput.value) || 1, minScale, maxScale);
+    applyPublishTransform();
   });
 
   fadeXInput.addEventListener('input', function () {
@@ -1087,6 +1302,14 @@
     setToneMode(false);
     resetState();
     helpText.textContent = 'Reset tamam. Surukle, zoom ve fade ile tekrar ayarla.';
+  });
+
+  publishResetBtn.addEventListener('click', function () {
+    publishState.scale = 1;
+    publishState.offsetX = 0;
+    publishState.offsetY = 0;
+    applyPublishTransform();
+    publishHelpText.textContent = 'Ana ekran konum/zoom sifirlandi.';
   });
 
   eraseToggleBtn.addEventListener('click', function () {
@@ -1141,23 +1364,15 @@
     setEraseMode(false);
     setToneMode(false);
     actionInput.value = 'approve';
-    if (!hasImage()) {
+    if (!hasPublishImage()) {
       e.preventDefault();
-      alert('Yayinlamak icin once gecerli bir gorsel yuklenmeli.');
+      alert('Yayinlamak icin once resmi Ana Ekrana Aktar ve konumla.');
       return;
     }
 
     saveEditState();
-    var ok = exportCanvasToInput();
+    var ok = exportPublishCanvasToInput();
     if (!ok) {
-      // Canvas export failed (e.g. cross-origin taint from proxy image).
-      // Fall back to re-saving the existing stored pointer without re-uploading.
-      var existingPointer = imageUrlInput.value || '';
-      if (existingPointer) {
-        imageDataInput.value = '';
-        helpText.textContent = 'Yayinlaniyor...';
-        return;
-      }
       e.preventDefault();
       alert('Gorsel islenemedi. Resmi tekrar secip yeniden dene.');
       return;
@@ -1205,8 +1420,18 @@
       calculateBaseScale();
       applyAll();
     }
+    publishImage.onload = function () {
+      calculatePublishBaseScale();
+      applyPublishTransform();
+    };
+    setPublishImageSource(initSrc);
+    if (publishImage.complete && publishImage.naturalWidth > 1) {
+      calculatePublishBaseScale();
+      applyPublishTransform();
+    }
   } else {
     setImageSource('');
+    setPublishImageSource('');
     syncControlsFromState();
   }
 })();
