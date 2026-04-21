@@ -4205,7 +4205,7 @@ export default function HomeScreen({
         ref={feedScrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        style={styles.scroll}
+        style={[styles.scroll, { backgroundColor: '#FDDEB7' }]}
         stickyHeaderIndices={[1]}
       >
         {/* Hero Header */}
