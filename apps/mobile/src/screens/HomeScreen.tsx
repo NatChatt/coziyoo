@@ -4365,10 +4365,10 @@ export default function HomeScreen({
               </ImageBackground>
               {LinearGradient ? (
                 <LinearGradient
-                  colors={[heroTopBandColor, toRgba(heroTopBandColor, 0.88), toRgba(heroTopBandColor, 0.52), toRgba(heroTopBandColor, 0.18), toRgba(heroTopBandColor, 0)]}
-                  locations={[0, 0.22, 0.48, 0.76, 1]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
+                  colors={[toRgba(heroTopBandColor, 0), toRgba(heroTopBandColor, 0.2), toRgba(heroTopBandColor, 0.52)]}
+                  locations={[0, 0.62, 1]}
+                  start={{ x: 0.5, y: 1 }}
+                  end={{ x: 0.5, y: 0 }}
                   style={styles.heroNewTopFade}
                 />
               ) : null}
@@ -6196,7 +6196,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: 88,
+    height: 64,
   },
   heroNewBottomFade: {
     position: 'absolute',
