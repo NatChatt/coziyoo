@@ -2421,9 +2421,16 @@ export default function HomeScreen({
   const [recommendedMealsLoading, setRecommendedMealsLoading] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Record<string, true>>({});
   const [favoritePendingIds, setFavoritePendingIds] = useState<Record<string, true>>({});
-  const [scrollSurfaceBg, setScrollSurfaceBg] = useState('#FDDEB7');
-  const scrollSurfaceBgRef = useRef('#FDDEB7');
-  const overscrollZoneRef = useRef<'none' | 'top' | 'bottom'>('none');
+  const homeSurfaceAnim = useRef(new Animated.Value(0)).current;
+  const homeSurfaceTargetRef = useRef<0 | 1>(0);
+  const homeSurfaceBg = useMemo(
+    () =>
+      homeSurfaceAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['#FDDEB7', '#FFFBF4'],
+      }),
+    [homeSurfaceAnim],
+  );
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
     () => DAILY_FLASH_MEALS.join(' • '),
@@ -4224,65 +4231,31 @@ export default function HomeScreen({
   function renderHomeFeed() {
     const handleFeedScroll = (event: any) => {
       const y = Number(event?.nativeEvent?.contentOffset?.y ?? 0);
-      const contentH = Number(event?.nativeEvent?.contentSize?.height ?? 0);
-      const viewportH = Number(event?.nativeEvent?.layoutMeasurement?.height ?? 0);
-      const maxY = Math.max(0, contentH - viewportH);
-      const EXIT_THRESHOLD = 24;
-      const HERO_ZONE_Y = 250;
-      const HERO_TONE = '#FDDEB7';
-      const SURFACE_TONE = '#FFFBF4';
-      const HERO_FADE_START_Y = 40;
-      const HERO_FADE_END_Y = HERO_ZONE_Y - 14;
-
-      let nextBg = SURFACE_TONE;
-      let zone = overscrollZoneRef.current;
-
-      if (zone === 'top') {
-        if (y > HERO_ZONE_Y + EXIT_THRESHOLD) zone = 'none';
-      } else if (zone === 'bottom') {
-        if (y < maxY - EXIT_THRESHOLD) zone = 'none';
-      } else {
-        if (y < 0 || y <= HERO_ZONE_Y) zone = 'top';
-        else if (y > maxY) zone = 'bottom';
-      }
-
-      overscrollZoneRef.current = zone;
-
-      let blendedTopTone = HERO_TONE;
-      if (y >= HERO_FADE_END_Y) {
-        blendedTopTone = SURFACE_TONE;
-      } else if (y > HERO_FADE_START_Y) {
-        const raw = (y - HERO_FADE_START_Y) / (HERO_FADE_END_Y - HERO_FADE_START_Y);
-        blendedTopTone = blendHexColors(HERO_TONE, SURFACE_TONE, smoothstep01(raw));
-      }
-
-      if (zone === 'top') {
-        if (y <= 0) {
-          nextBg = HERO_TONE;
-        } else {
-          nextBg = blendedTopTone;
-        }
-      } else if (zone === 'bottom') {
-        nextBg = SURFACE_TONE; // bottom overscroll: kart zemini tonu
-      }
-
-      if (nextBg !== scrollSurfaceBgRef.current) {
-        scrollSurfaceBgRef.current = nextBg;
-        setScrollSurfaceBg(nextBg);
+      const HERO_SWITCH_Y = 236;
+      const nextTarget: 0 | 1 = y >= HERO_SWITCH_Y ? 1 : 0;
+      if (nextTarget !== homeSurfaceTargetRef.current) {
+        homeSurfaceTargetRef.current = nextTarget;
+        Animated.timing(homeSurfaceAnim, {
+          toValue: nextTarget,
+          duration: 120,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }).start();
       }
 
     };
 
     return (
-      <ScrollView
-        ref={feedScrollRef}
-        showsVerticalScrollIndicator={false}
-        onScroll={handleFeedScroll}
-        scrollEventThrottle={8}
-        contentContainerStyle={styles.scrollContent}
-        style={[styles.scroll, { backgroundColor: scrollSurfaceBg }]}
-        stickyHeaderIndices={[1]}
-      >
+      <Animated.View style={[styles.scroll, { backgroundColor: homeSurfaceBg }]}>
+        <ScrollView
+          ref={feedScrollRef}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleFeedScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={styles.scrollContent}
+          style={[styles.scroll, { backgroundColor: 'transparent' }]}
+          stickyHeaderIndices={[1]}
+        >
         {/* Hero Header */}
         <View style={styles.heroWrap}>
           {LinearGradient ? (
@@ -4514,7 +4487,8 @@ export default function HomeScreen({
           })
         )}
 
-      </ScrollView>
+        </ScrollView>
+      </Animated.View>
     );
   }
 
