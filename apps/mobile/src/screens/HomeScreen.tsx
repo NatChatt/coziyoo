@@ -2497,7 +2497,7 @@ export default function HomeScreen({
     [heroTopBandColor, homeSurfaceAnim],
   );
   const homeBaseBg = useMemo(
-    () => blendHexColors(heroBottomBandColor, '#FFFBF4', 0.16),
+    () => blendHexColors('#FFFBF4', heroBottomBandColor, 0.06),
     [heroBottomBandColor],
   );
   const showSloganCard = false;
