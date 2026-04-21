@@ -4209,16 +4209,17 @@ export default function HomeScreen({
       const viewportH = Number(event?.nativeEvent?.layoutMeasurement?.height ?? 0);
       const maxY = Math.max(0, contentH - viewportH);
       const EXIT_THRESHOLD = 24;
+      const HERO_ZONE_Y = 250;
 
       let nextBg = '#FFFBF4';
       let zone = overscrollZoneRef.current;
 
       if (zone === 'top') {
-        if (y > EXIT_THRESHOLD) zone = 'none';
+        if (y > HERO_ZONE_Y + EXIT_THRESHOLD) zone = 'none';
       } else if (zone === 'bottom') {
         if (y < maxY - EXIT_THRESHOLD) zone = 'none';
       } else {
-        if (y < 0) zone = 'top';
+        if (y < 0 || y <= HERO_ZONE_Y) zone = 'top';
         else if (y > maxY) zone = 'bottom';
       }
 
