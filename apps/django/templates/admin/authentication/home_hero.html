@@ -100,6 +100,13 @@
     user-select: none;
     touch-action: none;
   }
+  .hero-stage-edit .hero-overlay-left,
+  .hero-stage-edit .hero-overlay-corners,
+  .hero-stage-edit .hero-overlay-top,
+  .hero-stage-edit .hero-overlay-bottom,
+  .hero-stage-edit .hero-copy {
+    display: none !important;
+  }
   .hero-stage.dragging {
     cursor: grabbing;
   }
@@ -233,8 +240,8 @@
 
       <div class="hero-layout">
         <div>
-          <div class="hero-panel-title">1) Resmi Düzenleme</div>
-          <div class="hero-stage" id="hero-stage">
+          <div class="hero-panel-title">1) Resmi Düzenleme (Sade)</div>
+          <div class="hero-stage hero-stage-edit" id="hero-stage">
             <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
             <canvas id="hero-edit-canvas" class="hero-photo" style="display:none"></canvas>
             <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
