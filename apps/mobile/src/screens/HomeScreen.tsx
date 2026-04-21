@@ -4374,8 +4374,12 @@ export default function HomeScreen({
               ) : null}
               {LinearGradient ? (
                 <LinearGradient
-                  colors={['rgba(255, 251, 244, 0)', 'rgba(255, 251, 244, 0.34)', 'rgba(255, 251, 244, 0.62)']}
-                  locations={[0, 0.6, 1]}
+                  colors={[
+                    toRgba(heroBottomBandColor, 0),
+                    toRgba(heroBottomBandColor, 0.34),
+                    toRgba(heroBottomBandColor, 0.72),
+                  ]}
+                  locations={[0, 0.58, 1]}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
                   style={styles.heroNewBottomFade}
@@ -4496,13 +4500,13 @@ export default function HomeScreen({
           {LinearGradient ? (
             <LinearGradient
               colors={[
-                toRgba(heroBottomBandColor, 0.80),
-                toRgba(heroBottomBandColor, 0.58),
-                toRgba(heroBottomBandColor, 0.30),
-                'rgba(255, 251, 244, 0.10)',
-                'rgba(255, 251, 244, 0)',
+                toRgba(heroBottomBandColor, 0.92),
+                toRgba(heroBottomBandColor, 0.72),
+                toRgba(heroBottomBandColor, 0.42),
+                toRgba(heroBottomBandColor, 0.16),
+                'rgba(255, 251, 244, 0.00)',
               ]}
-              locations={[0, 0.34, 0.66, 0.86, 1]}
+              locations={[0, 0.22, 0.50, 0.78, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.stickySearchFade}
@@ -6305,8 +6309,8 @@ const styles = StyleSheet.create({
   stickySearchChips: {
     position: 'relative',
     backgroundColor: '#FFFBF4',
-    marginTop: -2,
-    paddingTop: 2,
+    marginTop: -4,
+    paddingTop: 4,
     paddingBottom: 4,
     zIndex: 10,
     shadowColor: '#000',
