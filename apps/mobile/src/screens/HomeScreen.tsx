@@ -4444,8 +4444,8 @@ export default function HomeScreen({
         <View style={styles.stickySearchChips}>
           {LinearGradient ? (
             <LinearGradient
-              colors={['rgba(244, 214, 191, 0.74)', 'rgba(255, 251, 244, 0.72)', '#FFFBF4']}
-              locations={[0, 0.56, 1]}
+              colors={['rgba(244, 214, 191, 0.92)', 'rgba(244, 214, 191, 0.78)', 'rgba(255, 251, 244, 0.86)', '#FFFBF4']}
+              locations={[0, 0.52, 0.82, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.stickySearchFade}
