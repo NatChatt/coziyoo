@@ -2402,6 +2402,8 @@ export default function HomeScreen({
   const [recommendedMealsLoading, setRecommendedMealsLoading] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Record<string, true>>({});
   const [favoritePendingIds, setFavoritePendingIds] = useState<Record<string, true>>({});
+  const [scrollSurfaceBg, setScrollSurfaceBg] = useState('#FFFBF4');
+  const scrollSurfaceBgRef = useRef('#FFFBF4');
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
     () => DAILY_FLASH_MEALS.join(' • '),
@@ -4200,12 +4202,33 @@ export default function HomeScreen({
   }
 
   function renderHomeFeed() {
+    const handleFeedScroll = (event: any) => {
+      const y = Number(event?.nativeEvent?.contentOffset?.y ?? 0);
+      const contentH = Number(event?.nativeEvent?.contentSize?.height ?? 0);
+      const viewportH = Number(event?.nativeEvent?.layoutMeasurement?.height ?? 0);
+      const maxY = Math.max(0, contentH - viewportH);
+
+      let nextBg = '#FFFBF4';
+      if (y < 0) {
+        nextBg = '#FDDEB7'; // top overscroll: hero tonu
+      } else if (y > maxY) {
+        nextBg = '#FFFBF4'; // bottom overscroll: kart zemini tonu
+      }
+
+      if (nextBg !== scrollSurfaceBgRef.current) {
+        scrollSurfaceBgRef.current = nextBg;
+        setScrollSurfaceBg(nextBg);
+      }
+    };
+
     return (
       <ScrollView
         ref={feedScrollRef}
         showsVerticalScrollIndicator={false}
+        onScroll={handleFeedScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.scrollContent}
-        style={styles.scroll}
+        style={[styles.scroll, { backgroundColor: scrollSurfaceBg }]}
         stickyHeaderIndices={[1]}
       >
         {/* Hero Header */}
