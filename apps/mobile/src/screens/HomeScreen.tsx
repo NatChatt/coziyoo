@@ -4233,7 +4233,8 @@ export default function HomeScreen({
       const HERO_ZONE_Y = 250;
       const HERO_TONE = '#FDDEB7';
       const SURFACE_TONE = '#FFFBF4';
-      const BLEND_STEPS = 24;
+      const BLEND_STEPS = 16;
+      const HERO_STABLE_START_Y = 34;
 
       let nextBg = SURFACE_TONE;
       let zone = overscrollZoneRef.current;
@@ -4253,10 +4254,14 @@ export default function HomeScreen({
         if (y <= 0) {
           nextBg = HERO_TONE;
         } else {
-          const raw = y / (HERO_ZONE_Y + EXIT_THRESHOLD);
-          const eased = smoothstep01(raw);
-          const quantized = Math.round(eased * BLEND_STEPS) / BLEND_STEPS;
-          nextBg = blendHexColors(HERO_TONE, SURFACE_TONE, quantized);
+          if (y <= HERO_STABLE_START_Y) {
+            nextBg = HERO_TONE;
+          } else {
+            const raw = (y - HERO_STABLE_START_Y) / (HERO_ZONE_Y + EXIT_THRESHOLD - HERO_STABLE_START_Y);
+            const eased = smoothstep01(raw);
+            const quantized = Math.round(eased * BLEND_STEPS) / BLEND_STEPS;
+            nextBg = blendHexColors(HERO_TONE, SURFACE_TONE, quantized);
+          }
         }
       } else if (zone === 'bottom') {
         nextBg = SURFACE_TONE; // bottom overscroll: kart zemini tonu
