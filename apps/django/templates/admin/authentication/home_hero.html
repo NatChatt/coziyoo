@@ -59,9 +59,25 @@
   }
   .hero-layout {
     display: grid;
-    grid-template-columns: minmax(300px, 390px) 1fr minmax(340px, 450px) 1fr;
+    grid-template-columns: minmax(520px, 1fr) 300px;
     gap: 14px;
     align-items: start;
+  }
+  .hero-previews-column {
+    display: grid;
+    gap: 12px;
+  }
+  .hero-preview-card {
+    border: 1px solid #D0D5DD;
+    border-radius: 12px;
+    background: #FFFFFF;
+    padding: 10px;
+  }
+  .hero-controls-column {
+    display: grid;
+    gap: 12px;
+    position: sticky;
+    top: 12px;
   }
   .hero-panel-title {
     font-size: 13px;
@@ -74,6 +90,8 @@
     border-radius: 12px;
     padding: 12px;
     background: #fcfcfd;
+    max-height: 760px;
+    overflow: auto;
   }
   .hero-control-group + .hero-control-group {
     margin-top: 12px;
@@ -89,7 +107,7 @@
   }
   .hero-stage {
     position: relative;
-    width: 390px;
+    width: 100%;
     max-width: 100%;
     aspect-ratio: 390 / 226;
     border: 1px solid #d0d5dd;
@@ -101,7 +119,7 @@
     touch-action: none;
   }
   .hero-stage-publish {
-    width: 430px;
+    width: 100%;
     aspect-ratio: 390 / 320;
     background: #FDDEB7;
   }
@@ -292,6 +310,9 @@
     .hero-layout {
       grid-template-columns: 1fr;
     }
+    .hero-controls-column {
+      position: static;
+    }
     .hero-stage {
       margin: 0 auto;
     }
@@ -321,28 +342,55 @@
       </div>
 
       <div class="hero-layout">
-        <div>
-          <div class="hero-panel-title">1) Resmi Düzenleme (Sade)</div>
-          <div class="hero-stage hero-stage-edit" id="hero-stage">
-            <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
-            <canvas id="hero-edit-canvas" class="hero-photo" style="display:none"></canvas>
-            <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
-            <div class="hero-overlay-left" id="hero-overlay-left"></div>
-            <div class="hero-overlay-corners" id="hero-overlay-corners"></div>
-            <div class="hero-overlay-top" id="hero-overlay-top"></div>
-            <div class="hero-copy">
-              <div class="hero-copy-top">
-                <div class="hero-avatar"></div>
-                <div class="hero-greet">Tünaydın, Demo</div>
+        <div class="hero-previews-column">
+          <div class="hero-preview-card">
+            <div class="hero-panel-title">1) Resmi Düzenleme (Sade)</div>
+            <div class="hero-stage hero-stage-edit" id="hero-stage">
+              <img id="hero-preview-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
+              <canvas id="hero-edit-canvas" class="hero-photo" style="display:none"></canvas>
+              <div id="hero-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Resim ekledikten sonra burada görünecek</div>
+              <div class="hero-overlay-left" id="hero-overlay-left"></div>
+              <div class="hero-overlay-corners" id="hero-overlay-corners"></div>
+              <div class="hero-overlay-top" id="hero-overlay-top"></div>
+              <div class="hero-copy">
+                <div class="hero-copy-top">
+                  <div class="hero-avatar"></div>
+                  <div class="hero-greet">Tünaydın, Demo</div>
+                </div>
+                <div class="hero-headline">Sana güzel bir şey öneririm.</div>
+                <div class="hero-location">Kadıköy • 2.5 km çevre</div>
               </div>
-              <div class="hero-headline">Sana güzel bir şey öneririm.</div>
-              <div class="hero-location">Kadıköy • 2.5 km çevre</div>
+              <div class="hero-overlay-bottom" id="hero-overlay-bottom"></div>
             </div>
-            <div class="hero-overlay-bottom" id="hero-overlay-bottom"></div>
+          </div>
+
+          <div class="hero-preview-card">
+            <div class="hero-panel-title">2) Gerçek Ana Ekran (Sadece Boyut/Konum)</div>
+            <div class="hero-stage hero-stage-publish" id="hero-publish-stage">
+              <img id="hero-publish-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
+              <div id="hero-publish-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Önce “Ana Ekrana Aktar”</div>
+              <div class="hero-copy">
+                <div class="hero-copy-top">
+                  <div class="hero-avatar"></div>
+                  <div class="hero-greet">Tünaydın, Demo</div>
+                </div>
+                <div class="hero-headline">Sana güzel bir şey öneririm.</div>
+                <div class="hero-location">Kadıköy • 2.5 km çevre</div>
+              </div>
+              <div class="hero-mobile-bottom-surface"></div>
+              <div class="hero-mobile-search"></div>
+              <div class="hero-mobile-chips">
+                <div class="hero-mobile-chip active">Tümü</div>
+                <div class="hero-mobile-chip">Çorbalar</div>
+                <div class="hero-mobile-chip">Ana Yemekler</div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="hero-controls">
+        <div class="hero-controls-column">
+          <div class="hero-controls">
+            <div class="hero-panel-title">Düzenleme Araçları</div>
           <div class="hero-control-group">
             <div class="hero-control-label">Zoom</div>
             <input id="hero-zoom" class="hero-range" type="range" min="0.35" max="3.20" step="0.01" value="1.00" />
@@ -402,32 +450,9 @@
             </div>
           </div>
           <div class="hero-help" id="hero-help-text">Ipuçlari: Sahneyi sürükle, mouse tekerleği ile ince zoom yap.</div>
-        </div>
-
-        <div>
-          <div class="hero-panel-title">2) Gerçek Ana Ekran (Sadece Boyut/Konum)</div>
-          <div class="hero-stage hero-stage-publish" id="hero-publish-stage">
-            <img id="hero-publish-image" class="hero-photo" src="{{ current_url|default:'' }}" alt="" draggable="false" {% if not current_url %}style="display:none"{% endif %}>
-            <div id="hero-publish-empty" class="hero-empty" {% if current_url %}style="display:none"{% endif %}>Önce “Ana Ekrana Aktar”</div>
-            <div class="hero-copy">
-              <div class="hero-copy-top">
-                <div class="hero-avatar"></div>
-                <div class="hero-greet">Tünaydın, Demo</div>
-              </div>
-              <div class="hero-headline">Sana güzel bir şey öneririm.</div>
-              <div class="hero-location">Kadıköy • 2.5 km çevre</div>
-            </div>
-            <div class="hero-mobile-bottom-surface"></div>
-            <div class="hero-mobile-search"></div>
-            <div class="hero-mobile-chips">
-              <div class="hero-mobile-chip active">Tümü</div>
-              <div class="hero-mobile-chip">Çorbalar</div>
-              <div class="hero-mobile-chip">Ana Yemekler</div>
-            </div>
           </div>
-        </div>
-
-        <div class="hero-controls">
+          <div class="hero-controls">
+            <div class="hero-panel-title">Ana Ekran Yerleşimi</div>
           <div class="hero-control-group">
             <div class="hero-control-label">Ana Ekran Zoom</div>
             <input id="hero-publish-zoom" class="hero-range" type="range" min="0.35" max="3.20" step="0.01" value="1.00" />
@@ -436,6 +461,7 @@
             <button type="button" id="hero-publish-reset" class="hero-btn-secondary">Konum/Zoom Reset</button>
           </div>
           <div class="hero-help" id="hero-publish-help-text">Bu alanda sadece sürükle + zoom var. Ayar bitince Yayınla.</div>
+          </div>
         </div>
       </div>
     </div>
