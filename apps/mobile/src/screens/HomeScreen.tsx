@@ -4233,8 +4233,8 @@ export default function HomeScreen({
       const HERO_ZONE_Y = 250;
       const HERO_TONE = '#FDDEB7';
       const SURFACE_TONE = '#FFFBF4';
-      const BLEND_STEPS = 16;
-      const HERO_STABLE_START_Y = 34;
+      const HERO_FADE_START_Y = 40;
+      const HERO_FADE_END_Y = HERO_ZONE_Y - 14;
 
       let nextBg = SURFACE_TONE;
       let zone = overscrollZoneRef.current;
@@ -4250,18 +4250,19 @@ export default function HomeScreen({
 
       overscrollZoneRef.current = zone;
 
+      let blendedTopTone = HERO_TONE;
+      if (y >= HERO_FADE_END_Y) {
+        blendedTopTone = SURFACE_TONE;
+      } else if (y > HERO_FADE_START_Y) {
+        const raw = (y - HERO_FADE_START_Y) / (HERO_FADE_END_Y - HERO_FADE_START_Y);
+        blendedTopTone = blendHexColors(HERO_TONE, SURFACE_TONE, smoothstep01(raw));
+      }
+
       if (zone === 'top') {
         if (y <= 0) {
           nextBg = HERO_TONE;
         } else {
-          if (y <= HERO_STABLE_START_Y) {
-            nextBg = HERO_TONE;
-          } else {
-            const raw = (y - HERO_STABLE_START_Y) / (HERO_ZONE_Y + EXIT_THRESHOLD - HERO_STABLE_START_Y);
-            const eased = smoothstep01(raw);
-            const quantized = Math.round(eased * BLEND_STEPS) / BLEND_STEPS;
-            nextBg = blendHexColors(HERO_TONE, SURFACE_TONE, quantized);
-          }
+          nextBg = blendedTopTone;
         }
       } else if (zone === 'bottom') {
         nextBg = SURFACE_TONE; // bottom overscroll: kart zemini tonu
@@ -4272,17 +4273,8 @@ export default function HomeScreen({
         setScrollSurfaceBg(nextBg);
       }
 
-      // Sticky olmadan once renk gecisi tamamlansin; "blink" algisi kaybolsun.
-      const TOP_FADE_START_Y = 118;
-      const TOP_FADE_END_Y = HERO_ZONE_Y - 14;
-      let nextTopBg = HERO_TONE;
-      if (y >= TOP_FADE_END_Y) {
-        nextTopBg = SURFACE_TONE;
-      } else if (y > TOP_FADE_START_Y) {
-        const raw = (y - TOP_FADE_START_Y) / (TOP_FADE_END_Y - TOP_FADE_START_Y);
-        const eased = smoothstep01(raw);
-        nextTopBg = blendHexColors(HERO_TONE, SURFACE_TONE, eased);
-      }
+      // Hero->sticky ve sticky->hero ayni fade egirisini kullansin (iki yon de stabil).
+      const nextTopBg = y < 0 ? HERO_TONE : blendedTopTone;
       if (nextTopBg !== homeTopChromeBgRef.current) {
         homeTopChromeBgRef.current = nextTopBg;
         setHomeTopChromeBg(nextTopBg);
@@ -4294,7 +4286,7 @@ export default function HomeScreen({
         ref={feedScrollRef}
         showsVerticalScrollIndicator={false}
         onScroll={handleFeedScroll}
-        scrollEventThrottle={16}
+        scrollEventThrottle={8}
         contentContainerStyle={styles.scrollContent}
         style={[styles.scroll, { backgroundColor: scrollSurfaceBg }]}
         stickyHeaderIndices={[1]}
