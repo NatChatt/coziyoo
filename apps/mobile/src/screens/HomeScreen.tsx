@@ -4450,7 +4450,7 @@ export default function HomeScreen({
           </View>
         </View>
         {/* Sticky: Search Bar + Category Chips */}
-        <View style={styles.stickySearchChips}>
+        <Animated.View style={[styles.stickySearchChips, { backgroundColor: homeSurfaceBg }]}>
           {LinearGradient ? (
             <LinearGradient
               colors={[
@@ -4527,7 +4527,7 @@ export default function HomeScreen({
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </View>
+        </Animated.View>
         {showHomeOrderPromo ? renderQuickOrderCard('home') : renderPromoFallbackCard('home')}
         <View onLayout={(e) => setFoodSectionOffsetY(e.nativeEvent.layout.y)} />
         <View style={styles.recommendationsSection}>
