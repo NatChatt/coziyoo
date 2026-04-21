@@ -4379,12 +4379,12 @@ export default function HomeScreen({
               {LinearGradient ? (
                 <LinearGradient
                   colors={[
-                    'rgba(242, 228, 191, 0.00)',
-                    'rgba(242, 228, 191, 0.12)',
-                    'rgba(242, 228, 191, 0.28)',
-                    'rgba(242, 228, 191, 0.46)',
-                    'rgba(242, 228, 191, 0.68)',
-                    '#F3EEE4',
+                    toRgba(heroBottomBandColor, 0),
+                    toRgba(heroBottomBandColor, 0.12),
+                    toRgba(heroBottomBandColor, 0.28),
+                    toRgba(heroBottomBandColor, 0.46),
+                    toRgba(heroBottomBandColor, 0.68),
+                    '#FFFBF4',
                   ]}
                   locations={[0, 0.18, 0.36, 0.56, 0.78, 1]}
                   start={{ x: 0.5, y: 0 }}
@@ -4507,12 +4507,13 @@ export default function HomeScreen({
           {LinearGradient ? (
             <LinearGradient
               colors={[
-                toRgba(heroBottomBandColor, 0.52),
-                toRgba(heroBottomBandColor, 0.30),
+                toRgba(heroBottomBandColor, 0.68),
+                toRgba(heroBottomBandColor, 0.46),
+                toRgba(heroBottomBandColor, 0.28),
                 toRgba(heroBottomBandColor, 0.12),
                 'rgba(255, 251, 244, 0.00)',
               ]}
-              locations={[0, 0.34, 0.70, 1]}
+              locations={[0, 0.20, 0.42, 0.66, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.stickySearchFade}
