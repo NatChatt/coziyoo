@@ -98,6 +98,7 @@ import { HOME_FEED_CATEGORIES } from '../constants/foodCategories';
 const AnimatedTouchableOpacity: any = Animated.createAnimatedComponent(RNTouchableOpacity as any);
 const PICKUP_ADDRESS_REQUEST_TIMEOUT_MS = 12000;
 const BUYER_HOME_TAB_BAR_HEIGHT = 70;
+const USE_NEW_HOME_HERO = true; // Deneme modu: eski hero kodda kalir, yeni sade hero aktif.
 
 function shouldDisableGlobalPressFx(style: unknown, activeOpacity?: number): boolean {
   if (activeOpacity === 1) return true;
@@ -4258,66 +4259,87 @@ export default function HomeScreen({
         >
         {/* Hero Header */}
         <View style={styles.heroWrap}>
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(255, 235, 205, 0.98)', 'rgba(255, 235, 205, 0.82)', 'rgba(255, 235, 205, 0.28)', 'rgba(255, 235, 205, 0)']}
-              locations={[0, 0.28, 0.68, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.heroBaseGradient}
-            />
-          ) : null}
-          <Image
-            source={headerImageSource}
-            style={styles.heroFoodBgImg}
-            onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
-          />
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(191, 132, 91, 0.22)', 'rgba(191, 132, 91, 0.1)', 'rgba(191, 132, 91, 0)']}
-              locations={[0, 0.16, 0.34]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroFoodBgEdgeFade}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(255, 228, 196, 1)', 'rgba(255, 228, 196, 0.9)', 'rgba(255, 228, 196, 0.42)', 'rgba(255, 228, 196, 0)']}
-              locations={[0, 0.32, 0.72, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.heroFeatherLeft}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(253, 222, 183, 0.98)', 'rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0)']}
-              locations={[0, 0.52, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.heroFeatherTop}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']}
-              locations={[0, 1]}
-              start={{ x: 0.5, y: 1 }}
-              end={{ x: 0.5, y: 0 }}
-              style={styles.heroFeatherBottom}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.28)', 'rgba(253, 222, 183, 0.58)']}
-              locations={[0, 0.5, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.heroFeatherRight}
-            />
-          ) : null}
-          <View pointerEvents="none" style={styles.heroRightSeamCover} />
+          {USE_NEW_HOME_HERO ? (
+            <>
+              <Image
+                source={headerImageSource}
+                style={styles.heroBgFullImage}
+                onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
+              />
+              {LinearGradient ? (
+                <LinearGradient
+                  colors={['rgba(255, 251, 244, 1)', 'rgba(255, 251, 244, 0)']}
+                  locations={[0, 1]}
+                  start={{ x: 0.5, y: 1 }}
+                  end={{ x: 0.5, y: 0 }}
+                  style={styles.heroBottomOnlyFade}
+                />
+              ) : null}
+            </>
+          ) : (
+            <>
+              {LinearGradient ? (
+                <LinearGradient
+                  colors={['rgba(255, 235, 205, 0.98)', 'rgba(255, 235, 205, 0.82)', 'rgba(255, 235, 205, 0.28)', 'rgba(255, 235, 205, 0)']}
+                  locations={[0, 0.28, 0.68, 1]}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={styles.heroBaseGradient}
+                />
+              ) : null}
+              <Image
+                source={headerImageSource}
+                style={styles.heroFoodBgImg}
+                onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
+              />
+              {LinearGradient ? (
+                <LinearGradient
+                  colors={['rgba(191, 132, 91, 0.22)', 'rgba(191, 132, 91, 0.1)', 'rgba(191, 132, 91, 0)']}
+                  locations={[0, 0.16, 0.34]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.heroFoodBgEdgeFade}
+                />
+              ) : null}
+              {LinearGradient ? (
+                <LinearGradient
+                  colors={['rgba(255, 228, 196, 1)', 'rgba(255, 228, 196, 0.9)', 'rgba(255, 228, 196, 0.42)', 'rgba(255, 228, 196, 0)']}
+                  locations={[0, 0.32, 0.72, 1]}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={styles.heroFeatherLeft}
+                />
+              ) : null}
+              {LinearGradient ? (
+                <LinearGradient
+                  colors={['rgba(253, 222, 183, 0.98)', 'rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0)']}
+                  locations={[0, 0.52, 1]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.heroFeatherTop}
+                />
+              ) : null}
+              {LinearGradient ? (
+                <LinearGradient
+                  colors={['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']}
+                  locations={[0, 1]}
+                  start={{ x: 0.5, y: 1 }}
+                  end={{ x: 0.5, y: 0 }}
+                  style={styles.heroFeatherBottom}
+                />
+              ) : null}
+              {LinearGradient ? (
+                <LinearGradient
+                  colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.28)', 'rgba(253, 222, 183, 0.58)']}
+                  locations={[0, 0.5, 1]}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={styles.heroFeatherRight}
+                />
+              ) : null}
+              <View pointerEvents="none" style={styles.heroRightSeamCover} />
+            </>
+          )}
           <View style={styles.heroTextArea}>
             <View style={styles.heroIdentityRow}>
               <TouchableOpacity
@@ -6022,6 +6044,19 @@ const styles = StyleSheet.create({
   },
   heroBaseGradient: {
     ...StyleSheet.absoluteFillObject,
+  },
+  heroBgFullImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: undefined,
+    height: undefined,
+    resizeMode: 'cover',
+  },
+  heroBottomOnlyFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 108,
   },
   heroFoodBgImg: {
     position: 'absolute',
