@@ -6130,7 +6130,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   heroBgFullImageInner: {
-    resizeMode: 'cover',
+    resizeMode: 'stretch',
   },
   heroNewTopFade: {
     position: 'absolute',
