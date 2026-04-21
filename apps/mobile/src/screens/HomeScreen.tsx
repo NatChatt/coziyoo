@@ -4272,9 +4272,9 @@ export default function HomeScreen({
         setScrollSurfaceBg(nextBg);
       }
 
-      // Sticky'den hemen once ince fade baslat; iki yonlu kaydirmada da gecis fark edilmesin.
-      const TOP_FADE_START_Y = HERO_ZONE_Y - 64;
-      const TOP_FADE_END_Y = HERO_ZONE_Y;
+      // Sticky olmadan once renk gecisi tamamlansin; "blink" algisi kaybolsun.
+      const TOP_FADE_START_Y = 118;
+      const TOP_FADE_END_Y = HERO_ZONE_Y - 14;
       let nextTopBg = HERO_TONE;
       if (y >= TOP_FADE_END_Y) {
         nextTopBg = SURFACE_TONE;
