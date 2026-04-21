@@ -103,7 +103,7 @@
   .hero-stage-publish {
     width: 430px;
     aspect-ratio: 390 / 320;
-    background: linear-gradient(180deg, #FDDEB7 0%, #FDDEB7 62%, #FFFBF4 100%);
+    background: #FDDEB7;
   }
   .hero-stage-edit .hero-overlay-left,
   .hero-stage-edit .hero-overlay-corners,
@@ -175,6 +175,28 @@
     left: 10px;
     width: 58%;
   }
+  .hero-stage-publish .hero-headline {
+    color: #B15735;
+    font-size: 16px;
+    line-height: 21px;
+    font-weight: 700;
+  }
+  .hero-stage-publish .hero-location {
+    color: #B15735;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 700;
+  }
+  .hero-mobile-bottom-surface {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 118px;
+    background: #FFFBF4;
+    z-index: 30;
+    pointer-events: none;
+  }
   .hero-copy-top {
     display: flex;
     align-items: center;
@@ -219,10 +241,10 @@
     right: 10px;
     bottom: 58px;
     height: 44px;
-    border-radius: 22px;
+    border-radius: 24px;
     border: 1px solid #E6DED3;
     background: #FFFFFF;
-    z-index: 34;
+    z-index: 35;
     pointer-events: none;
   }
   .hero-mobile-search::before {
@@ -230,36 +252,37 @@
     position: absolute;
     left: 16px;
     top: 12px;
-    color: #9B958F;
-    font-size: 13px;
-    font-weight: 600;
+    color: #AFA79C;
+    font-size: 16px;
+    font-weight: 400;
   }
   .hero-mobile-chips {
     position: absolute;
     left: 10px;
     right: 10px;
-    bottom: 12px;
+    bottom: 10px;
     display: flex;
     gap: 8px;
-    z-index: 34;
+    z-index: 35;
     pointer-events: none;
   }
   .hero-mobile-chip {
-    height: 30px;
-    border-radius: 15px;
+    height: 36px;
+    border-radius: 22px;
     padding: 0 12px;
     display: inline-flex;
     align-items: center;
-    border: 1px solid #E0D7CA;
+    border: 1px solid #DDD2C2;
     background: #FFFFFF;
-    color: #4E3A2F;
-    font-size: 12px;
-    font-weight: 700;
+    color: #3D2B22;
+    font-size: 15px;
+    font-weight: 600;
   }
   .hero-mobile-chip.active {
     background: #3C2920;
     color: #FFFFFF;
     border-color: #3C2920;
+    font-weight: 700;
   }
   @media (max-width: 980px) {
     .hero-preview-header {
@@ -378,6 +401,7 @@
               <div class="hero-headline">Sana güzel bir şey öneririm.</div>
               <div class="hero-location">Kadıköy • 2.5 km çevre</div>
             </div>
+            <div class="hero-mobile-bottom-surface"></div>
             <div class="hero-mobile-search"></div>
             <div class="hero-mobile-chips">
               <div class="hero-mobile-chip active">Tümü</div>
