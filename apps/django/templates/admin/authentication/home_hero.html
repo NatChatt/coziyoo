@@ -278,7 +278,7 @@
             <div class="hero-control-label">Ton Fircasi (Yeni)</div>
             <input id="hero-tone-size" class="hero-range" type="range" min="8" max="140" step="1" value="38" />
             <div class="hero-control-label" style="margin-top:8px;">Etki</div>
-            <input id="hero-tone-strength" class="hero-range" type="range" min="2" max="40" step="1" value="14" />
+            <input id="hero-tone-strength" class="hero-range" type="range" min="5" max="80" step="1" value="28" />
             <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
               <button type="button" id="hero-tone-toggle" class="hero-btn-secondary">Ton Fircasi Ac</button>
               <button type="button" id="hero-tone-mode" class="hero-btn-secondary">Mod: Ac</button>
@@ -594,17 +594,17 @@
   function tonePoint(x, y) {
     if (!toneCtx) return;
     var radius = Math.max(4, parseFloat(toneSizeInput.value || '38') / 2);
-    var strength = clamp(parseFloat(toneStrengthInput.value || '14'), 2, 40) / 100;
+    var strength = clamp(parseFloat(toneStrengthInput.value || '28'), 5, 80) / 100;
     var gradient = toneCtx.createRadialGradient(x, y, 0, x, y, radius);
     if (toneLightMode) {
-      gradient.addColorStop(0, 'rgba(255,255,255,' + strength.toFixed(3) + ')');
+      gradient.addColorStop(0, 'rgba(255,255,255,' + (strength * 0.95).toFixed(3) + ')');
       gradient.addColorStop(1, 'rgba(255,255,255,0)');
     } else {
-      gradient.addColorStop(0, 'rgba(0,0,0,' + strength.toFixed(3) + ')');
+      gradient.addColorStop(0, 'rgba(0,0,0,' + (strength * 0.9).toFixed(3) + ')');
       gradient.addColorStop(1, 'rgba(0,0,0,0)');
     }
     toneCtx.save();
-    toneCtx.globalCompositeOperation = 'source-over';
+    toneCtx.globalCompositeOperation = toneLightMode ? 'screen' : 'multiply';
     toneCtx.fillStyle = gradient;
     toneCtx.beginPath();
     toneCtx.arc(x, y, radius, 0, Math.PI * 2);
