@@ -2405,6 +2405,8 @@ export default function HomeScreen({
   const [scrollSurfaceBg, setScrollSurfaceBg] = useState('#FDDEB7');
   const scrollSurfaceBgRef = useRef('#FDDEB7');
   const overscrollZoneRef = useRef<'none' | 'top' | 'bottom'>('none');
+  const [homeTopChromeBg, setHomeTopChromeBg] = useState('#FDDEB7');
+  const homeTopChromeBgRef = useRef('#FDDEB7');
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
     () => DAILY_FLASH_MEALS.join(' • '),
@@ -4235,6 +4237,14 @@ export default function HomeScreen({
         scrollSurfaceBgRef.current = nextBg;
         setScrollSurfaceBg(nextBg);
       }
+
+      // When search area becomes sticky, top chrome should match search background.
+      var nextTopBg = y >= HERO_ZONE_Y ? '#FFFBF4' : '#FDDEB7';
+      if (y < 0) nextTopBg = '#FDDEB7';
+      if (nextTopBg !== homeTopChromeBgRef.current) {
+        homeTopChromeBgRef.current = nextTopBg;
+        setHomeTopChromeBg(nextTopBg);
+      }
     };
 
     return (
@@ -4975,7 +4985,7 @@ export default function HomeScreen({
   }
 
   /* ---------- Main render ---------- */
-  const topChromeBg = activeTab === 'home' ? '#FDDEB7' : '#FFFBF4';
+  const topChromeBg = activeTab === 'home' ? homeTopChromeBg : '#FFFBF4';
 
   return (
     <>
