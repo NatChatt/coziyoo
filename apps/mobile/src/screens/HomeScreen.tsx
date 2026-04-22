@@ -11,7 +11,6 @@ import {
   ImageBackground,
   KeyboardAvoidingView,
   Modal,
-  PixelRatio,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -22,7 +21,6 @@ import {
   TouchableOpacity as RNTouchableOpacity,
   UIManager,
   View,
-  useWindowDimensions,
   type GestureResponderEvent,
   type ImageSourcePropType,
 } from 'react-native';
@@ -101,11 +99,7 @@ import { HOME_FEED_CATEGORIES } from '../constants/foodCategories';
 const AnimatedTouchableOpacity: any = Animated.createAnimatedComponent(RNTouchableOpacity as any);
 const PICKUP_ADDRESS_REQUEST_TIMEOUT_MS = 12000;
 const BUYER_HOME_TAB_BAR_HEIGHT = 70;
-const USE_NEW_HOME_HERO = true; // Deneme modu acik: yeni hero aktif, eski hero kodda yedek.
-const TOP_BLEND_STRIP_HEIGHT = Math.min(
-  12,
-  Math.max(8, Math.round(PixelRatio.roundToNearestPixel(10))),
-);
+const TOP_BLEND_STRIP_HEIGHT = 10;
 
 function shouldDisableGlobalPressFx(style: unknown, activeOpacity?: number): boolean {
   if (activeOpacity === 1) return true;
@@ -2300,11 +2294,6 @@ export default function HomeScreen({
   onAuthRefresh,
   onSwitchToSeller,
 }: Props) {
-  const { width: screenWidth } = useWindowDimensions();
-  const heroDynamicHeight = useMemo(
-    () => Math.max(220, Math.min(252, Math.round(screenWidth * 0.60))),
-    [screenWidth],
-  );
   const [currentAuth, setCurrentAuth] = useState<AuthSession>(auth);
   const [apiUrl, setApiUrl] = useState('http://localhost:3000');
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'home');
@@ -4362,132 +4351,63 @@ export default function HomeScreen({
           stickyHeaderIndices={[1]}
         >
         {/* Hero Header */}
-        <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, marginTop: 0, paddingTop: 9, backgroundColor: heroTopBandColor } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
-          {USE_NEW_HOME_HERO ? (
-            <>
-              <ImageBackground
-                source={headerImageSource}
-                style={styles.topBlendStrip}
-                imageStyle={styles.topBlendStripImage}
-                onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
-              >
-                {LinearGradient ? (
-                  <LinearGradient
-                    colors={[
-                      toRgba(heroTopBandColor, 0.34),
-                      toRgba(heroTopBandColor, 0.2),
-                      toRgba(heroTopBandColor, 0.08),
-                    ]}
-                    locations={[0, 0.58, 1]}
-                    start={{ x: 0.5, y: 0 }}
-                    end={{ x: 0.5, y: 1 }}
-                    style={styles.topBlendStripOverlay}
-                  />
-                ) : null}
-              </ImageBackground>
-              <View style={[styles.heroTopSeamCover, { backgroundColor: heroTopBandColor }]} />
-              <ImageBackground
-                  source={headerImageSource}
-                  style={[styles.heroBgFullImage, styles.heroBgExtended]}
-                  imageStyle={styles.heroBgFullImageInner}
-                  onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
-                >
-              </ImageBackground>
-              {LinearGradient ? (
-                <LinearGradient
-                  colors={[
-                    toRgba(heroTopBandColor, 0.34),
-                    toRgba(heroTopBandColor, 0.18),
-                    toRgba(heroTopBandColor, 0.08),
-                    toRgba(heroTopBandColor, 0),
-                  ]}
-                  locations={[0, 0.42, 0.74, 1]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.heroNewTopFade}
-                />
-              ) : null}
-              {LinearGradient ? (
-                <LinearGradient
-                  colors={[
-                    toRgba(heroBottomBandColor, 0),
-                    toRgba(heroBottomBandColor, 0.2),
-                    toRgba(heroBottomBandColor, 0.4),
-                    toRgba(heroBottomBandColor, 0.62),
-                    toRgba(heroBottomBandColor, 0.82),
-                    homeBaseBg,
-                  ]}
-                  locations={[0, 0.2, 0.42, 0.62, 0.8, 1]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.heroNewBottomFade}
-                />
-              ) : null}
-            </>
-          ) : (
-            <>
-              {LinearGradient ? (
-                <LinearGradient
-                  colors={['rgba(255, 235, 205, 0.98)', 'rgba(255, 235, 205, 0.82)', 'rgba(255, 235, 205, 0.28)', 'rgba(255, 235, 205, 0)']}
-                  locations={[0, 0.28, 0.68, 1]}
-                  start={{ x: 0, y: 0.5 }}
-                  end={{ x: 1, y: 0.5 }}
-                  style={styles.heroBaseGradient}
-                />
-              ) : null}
-              <Image
-                source={headerImageSource}
-                style={styles.heroFoodBgImg}
-                onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
+        <View style={[styles.heroWrap, { height: 226, marginLeft: 0, marginRight: 0, marginTop: 0, paddingTop: 9, backgroundColor: heroTopBandColor }]}>
+          <ImageBackground
+            source={headerImageSource}
+            style={styles.topBlendStrip}
+            imageStyle={styles.topBlendStripImage}
+            onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
+          >
+            {LinearGradient ? (
+              <LinearGradient
+                colors={[
+                  toRgba(heroTopBandColor, 0.34),
+                  toRgba(heroTopBandColor, 0.2),
+                  toRgba(heroTopBandColor, 0.08),
+                ]}
+                locations={[0, 0.58, 1]}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.topBlendStripOverlay}
               />
-              {LinearGradient ? (
-                <LinearGradient
-                  colors={['rgba(191, 132, 91, 0.22)', 'rgba(191, 132, 91, 0.1)', 'rgba(191, 132, 91, 0)']}
-                  locations={[0, 0.16, 0.34]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.heroFoodBgEdgeFade}
-                />
-              ) : null}
-              {LinearGradient ? (
-                <LinearGradient
-                  colors={['rgba(255, 228, 196, 1)', 'rgba(255, 228, 196, 0.9)', 'rgba(255, 228, 196, 0.42)', 'rgba(255, 228, 196, 0)']}
-                  locations={[0, 0.32, 0.72, 1]}
-                  start={{ x: 0, y: 0.5 }}
-                  end={{ x: 1, y: 0.5 }}
-                  style={styles.heroFeatherLeft}
-                />
-              ) : null}
-              {LinearGradient ? (
-                <LinearGradient
-                  colors={['rgba(253, 222, 183, 0.98)', 'rgba(253, 222, 183, 0.68)', 'rgba(253, 222, 183, 0)']}
-                  locations={[0, 0.52, 1]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.heroFeatherTop}
-                />
-              ) : null}
-              {LinearGradient ? (
-                <LinearGradient
-                  colors={['rgba(255, 251, 244, 1)', 'rgba(255, 255, 255, 0)']}
-                  locations={[0, 1]}
-                  start={{ x: 0.5, y: 1 }}
-                  end={{ x: 0.5, y: 0 }}
-                  style={styles.heroFeatherBottom}
-                />
-              ) : null}
-              {LinearGradient ? (
-                <LinearGradient
-                  colors={['rgba(253, 222, 183, 0)', 'rgba(253, 222, 183, 0.28)', 'rgba(253, 222, 183, 0.58)']}
-                  locations={[0, 0.5, 1]}
-                  start={{ x: 0, y: 0.5 }}
-                  end={{ x: 1, y: 0.5 }}
-                  style={styles.heroFeatherRight}
-                />
-              ) : null}
-              <View pointerEvents="none" style={styles.heroRightSeamCover} />
-            </>
-          )}
+            ) : null}
+          </ImageBackground>
+          <ImageBackground
+            source={headerImageSource}
+            style={[styles.heroBgFullImage, styles.heroBgExtended]}
+            imageStyle={styles.heroBgFullImageInner}
+            onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
+          />
+          {LinearGradient ? (
+            <LinearGradient
+              colors={[
+                toRgba(heroTopBandColor, 0.34),
+                toRgba(heroTopBandColor, 0.18),
+                toRgba(heroTopBandColor, 0.08),
+                toRgba(heroTopBandColor, 0),
+              ]}
+              locations={[0, 0.42, 0.74, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.heroNewTopFade}
+            />
+          ) : null}
+          {LinearGradient ? (
+            <LinearGradient
+              colors={[
+                toRgba(heroBottomBandColor, 0),
+                toRgba(heroBottomBandColor, 0.2),
+                toRgba(heroBottomBandColor, 0.4),
+                toRgba(heroBottomBandColor, 0.62),
+                toRgba(heroBottomBandColor, 0.82),
+                homeBaseBg,
+              ]}
+              locations={[0, 0.2, 0.42, 0.62, 0.8, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.heroNewBottomFade}
+            />
+          ) : null}
           <View style={styles.heroTextArea}>
             <View style={styles.heroIdentityRow}>
               <TouchableOpacity
@@ -5172,7 +5092,7 @@ export default function HomeScreen({
 
   /* ---------- Main render ---------- */
   const topChromeBg = activeTab === 'home'
-    ? (USE_NEW_HOME_HERO ? heroTopBandColor : '#FDDEB7')
+    ? heroTopBandColor
     : '#FFFBF4';
 
   return (
@@ -5184,17 +5104,6 @@ export default function HomeScreen({
           <Text style={styles.topErrorBannerText}>{paymentError}</Text>
         </View>
       ) : null}
-      {activeTab === 'home' ? (
-        <View
-          pointerEvents="none"
-          style={[
-            styles.topSeamMask,
-            USE_NEW_HOME_HERO ? styles.topSeamMaskThin : null,
-            { backgroundColor: topChromeBg },
-          ]}
-        />
-      ) : null}
-
       <Modal
         visible={deliveryPinModalVisible}
         transparent
@@ -6201,15 +6110,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  topSeamMask: {
-    height: 8,
-    marginBottom: -8,
-    zIndex: 60,
-  },
-  topSeamMaskThin: {
-    height: 3,
-    marginBottom: -3,
-  },
   container: { flex: 1, backgroundColor: '#FFFBF4' },
   content: { flex: 1, zIndex: 10 },
   scroll: { flex: 1, backgroundColor: '#FDDEB7' },
@@ -6227,9 +6127,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FDDEB7',
     overflow: 'visible',
   },
-  heroBaseGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
   heroBgFullImage: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -6237,20 +6134,12 @@ const styles = StyleSheet.create({
     top: -2,
     bottom: 0,
   },
-  heroTopSeamCover: {
-    position: 'absolute',
-    top: -2,
-    left: 0,
-    right: 0,
-    height: 4,
-    zIndex: 5,
-  },
   topBlendStrip: {
     position: 'absolute',
     left: 0,
     right: 0,
-    top: -TOP_BLEND_STRIP_HEIGHT,
-    height: TOP_BLEND_STRIP_HEIGHT,
+    top: -10,
+    height: 10,
     zIndex: 9,
     overflow: 'hidden',
   },
@@ -6277,56 +6166,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: -38,
     height: 172,
-  },
-  heroFoodBgImg: {
-    position: 'absolute',
-    top: 0,
-    right: -42,
-    width: '82%',
-    height: '100%',
-    opacity: 1,
-    resizeMode: 'cover',
-  },
-  heroFoodBgEdgeFade: {
-    position: 'absolute',
-    top: 16,
-    right: -38,
-    width: '64%',
-    height: '78%',
-  },
-  heroFeatherLeft: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-  },
-  heroFeatherTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: 78,
-  },
-  heroFeatherBottom: {
-    position: 'absolute',
-    left: 0,
-    bottom: 0,
-    width: '100%',
-    height: 96,
-  },
-  heroFeatherRight: {
-    position: 'absolute',
-    top: 0,
-    right: -6,
-    width: 24,
-    height: '100%',
-  },
-  heroRightSeamCover: {
-    ...StyleSheet.absoluteFillObject,
-    left: undefined,
-    width: 40,
-    backgroundColor: '#FDDEB7',
   },
   heroTextArea: {
     zIndex: 3,
