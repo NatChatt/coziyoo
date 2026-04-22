@@ -87,6 +87,7 @@ import { loadSettings, saveSettings, subscribeSettings, type AppSettings } from 
 import { subscribeBuyerFeedRealtime, subscribeBuyerOrdersRealtime } from '../utils/realtime';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { loadCachedProfileImageUrl, saveCachedProfileImageUrl } from '../utils/profileImage';
+import { loadCachedHomeHeroImageUrl, saveCachedHomeHeroImageUrl } from '../utils/homeHeroImage';
 import { apiRequest } from '../utils/api';
 import { readJsonSafe } from '../utils/http';
 import { theme } from '../theme/colors';
@@ -2902,6 +2903,13 @@ export default function HomeScreen({
   }, []);
 
   useEffect(() => {
+    loadCachedHomeHeroImageUrl().then((cached) => {
+      if (!cached) return;
+      setHeaderImageSource({ uri: cached });
+    });
+  }, []);
+
+  useEffect(() => {
     setProfileImageLoadFailed(false);
   }, [profileImageUrl]);
 
@@ -2935,7 +2943,6 @@ export default function HomeScreen({
   useEffect(() => {
     let cancelled = false;
     if (!heroImageResolved) {
-      setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK);
       setHeroTopBandColor('#FDDEB7');
       setHeroBottomBandColor('#FFFBF4');
       return;
@@ -2952,12 +2959,12 @@ export default function HomeScreen({
 
     const heroUrl = adminHeroImageUrl || heroCandidate?.imageUrl?.trim();
     if (!heroUrl) {
-      setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK);
       setHeroTopBandColor('#FDDEB7');
       setHeroBottomBandColor('#FFFBF4');
       return;
     }
     setHeaderImageSource({ uri: heroUrl });
+    void saveCachedHomeHeroImageUrl(heroUrl);
 
     if (getColors) {
       getColors(heroUrl, { fallback: DEFAULT_HERO_SEED, cache: true, key: `hero:${heroUrl}` })
@@ -4351,27 +4358,19 @@ export default function HomeScreen({
           stickyHeaderIndices={[1]}
         >
         {/* Hero Header */}
-        <View style={[styles.heroWrap, { height: 226, marginLeft: 0, marginRight: 0, marginTop: 0, paddingTop: 9, backgroundColor: heroTopBandColor }]}>
-          <ImageBackground
-            source={headerImageSource}
-            style={styles.topBlendStrip}
-            imageStyle={styles.topBlendStripImage}
-            onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
-          >
-            {LinearGradient ? (
-              <LinearGradient
-                colors={[
-                  toRgba(heroTopBandColor, 0.34),
-                  toRgba(heroTopBandColor, 0.2),
-                  toRgba(heroTopBandColor, 0.08),
-                ]}
-                locations={[0, 0.58, 1]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={styles.topBlendStripOverlay}
-              />
-            ) : null}
-          </ImageBackground>
+        <View
+          style={[
+            styles.heroWrap,
+            {
+              height: 226,
+              marginLeft: 0,
+              marginRight: 0,
+              marginTop: 0,
+              paddingTop: 9,
+              backgroundColor: heroTopBandColor,
+            },
+          ]}
+        >
           <ImageBackground
             source={headerImageSource}
             style={[styles.heroBgFullImage, styles.heroBgExtended]}
@@ -6133,22 +6132,6 @@ const styles = StyleSheet.create({
   heroBgExtended: {
     top: -2,
     bottom: 0,
-  },
-  topBlendStrip: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: -10,
-    height: 10,
-    zIndex: 9,
-    overflow: 'hidden',
-  },
-  topBlendStripImage: {
-    resizeMode: 'cover',
-    top: -2,
-  },
-  topBlendStripOverlay: {
-    ...StyleSheet.absoluteFillObject,
   },
   heroBgFullImageInner: {
     resizeMode: 'stretch',
