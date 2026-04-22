@@ -70,7 +70,7 @@
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     transform-origin: center center;
     will-change: transform;
     pointer-events: none;
@@ -155,13 +155,13 @@
                Genişlik: 240 px → %13.39
                Yükseklik: 480 px → %46.88
                Sağdan kırpma payı: 230 px → right %12.84
-               Üstten: 150 px → top %14.65
+               Üstten: 256 px → top %25.00
                Mobil cover ölçeği 0.293x → mobil'de ~70×141 px -->
           <div id="hero-guide" style="
             position:absolute;
             pointer-events:none;
             right:12.84%;
-            top:14.65%;
+            top:25.00%;
             width:13.39%;
             height:46.88%;
             border:2px dashed rgba(255,255,255,0.80);
@@ -187,7 +187,7 @@
         </div>
         <div class="hero-controls">
           <div class="hero-control-label">Zoom</div>
-          <input id="hero-zoom" class="hero-range" type="range" min="0.20" max="3.00" step="0.001" value="1.000" />
+          <input id="hero-zoom" class="hero-range" type="range" min="1.00" max="3.00" step="0.001" value="1.000" />
           <div style="margin-top: 10px;">
             <button type="button" id="hero-reset" class="hero-btn-secondary">Reset</button>
           </div>
@@ -216,7 +216,7 @@
   var resetBtn = document.getElementById('hero-reset');
   var helpText = document.getElementById('hero-help-text');
 
-  var minScale = 0.20;
+  var minScale = 1.00;
   var maxScale = 3.00;
   var wheelStep = 0.05;
   var objectUrl = '';
@@ -267,8 +267,8 @@
     var ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
-    // Replicate CSS object-fit:contain
-    var baseS = Math.min(vw / iw, vh / ih);
+    // Replicate CSS object-fit:cover
+    var baseS = Math.max(vw / iw, vh / ih);
     // Replicate CSS scale(state.scale) around center + translate(offsetX, offsetY)
     var finalScale = baseS * state.scale;
     var drawW = iw * finalScale;
