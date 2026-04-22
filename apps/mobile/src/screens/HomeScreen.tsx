@@ -5159,6 +5159,9 @@ export default function HomeScreen({
           <Text style={styles.topErrorBannerText}>{paymentError}</Text>
         </View>
       ) : null}
+      {activeTab === 'home' ? (
+        <View pointerEvents="none" style={[styles.topSeamMask, { backgroundColor: topChromeBg }]} />
+      ) : null}
 
       <Modal
         visible={deliveryPinModalVisible}
@@ -5797,7 +5800,7 @@ export default function HomeScreen({
       </Animated.View>
 
       {/* Main screen */}
-      <View style={styles.container}>
+      <View style={[styles.container, activeTab === 'home' ? { backgroundColor: topChromeBg } : null]}>
           <View style={styles.content}>{renderContent()}</View>
 
           {/* FAB */}
@@ -6165,6 +6168,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  topSeamMask: {
+    height: 8,
+    marginBottom: -8,
+    zIndex: 60,
   },
   container: { flex: 1, backgroundColor: '#FFFBF4' },
   content: { flex: 1, zIndex: 10 },
