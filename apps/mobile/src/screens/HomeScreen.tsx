@@ -4531,6 +4531,20 @@ export default function HomeScreen({
               </TouchableOpacity>
             ))}
           </ScrollView>
+          {LinearGradient ? (
+            <LinearGradient
+              colors={[
+                toRgba(heroBottomBandColor, 0),
+                toRgba(heroBottomBandColor, 0.15),
+                toRgba(heroBottomBandColor, 0.35),
+                homeBaseBg,
+              ]}
+              locations={[0, 0.3, 0.6, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.stickySearchBottomFade}
+            />
+          ) : null}
         </View>
         {showHomeOrderPromo ? renderQuickOrderCard('home') : renderPromoFallbackCard('home')}
         <View onLayout={(e) => setFoodSectionOffsetY(e.nativeEvent.layout.y)} />
@@ -6234,6 +6248,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  stickySearchBottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 24,
   },
 
   /* --- Floating Search Bar (premium shadow) --- */
