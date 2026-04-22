@@ -86,7 +86,12 @@
       "Bash(msgfmt /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/en/LC_MESSAGES/django.po -o /Users/ismetkarakus/Work/coziyoo-v2/apps/django/locale/en/LC_MESSAGES/django.mo)",
       "Bash(psql \"$DATABASE_URL\" -c \"SELECT id, code, name, is_active FROM complaint_categories ORDER BY created_at;\")",
       "Bash(psql \"$DATABASE_URL\" -c \"\\\\d orders\")",
-      "Bash(psql \"$DATABASE_URL\" -c \"\\\\d complaints\")"
+      "Bash(psql \"$DATABASE_URL\" -c \"\\\\d complaints\")",
+      "Bash(sips -f vertical /tmp/coziyoo_pdf_pages/page-01.png --out /tmp/coziyoo_v2/page-01.png)",
+      "Bash(sips -g all /Users/ismetkarakus/Work/coziyoo-v2/apps/mobile/assets/images/coziyoo-onboarding-logo.png)",
+      "Bash(convert --version)",
+      "Bash(convert /Users/ismetkarakus/Work/coziyoo-v2/apps/mobile/assets/images/coziyoo-onboarding-logo.png -fuzz 20% -transparent '#7A9070' /tmp/coziyoo-logo-transparent.png)",
+      "Bash(magick /Users/ismetkarakus/Work/coziyoo-v2/apps/mobile/assets/images/coziyoo-onboarding-logo.png -alpha set -fuzz 18% -draw 'color 0,0 floodfill' -draw 'color 859,0 floodfill' -draw 'color 0,189 floodfill' -draw 'color 859,189 floodfill' /tmp/coziyoo-logo-clean.png)"
     ],
     "additionalDirectories": [
       "/tmp",
