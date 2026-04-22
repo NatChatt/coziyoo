@@ -4357,9 +4357,10 @@ export default function HomeScreen({
           stickyHeaderIndices={[1]}
         >
         {/* Hero Header */}
-        <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, marginTop: -1, paddingTop: 9, backgroundColor: heroTopBandColor } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
+        <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, marginTop: 0, paddingTop: 9, backgroundColor: heroTopBandColor } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
           {USE_NEW_HOME_HERO ? (
             <>
+              <View style={[styles.heroTopSeamCover, { backgroundColor: heroTopBandColor }]} />
               <ImageBackground
                   source={headerImageSource}
                   style={[styles.heroBgFullImage, styles.heroBgExtended]}
@@ -6189,7 +6190,16 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   heroBgExtended: {
+    top: -2,
     bottom: 0,
+  },
+  heroTopSeamCover: {
+    position: 'absolute',
+    top: -2,
+    left: 0,
+    right: 0,
+    height: 4,
+    zIndex: 5,
   },
   heroBgFullImageInner: {
     resizeMode: 'stretch',
