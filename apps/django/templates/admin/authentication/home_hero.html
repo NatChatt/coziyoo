@@ -3,7 +3,7 @@
 {% block content %}
 <style>
   .hero-simple-wrap {
-    max-width: 900px;
+    max-width: 1360px;
     margin: 0 auto;
     padding: 16px;
   }
@@ -51,8 +51,9 @@
   .hero-stage {
     position: relative;
     flex-shrink: 0;
-    width: 390px;
-    height: 226px;
+    width: 860px;
+    height: 430px;
+    aspect-ratio: 2048 / 1024;
     border: 1px solid #d0d5dd;
     border-radius: 12px;
     overflow: hidden;
@@ -125,7 +126,7 @@
     .hero-stage {
       width: 100%;
       height: auto;
-      aspect-ratio: 390 / 226;
+      aspect-ratio: 2048 / 1024;
     }
   }
 </style>
@@ -143,6 +144,7 @@
 
     <div class="hero-simple-panel">
       <div class="hero-field-label">Telefon Home Hero Resmi</div>
+      <div class="hero-help" style="margin-top:-4px;margin-bottom:8px;">Önerilen ölçü: <strong>2048 × 1024 px</strong> (oran: <strong>2:1</strong>)</div>
       <input id="hero-file-input" name="mobile_home_header_file" type="file" accept="image/*" style="display:none" />
       <button type="button" id="hero-file-trigger" class="hero-dropzone">Dosya seçmek için tıkla</button>
 
