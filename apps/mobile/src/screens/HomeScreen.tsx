@@ -5111,6 +5111,20 @@ export default function HomeScreen({
   return (
     <>
     <SafeAreaView style={[styles.safe, { backgroundColor: topChromeBg }]}>
+      {LinearGradient ? (
+        <LinearGradient
+          colors={[
+            toRgba(heroTopBandColor, 0),
+            toRgba(heroTopBandColor, 0.08),
+            toRgba(heroTopBandColor, 0.18),
+            toRgba(heroTopBandColor, 0.34),
+          ]}
+          locations={[0, 0.26, 0.58, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.statusBarFade}
+        />
+      ) : null}
       <StatusBar barStyle="dark-content" backgroundColor={topChromeBg} />
       {paymentError ? (
         <View style={styles.topErrorBanner}>
@@ -6112,6 +6126,13 @@ const cpStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   /* --- Layout --- */
   safe: { flex: 1, backgroundColor: '#FDDEB7' },
+  statusBarFade: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   topErrorBanner: {
     backgroundColor: theme.error,
     paddingHorizontal: 14,
