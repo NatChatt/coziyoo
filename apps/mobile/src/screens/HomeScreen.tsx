@@ -11,6 +11,7 @@ import {
   ImageBackground,
   KeyboardAvoidingView,
   Modal,
+  PixelRatio,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -101,6 +102,10 @@ const AnimatedTouchableOpacity: any = Animated.createAnimatedComponent(RNTouchab
 const PICKUP_ADDRESS_REQUEST_TIMEOUT_MS = 12000;
 const BUYER_HOME_TAB_BAR_HEIGHT = 70;
 const USE_NEW_HOME_HERO = true; // Deneme modu acik: yeni hero aktif, eski hero kodda yedek.
+const TOP_BLEND_STRIP_HEIGHT = Math.min(
+  12,
+  Math.max(8, Math.round(PixelRatio.roundToNearestPixel(10))),
+);
 
 function shouldDisableGlobalPressFx(style: unknown, activeOpacity?: number): boolean {
   if (activeOpacity === 1) return true;
@@ -4360,6 +4365,26 @@ export default function HomeScreen({
         <View style={[styles.heroWrap, USE_NEW_HOME_HERO ? { height: 226, marginLeft: 0, marginRight: 0, marginTop: 0, paddingTop: 9, backgroundColor: heroTopBandColor } : { height: heroDynamicHeight, backgroundColor: '#F4D6BF' }]}>
           {USE_NEW_HOME_HERO ? (
             <>
+              <ImageBackground
+                source={headerImageSource}
+                style={styles.topBlendStrip}
+                imageStyle={styles.topBlendStripImage}
+                onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
+              >
+                {LinearGradient ? (
+                  <LinearGradient
+                    colors={[
+                      toRgba(heroTopBandColor, 0.34),
+                      toRgba(heroTopBandColor, 0.2),
+                      toRgba(heroTopBandColor, 0.08),
+                    ]}
+                    locations={[0, 0.58, 1]}
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
+                    style={styles.topBlendStripOverlay}
+                  />
+                ) : null}
+              </ImageBackground>
               <View style={[styles.heroTopSeamCover, { backgroundColor: heroTopBandColor }]} />
               <ImageBackground
                   source={headerImageSource}
@@ -5160,7 +5185,14 @@ export default function HomeScreen({
         </View>
       ) : null}
       {activeTab === 'home' ? (
-        <View pointerEvents="none" style={[styles.topSeamMask, { backgroundColor: topChromeBg }]} />
+        <View
+          pointerEvents="none"
+          style={[
+            styles.topSeamMask,
+            USE_NEW_HOME_HERO ? styles.topSeamMaskThin : null,
+            { backgroundColor: topChromeBg },
+          ]}
+        />
       ) : null}
 
       <Modal
@@ -6174,6 +6206,10 @@ const styles = StyleSheet.create({
     marginBottom: -8,
     zIndex: 60,
   },
+  topSeamMaskThin: {
+    height: 3,
+    marginBottom: -3,
+  },
   container: { flex: 1, backgroundColor: '#FFFBF4' },
   content: { flex: 1, zIndex: 10 },
   scroll: { flex: 1, backgroundColor: '#FDDEB7' },
@@ -6208,6 +6244,22 @@ const styles = StyleSheet.create({
     right: 0,
     height: 4,
     zIndex: 5,
+  },
+  topBlendStrip: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: -TOP_BLEND_STRIP_HEIGHT,
+    height: TOP_BLEND_STRIP_HEIGHT,
+    zIndex: 9,
+    overflow: 'hidden',
+  },
+  topBlendStripImage: {
+    resizeMode: 'cover',
+    top: -2,
+  },
+  topBlendStripOverlay: {
+    ...StyleSheet.absoluteFillObject,
   },
   heroBgFullImageInner: {
     resizeMode: 'stretch',
