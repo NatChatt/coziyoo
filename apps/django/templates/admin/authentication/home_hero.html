@@ -46,10 +46,10 @@
     text-align: left;
   }
   .hero-editor-row {
-    margin-top: 12px;
+    margin-top: 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 0;
   }
   .hero-stage {
     position: relative;
@@ -81,10 +81,11 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 16px;
-    padding: 10px 14px;
-    border: 1px solid #d0d5dd;
-    border-radius: 10px;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-top: 1px solid #d0d5dd;
+    border-radius: 0;
     background: #fcfcfd;
   }
   .hero-control-label {
@@ -95,7 +96,8 @@
   }
   .hero-range {
     flex: 1;
-    min-width: 120px;
+    min-width: 180px;
+    max-width: 480px;
   }
   .hero-actions {
     margin-top: 12px;
@@ -143,7 +145,7 @@
     <input type="hidden" name="mobile_home_header_edit_json" value="" />
 
     <div class="hero-simple-panel">
-      <div class="hero-panel-body">
+      <div class="hero-panel-body" style="padding-bottom:12px;">
         <div class="hero-field-label">Telefon Home Hero Resmi</div>
         <div class="hero-help" style="margin-top:-4px;margin-bottom:8px;">Önerilen ölçü: <strong>1792 × 1024 px</strong> (oran: <strong>1.75:1</strong>)</div>
         <input id="hero-file-input" name="mobile_home_header_file" type="file" accept="image/*" style="display:none" />
