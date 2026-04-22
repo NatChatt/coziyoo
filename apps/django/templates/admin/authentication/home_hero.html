@@ -151,6 +151,38 @@
       <div class="hero-editor-row">
         <div class="hero-stage" id="hero-stage">
           <img id="hero-preview-image" src="{{ current_url|default:'' }}" alt="Hero önizleme" {% if not current_url %}style="display:none"{% endif %} />
+          <!-- Kompozisyon kılavuzu: 1792×1024 tuvalde nesne hedef alanı
+               Genişlik: 420–520 px (orta: 470) → %26.23
+               Yükseklik: 620–760 px (orta: 690) → %67.38
+               Sağdan kırpma payı: 230 px → right %12.84
+               Üstten: 120–180 px (orta: 150) → top %14.65 -->
+          <div id="hero-guide" style="
+            position:absolute;
+            pointer-events:none;
+            right:12.84%;
+            top:14.65%;
+            width:26.23%;
+            height:67.38%;
+            border:2px dashed rgba(255,255,255,0.80);
+            border-radius:6px;
+            box-shadow:0 0 0 1px rgba(0,0,0,0.30);
+            z-index:10;
+          ">
+            <span style="
+              position:absolute;
+              bottom:100%;
+              right:0;
+              margin-bottom:4px;
+              background:rgba(0,0,0,0.60);
+              color:#fff;
+              font-size:10px;
+              font-weight:700;
+              padding:2px 6px;
+              border-radius:4px;
+              white-space:nowrap;
+              line-height:1.4;
+            ">nesne alanı 420–520 × 620–760 px</span>
+          </div>
         </div>
         <div class="hero-controls">
           <div class="hero-control-label">Zoom</div>
