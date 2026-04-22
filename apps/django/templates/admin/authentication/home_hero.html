@@ -186,7 +186,7 @@
         </div>
         <div class="hero-controls">
           <div class="hero-control-label">Zoom</div>
-          <input id="hero-zoom" class="hero-range" type="range" min="1.00" max="3.00" step="0.001" value="1.000" />
+          <input id="hero-zoom" class="hero-range" type="range" min="0.20" max="3.00" step="0.001" value="1.000" />
           <div style="margin-top: 10px;">
             <button type="button" id="hero-reset" class="hero-btn-secondary">Reset</button>
           </div>
@@ -215,7 +215,7 @@
   var resetBtn = document.getElementById('hero-reset');
   var helpText = document.getElementById('hero-help-text');
 
-  var minScale = 1.00;
+  var minScale = 0.20;
   var maxScale = 3.00;
   var wheelStep = 0.05;
   var objectUrl = '';
