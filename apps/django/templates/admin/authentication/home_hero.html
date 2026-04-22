@@ -44,20 +44,18 @@
   .hero-editor-row {
     margin-top: 12px;
     display: flex;
-    flex-direction: row;
-    gap: 12px;
-    align-items: start;
+    flex-direction: column;
+    gap: 10px;
   }
   .hero-stage {
     position: relative;
-    flex-shrink: 0;
-    width: 860px;
-    height: 491px;
+    width: 100%;
+    height: auto;
     aspect-ratio: 1792 / 1024;
     border: 1px solid #d0d5dd;
     border-radius: 12px;
     overflow: hidden;
-    background: #fddeb7;
+    background: #1a1a1a;
     cursor: grab;
     user-select: none;
     touch-action: none;
@@ -76,19 +74,24 @@
     pointer-events: none;
   }
   .hero-controls {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 14px;
     border: 1px solid #d0d5dd;
-    border-radius: 12px;
+    border-radius: 10px;
     background: #fcfcfd;
-    padding: 12px;
   }
   .hero-control-label {
     font-size: 12px;
     color: #344054;
     font-weight: 700;
-    margin-bottom: 6px;
+    white-space: nowrap;
   }
   .hero-range {
-    width: 100%;
+    flex: 1;
+    min-width: 120px;
   }
   .hero-actions {
     margin-top: 12px;
@@ -120,14 +123,7 @@
     color: #667085;
   }
   @media (max-width: 660px) {
-    .hero-editor-row {
-      flex-direction: column;
-    }
-    .hero-stage {
-      width: 100%;
-      height: auto;
-      aspect-ratio: 1792 / 1024;
-    }
+    .hero-controls { flex-wrap: wrap; }
   }
 </style>
 
@@ -154,14 +150,14 @@
           <!-- Kompozisyon kılavuzu: 1792×1024 tuvalde nesne hedef alanı
                Genişlik: 240 px → %13.39
                Yükseklik: 480 px → %46.88
-               Sağdan kırpma payı: 230 px → right %12.84
-               Üstten: 256 px → top %25.00
+               Merkez x: ~1326px → right %19.31
+               Merkez y: ~583px → top %33.50
                Mobil cover ölçeği 0.293x → mobil'de ~70×141 px -->
           <div id="hero-guide" style="
             position:absolute;
             pointer-events:none;
-            right:12.84%;
-            top:25.00%;
+            right:19.31%;
+            top:33.50%;
             width:13.39%;
             height:46.88%;
             border:2px dashed rgba(255,255,255,0.80);
@@ -188,10 +184,8 @@
         <div class="hero-controls">
           <div class="hero-control-label">Zoom</div>
           <input id="hero-zoom" class="hero-range" type="range" min="1.00" max="3.00" step="0.001" value="1.000" />
-          <div style="margin-top: 10px;">
-            <button type="button" id="hero-reset" class="hero-btn-secondary">Reset</button>
-          </div>
-          <div class="hero-help">Mouse ile resmi sürükle. Tekerlek ile zoom yap.</div>
+          <button type="button" id="hero-reset" class="hero-btn-secondary" style="white-space:nowrap;">Reset</button>
+          <span class="hero-help" style="margin-top:0;">Mouse ile sürükle · Tekerlek ile zoom</span>
         </div>
       </div>
 
