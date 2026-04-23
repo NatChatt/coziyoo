@@ -265,9 +265,7 @@
     if (!hasImage()) return '';
     var vw = stage.clientWidth || 1;
     var vh = stage.clientHeight || 1;
-    var iw = previewImage.naturalWidth || 0;
-    var ih = previewImage.naturalHeight || 0;
-    if (iw <= 1 || ih <= 1) return '';
+    if ((previewImage.naturalWidth || 0) <= 1 || (previewImage.naturalHeight || 0) <= 1) return '';
 
     var exportScale = 2;
     var canvas = document.createElement('canvas');
@@ -276,20 +274,19 @@
     var ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
-    // Replicate CSS object-fit:cover
-    var baseS = Math.max(vw / iw, vh / ih);
-    // Replicate CSS scale(state.scale * baseVisualScale) around center + translate(offsetX, offsetY)
-    var finalScale = baseS * state.scale * baseVisualScale;
-    var drawW = iw * finalScale;
-    var drawH = ih * finalScale;
-    var drawX = (vw - drawW) / 2 + state.offsetX;
-    var drawY = (vh - drawH) / 2 + state.offsetY;
-    var sx = canvas.width / vw;
-    var sy = canvas.height / vh;
+    // Use actual rendered rectangles so exported image matches preview 1:1.
+    var stageRect = stage.getBoundingClientRect();
+    var imgRect = previewImage.getBoundingClientRect();
+    var sx = canvas.width / Math.max(stageRect.width, 1);
+    var sy = canvas.height / Math.max(stageRect.height, 1);
+    var drawX = (imgRect.left - stageRect.left) * sx;
+    var drawY = (imgRect.top - stageRect.top) * sy;
+    var drawW = imgRect.width * sx;
+    var drawH = imgRect.height * sy;
 
     ctx.fillStyle = '#fddeb7';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(previewImage, drawX * sx, drawY * sy, drawW * sx, drawH * sy);
+    ctx.drawImage(previewImage, drawX, drawY, drawW, drawH);
 
     var jpg = canvas.toDataURL('image/jpeg', 0.82);
     if (jpg && jpg.length < 1900000) return jpg;
