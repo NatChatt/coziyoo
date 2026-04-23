@@ -130,7 +130,27 @@
     font-size: 12px;
     color: #667085;
   }
-  @media (max-width: 660px) {
+  .hero-two-col {
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    border-top: none;
+  }
+  .hero-two-col-left {
+    display: flex;
+    flex-direction: column;
+  }
+  .hero-two-col-right {
+    border-left: 1px solid #e4e7ec;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 10px;
+    gap: 8px;
+  }
+  @media (max-width: 800px) {
+    .hero-two-col { grid-template-columns: 1fr; }
+    .hero-two-col-right { border-left: none; border-top: 1px solid #e4e7ec; }
     .hero-controls { flex-wrap: wrap; }
   }
   .hero-preview-section {
@@ -288,57 +308,35 @@
         <button type="button" id="hero-file-trigger" class="hero-dropzone">Dosya seçmek için tıkla</button>
       </div>
 
-      <div class="hero-editor-row">
-        <div class="hero-stage" id="hero-stage">
-          <img id="hero-preview-image" src="{{ current_url|default:'' }}" alt="Hero önizleme" {% if not current_url %}style="display:none"{% endif %} />
-          <!-- Kompozisyon kılavuzu: 1792×1024 tuvalde nesne hedef alanı
-               Genişlik: 240 px → %13.39
-               Yükseklik: 480 px → %46.88
-               Merkez x: ~1326px → right %19.31
-               Merkez y: ~583px → top %33.50
-               Mobil cover ölçeği 0.293x → mobil'de ~70×141 px -->
-          <div id="hero-guide" style="
-            position:absolute;
-            pointer-events:none;
-            right:19.31%;
-            top:33.50%;
-            width:13.39%;
-            height:46.88%;
-            border:2px dashed rgba(255,255,255,0.80);
-            border-radius:6px;
-            box-shadow:0 0 0 1px rgba(0,0,0,0.30);
-            z-index:10;
-          ">
-            <span style="
-              position:absolute;
-              bottom:100%;
-              right:0;
-              margin-bottom:4px;
-              background:rgba(0,0,0,0.60);
-              color:#fff;
-              font-size:10px;
-              font-weight:700;
-              padding:2px 6px;
-              border-radius:4px;
-              white-space:nowrap;
-              line-height:1.4;
-            ">nesne alanı ~240 × 480 px</span>
+      <div class="hero-two-col">
+        <div class="hero-two-col-left">
+          <div class="hero-stage" id="hero-stage">
+            <img id="hero-preview-image" src="{{ current_url|default:'' }}" alt="Hero önizleme" {% if not current_url %}style="display:none"{% endif %} />
+            <div id="hero-guide" style="
+              position:absolute;pointer-events:none;
+              right:24%;top:15%;width:14%;height:70%;
+              border:2px dashed rgba(255,255,255,0.80);
+              border-radius:6px;box-shadow:0 0 0 1px rgba(0,0,0,0.30);z-index:10;
+            ">
+              <span style="
+                position:absolute;bottom:100%;right:0;margin-bottom:4px;
+                background:rgba(0,0,0,0.60);color:#fff;font-size:10px;
+                font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;line-height:1.4;
+              ">obje alanı</span>
+            </div>
+          </div>
+          <div class="hero-controls">
+            <div class="hero-control-label">Zoom</div>
+            <input id="hero-zoom" class="hero-range" type="range" min="0.50" max="3.00" step="0.001" value="1.000" />
+            <button type="button" id="hero-reset" class="hero-btn-secondary" style="white-space:nowrap;">Reset</button>
+            <span class="hero-help" style="margin-top:0;">Mouse ile sürükle · Tekerlek ile zoom</span>
           </div>
         </div>
-        <div class="hero-controls">
-          <div class="hero-control-label">Zoom</div>
-          <input id="hero-zoom" class="hero-range" type="range" min="1.00" max="3.00" step="0.001" value="1.000" />
-          <button type="button" id="hero-reset" class="hero-btn-secondary" style="white-space:nowrap;">Reset</button>
-          <span class="hero-help" style="margin-top:0;">Mouse ile sürükle · Tekerlek ile zoom</span>
-        </div>
-      </div>
 
-      <div class="hero-preview-section">
-        <div class="hero-preview-header">
-          <span class="hero-preview-title">Mobil Önizleme</span>
-          <span class="hero-preview-hint">Yayınlamadan önce mobilden nasıl görüneceğini gösterir</span>
-        </div>
-        <div class="hero-phone-wrap">
+        <div class="hero-two-col-right">
+          <div class="hero-preview-header" style="width:100%;">
+            <span class="hero-preview-title">Mobil Önizleme</span>
+          </div>
           <div class="hero-phone-frame">
             <div class="hero-phone-screen">
               <div class="hero-phone-statusbar">
@@ -350,9 +348,7 @@
                 </div>
               </div>
               <div class="hero-phone-hero-wrap">
-                <canvas id="hero-mobile-canvas" width="390" height="300">
-                  <div class="hero-phone-no-image">Resim seçilmedi</div>
-                </canvas>
+                <canvas id="hero-mobile-canvas" width="390" height="300"></canvas>
               </div>
               <div class="hero-phone-ui">
                 <div class="hero-phone-searchbar">
@@ -371,6 +367,9 @@
                 </div>
               </div>
             </div>
+          </div>
+          <div class="hero-help" style="margin-top:0;text-align:center;font-size:10px;line-height:1.5;">
+            Objeyi küçültmek için<br>resmi <strong>3584 × 2048 px</strong> hazırla.<br>Zoom: 1.0 = tam dolu · altı = küçük obje
           </div>
         </div>
       </div>
@@ -398,7 +397,7 @@
   var resetBtn = document.getElementById('hero-reset');
   var helpText = document.getElementById('hero-help-text');
 
-  var minScale = 1.00;
+  var minScale = 0.50;
   var maxScale = 3.00;
   var wheelStep = 0.05;
   var objectUrl = '';
@@ -444,7 +443,7 @@
     var cw = canvas.width;
     var ch = canvas.height;
     ctx.clearRect(0, 0, cw, ch);
-    ctx.fillStyle = '#1a1a1a';
+    ctx.fillStyle = '#f5f0e8';
     ctx.fillRect(0, 0, cw, ch);
     if (!hasImage()) return;
     var iw = previewImage.naturalWidth || 0;
@@ -471,31 +470,6 @@
     var dh = ih * combined * (ch / MOBILE_H);
 
     ctx.drawImage(previewImage, dx, dy, dw, dh);
-
-    // Exact mobile gradients (HomeScreen.tsx heroNewTopFade / heroNewBottomFade)
-    // heroTopBandColor default #FDDEB7 = rgb(253,222,183)
-    // heroNewTopFade: top:-26, height:190 → stops at locations [0,0.42,0.74,1]
-    var s = ch / 300;
-    var gTop = ctx.createLinearGradient(0, -26 * s, 0, 164 * s);
-    gTop.addColorStop(0,    'rgba(253,222,183,0.34)');
-    gTop.addColorStop(0.42, 'rgba(253,222,183,0.18)');
-    gTop.addColorStop(0.74, 'rgba(253,222,183,0.08)');
-    gTop.addColorStop(1,    'rgba(253,222,183,0)');
-    ctx.fillStyle = gTop;
-    ctx.fillRect(0, 0, cw, ch);
-
-    // heroBottomBandColor default #FFFBF4 = rgb(255,251,244)
-    // heroNewBottomFade: bottom:-82, height:236 → top edge at y=146, bottom at y=382
-    // stops at locations [0,0.2,0.4,0.6,0.8,1]
-    var gBot = ctx.createLinearGradient(0, 146 * s, 0, 382 * s);
-    gBot.addColorStop(0,   'rgba(255,251,244,0)');
-    gBot.addColorStop(0.2, 'rgba(255,251,244,0.22)');
-    gBot.addColorStop(0.4, 'rgba(255,251,244,0.44)');
-    gBot.addColorStop(0.6, 'rgba(255,251,244,0.66)');
-    gBot.addColorStop(0.8, 'rgba(255,251,244,0.86)');
-    gBot.addColorStop(1,   'rgba(255,251,244,1)');
-    ctx.fillStyle = gBot;
-    ctx.fillRect(0, 0, cw, ch);
   }
 
   // Canvas export: replicate CSS object-fit:cover + JS transform (scale around center + translate).
@@ -523,7 +497,7 @@
     var drawX = (vw - drawW) / 2 + state.offsetX;
     var drawY = (vh - drawH) / 2 + state.offsetY;
 
-    ctx.fillStyle = '#1a1a1a';
+    ctx.fillStyle = '#f5f0e8';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(previewImage,
       drawX * exportScale, drawY * exportScale,
