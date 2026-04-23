@@ -12,7 +12,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -4343,8 +4342,10 @@ export default function HomeScreen({
     };
 
     return (
-      <Animated.View style={[styles.scroll, { backgroundColor: homeSurfaceBg }]}>
-        <ScrollView
+      <View style={styles.screen}>
+        <View style={styles.homeContentLayer}>
+          <Animated.View style={[styles.scroll, { backgroundColor: homeSurfaceBg }]}>
+            <ScrollView
           ref={feedScrollRef}
           showsVerticalScrollIndicator={false}
           onScroll={handleFeedScroll}
@@ -4362,11 +4363,11 @@ export default function HomeScreen({
           style={[
             styles.heroWrap,
             {
-              height: 226,
+              height: 300,
               marginLeft: 0,
               marginRight: 0,
-              marginTop: 0,
-              paddingTop: 9,
+              marginTop: -30,
+              paddingTop: 20,
               backgroundColor: heroTopBandColor,
             },
           ]}
@@ -4395,13 +4396,13 @@ export default function HomeScreen({
             <LinearGradient
               colors={[
                 toRgba(heroBottomBandColor, 0),
-                toRgba(heroBottomBandColor, 0.2),
-                toRgba(heroBottomBandColor, 0.4),
-                toRgba(heroBottomBandColor, 0.62),
-                toRgba(heroBottomBandColor, 0.82),
+                toRgba(heroBottomBandColor, 0.22),
+                toRgba(heroBottomBandColor, 0.44),
+                toRgba(heroBottomBandColor, 0.66),
+                toRgba(heroBottomBandColor, 0.86),
                 homeBaseBg,
               ]}
-              locations={[0, 0.2, 0.42, 0.62, 0.8, 1]}
+              locations={[0, 0.2, 0.4, 0.6, 0.8, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.heroNewBottomFade}
@@ -4457,14 +4458,14 @@ export default function HomeScreen({
           {LinearGradient ? (
             <LinearGradient
               colors={[
-                toRgba(heroBottomBandColor, 0.74),
+                toRgba(heroBottomBandColor, 0),
                 toRgba(heroBottomBandColor, 0.56),
-                toRgba(heroBottomBandColor, 0.36),
+                toRgba(heroBottomBandColor, 0.34),
                 toRgba(heroBottomBandColor, 0.18),
                 toRgba(heroBottomBandColor, 0.08),
-                homeBaseBg,
+                toRgba(homeBaseBg, 0),
               ]}
-              locations={[0, 0.22, 0.46, 0.68, 0.86, 1]}
+              locations={[0, 0.22, 0.48, 0.7, 0.86, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.stickySearchFade}
@@ -4531,20 +4532,6 @@ export default function HomeScreen({
               </TouchableOpacity>
             ))}
           </ScrollView>
-          {LinearGradient ? (
-            <LinearGradient
-              colors={[
-                toRgba(heroBottomBandColor, 0),
-                toRgba(heroBottomBandColor, 0.15),
-                toRgba(heroBottomBandColor, 0.35),
-                homeBaseBg,
-              ]}
-              locations={[0, 0.3, 0.6, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.stickySearchBottomFade}
-            />
-          ) : null}
         </View>
         {showHomeOrderPromo ? renderQuickOrderCard('home') : renderPromoFallbackCard('home')}
         <View onLayout={(e) => setFoodSectionOffsetY(e.nativeEvent.layout.y)} />
@@ -4606,8 +4593,10 @@ export default function HomeScreen({
           })
         )}
 
-        </ScrollView>
-      </Animated.View>
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </View>
     );
   }
 
@@ -5104,28 +5093,15 @@ export default function HomeScreen({
   }
 
   /* ---------- Main render ---------- */
-  const topChromeBg = activeTab === 'home'
-    ? heroTopBandColor
-    : '#FFFBF4';
+  const topChromeBg = blendHexColors(heroTopBandColor, heroBottomBandColor, 0.18);
 
   return (
-    <>
-    <SafeAreaView style={[styles.safe, { backgroundColor: topChromeBg }]}>
-      {LinearGradient ? (
-        <LinearGradient
-          colors={[
-            toRgba(heroTopBandColor, 0),
-            toRgba(heroTopBandColor, 0.08),
-            toRgba(heroTopBandColor, 0.18),
-            toRgba(heroTopBandColor, 0.34),
-          ]}
-          locations={[0, 0.26, 0.58, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={styles.statusBarFade}
-        />
-      ) : null}
-      <StatusBar barStyle="dark-content" backgroundColor={topChromeBg} />
+    <View style={[styles.safe, { backgroundColor: topChromeBg }]}>
+      <StatusBar
+        barStyle="dark-content"
+        translucent={activeTab === 'home'}
+        backgroundColor={activeTab === 'home' ? 'transparent' : topChromeBg}
+      />
       {paymentError ? (
         <View style={styles.topErrorBanner}>
           <Text style={styles.topErrorBannerText}>{paymentError}</Text>
@@ -5881,9 +5857,7 @@ export default function HomeScreen({
             </TouchableOpacity>
           </View>
       </View>
-    </SafeAreaView>
-
-    </>
+    </View>
   );
 }
 
@@ -6126,12 +6100,13 @@ const cpStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   /* --- Layout --- */
   safe: { flex: 1, backgroundColor: '#FDDEB7' },
-  statusBarFade: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  screen: {
+    flex: 1,
+    backgroundColor: '#F3EEE4',
+  },
+  homeContentLayer: {
+    flex: 1,
+    zIndex: 1,
   },
   topErrorBanner: {
     backgroundColor: theme.error,
@@ -6147,29 +6122,29 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFBF4' },
   content: { flex: 1, zIndex: 10 },
   scroll: { flex: 1, backgroundColor: '#FDDEB7' },
-  scrollContent: { paddingBottom: 130, backgroundColor: '#FFFBF4', minHeight: '100%' },
+  scrollContent: { paddingTop: 10, paddingBottom: 130, minHeight: '100%' },
 
   /* --- Hero Header with Gradient + Food Image --- */
   heroWrap: {
     position: 'relative',
-    height: 226,
+    minHeight: 220,
     paddingHorizontal: 20,
-    paddingTop: 8,
-    marginLeft: -18,
-    marginRight: -40,
+    paddingTop: 9,
+    marginLeft: 0,
+    marginRight: 0,
     marginTop: 0,
-    backgroundColor: '#FDDEB7',
+    backgroundColor: 'transparent',
     overflow: 'visible',
   },
   heroBgFullImage: {
     ...StyleSheet.absoluteFillObject,
   },
   heroBgExtended: {
-    top: -2,
-    bottom: 0,
+    top: -30,
+    bottom: -56,
   },
   heroBgFullImageInner: {
-    resizeMode: 'stretch',
+    resizeMode: 'cover',
   },
   heroNewTopFade: {
     position: 'absolute',
@@ -6182,13 +6157,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: -38,
-    height: 172,
+    bottom: -82,
+    height: 236,
   },
   heroTextArea: {
     zIndex: 3,
     width: '56%',
-    paddingTop: 34,
+    paddingTop: 48,
     paddingBottom: 12,
     paddingLeft: 0,
   },
@@ -6252,9 +6227,9 @@ const styles = StyleSheet.create({
   stickySearchChips: {
     position: 'relative',
     backgroundColor: 'transparent',
-    marginTop: -12,
-    paddingTop: 12,
-    paddingBottom: 4,
+    marginTop: -4,
+    paddingTop: 16,
+    paddingBottom: 8,
     overflow: 'hidden',
     zIndex: 10,
     shadowColor: '#000',
@@ -6265,22 +6240,27 @@ const styles = StyleSheet.create({
   },
   stickySearchFade: {
     position: 'absolute',
-    top: -12,
+    top: 8,
     left: 0,
     right: 0,
-    bottom: 0,
+    bottom: -24,
   },
   stickySearchBottomFade: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: 24,
+    height: 56,
+  },
+  body: {
+    backgroundColor: '#F3EEE4',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
 
   /* --- Floating Search Bar (premium shadow) --- */
   floatingSearchWrap: {
-    marginBottom: 14,
+    marginBottom: 18,
     marginHorizontal: 8,
     zIndex: 5,
   },
@@ -6290,7 +6270,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 5,
     borderWidth: 1,
     borderColor: '#E6DED3',
     shadowColor: '#000',
