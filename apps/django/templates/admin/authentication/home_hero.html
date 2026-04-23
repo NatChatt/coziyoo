@@ -222,11 +222,9 @@
   var resetBtn = document.getElementById('hero-reset');
   var helpText = document.getElementById('hero-help-text');
 
-  var minScale = 0.50;
-  var maxScale = 1.50;
-  var wheelStep = 0.03;
-  // Keep image visually similar after stage was narrowed.
-  var baseVisualScale = 1.28;
+  var minScale = 1.00;
+  var maxScale = 3.00;
+  var wheelStep = 0.05;
   var objectUrl = '';
   var dragging = false;
   var startX = 0;
@@ -245,11 +243,9 @@
     );
   }
 
-  // CSS object-fit:contain fills stage — full image visible. JS transform for zoom/drag on top.
   function applyTransform() {
-    var effectiveScale = state.scale * baseVisualScale;
     previewImage.style.transform =
-      'translate(' + state.offsetX + 'px, ' + state.offsetY + 'px) scale(' + effectiveScale + ')';
+      'translate(' + state.offsetX + 'px, ' + state.offsetY + 'px) scale(' + state.scale + ')';
     zoomInput.value = state.scale.toFixed(3);
   }
 
@@ -260,12 +256,15 @@
     applyTransform();
   }
 
-  // Canvas export: replicate CSS object-fit:contain + transform.
+  // Canvas export: replicate CSS object-fit:cover + JS transform (scale around center + translate).
+  // getBoundingClientRect is intentionally NOT used — it ignores object-fit and causes distortion.
   function renderExportDataUrl() {
     if (!hasImage()) return '';
     var vw = stage.clientWidth || 1;
     var vh = stage.clientHeight || 1;
-    if ((previewImage.naturalWidth || 0) <= 1 || (previewImage.naturalHeight || 0) <= 1) return '';
+    var iw = previewImage.naturalWidth || 0;
+    var ih = previewImage.naturalHeight || 0;
+    if (iw <= 1 || ih <= 1) return '';
 
     var exportScale = 2;
     var canvas = document.createElement('canvas');
@@ -274,23 +273,23 @@
     var ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
-    // Use actual rendered rectangles so exported image matches preview 1:1.
-    var stageRect = stage.getBoundingClientRect();
-    var imgRect = previewImage.getBoundingClientRect();
-    var sx = canvas.width / Math.max(stageRect.width, 1);
-    var sy = canvas.height / Math.max(stageRect.height, 1);
-    var drawX = (imgRect.left - stageRect.left) * sx;
-    var drawY = (imgRect.top - stageRect.top) * sy;
-    var drawW = imgRect.width * sx;
-    var drawH = imgRect.height * sy;
+    // baseS replicates object-fit:cover — fills stage, preserves aspect ratio.
+    var baseS = Math.max(vw / iw, vh / ih);
+    var finalScale = baseS * state.scale;
+    var drawW = iw * finalScale;
+    var drawH = ih * finalScale;
+    var drawX = (vw - drawW) / 2 + state.offsetX;
+    var drawY = (vh - drawH) / 2 + state.offsetY;
 
-    ctx.fillStyle = '#fddeb7';
+    ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(previewImage, drawX, drawY, drawW, drawH);
+    ctx.drawImage(previewImage,
+      drawX * exportScale, drawY * exportScale,
+      drawW * exportScale, drawH * exportScale);
 
-    var jpg = canvas.toDataURL('image/jpeg', 0.82);
+    var jpg = canvas.toDataURL('image/jpeg', 0.92);
     if (jpg && jpg.length < 1900000) return jpg;
-    return canvas.toDataURL('image/jpeg', 0.70);
+    return canvas.toDataURL('image/jpeg', 0.82);
   }
 
   fileTrigger.addEventListener('click', function () {
