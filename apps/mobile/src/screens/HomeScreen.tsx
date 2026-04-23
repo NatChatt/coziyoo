@@ -1526,6 +1526,35 @@ function resolveHomeHeaderImageUrl(payload: unknown): string | null {
   return null;
 }
 
+function resolveHomeHeroSurfaceColor(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const root = payload as Record<string, unknown>;
+  const nestedDataCandidate = root.data;
+  const data = (
+    nestedDataCandidate
+    && typeof nestedDataCandidate === 'object'
+    && !Array.isArray(nestedDataCandidate)
+      ? nestedDataCandidate
+      : root
+  ) as Record<string, unknown>;
+  const branding = (data.branding && typeof data.branding === 'object' ? data.branding : null) as Record<string, unknown> | null;
+  const home = (data.home && typeof data.home === 'object' ? data.home : null) as Record<string, unknown> | null;
+  const candidates = [
+    data.mobileHomeHeroSurfaceColor,
+    data.homeHeroSurfaceColor,
+    branding?.mobileHomeHeroSurfaceColor,
+    home?.heroSurfaceColor,
+  ];
+  for (const item of candidates) {
+    if (typeof item !== 'string') continue;
+    const normalized = item.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(normalized)) {
+      return normalized.toLowerCase();
+    }
+  }
+  return null;
+}
+
 function hashString(input: string): number {
   let hash = 0;
   for (let i = 0; i < input.length; i += 1) {
@@ -2461,6 +2490,7 @@ export default function HomeScreen({
   const [heroColors, setHeroColors] = useState<HeroColors>(() => deriveHeroColors(DEFAULT_HERO_SEED));
   const [heroTopBandColor, setHeroTopBandColor] = useState('#FDDEB7');
   const [heroBottomBandColor, setHeroBottomBandColor] = useState('#FFFBF4');
+  const [heroSurfaceColorOverride, setHeroSurfaceColorOverride] = useState<string | null>(null);
   const [profileDisplayName, setProfileDisplayName] = useState<string>(() =>
     resolveProfileDisplayName(null, auth.email),
   );
@@ -2943,7 +2973,7 @@ export default function HomeScreen({
     let cancelled = false;
     if (!heroImageResolved) {
       setHeroTopBandColor('#FDDEB7');
-      setHeroBottomBandColor('#FFFBF4');
+      setHeroBottomBandColor(heroSurfaceColorOverride || '#FFFBF4');
       return;
     }
 
@@ -2959,7 +2989,7 @@ export default function HomeScreen({
     const heroUrl = adminHeroImageUrl || heroCandidate?.imageUrl?.trim();
     if (!heroUrl) {
       setHeroTopBandColor('#FDDEB7');
-      setHeroBottomBandColor('#FFFBF4');
+      setHeroBottomBandColor(heroSurfaceColorOverride || '#FFFBF4');
       return;
     }
     setHeaderImageSource({ uri: heroUrl });
@@ -2983,19 +3013,23 @@ export default function HomeScreen({
         if (cancelled) return;
         setHeroTopBandColor('#FDDEB7');
       });
-    sampleImageBottomBandColor(heroUrl, '#FFFBF4')
-      .then((tone) => {
-        if (cancelled) return;
-        setHeroBottomBandColor(tone);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setHeroBottomBandColor('#FFFBF4');
-      });
+    if (heroSurfaceColorOverride) {
+      setHeroBottomBandColor(heroSurfaceColorOverride);
+    } else {
+      sampleImageBottomBandColor(heroUrl, '#FFFBF4')
+        .then((tone) => {
+          if (cancelled) return;
+          setHeroBottomBandColor(tone);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setHeroBottomBandColor('#FFFBF4');
+        });
+    }
     return () => {
       cancelled = true;
     };
-  }, [adminHeroImageUrl, meals, heroImageResolved]);
+  }, [adminHeroImageUrl, meals, heroImageResolved, heroSurfaceColorOverride]);
 
   useEffect(() => {
     setGreetingName(resolveGreetingName(null, currentAuth.email));
@@ -3258,11 +3292,13 @@ export default function HomeScreen({
         });
         const json = await readJsonSafe<{
           data?: ApiFoodItem[];
+          mobileHomeHeroSurfaceColor?: string | null;
           error?: { message?: string };
         }>(response);
 
         if (response.ok) {
           setAdminHeroImageUrl(resolveHomeHeaderImageUrl(json));
+          setHeroSurfaceColorOverride(resolveHomeHeroSurfaceColor(json));
           setHeroImageResolved(true);
           if (!Array.isArray(json.data)) {
             if (!silent) setMealsError(t('error.home.noMealsInResponse'));
@@ -6122,7 +6158,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFBF4' },
   content: { flex: 1, zIndex: 10 },
   scroll: { flex: 1, backgroundColor: '#FDDEB7' },
-  scrollContent: { paddingTop: 10, paddingBottom: 130, minHeight: '100%' },
+  scrollContent: { paddingTop: 22, paddingBottom: 130, minHeight: '100%' },
 
   /* --- Hero Header with Gradient + Food Image --- */
   heroWrap: {
@@ -6140,6 +6176,8 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   heroBgExtended: {
+    left: -24,
+    right: -24,
     top: -30,
     bottom: -56,
   },

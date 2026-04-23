@@ -90,6 +90,33 @@
     border-radius: 0;
     background: #fcfcfd;
   }
+  .hero-color-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+  }
+  .hero-color-input {
+    width: 32px;
+    height: 28px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    padding: 0;
+    background: #fff;
+    cursor: pointer;
+  }
+  .hero-color-swatches {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .hero-color-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid #d0d5dd;
+    cursor: pointer;
+  }
   .hero-control-label {
     font-size: 12px;
     color: #344054;
@@ -328,6 +355,17 @@
           <div class="hero-controls">
             <div class="hero-control-label">Zoom</div>
             <input id="hero-zoom" class="hero-range" type="range" min="0.50" max="3.00" step="0.001" value="1.000" />
+            <div class="hero-color-wrap" title="Hero alt yüzey rengi">
+              <div class="hero-control-label" style="margin-bottom:0;">Alt Renk</div>
+              <input id="hero-surface-color" class="hero-color-input" type="color" value="#fffbf4" />
+              <div class="hero-color-swatches">
+                <button type="button" class="hero-color-swatch" data-color="#fffbf4" style="background:#fffbf4"></button>
+                <button type="button" class="hero-color-swatch" data-color="#f5f0e8" style="background:#f5f0e8"></button>
+                <button type="button" class="hero-color-swatch" data-color="#fde5d7" style="background:#fde5d7"></button>
+                <button type="button" class="hero-color-swatch" data-color="#f4d6bf" style="background:#f4d6bf"></button>
+                <button type="button" class="hero-color-swatch" data-color="#e8dfd3" style="background:#e8dfd3"></button>
+              </div>
+            </div>
             <button type="button" id="hero-reset" class="hero-btn-secondary" style="white-space:nowrap;">Reset</button>
             <span class="hero-help" style="margin-top:0;">Mouse ile sürükle · Tekerlek ile zoom</span>
           </div>
@@ -350,7 +388,7 @@
               <div class="hero-phone-hero-wrap">
                 <canvas id="hero-mobile-canvas" width="390" height="300"></canvas>
               </div>
-              <div class="hero-phone-ui">
+              <div class="hero-phone-ui" id="hero-phone-ui">
                 <div class="hero-phone-searchbar">
                   <div class="hero-phone-searchbar-icon"></div>
                   <div class="hero-phone-searchbar-text"></div>
@@ -391,9 +429,12 @@
   var form = document.getElementById('home-hero-form');
   var imageDataInput = document.getElementById('hero-image-data');
   var imageUrlInput = document.getElementById('hero-image-url');
+  var editJsonInput = document.querySelector('input[name="mobile_home_header_edit_json"]');
   var previewImage = document.getElementById('hero-preview-image');
   var stage = document.getElementById('hero-stage');
   var zoomInput = document.getElementById('hero-zoom');
+  var surfaceColorInput = document.getElementById('hero-surface-color');
+  var phoneUi = document.getElementById('hero-phone-ui');
   var resetBtn = document.getElementById('hero-reset');
   var helpText = document.getElementById('hero-help-text');
 
@@ -405,6 +446,9 @@
   var startX = 0;
   var startY = 0;
   var state = { scale: 1, offsetX: 0, offsetY: 0 };
+  var DEFAULT_SURFACE_COLOR = '#fffbf4';
+  var surfaceColor = DEFAULT_SURFACE_COLOR;
+  var initialEditRaw = '{{ current_edit_json|default:""|escapejs }}';
 
   var MOBILE_W = 390;
   var MOBILE_H = 300;
@@ -433,6 +477,19 @@
     updateMobilePreview();
   }
 
+  function normalizeHexColor(value) {
+    var raw = String(value || '').trim().toLowerCase();
+    if (/^#[0-9a-f]{6}$/.test(raw)) return raw;
+    return DEFAULT_SURFACE_COLOR;
+  }
+
+  function applySurfaceColor(next) {
+    surfaceColor = normalizeHexColor(next);
+    if (surfaceColorInput) surfaceColorInput.value = surfaceColor;
+    if (phoneUi) phoneUi.style.background = surfaceColor;
+    updateMobilePreview();
+  }
+
   function resetTransform() {
     state.scale = 1;
     state.offsetX = 0;
@@ -448,7 +505,7 @@
     var cw = canvas.width;
     var ch = canvas.height;
     ctx.clearRect(0, 0, cw, ch);
-    ctx.fillStyle = '#f5f0e8';
+    ctx.fillStyle = surfaceColor;
     ctx.fillRect(0, 0, cw, ch);
     if (!hasImage()) return;
     var iw = previewImage.naturalWidth || 0;
@@ -505,7 +562,7 @@
     var drawX = (vw - drawW) / 2 + state.offsetX;
     var drawY = (vh - drawH) / 2 + state.offsetY;
 
-    ctx.fillStyle = '#f5f0e8';
+    ctx.fillStyle = surfaceColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(previewImage,
       drawX * exportScale, drawY * exportScale,
@@ -577,6 +634,7 @@
 
   resetBtn.addEventListener('click', function () {
     resetTransform();
+    applySurfaceColor(DEFAULT_SURFACE_COLOR);
     helpText.textContent = 'Konum ve zoom sifirlandi.';
   });
 
@@ -597,7 +655,27 @@
       imageDataInput.value = dataUrl;
       imageUrlInput.value = '';
     }
+    if (editJsonInput) {
+      editJsonInput.value = JSON.stringify({
+        scale: Number(state.scale.toFixed(3)),
+        offsetX: Math.round(state.offsetX),
+        offsetY: Math.round(state.offsetY),
+        surfaceColor: surfaceColor,
+      });
+    }
     helpText.textContent = 'Yayinlaniyor...';
+  });
+
+  if (surfaceColorInput) {
+    surfaceColorInput.addEventListener('input', function () {
+      applySurfaceColor(surfaceColorInput.value);
+    });
+  }
+  document.querySelectorAll('.hero-color-swatch').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var c = btn.getAttribute('data-color');
+      applySurfaceColor(c || DEFAULT_SURFACE_COLOR);
+    });
   });
 
   if (previewImage.src && previewImage.src !== window.location.href) {
@@ -614,6 +692,21 @@
     }
   } else {
     previewImage.style.display = 'none';
+  }
+
+  if (initialEditRaw) {
+    try {
+      var parsed = JSON.parse(initialEditRaw);
+      if (parsed && typeof parsed === 'object' && parsed.surfaceColor) {
+        applySurfaceColor(String(parsed.surfaceColor));
+      } else {
+        applySurfaceColor(DEFAULT_SURFACE_COLOR);
+      }
+    } catch (_) {
+      applySurfaceColor(DEFAULT_SURFACE_COLOR);
+    }
+  } else {
+    applySurfaceColor(DEFAULT_SURFACE_COLOR);
   }
 })();
 </script>

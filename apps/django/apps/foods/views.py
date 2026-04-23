@@ -5,6 +5,7 @@ All endpoints require a valid JWT with realm == 'app'.
 import base64
 import binascii
 import json
+import re
 
 from django.db import connection
 from django.db import transaction
@@ -106,6 +107,40 @@ def _resolve_mobile_home_header_image_url(request: HttpRequest | None = None):
         return path
     if value.startswith(("http://", "https://", "data:image/")):
         return value
+    return None
+
+
+_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _resolve_mobile_home_surface_color() -> str | None:
+    if not _has_public_column("admin_sales_commission_settings", "mobile_home_header_edit_json"):
+        return None
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+                SELECT mobile_home_header_edit_json
+                FROM admin_sales_commission_settings
+                WHERE mobile_home_header_edit_json IS NOT NULL
+                  AND TRIM(mobile_home_header_edit_json) <> ''
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+        )
+        row = cursor.fetchone()
+
+    if not row or not row[0]:
+        return None
+    try:
+        payload = json.loads(str(row[0]))
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    raw_color = str(payload.get("surfaceColor") or "").strip()
+    if _HEX_COLOR_RE.match(raw_color):
+        return raw_color.lower()
     return None
 
 
@@ -624,6 +659,7 @@ class FoodListView(APIView):
         return Response({
             "data": [_serialize_food_row(item, category_map, request) for item in items],
             "mobileHomeHeaderImageUrl": _resolve_mobile_home_header_image_url(request),
+            "mobileHomeHeroSurfaceColor": _resolve_mobile_home_surface_color(),
         })
 
 
