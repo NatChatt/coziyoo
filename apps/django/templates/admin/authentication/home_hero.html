@@ -408,6 +408,11 @@
 
   var MOBILE_W = 390;
   var MOBILE_H = 300;
+  // Image is rendered in an *extended* container (heroBgExtended: top:-30, bottom:-56)
+  // so the actual cover area is 390×386, not 390×300.
+  // The visible hero is 300px; image starts 30px above it.
+  var MOBILE_IMG_H = 386;   // 300 + 30 + 56
+  var MOBILE_IMG_TOP = 30;  // image top edge is 30px above visible hero
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
@@ -457,17 +462,20 @@
     var aOffX = (vw - iw * adminBaseS) / 2 + state.offsetX;
     var aOffY = (vh - ih * adminBaseS) / 2 + state.offsetY;
 
-    // Mobile cover: displays the 1.75:1 exported image in MOBILE_W × MOBILE_H
-    var mBaseS = Math.max(MOBILE_W / vw, MOBILE_H / vh);
+    // Mobile cover: image fills the EXTENDED container (390×386), then we show
+    // only the visible 300px strip (starting 30px from the extended top).
+    var mBaseS = Math.max(MOBILE_W / vw, MOBILE_IMG_H / vh);
     var mOffX = (MOBILE_W - vw * mBaseS) / 2;
-    var mOffY = (MOBILE_H - vh * mBaseS) / 2;
+    var mOffY = (MOBILE_IMG_H - vh * mBaseS) / 2;
 
-    // Combined: map original image pixels directly to mobile canvas pixels
+    // Combined: map original image pixels directly to canvas pixels.
+    // Shift Y up by MOBILE_IMG_TOP so the canvas shows the visible hero slice.
     var combined = adminBaseS * mBaseS;
-    var dx = (mOffX + aOffX * mBaseS) * (cw / MOBILE_W);
-    var dy = (mOffY + aOffY * mBaseS) * (ch / MOBILE_H);
-    var dw = iw * combined * (cw / MOBILE_W);
-    var dh = ih * combined * (ch / MOBILE_H);
+    var cs = cw / MOBILE_W;
+    var dx = (mOffX + aOffX * mBaseS) * cs;
+    var dy = (mOffY + aOffY * mBaseS - MOBILE_IMG_TOP) * cs;
+    var dw = iw * combined * cs;
+    var dh = ih * combined * cs;
 
     ctx.drawImage(previewImage, dx, dy, dw, dh);
   }
