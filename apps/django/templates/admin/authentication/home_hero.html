@@ -165,7 +165,7 @@
     box-shadow: 0 0 0 1px #374151, 0 0 0 3px #1f2937, 0 12px 32px rgba(0,0,0,0.35);
   }
   .hero-phone-screen {
-    background: #f5f5f0;
+    background: #fffbf4;
     border-radius: 28px;
     overflow: hidden;
   }
@@ -207,7 +207,7 @@
   }
   .hero-phone-ui {
     padding: 6px 6px 8px;
-    background: #f5f5f0;
+    background: #fffbf4;
   }
   .hero-phone-searchbar {
     background: #e8e6e0;
@@ -327,7 +327,7 @@
         </div>
         <div class="hero-controls">
           <div class="hero-control-label">Zoom</div>
-          <input id="hero-zoom" class="hero-range" type="range" min="0.50" max="1.50" step="0.001" value="1.000" />
+          <input id="hero-zoom" class="hero-range" type="range" min="1.00" max="3.00" step="0.001" value="1.000" />
           <button type="button" id="hero-reset" class="hero-btn-secondary" style="white-space:nowrap;">Reset</button>
           <span class="hero-help" style="margin-top:0;">Mouse ile sürükle · Tekerlek ile zoom</span>
         </div>
@@ -472,17 +472,28 @@
 
     ctx.drawImage(previewImage, dx, dy, dw, dh);
 
-    // Top fade
-    var gTop = ctx.createLinearGradient(0, 0, 0, ch * 0.45);
-    gTop.addColorStop(0, 'rgba(0,0,0,0.28)');
-    gTop.addColorStop(1, 'rgba(0,0,0,0)');
+    // Exact mobile gradients (HomeScreen.tsx heroNewTopFade / heroNewBottomFade)
+    // heroTopBandColor default #FDDEB7 = rgb(253,222,183)
+    // heroNewTopFade: top:-26, height:190 → stops at locations [0,0.42,0.74,1]
+    var s = ch / 300;
+    var gTop = ctx.createLinearGradient(0, -26 * s, 0, 164 * s);
+    gTop.addColorStop(0,    'rgba(253,222,183,0.34)');
+    gTop.addColorStop(0.42, 'rgba(253,222,183,0.18)');
+    gTop.addColorStop(0.74, 'rgba(253,222,183,0.08)');
+    gTop.addColorStop(1,    'rgba(253,222,183,0)');
     ctx.fillStyle = gTop;
     ctx.fillRect(0, 0, cw, ch);
 
-    // Bottom fade
-    var gBot = ctx.createLinearGradient(0, ch * 0.45, 0, ch);
-    gBot.addColorStop(0, 'rgba(0,0,0,0)');
-    gBot.addColorStop(1, 'rgba(0,0,0,0.55)');
+    // heroBottomBandColor default #FFFBF4 = rgb(255,251,244)
+    // heroNewBottomFade: bottom:-82, height:236 → top edge at y=146, bottom at y=382
+    // stops at locations [0,0.2,0.4,0.6,0.8,1]
+    var gBot = ctx.createLinearGradient(0, 146 * s, 0, 382 * s);
+    gBot.addColorStop(0,   'rgba(255,251,244,0)');
+    gBot.addColorStop(0.2, 'rgba(255,251,244,0.22)');
+    gBot.addColorStop(0.4, 'rgba(255,251,244,0.44)');
+    gBot.addColorStop(0.6, 'rgba(255,251,244,0.66)');
+    gBot.addColorStop(0.8, 'rgba(255,251,244,0.86)');
+    gBot.addColorStop(1,   'rgba(255,251,244,1)');
     ctx.fillStyle = gBot;
     ctx.fillRect(0, 0, cw, ch);
   }
