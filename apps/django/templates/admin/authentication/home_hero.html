@@ -133,6 +133,140 @@
   @media (max-width: 660px) {
     .hero-controls { flex-wrap: wrap; }
   }
+  .hero-preview-section {
+    border-top: 1px solid #e4e7ec;
+    padding: 14px 14px 16px;
+    background: #f8fafc;
+  }
+  .hero-preview-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .hero-preview-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #344054;
+  }
+  .hero-preview-hint {
+    font-size: 11px;
+    color: #98a2b3;
+  }
+  .hero-phone-wrap {
+    display: flex;
+    justify-content: center;
+  }
+  .hero-phone-frame {
+    width: 200px;
+    background: #0f1117;
+    border-radius: 36px;
+    padding: 12px 8px;
+    box-shadow: 0 0 0 1px #374151, 0 0 0 3px #1f2937, 0 12px 32px rgba(0,0,0,0.35);
+  }
+  .hero-phone-screen {
+    background: #f5f5f0;
+    border-radius: 28px;
+    overflow: hidden;
+  }
+  .hero-phone-statusbar {
+    height: 18px;
+    background: #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+  }
+  .hero-phone-statusbar-time {
+    font-size: 8px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 600;
+    letter-spacing: 0.2px;
+  }
+  .hero-phone-statusbar-icons {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+  .hero-phone-statusbar-icon {
+    width: 8px;
+    height: 5px;
+    background: rgba(255,255,255,0.7);
+    border-radius: 1px;
+  }
+  .hero-phone-hero-wrap {
+    position: relative;
+    width: 100%;
+    background: #1a1a1a;
+  }
+  .hero-phone-hero-wrap canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 390 / 300;
+  }
+  .hero-phone-ui {
+    padding: 6px 6px 8px;
+    background: #f5f5f0;
+  }
+  .hero-phone-searchbar {
+    background: #e8e6e0;
+    border-radius: 8px;
+    height: 20px;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    padding: 0 7px;
+    gap: 4px;
+  }
+  .hero-phone-searchbar-icon {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1.5px solid #b0aea8;
+    flex-shrink: 0;
+  }
+  .hero-phone-searchbar-text {
+    flex: 1;
+    height: 4px;
+    background: #c8c6c0;
+    border-radius: 2px;
+  }
+  .hero-phone-chips {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 5px;
+    overflow: hidden;
+  }
+  .hero-phone-chip {
+    height: 14px;
+    border-radius: 7px;
+    background: #e8e6e0;
+    flex: 1;
+    min-width: 0;
+  }
+  .hero-phone-chip.active {
+    background: #7f56d9;
+  }
+  .hero-phone-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .hero-phone-card {
+    background: #fff;
+    border-radius: 7px;
+    height: 44px;
+    border: 1px solid #ece9e3;
+  }
+  .hero-phone-no-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #98a2b3;
+    height: 100%;
+  }
 </style>
 
 <div class="hero-simple-wrap">
@@ -199,6 +333,48 @@
         </div>
       </div>
 
+      <div class="hero-preview-section">
+        <div class="hero-preview-header">
+          <span class="hero-preview-title">Mobil Önizleme</span>
+          <span class="hero-preview-hint">Yayınlamadan önce mobilden nasıl görüneceğini gösterir</span>
+        </div>
+        <div class="hero-phone-wrap">
+          <div class="hero-phone-frame">
+            <div class="hero-phone-screen">
+              <div class="hero-phone-statusbar">
+                <span class="hero-phone-statusbar-time">9:41</span>
+                <div class="hero-phone-statusbar-icons">
+                  <div class="hero-phone-statusbar-icon" style="width:10px;height:5px;border-radius:1px;background:rgba(255,255,255,0.7);"></div>
+                  <div class="hero-phone-statusbar-icon" style="width:5px;height:5px;border-radius:50%;"></div>
+                  <div class="hero-phone-statusbar-icon"></div>
+                </div>
+              </div>
+              <div class="hero-phone-hero-wrap">
+                <canvas id="hero-mobile-canvas" width="390" height="300">
+                  <div class="hero-phone-no-image">Resim seçilmedi</div>
+                </canvas>
+              </div>
+              <div class="hero-phone-ui">
+                <div class="hero-phone-searchbar">
+                  <div class="hero-phone-searchbar-icon"></div>
+                  <div class="hero-phone-searchbar-text"></div>
+                </div>
+                <div class="hero-phone-chips">
+                  <div class="hero-phone-chip active"></div>
+                  <div class="hero-phone-chip"></div>
+                  <div class="hero-phone-chip"></div>
+                  <div class="hero-phone-chip"></div>
+                </div>
+                <div class="hero-phone-cards">
+                  <div class="hero-phone-card"></div>
+                  <div class="hero-phone-card"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="hero-panel-body">
         <div class="hero-actions">
           <button type="submit" class="hero-btn-primary">Yayınla</button>
@@ -231,6 +407,9 @@
   var startY = 0;
   var state = { scale: 1, offsetX: 0, offsetY: 0 };
 
+  var MOBILE_W = 390;
+  var MOBILE_H = 300;
+
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
   function hasImage() {
@@ -247,6 +426,7 @@
     previewImage.style.transform =
       'translate(' + state.offsetX + 'px, ' + state.offsetY + 'px) scale(' + state.scale + ')';
     zoomInput.value = state.scale.toFixed(3);
+    updateMobilePreview();
   }
 
   function resetTransform() {
@@ -254,6 +434,57 @@
     state.offsetX = 0;
     state.offsetY = 0;
     applyTransform();
+  }
+
+  function updateMobilePreview() {
+    var canvas = document.getElementById('hero-mobile-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    var cw = canvas.width;
+    var ch = canvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, cw, ch);
+    if (!hasImage()) return;
+    var iw = previewImage.naturalWidth || 0;
+    var ih = previewImage.naturalHeight || 0;
+    if (iw <= 1 || ih <= 1) return;
+    var vw = stage.clientWidth || 1;
+    var vh = stage.clientHeight || 1;
+
+    // Replicate admin stage: object-fit cover + user zoom/pan
+    var adminBaseS = Math.max(vw / iw, vh / ih) * state.scale;
+    var aOffX = (vw - iw * adminBaseS) / 2 + state.offsetX;
+    var aOffY = (vh - ih * adminBaseS) / 2 + state.offsetY;
+
+    // Mobile cover: displays the 1.75:1 exported image in MOBILE_W × MOBILE_H
+    var mBaseS = Math.max(MOBILE_W / vw, MOBILE_H / vh);
+    var mOffX = (MOBILE_W - vw * mBaseS) / 2;
+    var mOffY = (MOBILE_H - vh * mBaseS) / 2;
+
+    // Combined: map original image pixels directly to mobile canvas pixels
+    var combined = adminBaseS * mBaseS;
+    var dx = (mOffX + aOffX * mBaseS) * (cw / MOBILE_W);
+    var dy = (mOffY + aOffY * mBaseS) * (ch / MOBILE_H);
+    var dw = iw * combined * (cw / MOBILE_W);
+    var dh = ih * combined * (ch / MOBILE_H);
+
+    ctx.drawImage(previewImage, dx, dy, dw, dh);
+
+    // Top fade
+    var gTop = ctx.createLinearGradient(0, 0, 0, ch * 0.45);
+    gTop.addColorStop(0, 'rgba(0,0,0,0.28)');
+    gTop.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gTop;
+    ctx.fillRect(0, 0, cw, ch);
+
+    // Bottom fade
+    var gBot = ctx.createLinearGradient(0, ch * 0.45, 0, ch);
+    gBot.addColorStop(0, 'rgba(0,0,0,0)');
+    gBot.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = gBot;
+    ctx.fillRect(0, 0, cw, ch);
   }
 
   // Canvas export: replicate CSS object-fit:cover + JS transform (scale around center + translate).
@@ -305,6 +536,7 @@
     previewImage.onload = function () {
       previewImage.style.display = 'block';
       resetTransform();
+      updateMobilePreview();
       imageDataInput.value = '';
       imageUrlInput.value = '';
       helpText.textContent = 'Resim secildi. Zoom/konum ayarindan sonra Yayinla.';
@@ -379,10 +611,12 @@
     if (previewImage.complete && previewImage.naturalWidth > 1) {
       previewImage.style.display = 'block';
       resetTransform();
+      updateMobilePreview();
     } else {
       previewImage.onload = function () {
         previewImage.style.display = 'block';
         resetTransform();
+        updateMobilePreview();
       };
     }
   } else {
