@@ -225,6 +225,8 @@
   var minScale = 1.00;
   var maxScale = 3.00;
   var wheelStep = 0.05;
+  // Keep image visually similar after stage was narrowed.
+  var baseVisualScale = 1.28;
   var objectUrl = '';
   var dragging = false;
   var startX = 0;
@@ -245,8 +247,9 @@
 
   // CSS object-fit:contain fills stage — full image visible. JS transform for zoom/drag on top.
   function applyTransform() {
+    var effectiveScale = state.scale * baseVisualScale;
     previewImage.style.transform =
-      'translate(' + state.offsetX + 'px, ' + state.offsetY + 'px) scale(' + state.scale + ')';
+      'translate(' + state.offsetX + 'px, ' + state.offsetY + 'px) scale(' + effectiveScale + ')';
     zoomInput.value = state.scale.toFixed(3);
   }
 
@@ -275,8 +278,8 @@
 
     // Replicate CSS object-fit:cover
     var baseS = Math.max(vw / iw, vh / ih);
-    // Replicate CSS scale(state.scale) around center + translate(offsetX, offsetY)
-    var finalScale = baseS * state.scale;
+    // Replicate CSS scale(state.scale * baseVisualScale) around center + translate(offsetX, offsetY)
+    var finalScale = baseS * state.scale * baseVisualScale;
     var drawW = iw * finalScale;
     var drawH = ih * finalScale;
     var drawX = (vw - drawW) / 2 + state.offsetX;
