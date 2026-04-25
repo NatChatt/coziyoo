@@ -4466,27 +4466,22 @@ export default function HomeScreen({
               <View style={styles.heroGreetingArea}>
                 <View style={styles.greetingTitleWrap}>
                   <Text
-                    style={[styles.greetingTitle, resolveGreetingTitleMetrics(dynamicGreetingTitle.text)]}
+                    style={styles.heroGreetingLine}
                     numberOfLines={1}
                     adjustsFontSizeToFit
                     minimumFontScale={0.72}
                   >
-                    {dynamicGreetingTitle.text}
+                    {formatCopy('headline.home.greetingMorning', { name: greetingName })}
                   </Text>
+                  <Text style={styles.heroGreetingSparkle}>✶</Text>
                 </View>
               </View>
             </View>
-            <Text style={styles.heroSubtitle}>{greetingSubtitle}</Text>
-            <TouchableOpacity
-              onPress={() => setLocationModalVisible(true)}
-              activeOpacity={0.8}
-              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-              style={styles.heroLocationRow}
-            >
-              <Ionicons name="location-outline" size={15} color="#B15735" />
-              <Text style={styles.heroLocationText}>{selectedLocationLabel}</Text>
-              <Ionicons name="chevron-down" size={14} color="#B15735" style={{ marginLeft: 2 }} />
-            </TouchableOpacity>
+            <Text style={styles.heroQuestion}>{t('headline.home.heroQuestion')}</Text>
+            <View style={styles.heroQuestionMarkerRow}>
+              <Text style={styles.heroQuestionLeafIcon}>↝</Text>
+              <View style={styles.heroQuestionLine} />
+            </View>
           </View>
         </View>
         {/* Sticky: Search Bar + Category Chips */}
@@ -4507,6 +4502,19 @@ export default function HomeScreen({
               style={styles.stickySearchFade}
             />
           ) : null}
+          <View style={styles.homeSloganBanner}>
+            <View style={styles.homeSloganBannerTextWrap}>
+              <View style={styles.homeSloganTopIconWrap}>
+                <Ionicons name="home-outline" size={22} color="#B57B4A" />
+                <Ionicons name="heart-outline" size={10} color="#B57B4A" style={styles.homeSloganTopIconHeart} />
+              </View>
+              <Text style={styles.homeSloganBannerTitle}>{t('headline.home.slogan')}</Text>
+              <Text style={styles.homeSloganBannerSubline} numberOfLines={1}>
+                {t('helper.home.sloganWarm')}
+              </Text>
+              <View style={styles.homeSloganBannerLine} />
+            </View>
+          </View>
           <View style={styles.floatingSearchWrap}>
             <TouchableOpacity
               style={[styles.floatingSearchBar, searchMode && styles.floatingSearchBarActive]}
@@ -4569,7 +4577,6 @@ export default function HomeScreen({
             ))}
           </ScrollView>
         </View>
-        {showHomeOrderPromo ? renderQuickOrderCard('home') : renderPromoFallbackCard('home')}
         <View onLayout={(e) => setFoodSectionOffsetY(e.nativeEvent.layout.y)} />
         <View style={styles.recommendationsSection}>
           <Text style={styles.recommendationsSectionTitle}>{t('status.home.recommendations')}</Text>
@@ -6200,8 +6207,8 @@ const styles = StyleSheet.create({
   },
   heroTextArea: {
     zIndex: 3,
-    width: '56%',
-    paddingTop: 48,
+    width: '64%',
+    paddingTop: 50,
     paddingBottom: 12,
     paddingLeft: 0,
   },
@@ -6221,6 +6228,47 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '800',
     letterSpacing: -0.2,
+  },
+  heroGreetingLine: {
+    color: '#6B4A38',
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '500',
+    letterSpacing: -0.05,
+  },
+  heroGreetingSparkle: {
+    color: '#6B4A38',
+    fontSize: 12,
+    lineHeight: 14,
+    marginLeft: 4,
+    marginTop: 1,
+  },
+  heroQuestion: {
+    color: '#23170F',
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginTop: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  heroQuestionMarkerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 4,
+  },
+  heroQuestionLeafIcon: {
+    color: '#7D5A45',
+    fontSize: 13,
+    lineHeight: 13,
+    marginTop: -1,
+  },
+  heroQuestionLine: {
+    width: 42,
+    height: 1.6,
+    borderRadius: 2,
+    backgroundColor: '#A4714E',
   },
   heroSubtitle: {
     color: '#B15735',
@@ -6265,10 +6313,10 @@ const styles = StyleSheet.create({
   stickySearchChips: {
     position: 'relative',
     backgroundColor: 'transparent',
-    marginTop: -4,
-    paddingTop: 16,
-    paddingBottom: 8,
-    overflow: 'hidden',
+    marginTop: -8,
+    paddingTop: 4,
+    paddingBottom: 6,
+    overflow: 'visible',
     zIndex: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 0 },
@@ -6282,6 +6330,60 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: -24,
+  },
+  homeSloganBanner: {
+    marginHorizontal: 12,
+    marginTop: -34,
+    marginBottom: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    zIndex: 22,
+    elevation: 22,
+  },
+  homeSloganBannerTextWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    marginTop: -12,
+    paddingLeft: 0,
+    alignItems: 'flex-start',
+  },
+  homeSloganTopIconWrap: {
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  homeSloganTopIconHeart: {
+    position: 'absolute',
+    top: 8,
+  },
+  homeSloganBannerTitle: {
+    color: '#2F221B',
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '700',
+    marginBottom: 2,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  homeSloganBannerLine: {
+    width: 34,
+    height: 3,
+    borderRadius: 1,
+    backgroundColor: '#A4714E',
+    marginTop: 3,
+  },
+  homeSloganBannerSubline: {
+    color: '#8B6A52',
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: '500',
+    marginTop: 2,
   },
   stickySearchBottomFade: {
     position: 'absolute',
@@ -6298,7 +6400,8 @@ const styles = StyleSheet.create({
 
   /* --- Floating Search Bar (premium shadow) --- */
   floatingSearchWrap: {
-    marginBottom: 18,
+    marginTop: -8,
+    marginBottom: 10,
     marginHorizontal: 8,
     zIndex: 5,
   },
@@ -6343,7 +6446,8 @@ const styles = StyleSheet.create({
 
   /* --- Category Chips --- */
   chipScroller: {
-    marginBottom: 8,
+    marginTop: -2,
+    marginBottom: 6,
     marginHorizontal: 0,
   },
   chipRow: {
@@ -7895,9 +7999,7 @@ const styles = StyleSheet.create({
   floatingWrap: {
     position: 'absolute',
     left: '50%',
-    bottom: Platform.OS === 'ios'
-      ? -34 + ((BUYER_HOME_TAB_BAR_HEIGHT - 52) / 2)
-      : ((BUYER_HOME_TAB_BAR_HEIGHT - 52) / 2),
+    bottom: ((BUYER_HOME_TAB_BAR_HEIGHT - 52) / 2),
     marginLeft: -26,
     zIndex: 80, width: 52, height: 52, alignItems: 'center', justifyContent: 'center',
   },
@@ -7939,11 +8041,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: Platform.OS === 'ios' ? -34 : 0,
+    bottom: 0,
     height: BUYER_HOME_TAB_BAR_HEIGHT, backgroundColor: '#FFFDF9',
     borderTopWidth: 1, borderTopColor: '#EDE8E0',
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingTop: 2, paddingBottom: 0, paddingHorizontal: 8, zIndex: 50,
+    paddingTop: 2, paddingBottom: 2, paddingHorizontal: 8, zIndex: 50,
   },
   navItem: {
     flex: 1,
@@ -7951,7 +8053,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingTop: 0,
     paddingBottom: 0,
-    transform: [{ translateY: 5 }],
+    transform: [{ translateY: 2 }],
   },
   navSpacer: { width: 72 },
   navIcon: { color: '#A89B8C', marginBottom: 3 },
