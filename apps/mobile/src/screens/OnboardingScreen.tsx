@@ -68,7 +68,8 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
   const [index, setIndex] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
   const logoIntro = useRef(new Animated.Value(0)).current;
-  const textIntro = useRef(new Animated.Value(0)).current;
+  const titleIntro = useRef(new Animated.Value(0)).current;
+  const bodyIntro = useRef(new Animated.Value(0)).current;
   const slides = getSlides();
   const slide = slides[index] ?? slides[0];
   const isBrand = slide.illustration === 'logo';
@@ -81,7 +82,8 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
   useEffect(() => {
     if (!isBrand) return;
     logoIntro.setValue(0);
-    textIntro.setValue(0);
+    titleIntro.setValue(0);
+    bodyIntro.setValue(0);
     Animated.parallel([
       Animated.timing(logoIntro, {
         toValue: 1,
@@ -90,29 +92,61 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
       }),
       Animated.sequence([
         Animated.delay(1180),
-        Animated.timing(textIntro, {
+        Animated.timing(titleIntro, {
           toValue: 1,
-          duration: 650,
+          duration: 420,
+          useNativeDriver: true,
+        }),
+        Animated.delay(100),
+        Animated.timing(bodyIntro, {
+          toValue: 1,
+          duration: 560,
           useNativeDriver: true,
         }),
       ]),
     ]).start();
-  }, [isBrand, logoIntro, textIntro]);
+  }, [bodyIntro, isBrand, logoIntro, titleIntro]);
 
-  const brandTextAnimatedStyle = isBrand
+  const brandTitleAnimatedStyle = isBrand
     ? {
-        opacity: textIntro,
+        opacity: titleIntro,
         transform: [
           {
-            scale: textIntro.interpolate({
+            perspective: 900,
+          },
+          {
+            scale: titleIntro.interpolate({
               inputRange: [0, 1],
-              outputRange: [0.88, 1],
+              outputRange: [0.92, 1],
             }),
           },
           {
-            translateY: textIntro.interpolate({
+            translateY: titleIntro.interpolate({
               inputRange: [0, 1],
-              outputRange: [18, 0],
+              outputRange: [14, 0],
+            }),
+          },
+        ],
+      }
+    : null;
+
+  const brandBodyAnimatedStyle = isBrand
+    ? {
+        opacity: bodyIntro,
+        transform: [
+          {
+            perspective: 900,
+          },
+          {
+            scale: bodyIntro.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.94, 1],
+            }),
+          },
+          {
+            translateY: bodyIntro.interpolate({
+              inputRange: [0, 1],
+              outputRange: [12, 0],
             }),
           },
         ],
@@ -137,10 +171,14 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
       <View style={screenStyle}>
         <Animated.View style={[styles.topArea, { opacity: fade }]}>
           <Illustration slide={slide} logoIntro={logoIntro} />
-          <Animated.View style={[styles.copyWrap, brandTextAnimatedStyle]}>
-            <Text style={[styles.title, isBrand ? styles.brandTitle : null]}>{slide.title}</Text>
-            <Text style={[styles.body, isBrand ? styles.brandBody : null]}>{slide.body}</Text>
-          </Animated.View>
+          <View style={styles.copyWrap}>
+            <Animated.Text style={[styles.title, isBrand ? styles.brandTitle : null, brandTitleAnimatedStyle]}>
+              {slide.title}
+            </Animated.Text>
+            <Animated.Text style={[styles.body, isBrand ? styles.brandBody : null, brandBodyAnimatedStyle]}>
+              {slide.body}
+            </Animated.Text>
+          </View>
         </Animated.View>
 
         <View style={styles.bottomWrap}>
