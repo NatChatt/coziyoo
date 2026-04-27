@@ -83,17 +83,16 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
     logoIntro.setValue(0);
     textIntro.setValue(0);
     Animated.parallel([
-      Animated.spring(logoIntro, {
+      Animated.timing(logoIntro, {
         toValue: 1,
+        duration: 1500,
         useNativeDriver: true,
-        speed: 7,
-        bounciness: 9,
       }),
       Animated.sequence([
-        Animated.delay(360),
+        Animated.delay(1180),
         Animated.timing(textIntro, {
           toValue: 1,
-          duration: 420,
+          duration: 650,
           useNativeDriver: true,
         }),
       ]),
@@ -185,8 +184,8 @@ function Illustration({ slide, logoIntro }: { slide: OnboardingSlide; logoIntro:
         },
         {
           scale: logoIntro.interpolate({
-            inputRange: [0, 0.7, 1],
-            outputRange: [0.04, 1.12, 1],
+            inputRange: [0, 0.78, 1],
+            outputRange: [0.02, 0.92, 1],
           }),
         },
         {
@@ -198,7 +197,7 @@ function Illustration({ slide, logoIntro }: { slide: OnboardingSlide; logoIntro:
         {
           translateY: logoIntro.interpolate({
             inputRange: [0, 1],
-            outputRange: [96, 0],
+            outputRange: [170, 0],
           }),
         },
       ],
