@@ -26,40 +26,49 @@ type OnboardingSlide = {
   image?: ImageSourcePropType;
 };
 
-const SLIDES: OnboardingSlide[] = [
-  {
-    key: 'brand',
-    title: t('headline.onboarding.brandTitle'),
-    body: t('helper.onboarding.brandSubtitle'),
-    illustration: 'logo',
-  },
-  {
-    key: 'near',
-    title: t('headline.onboarding.nearTitle'),
-    body: t('helper.onboarding.nearSubtitle'),
-    illustration: 'chef',
-    image: require('../../assets/images/onboarding-near.png'),
-  },
-  {
-    key: 'ai',
-    title: t('headline.onboarding.aiTitle'),
-    body: t('helper.onboarding.aiSubtitle'),
-    illustration: 'ai',
-    image: require('../../assets/images/onboarding-ai.png'),
-  },
-  {
-    key: 'choice',
-    title: t('headline.onboarding.choiceTitle'),
-    body: t('helper.onboarding.choiceSubtitle'),
-    illustration: 'community',
-    image: require('../../assets/images/onboarding-choice.png'),
-  },
-];
+const ONBOARDING_IMAGES = {
+  near: require('../../assets/images/onboarding-near.png'),
+  ai: require('../../assets/images/onboarding-ai.png'),
+  choice: require('../../assets/images/onboarding-choice.png'),
+} as const;
+
+function getSlides(): OnboardingSlide[] {
+  return [
+    {
+      key: 'brand',
+      title: t('headline.onboarding.brandTitle'),
+      body: t('helper.onboarding.brandSubtitle'),
+      illustration: 'logo',
+    },
+    {
+      key: 'near',
+      title: t('headline.onboarding.nearTitle'),
+      body: t('helper.onboarding.nearSubtitle'),
+      illustration: 'chef',
+      image: ONBOARDING_IMAGES.near,
+    },
+    {
+      key: 'ai',
+      title: t('headline.onboarding.aiTitle'),
+      body: t('helper.onboarding.aiSubtitle'),
+      illustration: 'ai',
+      image: ONBOARDING_IMAGES.ai,
+    },
+    {
+      key: 'choice',
+      title: t('headline.onboarding.choiceTitle'),
+      body: t('helper.onboarding.choiceSubtitle'),
+      illustration: 'community',
+      image: ONBOARDING_IMAGES.choice,
+    },
+  ];
+}
 
 export default function OnboardingScreen({ onGoToLogin }: Props) {
   const [index, setIndex] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
-  const slide = SLIDES[index];
+  const slides = getSlides();
+  const slide = slides[index] ?? slides[0];
   const isBrand = slide.illustration === 'logo';
 
   const screenStyle = useMemo(
@@ -68,7 +77,7 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
   );
 
   function goNext() {
-    if (index >= SLIDES.length - 1) {
+    if (index >= slides.length - 1) {
       onGoToLogin();
       return;
     }
@@ -76,7 +85,7 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
       Animated.timing(fade, { toValue: 0, duration: 120, useNativeDriver: true }),
       Animated.timing(fade, { toValue: 1, duration: 180, useNativeDriver: true }),
     ]).start();
-    setIndex((value) => Math.min(value + 1, SLIDES.length - 1));
+    setIndex((value) => Math.min(value + 1, slides.length - 1));
   }
 
   return (
@@ -105,7 +114,7 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
             </Text>
           </Pressable>
           <View style={styles.dotsRow}>
-            {SLIDES.map((item, dotIndex) => (
+            {slides.map((item, dotIndex) => (
               <View
                 key={item.key}
                 style={[
