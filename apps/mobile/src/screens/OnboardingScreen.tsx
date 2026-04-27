@@ -8,8 +8,8 @@ import {
   StyleSheet,
   StatusBar,
   SafeAreaView,
+  type ImageSourcePropType,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import type { AuthSession } from '../utils/auth';
 import { t } from '../copy/brandCopy';
 
@@ -22,8 +22,8 @@ type OnboardingSlide = {
   key: string;
   title: string;
   body: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
   illustration: 'logo' | 'chef' | 'ai' | 'community';
+  image?: ImageSourcePropType;
 };
 
 const SLIDES: OnboardingSlide[] = [
@@ -31,29 +31,28 @@ const SLIDES: OnboardingSlide[] = [
     key: 'brand',
     title: t('headline.onboarding.brandTitle'),
     body: t('helper.onboarding.brandSubtitle'),
-    icon: 'restaurant-outline',
     illustration: 'logo',
   },
   {
     key: 'near',
     title: t('headline.onboarding.nearTitle'),
     body: t('helper.onboarding.nearSubtitle'),
-    icon: 'home-outline',
     illustration: 'chef',
+    image: require('../../assets/images/onboarding-near.png'),
   },
   {
     key: 'ai',
     title: t('headline.onboarding.aiTitle'),
     body: t('helper.onboarding.aiSubtitle'),
-    icon: 'sparkles-outline',
     illustration: 'ai',
+    image: require('../../assets/images/onboarding-ai.png'),
   },
   {
     key: 'choice',
     title: t('headline.onboarding.choiceTitle'),
     body: t('helper.onboarding.choiceSubtitle'),
-    icon: 'people-outline',
     illustration: 'community',
+    image: require('../../assets/images/onboarding-choice.png'),
   },
 ];
 
@@ -136,25 +135,11 @@ function Illustration({ slide }: { slide: OnboardingSlide }) {
     );
   }
 
-  const accent = slide.illustration === 'ai' ? '#B15735' : '#819376';
-  const secondary = slide.illustration === 'community' ? '#C4953A' : '#EAD9BE';
-
   return (
-    <View style={styles.illustrationStage}>
-      <View style={[styles.blob, { backgroundColor: secondary }]} />
-      <View style={styles.illustrationCard}>
-        <View style={[styles.iconCircle, { backgroundColor: accent }]}>
-          <Ionicons name={slide.icon} size={34} color="#FFFDF9" />
-        </View>
-        <View style={styles.sceneRow}>
-          <View style={[styles.person, styles.personTall]} />
-          <View style={styles.table}>
-            <View style={styles.plate} />
-            <View style={styles.bowl} />
-          </View>
-          <View style={[styles.person, styles.personSmall]} />
-        </View>
-      </View>
+    <View style={[styles.illustrationStage, slide.illustration === 'community' ? styles.illustrationStageWide : null]}>
+      {slide.image ? (
+        <Image source={slide.image} style={styles.illustrationImage} resizeMode="contain" />
+      ) : null}
     </View>
   );
 }
@@ -178,58 +163,13 @@ const styles = StyleSheet.create({
   logo: { width: 248, height: 53 },
   illustrationStage: {
     width: '100%',
-    height: 275,
+    height: 292,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
-  blob: {
-    position: 'absolute',
-    width: 220,
-    height: 160,
-    borderRadius: 80,
-    opacity: 0.26,
-    transform: [{ rotate: '-8deg' }],
-  },
-  illustrationCard: {
-    width: 242,
-    height: 190,
-    borderRadius: 28,
-    backgroundColor: '#FFFDF9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#EFE3D4',
-    shadowColor: '#3D3229',
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 4,
-  },
-  iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
-  },
-  sceneRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 14 },
-  person: { width: 26, borderRadius: 13, backgroundColor: '#B15735' },
-  personTall: { height: 58 },
-  personSmall: { height: 44, backgroundColor: '#819376' },
-  table: {
-    width: 76,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#F4E3C7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  plate: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFFDF9', borderWidth: 4, borderColor: '#C4953A' },
-  bowl: { width: 22, height: 16, borderRadius: 9, backgroundColor: '#819376' },
+  illustrationStageWide: { height: 230 },
+  illustrationImage: { width: '100%', height: '100%' },
   copyWrap: { alignItems: 'center', paddingHorizontal: 8 },
   title: { color: '#B15735', fontSize: 25, lineHeight: 31, fontWeight: '800', textAlign: 'center' },
   brandTitle: { color: '#FFFDF9', fontSize: 18, marginTop: 4 },
