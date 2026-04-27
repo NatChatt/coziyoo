@@ -65,6 +65,25 @@ export default function LoginScreen({ onLogin }: Props) {
     setError(null);
   }
 
+  function demoBuyerEmail(): string {
+    return `alici_demo_${Date.now()}@coziyoo.test`;
+  }
+
+  function fillDemoBuyerSignUp() {
+    setName('Demo Alıcı');
+    setEmail(demoBuyerEmail());
+    setPassword('12345678');
+    setConfirmPassword('12345678');
+    setPhone('+90 555 010 2026');
+    setOtp('98');
+    setError(null);
+  }
+
+  function openSignUp() {
+    fillDemoBuyerSignUp();
+    setStep('signUp');
+  }
+
   function makeSession(json: AuthResponse, fallbackEmail: string): AuthSession | null {
     const { user, tokens } = json.data ?? {};
     if (!tokens?.accessToken || !tokens?.refreshToken || !user?.id) return null;
@@ -374,7 +393,7 @@ export default function LoginScreen({ onLogin }: Props) {
           <Text style={styles.forgotText}>{t('cta.login.forgotPassword')}</Text>
         </TouchableOpacity>
         <PrimaryButton label={t('cta.login.signIn')} loading={loading} onPress={() => loginWithCredentials(email, password)} />
-        <InlineLink text={t('helper.login.noAccount')} actionText={t('cta.login.register')} onPress={() => setStep('signUp')} />
+        <InlineLink text={t('helper.login.noAccount')} actionText={t('cta.login.register')} onPress={openSignUp} />
       </>
     );
   }
