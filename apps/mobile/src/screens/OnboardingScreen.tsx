@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -67,6 +67,7 @@ function getSlides(): OnboardingSlide[] {
 export default function OnboardingScreen({ onGoToLogin }: Props) {
   const [index, setIndex] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
+  const logoIntro = useRef(new Animated.Value(0)).current;
   const slides = getSlides();
   const slide = slides[index] ?? slides[0];
   const isBrand = slide.illustration === 'logo';
@@ -75,6 +76,17 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
     () => [styles.screen, isBrand ? styles.brandScreen : styles.lightScreen],
     [isBrand],
   );
+
+  useEffect(() => {
+    if (!isBrand) return;
+    logoIntro.setValue(0);
+    Animated.spring(logoIntro, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 8,
+      bounciness: 8,
+    }).start();
+  }, [isBrand, logoIntro]);
 
   function goNext() {
     if (index >= slides.length - 1) {
@@ -93,7 +105,7 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
       <StatusBar barStyle={isBrand ? 'light-content' : 'dark-content'} backgroundColor={isBrand ? '#819376' : '#FFF7EC'} />
       <View style={screenStyle}>
         <Animated.View style={[styles.topArea, { opacity: fade }]}>
-          <Illustration slide={slide} />
+          <Illustration slide={slide} logoIntro={logoIntro} />
           <View style={styles.copyWrap}>
             <Text style={[styles.title, isBrand ? styles.brandTitle : null]}>{slide.title}</Text>
             <Text style={[styles.body, isBrand ? styles.brandBody : null]}>{slide.body}</Text>
@@ -131,13 +143,37 @@ export default function OnboardingScreen({ onGoToLogin }: Props) {
   );
 }
 
-function Illustration({ slide }: { slide: OnboardingSlide }) {
+function Illustration({ slide, logoIntro }: { slide: OnboardingSlide; logoIntro: Animated.Value }) {
   if (slide.illustration === 'logo') {
+    const logoAnimatedStyle = {
+      opacity: logoIntro,
+      transform: [
+        {
+          scale: logoIntro.interpolate({
+            inputRange: [0, 0.72, 1],
+            outputRange: [0.18, 1.08, 1],
+          }),
+        },
+        {
+          rotate: logoIntro.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['-18deg', '0deg'],
+          }),
+        },
+        {
+          translateY: logoIntro.interpolate({
+            inputRange: [0, 1],
+            outputRange: [150, 0],
+          }),
+        },
+      ],
+    };
+
     return (
       <View style={styles.logoStage}>
-        <Image
+        <Animated.Image
           source={require('../../assets/images/coziyoo-wordmark-white-transparent.png')}
-          style={styles.logo}
+          style={[styles.logo, logoAnimatedStyle]}
           resizeMode="contain"
         />
       </View>
