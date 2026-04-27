@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   lightScreen: { backgroundColor: '#FFF7EC' },
   topArea: { width: '100%', alignItems: 'center', flex: 1, justifyContent: 'center' },
   logoStage: { width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  logo: { width: '100%', height: 82 },
+  logo: { width: 292, height: 62 },
   illustrationStage: {
     width: '100%',
     height: 275,
