@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform,
   StatusBar,
   SafeAreaView,
-  Modal,
+  ScrollView,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,39 +26,68 @@ type Props = {
   onGoToRegister?: () => void;
 };
 
-type LoginResponse = {
+type AuthStep = 'signIn' | 'signUp' | 'forgot' | 'resetSent' | 'newPassword' | 'phone' | 'otp';
+
+type AuthResponse = {
   data?: {
-    user?: { id?: string; email?: string; userType?: string };
+    user?: { id?: string; email?: string; userType?: string; displayName?: string };
     tokens?: { accessToken?: string; refreshToken?: string };
   };
-  error?: { code?: string; message?: string };
+  error?: { code?: string; message?: string; retryAfterSeconds?: number };
 };
 
-export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
+export default function LoginScreen({ onLogin }: Props) {
+  const [step, setStep] = useState<AuthStep>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('+90 ');
+  const [otp, setOtp] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+  const [pendingSession, setPendingSession] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
-  // Forgot password state
-  const [forgotModal, setForgotModal] = useState<'none' | 'email' | 'code' | 'newPassword'>('none');
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotCode, setForgotCode] = useState('');
-  const [forgotNewPassword, setForgotNewPassword] = useState('');
-  const [forgotNewPasswordConfirm, setForgotNewPasswordConfirm] = useState('');
-  const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotError, setForgotError] = useState<string | null>(null);
+  const title = useMemo(() => {
+    if (step === 'signUp') return t('headline.auth.signUp');
+    if (step === 'forgot') return t('headline.auth.forgotPassword');
+    if (step === 'resetSent') return t('headline.auth.passwordReset');
+    if (step === 'newPassword') return t('headline.auth.newPassword');
+    if (step === 'phone' || step === 'otp') return t('headline.auth.verifyPhone');
+    return t('headline.auth.signIn');
+  }, [step]);
 
-  // Forgot email info modal
-  const [showForgotEmailInfo, setShowForgotEmailInfo] = useState(false);
+  function clearError() {
+    setError(null);
+  }
 
-  function resolveLoginError(body: LoginResponse, status: number): string {
+  function makeSession(json: AuthResponse, fallbackEmail: string): AuthSession | null {
+    const { user, tokens } = json.data ?? {};
+    if (!tokens?.accessToken || !tokens?.refreshToken || !user?.id) return null;
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      userId: user.id,
+      userType: user.userType ?? 'buyer',
+      email: user.email ?? fallbackEmail,
+    };
+  }
+
+  function resolveLoginError(body: AuthResponse, status: number): string {
     const code = body?.error?.code;
     if (code === 'INVALID_CREDENTIALS') return t('error.login.invalidCredentials');
     if (code === 'ACCOUNT_LOCKED') return t('error.login.accountLocked');
     if (code === 'TOO_MANY_ATTEMPTS') return t('error.login.tooManyAttempts');
     return body?.error?.message ?? `${t('error.login.generic')} (${status})`;
+  }
+
+  async function finishLogin(session: AuthSession) {
+    await saveAuthSession(session);
+    onLogin(session);
   }
 
   async function loginWithCredentials(rawEmail: string, rawPassword: string) {
@@ -73,8 +102,8 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
       return;
     }
 
-    setError(null);
     setLoading(true);
+    setError(null);
     try {
       const { apiUrl } = await loadSettings();
       const response = await fetch(`${apiUrl}/v1/auth/login`, {
@@ -82,34 +111,22 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
       });
-      const json = await readJsonSafe<LoginResponse>(response);
+      const json = await readJsonSafe<AuthResponse>(response);
       if (!response.ok || json.error) {
         setError(resolveLoginError(json, response.status));
         return;
       }
-      const { user, tokens } = json.data ?? {};
-      if (!tokens?.accessToken || !tokens?.refreshToken || !user?.id) {
+      const session = makeSession(json, trimmedEmail);
+      if (!session) {
         setError(t('error.login.unexpectedResponse'));
         return;
       }
-      const session: AuthSession = {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-        userId: user.id,
-        userType: user.userType ?? 'buyer',
-        email: user.email ?? trimmedEmail,
-      };
-      await saveAuthSession(session);
-      onLogin(session);
+      await finishLogin(session);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('error.login.network'));
     } finally {
       setLoading(false);
     }
-  }
-
-  async function handleLogin() {
-    await loginWithCredentials(email, password);
   }
 
   async function handleQuickLogin(role: 'buyer' | 'seller') {
@@ -120,28 +137,70 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
     await loginWithCredentials(quickEmail, quickPassword);
   }
 
-  function openForgotPassword() {
-    setForgotEmail(email.trim());
-    setForgotCode('');
-    setForgotNewPassword('');
-    setForgotNewPasswordConfirm('');
-    setForgotError(null);
-    setForgotModal('email');
-  }
+  async function handleSignUp() {
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedName = name.trim();
+    const trimmedPassword = password.trim();
+    if (!trimmedName) {
+      setError(t('error.auth.nameRequired'));
+      return;
+    }
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError(t('error.login.invalidEmail'));
+      return;
+    }
+    if (trimmedPassword.length < 8) {
+      setError(t('error.profileEdit.passwordMin'));
+      return;
+    }
+    if (trimmedPassword !== confirmPassword.trim()) {
+      setError(t('error.profileEdit.passwordMismatch'));
+      return;
+    }
 
-  function closeForgotPassword() {
-    setForgotModal('none');
-    setForgotError(null);
+    setLoading(true);
+    setError(null);
+    try {
+      const { apiUrl } = await loadSettings();
+      const usernameSeed = trimmedEmail.split('@')[0].replace(/[^a-z0-9_]/gi, '_').toLowerCase().slice(0, 24);
+      const response = await fetch(`${apiUrl}/v1/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: trimmedEmail,
+          password: trimmedPassword,
+          username: `${usernameSeed}_${Date.now().toString().slice(-4)}`,
+          displayName: trimmedName,
+          userType: 'buyer',
+        }),
+      });
+      const json = await readJsonSafe<AuthResponse>(response);
+      if (!response.ok || json.error) {
+        setError(json?.error?.message ?? t('error.login.generic'));
+        return;
+      }
+      const session = makeSession(json, trimmedEmail);
+      if (!session) {
+        setError(t('error.login.unexpectedResponse'));
+        return;
+      }
+      setPendingSession(session);
+      setStep('phone');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('error.login.network'));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleForgotPasswordRequest() {
-    const trimmed = forgotEmail.trim().toLowerCase();
+    const trimmed = email.trim().toLowerCase();
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setForgotError(t('error.login.invalidEmail'));
+      setError(t('error.login.invalidEmail'));
       return;
     }
-    setForgotError(null);
-    setForgotLoading(true);
+    setLoading(true);
+    setError(null);
     try {
       const { apiUrl } = await loadSettings();
       const response = await fetch(`${apiUrl}/v1/auth/forgot-password/request`, {
@@ -149,503 +208,410 @@ export default function LoginScreen({ onLogin, onGoToRegister }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: trimmed }),
       });
-      const json = await readJsonSafe<{
-        error?: { code?: string; message?: string; retryAfterSeconds?: number };
-      }>(response);
+      const json = await readJsonSafe<AuthResponse>(response);
       if (!response.ok) {
         const code = json?.error?.code;
         if (code === 'PASSWORD_RESET_TOO_FREQUENT') {
-          setForgotError(t('error.login.retryAfterSeconds').replace('{seconds}', String(json.error?.retryAfterSeconds ?? 60)));
+          setError(t('error.login.retryAfterSeconds').replace('{seconds}', String(json.error?.retryAfterSeconds ?? 60)));
         } else {
-          setForgotError(json?.error?.message ?? t('error.login.generic'));
+          setError(json?.error?.message ?? t('error.login.generic'));
         }
         return;
       }
-      setForgotModal('code');
+      setStep('resetSent');
     } catch (err) {
-      setForgotError(err instanceof Error ? err.message : t('error.login.network'));
+      setError(err instanceof Error ? err.message : t('error.login.network'));
     } finally {
-      setForgotLoading(false);
+      setLoading(false);
     }
   }
 
-  async function handleForgotPasswordConfirm() {
-    if (!/^\d{6}$/.test(forgotCode)) {
-      setForgotError(t('error.login.codeRequired'));
+  async function handleNewPassword() {
+    if (!/^\d{6}$/.test(resetCode)) {
+      setError(t('error.login.codeRequired'));
       return;
     }
-    if (forgotNewPassword.length < 8) {
-      setForgotError(t('error.profileEdit.passwordMin'));
+    if (newPassword.length < 8) {
+      setError(t('error.profileEdit.passwordMin'));
       return;
     }
-    if (forgotNewPassword !== forgotNewPasswordConfirm) {
-      setForgotError(t('error.profileEdit.passwordMismatch'));
+    if (newPassword !== newPasswordConfirm) {
+      setError(t('error.profileEdit.passwordMismatch'));
       return;
     }
-    setForgotError(null);
-    setForgotLoading(true);
+    setLoading(true);
+    setError(null);
     try {
       const { apiUrl } = await loadSettings();
       const response = await fetch(`${apiUrl}/v1/auth/forgot-password/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: forgotEmail.trim().toLowerCase(),
-          code: forgotCode,
-          newPassword: forgotNewPassword,
+          email: email.trim().toLowerCase(),
+          code: resetCode,
+          newPassword,
         }),
       });
-      const json = await readJsonSafe<{ error?: { code?: string; message?: string } }>(response);
+      const json = await readJsonSafe<AuthResponse>(response);
       if (!response.ok || json.error) {
         const code = json?.error?.code;
-        if (code === 'PASSWORD_RESET_CODE_INVALID') setForgotError(t('error.login.codeInvalid'));
-        else setForgotError(json?.error?.message ?? t('error.login.generic'));
+        setError(code === 'PASSWORD_RESET_CODE_INVALID' ? t('error.login.codeInvalid') : json?.error?.message ?? t('error.login.generic'));
         return;
       }
-      closeForgotPassword();
       Alert.alert(t('headline.common.success'), t('status.login.passwordUpdated'));
+      setStep('signIn');
     } catch (err) {
-      setForgotError(err instanceof Error ? err.message : t('error.login.network'));
+      setError(err instanceof Error ? err.message : t('error.login.network'));
     } finally {
-      setForgotLoading(false);
+      setLoading(false);
     }
+  }
+
+  async function handleOtpVerify() {
+    if (otp.replace(/\D/g, '').length < 2) {
+      setError(t('error.auth.otpRequired'));
+      return;
+    }
+    if (pendingSession) {
+      await finishLogin(pendingSession);
+      return;
+    }
+    setStep('signIn');
+  }
+
+  function renderContent() {
+    if (step === 'signUp') {
+      return (
+        <>
+          <AuthInput icon="person-outline" label={t('helper.auth.nameLabel')} value={name} onChangeText={(v) => { setName(v); clearError(); }} placeholder={t('helper.auth.namePlaceholder')} />
+          <AuthInput icon="mail-outline" label={t('helper.login.emailLabel')} value={email} onChangeText={(v) => { setEmail(v); clearError(); }} placeholder={t('helper.login.emailPlaceholder')} keyboardType="email-address" />
+          <PasswordInput label={t('helper.login.passwordLabel')} value={password} onChangeText={(v) => { setPassword(v); clearError(); }} show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+          <PasswordInput label={t('helper.auth.confirmPasswordLabel')} value={confirmPassword} onChangeText={(v) => { setConfirmPassword(v); clearError(); }} show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+          <PrimaryButton label={t('cta.login.register')} loading={loading} onPress={handleSignUp} />
+          <InlineLink text={t('helper.auth.hasAccount')} actionText={t('cta.login.signIn')} onPress={() => setStep('signIn')} />
+        </>
+      );
+    }
+
+    if (step === 'forgot') {
+      return (
+        <>
+          <Text style={styles.screenDesc}>{t('helper.auth.forgotBody')}</Text>
+          <AuthInput icon="mail-outline" label={t('helper.login.emailLabel')} value={email} onChangeText={(v) => { setEmail(v); clearError(); }} placeholder={t('helper.login.emailPlaceholder')} keyboardType="email-address" />
+          <PrimaryButton label={t('cta.profileEdit.sendResetCode')} loading={loading} onPress={handleForgotPasswordRequest} />
+          <InlineLink text="" actionText={t('cta.settings.back')} onPress={() => setStep('signIn')} />
+        </>
+      );
+    }
+
+    if (step === 'resetSent') {
+      return (
+        <View style={styles.centerPanel}>
+          <View style={styles.successRing}>
+            <Ionicons name="lock-closed-outline" size={54} color="#819376" />
+            <Ionicons name="refresh-outline" size={34} color="#819376" style={styles.successRefresh} />
+          </View>
+          <Text style={styles.successTitle}>{t('helper.auth.passwordResetSent')}</Text>
+          <PrimaryButton label={t('cta.auth.sent')} loading={false} onPress={() => setStep('newPassword')} />
+        </View>
+      );
+    }
+
+    if (step === 'newPassword') {
+      return (
+        <>
+          <Text style={styles.screenDesc}>{t('helper.auth.newPasswordBody')}</Text>
+          <AuthInput icon="keypad-outline" label={t('helper.profileEdit.codeLabel')} value={resetCode} onChangeText={(v) => { setResetCode(v.replace(/\D/g, '').slice(0, 6)); clearError(); }} placeholder={t('helper.profileEdit.codePlaceholder')} keyboardType="number-pad" maxLength={6} />
+          <PasswordInput label={t('helper.profileEdit.newPasswordLabel')} value={newPassword} onChangeText={(v) => { setNewPassword(v); clearError(); }} show={false} />
+          <PasswordInput label={t('helper.profileEdit.newPasswordAgainLabel')} value={newPasswordConfirm} onChangeText={(v) => { setNewPasswordConfirm(v); clearError(); }} show={false} />
+          <PrimaryButton label={t('cta.profileEdit.changePassword')} loading={loading} onPress={handleNewPassword} />
+        </>
+      );
+    }
+
+    if (step === 'phone') {
+      return (
+        <>
+          <Text style={styles.screenDesc}>{t('helper.auth.phoneBody')}</Text>
+          <AuthInput icon="call-outline" label={t('helper.profileEdit.phoneLabel')} value={phone} onChangeText={(v) => { setPhone(v); clearError(); }} placeholder={t('helper.profileEdit.phonePlaceholder')} keyboardType="phone-pad" />
+          <PrimaryButton label={t('cta.auth.confirm')} loading={false} onPress={() => setStep('otp')} />
+        </>
+      );
+    }
+
+    if (step === 'otp') {
+      const digits = otp.replace(/\D/g, '').slice(0, 5);
+      return (
+        <>
+          <Text style={styles.screenDesc}>{t('helper.auth.otpBody')}</Text>
+          <View style={styles.otpRow}>
+            {[0, 1, 2, 3, 4].map((idx) => (
+              <View key={idx} style={[styles.otpCell, digits[idx] ? styles.otpCellFilled : null]}>
+                <Text style={styles.otpText}>{digits[idx] ?? ''}</Text>
+              </View>
+            ))}
+          </View>
+          <TextInput
+            value={otp}
+            onChangeText={(v) => { setOtp(v.replace(/\D/g, '').slice(0, 5)); clearError(); }}
+            keyboardType="number-pad"
+            style={styles.hiddenOtpInput}
+            autoFocus
+          />
+          <TouchableOpacity onPress={() => setOtp('98')} activeOpacity={0.75}>
+            <Text style={styles.resendText}>{t('helper.auth.otpResend')}</Text>
+          </TouchableOpacity>
+          <PrimaryButton label={t('cta.auth.verify')} loading={loading} onPress={handleOtpVerify} />
+        </>
+      );
+    }
+
+    return (
+      <>
+        <AuthInput icon="mail-outline" label={t('helper.login.emailLabel')} value={email} onChangeText={(v) => { setEmail(v); clearError(); }} placeholder={t('helper.login.emailPlaceholder')} keyboardType="email-address" />
+        <PasswordInput label={t('helper.login.passwordLabel')} value={password} onChangeText={(v) => { setPassword(v); clearError(); }} show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+        <TouchableOpacity style={styles.forgotLink} onPress={() => setStep('forgot')} activeOpacity={0.75}>
+          <Text style={styles.forgotText}>{t('cta.login.forgotPassword')}</Text>
+        </TouchableOpacity>
+        <PrimaryButton label={t('cta.login.signIn')} loading={loading} onPress={() => loginWithCredentials(email, password)} />
+        <InlineLink text={t('helper.login.noAccount')} actionText={t('cta.login.register')} onPress={() => setStep('signUp')} />
+      </>
+    );
   }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.header}>
-          <View style={styles.logoWrap}>
-          <Image
-            source={require('../../assets/images/coziyoo-onboarding-logo.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-          </View>
-          <Text style={styles.title}>{t('headline.login.title')}</Text>
-          <Text style={styles.subtitle}>{t('headline.login.subtitle')}</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.label}>{t('helper.login.emailLabel')}</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={(v) => {
-              setEmail(v);
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF7EC" />
+      <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <TouchableOpacity
+            style={styles.backButton}
+            activeOpacity={0.8}
+            onPress={() => {
+              if (step === 'signIn') return;
+              setStep(step === 'newPassword' ? 'resetSent' : 'signIn');
               setError(null);
             }}
-            placeholder={t('helper.login.emailPlaceholder')}
-            placeholderTextColor={theme.textSecondary}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            returnKeyType="next"
-            editable={!loading}
-          />
-
-          <Text style={styles.label}>{t('helper.login.passwordLabel')}</Text>
-          <View style={styles.passwordWrap}>
-            <TextInput
-              style={styles.passwordInput}
-              value={password}
-              onChangeText={(v) => {
-                setPassword(v);
-                setError(null);
-              }}
-              placeholder={t('helper.login.passwordPlaceholder')}
-              placeholderTextColor={theme.textSecondary}
-              secureTextEntry={!showPassword}
-              returnKeyType="go"
-              onSubmitEditing={handleLogin}
-              editable={!loading}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          {!!error && <Text style={styles.error}>{error}</Text>}
-
-          <View style={styles.forgotRow}>
-            <TouchableOpacity onPress={() => setShowForgotEmailInfo(true)} activeOpacity={0.7}>
-              <Text style={styles.forgotText}>{t('cta.login.forgotEmail')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={openForgotPassword} activeOpacity={0.7}>
-              <Text style={styles.forgotText}>{t('cta.login.forgotPassword')}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.button, !!error && styles.buttonError, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
           >
-            {loading ? (
-              <ActivityIndicator color={theme.onPrimary} />
-            ) : (
-              <Text style={styles.buttonText}>{error ? t('cta.login.tryAgain') : t('cta.login.signIn')}</Text>
-            )}
+            {step !== 'signIn' ? <Ionicons name="chevron-back" size={20} color="#3D3229" /> : null}
           </TouchableOpacity>
-          <View style={styles.quickLoginRow}>
-            <TouchableOpacity
-              style={[styles.quickLoginButton, loading && styles.buttonDisabled]}
-              onPress={() => handleQuickLogin('buyer')}
-              disabled={loading}
-            >
-              <Text style={styles.quickLoginText}>{t('cta.login.quickBuyerSignIn')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.quickLoginButton, loading && styles.buttonDisabled]}
-              onPress={() => handleQuickLogin('seller')}
-              disabled={loading}
-            >
-              <Text style={styles.quickLoginText}>{t('cta.login.quickSellerSignIn')}</Text>
-            </TouchableOpacity>
+
+          <View style={styles.header}>
+            <Image source={require('../../assets/images/coziyoo-onboarding-logo.png')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.title}>{title}</Text>
+            {step === 'signIn' ? <Text style={styles.subtitle}>{t('headline.login.subtitle')}</Text> : null}
           </View>
 
-          {onGoToRegister && (
-            <TouchableOpacity onPress={onGoToRegister} style={styles.registerLink} activeOpacity={0.7}>
-              <Text style={styles.registerLinkText}>{t('helper.login.noAccount')} <Text style={styles.registerLinkBold}>{t('cta.login.register')}</Text></Text>
-            </TouchableOpacity>
-          )}
-        </View>
+          <View style={styles.formCard}>
+            {renderContent()}
+            {!!error && <Text style={styles.error}>{error}</Text>}
+          </View>
+
+          <QuickLoginPanel loading={loading} onQuickLogin={handleQuickLogin} />
+        </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Forgot Email Info Modal */}
-      <Modal visible={showForgotEmailInfo} transparent animationType="fade" onRequestClose={() => setShowForgotEmailInfo(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{t('headline.login.forgotEmailTitle')}</Text>
-            <Text style={styles.modalDesc}>{t('helper.login.forgotEmailBody')}</Text>
-            <Text style={styles.modalDesc}>{t('helper.login.forgotEmailContact')}</Text>
-            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowForgotEmailInfo(false)}>
-              <Text style={styles.modalCloseBtnText}>{t('cta.login.ok')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Forgot Password Modal */}
-      <Modal visible={forgotModal !== 'none'} transparent animationType="fade" onRequestClose={closeForgotPassword}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            {forgotModal === 'email' && (
-              <>
-                <Text style={styles.modalTitle}>{t('headline.login.resetPassword')}</Text>
-                <Text style={styles.modalDesc}>{t('helper.login.resetEmailDesc')}</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={forgotEmail}
-                  onChangeText={(v) => { setForgotEmail(v); setForgotError(null); }}
-                  placeholder={t('helper.login.emailPlaceholder')}
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  autoFocus
-                />
-                {!!forgotError && <Text style={styles.modalError}>{forgotError}</Text>}
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.modalCancelBtn} onPress={closeForgotPassword}>
-                    <Text style={styles.modalCancelBtnText}>{t('cta.common.cancel')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalPrimaryBtn, forgotLoading && styles.buttonDisabled]}
-                    onPress={handleForgotPasswordRequest}
-                    disabled={forgotLoading}
-                  >
-                    {forgotLoading ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <Text style={styles.modalPrimaryBtnText}>{t('cta.profileEdit.sendResetCode')}</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-
-            {forgotModal === 'code' && (
-              <>
-                <Text style={styles.modalTitle}>{t('headline.login.resetPassword')}</Text>
-                <Text style={styles.modalDesc}>
-                  {t('helper.login.resetCodeDesc').replace('{email}', forgotEmail)}
-                </Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={forgotCode}
-                  onChangeText={(v) => { setForgotCode(v.replace(/\D/g, '').slice(0, 6)); setForgotError(null); }}
-                  placeholder={t('helper.profileEdit.codePlaceholder')}
-                  placeholderTextColor={theme.textSecondary}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  autoFocus
-                />
-                <TextInput
-                  style={styles.modalInput}
-                  value={forgotNewPassword}
-                  onChangeText={(v) => { setForgotNewPassword(v); setForgotError(null); }}
-                  placeholder={t('helper.profileEdit.newPasswordPlaceholder')}
-                  placeholderTextColor={theme.textSecondary}
-                  secureTextEntry
-                />
-                <TextInput
-                  style={styles.modalInput}
-                  value={forgotNewPasswordConfirm}
-                  onChangeText={(v) => { setForgotNewPasswordConfirm(v); setForgotError(null); }}
-                  placeholder={t('helper.profileEdit.newPasswordAgainPlaceholder')}
-                  placeholderTextColor={theme.textSecondary}
-                  secureTextEntry
-                />
-                {!!forgotError && <Text style={styles.modalError}>{forgotError}</Text>}
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setForgotModal('email')}>
-                    <Text style={styles.modalCancelBtnText}>{t('cta.settings.back')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalPrimaryBtn, forgotLoading && styles.buttonDisabled]}
-                    onPress={handleForgotPasswordConfirm}
-                    disabled={forgotLoading}
-                  >
-                    {forgotLoading ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <Text style={styles.modalPrimaryBtnText}>{t('cta.profileEdit.changePassword')}</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
 
+function AuthInput(props: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  keyboardType?: React.ComponentProps<typeof TextInput>['keyboardType'];
+  maxLength?: number;
+}) {
+  return (
+    <View style={styles.inputBlock}>
+      <Text style={styles.label}>{props.label}</Text>
+      <View style={styles.inputWrap}>
+        <Ionicons name={props.icon} size={18} color="#819376" />
+        <TextInput
+          style={styles.input}
+          value={props.value}
+          onChangeText={props.onChangeText}
+          placeholder={props.placeholder}
+          placeholderTextColor="#B8AA9B"
+          keyboardType={props.keyboardType}
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={props.maxLength}
+        />
+        {props.value ? <Ionicons name="checkmark-outline" size={18} color="#819376" /> : null}
+      </View>
+    </View>
+  );
+}
+
+function PasswordInput(props: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  show: boolean;
+  onToggle?: () => void;
+}) {
+  return (
+    <View style={styles.inputBlock}>
+      <Text style={styles.label}>{props.label}</Text>
+      <View style={styles.inputWrap}>
+        <Ionicons name="lock-closed-outline" size={18} color="#819376" />
+        <TextInput
+          style={styles.input}
+          value={props.value}
+          onChangeText={props.onChangeText}
+          placeholder={t('helper.login.passwordPlaceholder')}
+          placeholderTextColor="#B8AA9B"
+          secureTextEntry={!props.show}
+          autoCapitalize="none"
+        />
+        {props.onToggle ? (
+          <TouchableOpacity onPress={props.onToggle} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name={props.show ? 'eye-off-outline' : 'eye-outline'} size={19} color="#9B8D7D" />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function PrimaryButton({ label, loading, onPress }: { label: string; loading: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={[styles.primaryButton, loading && styles.disabled]} onPress={onPress} disabled={loading} activeOpacity={0.88}>
+      {loading ? <ActivityIndicator color="#FFFDF9" /> : <Text style={styles.primaryButtonText}>{label}</Text>}
+    </TouchableOpacity>
+  );
+}
+
+function InlineLink({ text, actionText, onPress }: { text: string; actionText: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.inlineLink} onPress={onPress} activeOpacity={0.72}>
+      <Text style={styles.inlineLinkText}>
+        {text ? `${text} ` : ''}
+        <Text style={styles.inlineLinkAction}>{actionText}</Text>
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function QuickLoginPanel({ loading, onQuickLogin }: { loading: boolean; onQuickLogin: (role: 'buyer' | 'seller') => void }) {
+  return (
+    <View style={styles.quickPanel}>
+      <Text style={styles.quickTitle}>{t('helper.auth.previewLogin')}</Text>
+      <View style={styles.quickLoginRow}>
+        <TouchableOpacity style={[styles.quickLoginButton, loading && styles.disabled]} onPress={() => onQuickLogin('buyer')} disabled={loading} activeOpacity={0.86}>
+          <Ionicons name="person-outline" size={16} color="#819376" />
+          <Text style={styles.quickLoginText}>{t('cta.login.quickBuyerSignIn')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.quickLoginButton, loading && styles.disabled]} onPress={() => onQuickLogin('seller')} disabled={loading} activeOpacity={0.86}>
+          <Ionicons name="storefront-outline" size={16} color="#819376" />
+          <Text style={styles.quickLoginText}>{t('cta.login.quickSellerSignIn')}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: theme.background,
+  safe: { flex: 1, backgroundColor: '#FFF7EC' },
+  keyboard: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 34,
   },
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logoWrap: {
-    width: 286,
-    height: 82,
+  backButton: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  logoImage: {
+  header: { alignItems: 'center', marginBottom: 18 },
+  logo: { width: 156, height: 76, marginBottom: 6 },
+  title: { color: '#3D3229', fontSize: 23, lineHeight: 30, fontWeight: '800', textAlign: 'center' },
+  subtitle: { color: '#7D6B5B', fontSize: 13, lineHeight: 19, marginTop: 6, textAlign: 'center' },
+  formCard: {
     width: '100%',
-    height: '100%',
+    gap: 12,
   },
-  title: {
-    color: theme.text,
-    fontSize: 34,
-    fontWeight: '700',
+  screenDesc: { color: '#6B5D4F', fontSize: 13, lineHeight: 20, marginBottom: 2 },
+  inputBlock: { gap: 6 },
+  label: { color: '#7A6D61', fontSize: 11, fontWeight: '800' },
+  inputWrap: {
+    minHeight: 50,
+    borderWidth: 1,
+    borderColor: '#E8DDD0',
+    borderRadius: 25,
+    backgroundColor: '#FFFDF9',
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
   },
-  subtitle: {
-    color: theme.textSecondary,
-    fontSize: 13,
+  input: { flex: 1, color: '#3D3229', fontSize: 14, paddingVertical: 12 },
+  forgotLink: { alignSelf: 'flex-end', paddingVertical: 2 },
+  forgotText: { color: '#819376', fontSize: 12, fontWeight: '700' },
+  primaryButton: {
+    minHeight: 50,
+    borderRadius: 25,
+    backgroundColor: '#819376',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 4,
-    letterSpacing: 0.4,
+    shadowColor: '#3D3229',
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
   },
-  card: {
-    backgroundColor: theme.card,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 16,
-    padding: 16,
-    gap: 10,
-  },
-  label: {
-    color: theme.text,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  input: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: theme.text,
-    fontSize: 16,
-  },
-  passwordWrap: {
-    flexDirection: 'row',
+  primaryButtonText: { color: '#FFFDF9', fontSize: 14, fontWeight: '800' },
+  inlineLink: { alignItems: 'center', paddingVertical: 8 },
+  inlineLinkText: { color: '#8A7D70', fontSize: 13 },
+  inlineLinkAction: { color: '#819376', fontWeight: '800' },
+  error: { color: theme.error, fontSize: 13, lineHeight: 18, textAlign: 'center' },
+  disabled: { opacity: 0.62 },
+  centerPanel: { alignItems: 'center', gap: 18, paddingVertical: 24 },
+  successRing: {
+    width: 122,
+    height: 122,
+    borderRadius: 61,
+    borderWidth: 8,
+    borderColor: '#819376',
     alignItems: 'center',
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
+    justifyContent: 'center',
   },
-  passwordInput: {
-    flex: 1,
-    paddingVertical: 12,
-    color: theme.text,
-    fontSize: 16,
-  },
-  error: {
-    color: theme.error,
-    fontSize: 13,
-  },
-  forgotRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  forgotText: {
-    color: theme.primary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  button: {
-    backgroundColor: theme.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
+  successRefresh: { position: 'absolute', right: -12, top: 14, backgroundColor: '#FFF7EC' },
+  successTitle: { color: '#819376', fontSize: 22, lineHeight: 28, fontWeight: '800', textAlign: 'center' },
+  otpRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginVertical: 10 },
+  otpCell: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EDE8E0',
     alignItems: 'center',
-    marginTop: 6,
+    justifyContent: 'center',
   },
-  buttonError: {
-    backgroundColor: theme.error,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: theme.onPrimary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  quickLoginRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
+  otpCellFilled: { backgroundColor: '#DDE7D8' },
+  otpText: { color: '#3D3229', fontSize: 18, fontWeight: '800' },
+  hiddenOtpInput: { height: 0, width: 0, opacity: 0 },
+  resendText: { color: '#7D6B5B', fontSize: 12, textAlign: 'center', marginBottom: 4 },
+  quickPanel: { marginTop: 22, gap: 8 },
+  quickTitle: { color: '#8A7D70', fontSize: 12, textAlign: 'center', fontWeight: '700' },
+  quickLoginRow: { flexDirection: 'row', gap: 10 },
   quickLoginButton: {
     flex: 1,
+    minHeight: 44,
     borderWidth: 1,
-    borderColor: theme.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: theme.surface,
-  },
-  quickLoginText: {
-    color: theme.primary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  registerLink: {
-    alignItems: 'center',
-    marginTop: 8,
-    paddingVertical: 8,
-  },
-  registerLinkText: {
-    color: theme.textSecondary,
-    fontSize: 14,
-  },
-  registerLinkBold: {
-    color: theme.primary,
-    fontWeight: '700',
-  },
-
-  /* Modal styles */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderColor: '#DDE7D8',
+    borderRadius: 22,
+    backgroundColor: '#FFFDF9',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  modalCard: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  modalTitle: {
-    color: theme.text,
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  modalDesc: {
-    color: theme.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  modalInput: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: theme.text,
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  modalError: {
-    color: theme.error,
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  modalActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 4,
+    gap: 6,
   },
-  modalCancelBtn: {
-    backgroundColor: theme.surface,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  modalCancelBtnText: {
-    color: theme.textSecondary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  modalPrimaryBtn: {
-    backgroundColor: theme.primary,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  modalPrimaryBtnText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  modalCloseBtn: {
-    backgroundColor: theme.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  modalCloseBtnText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  quickLoginText: { color: '#819376', fontSize: 12, fontWeight: '800' },
 });
