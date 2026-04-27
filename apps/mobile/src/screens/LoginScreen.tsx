@@ -416,7 +416,7 @@ export default function LoginScreen({ onLogin }: Props) {
           </TouchableOpacity>
 
           <View style={styles.header}>
-            <Image source={require('../../assets/images/coziyoo-onboarding-logo.png')} style={styles.logo} resizeMode="contain" />
+            <Image source={require('../../assets/images/coziyoo-wordmark-color-transparent.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.title}>{title}</Text>
             {step === 'signIn' ? <Text style={styles.subtitle}>{t('headline.login.subtitle')}</Text> : null}
           </View>
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   header: { alignItems: 'center', marginBottom: 18 },
-  logo: { width: 156, height: 76, marginBottom: 6 },
+  logo: { width: 176, height: 37, marginBottom: 14 },
   title: { color: '#3D3229', fontSize: 23, lineHeight: 30, fontWeight: '800', textAlign: 'center' },
   subtitle: { color: '#7D6B5B', fontSize: 13, lineHeight: 19, marginTop: 6, textAlign: 'center' },
   formCard: {
