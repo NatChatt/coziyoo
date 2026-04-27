@@ -12,12 +12,7 @@ export const DEVICE_PROFILE = 'default';
 const STORAGE_KEY = '@coziyoo:settings';
 
 function resolveDefaultLanguage(): 'tr' | 'en' {
-  try {
-    const locale = Intl.DateTimeFormat().resolvedOptions().locale?.toLowerCase?.() ?? 'tr';
-    return locale.startsWith('en') ? 'en' : 'tr';
-  } catch {
-    return 'tr';
-  }
+  return 'tr';
 }
 
 const defaults: AppSettings = {
