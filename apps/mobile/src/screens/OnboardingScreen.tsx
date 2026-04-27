@@ -128,7 +128,7 @@ function Illustration({ slide }: { slide: OnboardingSlide }) {
     return (
       <View style={styles.logoStage}>
         <Image
-          source={require('../../assets/images/coziyoo-onboarding-logo.png')}
+          source={require('../../assets/images/coziyoo-wordmark-white-transparent.png')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -174,8 +174,8 @@ const styles = StyleSheet.create({
   brandScreen: { backgroundColor: '#819376' },
   lightScreen: { backgroundColor: '#FFF7EC' },
   topArea: { width: '100%', alignItems: 'center', flex: 1, justifyContent: 'center' },
-  logoStage: { alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  logo: { width: 330, height: 120 },
+  logoStage: { width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  logo: { width: '100%', height: 82 },
   illustrationStage: {
     width: '100%',
     height: 275,
