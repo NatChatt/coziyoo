@@ -7999,7 +7999,7 @@ const styles = StyleSheet.create({
   floatingWrap: {
     position: 'absolute',
     left: '50%',
-    bottom: ((BUYER_HOME_TAB_BAR_HEIGHT - 52) / 2),
+    bottom: ((BUYER_HOME_TAB_BAR_HEIGHT - 52) / 2) + 10,
     marginLeft: -26,
     zIndex: 80, width: 52, height: 52, alignItems: 'center', justifyContent: 'center',
   },
