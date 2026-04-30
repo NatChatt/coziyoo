@@ -1144,6 +1144,22 @@ function deriveCardColors(dominant: string): CardColors {
   };
 }
 
+function deriveRecommendationCardColors(dominant: string): CardColors {
+  const safe = normalizeHexColor(dominant);
+  return {
+    bg: lighten(safe, 0.90),
+    border: lighten(safe, 0.72),
+    title: darken(safe, 0.66),
+    subtitle: darken(safe, 0.46),
+    price: darken(safe, 0.56),
+    meta: darken(safe, 0.38),
+    photoTitle: lighten(safe, 0.94),
+    photoCuisine: lighten(safe, 0.88),
+    photoStock: lighten(safe, 0.82),
+    photoMeta: lighten(safe, 0.78),
+  };
+}
+
 const DEFAULT_HERO_SEED = '#F0BB82';
 
 function deriveHeroColors(dominant: string): HeroColors {
@@ -1703,12 +1719,12 @@ function RecommendationCard({
   onPress: () => void;
 }) {
   const [colors, setColors] = useState<CardColors>(
-    deriveCardColors(meal.backgroundColor),
+    deriveRecommendationCardColors(meal.backgroundColor),
   );
 
   useEffect(() => {
     if (!meal.imageUrl || !getColors) {
-      setColors(deriveCardColors(meal.backgroundColor));
+      setColors(deriveRecommendationCardColors(meal.backgroundColor));
       return;
     }
 
@@ -1718,18 +1734,13 @@ function RecommendationCard({
       key: `${meal.id}:${meal.imageUrl}`,
     })
       .then((result) => {
-        let dominant = meal.backgroundColor;
-        if (Platform.OS === 'ios' && 'background' in result) {
-          dominant = result.background;
-        } else if (Platform.OS === 'android' && 'dominant' in result) {
-          dominant = result.dominant;
-        }
-        setColors(deriveCardColors(dominant));
+        const dominant = pickImagePaletteColor(result, meal.backgroundColor);
+        setColors(deriveRecommendationCardColors(dominant));
       })
       .catch(() => {
-        setColors(deriveCardColors(meal.backgroundColor));
+        setColors(deriveRecommendationCardColors(meal.backgroundColor));
       });
-  }, [meal.backgroundColor, meal.imageUrl]);
+  }, [meal.backgroundColor, meal.id, meal.imageUrl]);
 
   return (
     <TouchableOpacity
