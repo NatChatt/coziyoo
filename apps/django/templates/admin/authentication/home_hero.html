@@ -998,10 +998,11 @@
     var ih = previewImage.naturalHeight || 0;
     if (iw <= 1 || ih <= 1) return '';
 
-    var exportScale = 2;
+    var exportW = 1792;
+    var exportH = 1024;
     var canvas = document.createElement('canvas');
-    canvas.width = Math.round(vw * exportScale);
-    canvas.height = Math.round(vh * exportScale);
+    canvas.width = exportW;
+    canvas.height = exportH;
     var ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
@@ -1012,15 +1013,19 @@
     var drawH = ih * finalScale;
     var drawX = (vw - drawW) / 2 + state.offsetX;
     var drawY = (vh - drawH) / 2 + state.offsetY;
+    var exportScaleX = exportW / vw;
+    var exportScaleY = exportH / vh;
 
     ctx.fillStyle = surfaceColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(previewImage,
-      drawX * exportScale, drawY * exportScale,
-      drawW * exportScale, drawH * exportScale);
+      drawX * exportScaleX, drawY * exportScaleY,
+      drawW * exportScaleX, drawH * exportScaleY);
 
     var jpg = canvas.toDataURL('image/jpeg', 0.92);
-    if (jpg && jpg.length < 1900000) return jpg;
+    if (jpg && jpg.length < 3200000) return jpg;
+    jpg = canvas.toDataURL('image/jpeg', 0.86);
+    if (jpg && jpg.length < 3200000) return jpg;
     return canvas.toDataURL('image/jpeg', 0.82);
   }
 
