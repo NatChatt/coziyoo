@@ -5,45 +5,85 @@
   .hero-simple-wrap {
     max-width: 1360px;
     margin: 0 auto;
-    padding: 16px;
+    padding: 22px 16px 28px;
   }
   .hero-simple-title {
-    font-size: 28px;
-    font-weight: 700;
+    font-size: 30px;
+    line-height: 38px;
+    font-weight: 800;
     margin-bottom: 6px;
+    color: #111827;
   }
   .hero-simple-subtitle {
-    font-size: 14px;
+    font-size: 15px;
     color: #667085;
-    margin-bottom: 14px;
+    margin-bottom: 20px;
   }
   .hero-simple-panel {
-    border: 1px solid #d0d5dd;
+    border: 1px solid #d8dee8;
     border-radius: 12px;
     background: #fff;
     padding: 0;
     overflow: hidden;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.06);
   }
   .hero-panel-body {
-    padding: 14px;
+    padding: 22px 24px;
   }
   .hero-field-label {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: #344054;
     margin-bottom: 8px;
   }
   .hero-dropzone {
     width: 100%;
-    min-height: 58px;
-    border: 1px dashed #98a2b3;
+    min-height: 98px;
+    border: 1.5px dashed #b8c2d4;
     border-radius: 10px;
-    background: #f8fafc;
+    background: #fbfcff;
     color: #475467;
     font-size: 14px;
-    padding: 12px;
+    padding: 16px;
     cursor: pointer;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    transition: border-color 160ms ease, background 160ms ease;
+  }
+  .hero-dropzone:hover,
+  .hero-dropzone.is-dragover {
+    border-color: #7f56d9;
+    background: #fbf9ff;
+  }
+  .hero-dropzone-icon {
+    width: 38px;
+    height: 38px;
+    border: 2px solid #7f56d9;
+    border-radius: 9px;
+    color: #7f56d9;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .hero-dropzone-icon svg {
+    display: block;
+  }
+  .hero-dropzone-copy {
     text-align: left;
+    line-height: 1.45;
+  }
+  .hero-dropzone-main {
+    display: block;
+    font-weight: 800;
+    color: #344054;
+  }
+  .hero-dropzone-sub {
+    display: block;
+    color: #667085;
   }
   .hero-editor-row {
     margin-top: 0;
@@ -53,15 +93,15 @@
   }
   .hero-stage {
     position: relative;
-    width: 72%;
-    max-width: 760px;
+    width: 100%;
+    max-width: 860px;
     height: auto;
     aspect-ratio: 1792 / 1024;
     margin: 0 auto;
     border: none;
-    border-radius: 0;
+    border-radius: 8px;
     overflow: hidden;
-    background: #1a1a1a;
+    background: #f1f3f7;
     cursor: grab;
     user-select: none;
     touch-action: none;
@@ -83,11 +123,12 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 10px 16px;
-    border-top: 1px solid #d0d5dd;
-    border-radius: 0;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    margin-top: 18px;
+    border: 1px solid #e4e7ec;
+    border-radius: 8px;
     background: #fcfcfd;
   }
   .hero-color-wrap {
@@ -129,23 +170,24 @@
     max-width: 480px;
   }
   .hero-actions {
-    margin-top: 12px;
+    margin-top: 0;
     display: flex;
     justify-content: flex-end;
     gap: 8px;
   }
   .hero-btn-primary {
     border: none;
-    border-radius: 10px;
-    padding: 10px 16px;
+    border-radius: 8px;
+    padding: 12px 22px;
     font-size: 14px;
+    font-weight: 800;
     background: #7f56d9;
     color: #fff;
     cursor: pointer;
   }
   .hero-btn-secondary {
     border: 1px solid #d0d5dd;
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 10px 16px;
     font-size: 14px;
     background: #fff;
@@ -159,25 +201,28 @@
   }
   .hero-two-col {
     display: grid;
-    grid-template-columns: 1fr 260px;
+    grid-template-columns: minmax(0, 1fr) 324px;
+    gap: 28px;
     border-top: none;
+    padding: 0 24px 22px;
   }
   .hero-two-col-left {
     display: flex;
     flex-direction: column;
   }
   .hero-two-col-right {
-    border-left: 1px solid #e4e7ec;
-    background: #f8fafc;
+    border: 1px solid #e6e1ef;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #fbf9ff 0%, #f7f8fc 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 14px 10px;
-    gap: 8px;
+    padding: 22px 14px 16px;
+    gap: 12px;
   }
   @media (max-width: 800px) {
     .hero-two-col { grid-template-columns: 1fr; }
-    .hero-two-col-right { border-left: none; border-top: 1px solid #e4e7ec; }
+    .hero-two-col-right { border-left: 1px solid #e6e1ef; border-top: 1px solid #e6e1ef; }
     .hero-controls { flex-wrap: wrap; }
   }
   .hero-preview-section {
@@ -192,7 +237,7 @@
     margin-bottom: 12px;
   }
   .hero-preview-title {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
     color: #344054;
   }
@@ -205,106 +250,226 @@
     justify-content: center;
   }
   .hero-phone-frame {
-    width: 200px;
-    background: #0f1117;
-    border-radius: 36px;
-    padding: 12px 8px;
-    box-shadow: 0 0 0 1px #374151, 0 0 0 3px #1f2937, 0 12px 32px rgba(0,0,0,0.35);
+    position: relative;
+    width: 254px;
+    background: #05070a;
+    border-radius: 38px;
+    padding: 9px;
+    box-shadow: 0 0 0 1px #30343b, 0 0 0 4px #111827, 0 18px 34px rgba(15,23,42,0.27);
+  }
+  .hero-phone-frame::before {
+    content: "";
+    position: absolute;
+    top: 9px;
+    left: 50%;
+    width: 74px;
+    height: 18px;
+    transform: translateX(-50%);
+    background: #05070a;
+    border-radius: 0 0 14px 14px;
+    z-index: 8;
   }
   .hero-phone-screen {
+    position: relative;
     background: #fffbf4;
-    border-radius: 28px;
+    border-radius: 30px;
     overflow: hidden;
+    min-height: 511px;
   }
   .hero-phone-statusbar {
-    height: 18px;
-    background: #1a1a1a;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    height: 30px;
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 10px;
+    padding: 0 20px;
   }
   .hero-phone-statusbar-time {
-    font-size: 8px;
-    color: rgba(255,255,255,0.7);
-    font-weight: 600;
-    letter-spacing: 0.2px;
+    font-size: 11px;
+    color: #111827;
+    font-weight: 800;
+    letter-spacing: 0;
   }
   .hero-phone-statusbar-icons {
     display: flex;
-    gap: 3px;
+    gap: 4px;
     align-items: center;
   }
   .hero-phone-statusbar-icon {
-    width: 8px;
-    height: 5px;
-    background: rgba(255,255,255,0.7);
-    border-radius: 1px;
+    width: 10px;
+    height: 6px;
+    background: #111827;
+    border-radius: 2px;
   }
   .hero-phone-hero-wrap {
     position: relative;
     width: 100%;
-    background: #1a1a1a;
+    height: 182px;
+    background: #fffbf4;
+    overflow: hidden;
+    margin-top: 0;
   }
   .hero-phone-hero-wrap canvas {
     display: block;
     width: 100%;
-    height: auto;
-    aspect-ratio: 390 / 300;
+    height: 182px;
+    object-fit: cover;
+  }
+  .hero-phone-hero-fade {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 126px;
+    background: linear-gradient(180deg, rgba(255,251,244,0) 0%, rgba(255,251,244,0.86) 76%, #fffbf4 100%);
+    pointer-events: none;
+  }
+  .hero-phone-hero-copy {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 18px;
+    color: #2f241d;
+    pointer-events: none;
+  }
+  .hero-phone-hero-greeting {
+    font-size: 9px;
+    font-weight: 600;
+    color: #6b4a38;
+    margin-bottom: 4px;
+  }
+  .hero-phone-hero-title {
+    font-family: Georgia, serif;
+    font-size: 16px;
+    line-height: 19px;
+    font-weight: 700;
+    letter-spacing: 0;
   }
   .hero-phone-ui {
-    padding: 6px 6px 8px;
+    padding: 0 8px 14px;
     background: #fffbf4;
   }
+  .hero-phone-slogan {
+    position: relative;
+    margin: -18px 4px 10px;
+    z-index: 3;
+    color: #2f221b;
+  }
+  .hero-phone-slogan-icon {
+    width: 18px;
+    height: 18px;
+    border: 1.4px solid #b57b4a;
+    border-radius: 6px;
+    margin-bottom: 4px;
+  }
+  .hero-phone-slogan-title {
+    font-family: Georgia, serif;
+    font-size: 12px;
+    line-height: 15px;
+    font-weight: 700;
+  }
+  .hero-phone-slogan-sub {
+    margin-top: 2px;
+    font-size: 10px;
+    line-height: 13px;
+    color: #8b6a52;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hero-phone-slogan-line {
+    width: 28px;
+    height: 3px;
+    border-radius: 2px;
+    background: #a4714e;
+    margin-top: 4px;
+  }
   .hero-phone-searchbar {
-    background: #e8e6e0;
-    border-radius: 8px;
-    height: 20px;
-    margin-bottom: 5px;
+    background: #ffffff;
+    border: 1px solid #ede8e0;
+    border-radius: 21px;
+    height: 40px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
-    padding: 0 7px;
-    gap: 4px;
+    padding: 0 12px;
+    gap: 8px;
+    box-shadow: 0 5px 14px rgba(44, 36, 28, 0.08);
   }
   .hero-phone-searchbar-icon {
-    width: 7px;
-    height: 7px;
+    width: 11px;
+    height: 11px;
     border-radius: 50%;
     border: 1.5px solid #b0aea8;
     flex-shrink: 0;
   }
   .hero-phone-searchbar-text {
     flex: 1;
-    height: 4px;
-    background: #c8c6c0;
-    border-radius: 2px;
+    height: 6px;
+    background: #e6e1da;
+    border-radius: 99px;
   }
   .hero-phone-chips {
     display: flex;
-    gap: 3px;
-    margin-bottom: 5px;
+    gap: 6px;
+    margin-bottom: 14px;
     overflow: hidden;
   }
   .hero-phone-chip {
-    height: 14px;
-    border-radius: 7px;
-    background: #e8e6e0;
-    flex: 1;
+    height: 28px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #ede8e0;
+    flex: 0 0 auto;
+    width: 62px;
     min-width: 0;
   }
   .hero-phone-chip.active {
-    background: #7f56d9;
+    background: #3c2920;
+    border-color: #3c2920;
   }
-  .hero-phone-cards {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px;
+  .hero-phone-section-title {
+    height: 10px;
+    width: 92px;
+    border-radius: 99px;
+    background: #3d3229;
+    opacity: 0.84;
+    margin: 0 0 9px;
   }
   .hero-phone-card {
     background: #fff;
-    border-radius: 7px;
-    height: 44px;
+    border-radius: 14px;
+    height: 70px;
     border: 1px solid #ece9e3;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    gap: 9px;
+  }
+  .hero-phone-card-thumb {
+    width: 58px;
+    height: 52px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #f2c078 0%, #c55c2d 100%);
+  }
+  .hero-phone-card-lines {
+    flex: 1;
+  }
+  .hero-phone-card-line {
+    height: 7px;
+    border-radius: 99px;
+    background: #d8d2ca;
+    margin-bottom: 7px;
+  }
+  .hero-phone-card-line.short {
+    width: 54%;
+    background: #a79f96;
   }
   .hero-phone-no-image {
     display: flex;
@@ -314,6 +479,60 @@
     color: #98a2b3;
     height: 100%;
   }
+  .hero-stage-guide {
+    position: absolute;
+    pointer-events: none;
+    right: 21%;
+    top: 12%;
+    width: 24%;
+    height: 76%;
+    border: 2px dashed rgba(255,255,255,0.88);
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px rgba(15,23,42,0.24);
+    z-index: 10;
+  }
+  .hero-stage-guide::before,
+  .hero-stage-guide::after {
+    content: "";
+    position: absolute;
+    left: -7px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid rgba(15,23,42,0.42);
+  }
+  .hero-stage-guide::before { top: -7px; }
+  .hero-stage-guide::after { bottom: -7px; }
+  .hero-stage-guide-label {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+    background: #7f56d9;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 6px 10px;
+    border-radius: 7px;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+  .hero-stage-guide-dot {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid rgba(15,23,42,0.42);
+  }
+  .hero-stage-guide-dot.top-mid { top: -7px; left: 50%; transform: translateX(-50%); }
+  .hero-stage-guide-dot.top-right { top: -7px; right: -7px; }
+  .hero-stage-guide-dot.mid-left { top: 50%; left: -7px; transform: translateY(-50%); }
+  .hero-stage-guide-dot.mid-right { top: 50%; right: -7px; transform: translateY(-50%); }
+  .hero-stage-guide-dot.bottom-mid { bottom: -7px; left: 50%; transform: translateX(-50%); }
+  .hero-stage-guide-dot.bottom-right { bottom: -7px; right: -7px; }
 </style>
 
 <div class="hero-simple-wrap">
@@ -328,28 +547,37 @@
     <input type="hidden" name="mobile_home_header_edit_json" value="" />
 
     <div class="hero-simple-panel">
-      <div class="hero-panel-body" style="padding-bottom:12px;">
+      <div class="hero-panel-body">
         <div class="hero-field-label">Telefon Home Hero Resmi</div>
         <div class="hero-help" style="margin-top:-4px;margin-bottom:8px;">Önerilen ölçü: <strong>1792 × 1024 px</strong> (oran: <strong>1.75:1</strong>)</div>
         <input id="hero-file-input" name="mobile_home_header_file" type="file" accept="image/*" style="display:none" />
-        <button type="button" id="hero-file-trigger" class="hero-dropzone">Dosya seçmek için tıkla</button>
+        <button type="button" id="hero-file-trigger" class="hero-dropzone">
+          <span class="hero-dropzone-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M4 7.5C4 5.57 5.57 4 7.5 4h9C18.43 4 20 5.57 20 7.5v9c0 1.93-1.57 3.5-3.5 3.5h-9C5.57 20 4 18.43 4 16.5v-9Z" stroke="currentColor" stroke-width="2"/>
+              <path d="M7 16l3.2-3.2a1.2 1.2 0 0 1 1.7 0L14 15l1.1-1.1a1.2 1.2 0 0 1 1.7 0L20 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M8.5 8.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="hero-dropzone-copy">
+            <span class="hero-dropzone-main" id="hero-file-label">Dosya seçmek için tıkla</span>
+            <span class="hero-dropzone-sub">veya dosyayı buraya sürükle</span>
+          </span>
+        </button>
       </div>
 
       <div class="hero-two-col">
         <div class="hero-two-col-left">
           <div class="hero-stage" id="hero-stage">
             <img id="hero-preview-image" src="{{ current_url|default:'' }}" alt="Hero önizleme" {% if not current_url %}style="display:none"{% endif %} />
-            <div id="hero-guide" style="
-              position:absolute;pointer-events:none;
-              right:24%;top:15%;width:14%;height:70%;
-              border:2px dashed rgba(255,255,255,0.80);
-              border-radius:6px;box-shadow:0 0 0 1px rgba(0,0,0,0.30);z-index:10;
-            ">
-              <span style="
-                position:absolute;bottom:100%;right:0;margin-bottom:4px;
-                background:rgba(0,0,0,0.60);color:#fff;font-size:10px;
-                font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;line-height:1.4;
-              ">obje alanı</span>
+            <div id="hero-guide" class="hero-stage-guide">
+              <span class="hero-stage-guide-label">Obje alanı</span>
+              <span class="hero-stage-guide-dot top-mid"></span>
+              <span class="hero-stage-guide-dot top-right"></span>
+              <span class="hero-stage-guide-dot mid-left"></span>
+              <span class="hero-stage-guide-dot mid-right"></span>
+              <span class="hero-stage-guide-dot bottom-mid"></span>
+              <span class="hero-stage-guide-dot bottom-right"></span>
             </div>
           </div>
           <div class="hero-controls">
@@ -380,15 +608,26 @@
               <div class="hero-phone-statusbar">
                 <span class="hero-phone-statusbar-time">9:41</span>
                 <div class="hero-phone-statusbar-icons">
-                  <div class="hero-phone-statusbar-icon" style="width:10px;height:5px;border-radius:1px;background:rgba(255,255,255,0.7);"></div>
-                  <div class="hero-phone-statusbar-icon" style="width:5px;height:5px;border-radius:50%;"></div>
+                  <div class="hero-phone-statusbar-icon" style="width:11px;height:7px;"></div>
+                  <div class="hero-phone-statusbar-icon" style="width:7px;height:7px;border-radius:50%;"></div>
                   <div class="hero-phone-statusbar-icon"></div>
                 </div>
               </div>
               <div class="hero-phone-hero-wrap">
                 <canvas id="hero-mobile-canvas" width="390" height="300"></canvas>
+                <div class="hero-phone-hero-fade"></div>
+                <div class="hero-phone-hero-copy">
+                  <div class="hero-phone-hero-greeting">Günaydın, İsim ✶</div>
+                  <div class="hero-phone-hero-title">Bugün ne<br>yemek istersin?</div>
+                </div>
               </div>
               <div class="hero-phone-ui" id="hero-phone-ui">
+                <div class="hero-phone-slogan">
+                  <div class="hero-phone-slogan-icon"></div>
+                  <div class="hero-phone-slogan-title">Komşunun mutfağından, kapına.</div>
+                  <div class="hero-phone-slogan-sub">Ev yapımı lezzetler seni bekliyor.</div>
+                  <div class="hero-phone-slogan-line"></div>
+                </div>
                 <div class="hero-phone-searchbar">
                   <div class="hero-phone-searchbar-icon"></div>
                   <div class="hero-phone-searchbar-text"></div>
@@ -399,9 +638,24 @@
                   <div class="hero-phone-chip"></div>
                   <div class="hero-phone-chip"></div>
                 </div>
+                <div class="hero-phone-section-title"></div>
                 <div class="hero-phone-cards">
-                  <div class="hero-phone-card"></div>
-                  <div class="hero-phone-card"></div>
+                  <div class="hero-phone-card">
+                    <div class="hero-phone-card-thumb"></div>
+                    <div class="hero-phone-card-lines">
+                      <div class="hero-phone-card-line short"></div>
+                      <div class="hero-phone-card-line"></div>
+                      <div class="hero-phone-card-line" style="width:72%;margin-bottom:0;"></div>
+                    </div>
+                  </div>
+                  <div class="hero-phone-card">
+                    <div class="hero-phone-card-thumb" style="background:linear-gradient(135deg,#9fc27a 0%,#d36b33 100%);"></div>
+                    <div class="hero-phone-card-lines">
+                      <div class="hero-phone-card-line short"></div>
+                      <div class="hero-phone-card-line"></div>
+                      <div class="hero-phone-card-line" style="width:66%;margin-bottom:0;"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -426,6 +680,7 @@
 (function () {
   var fileInput = document.getElementById('hero-file-input');
   var fileTrigger = document.getElementById('hero-file-trigger');
+  var fileLabel = document.getElementById('hero-file-label');
   var form = document.getElementById('home-hero-form');
   var imageDataInput = document.getElementById('hero-image-data');
   var imageUrlInput = document.getElementById('hero-image-url');
@@ -435,6 +690,9 @@
   var zoomInput = document.getElementById('hero-zoom');
   var surfaceColorInput = document.getElementById('hero-surface-color');
   var phoneUi = document.getElementById('hero-phone-ui');
+  var phoneScreen = document.querySelector('.hero-phone-screen');
+  var phoneHeroWrap = document.querySelector('.hero-phone-hero-wrap');
+  var phoneHeroFade = document.querySelector('.hero-phone-hero-fade');
   var resetBtn = document.getElementById('hero-reset');
   var helpText = document.getElementById('hero-help-text');
 
@@ -449,14 +707,16 @@
   var DEFAULT_SURFACE_COLOR = '#fffbf4';
   var surfaceColor = DEFAULT_SURFACE_COLOR;
   var initialEditRaw = '{{ current_edit_json|default:""|escapejs }}';
+  var initialEdit = null;
 
   var MOBILE_W = 390;
   var MOBILE_H = 300;
-  // Image is rendered in an *extended* container (heroBgExtended: top:-30, bottom:-56)
-  // so the actual cover area is 390×386, not 390×300.
-  // The visible hero is 300px; image starts 30px above it.
+  // HomeScreen renders the image in an extended ImageBackground:
+  // left/right:-24, top:-30, bottom:-56. The visible hero is the 390x300 slice.
+  var MOBILE_IMG_W = 438;   // 390 + 24 + 24
   var MOBILE_IMG_H = 386;   // 300 + 30 + 56
-  var MOBILE_IMG_TOP = 30;  // image top edge is 30px above visible hero
+  var MOBILE_IMG_LEFT = 24; // visible hero starts 24px from extended left
+  var MOBILE_IMG_TOP = 30;  // visible hero starts 30px from extended top
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
@@ -487,13 +747,51 @@
     surfaceColor = normalizeHexColor(next);
     if (surfaceColorInput) surfaceColorInput.value = surfaceColor;
     if (phoneUi) phoneUi.style.background = surfaceColor;
+    if (phoneScreen) phoneScreen.style.background = surfaceColor;
+    if (phoneHeroWrap) phoneHeroWrap.style.background = surfaceColor;
+    if (phoneHeroFade) {
+      var rgb = hexToRgb(surfaceColor);
+      phoneHeroFade.style.background =
+        'linear-gradient(180deg, rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0) 0%, rgba(' +
+        rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.88) 74%, ' + surfaceColor + ' 100%)';
+    }
     updateMobilePreview();
+  }
+
+  function hexToRgb(hex) {
+    var clean = normalizeHexColor(hex).replace('#', '');
+    return {
+      r: parseInt(clean.slice(0, 2), 16),
+      g: parseInt(clean.slice(2, 4), 16),
+      b: parseInt(clean.slice(4, 6), 16),
+    };
   }
 
   function resetTransform() {
     state.scale = 1;
     state.offsetX = 0;
     state.offsetY = 0;
+    applyTransform();
+  }
+
+  function readInitialEdit() {
+    if (!initialEditRaw) return null;
+    try {
+      var parsed = JSON.parse(initialEditRaw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch (_) {}
+    return null;
+  }
+
+  function applyInitialEdit() {
+    if (!initialEdit) {
+      applySurfaceColor(DEFAULT_SURFACE_COLOR);
+      return;
+    }
+    if (typeof initialEdit.scale === 'number') state.scale = clamp(initialEdit.scale, minScale, maxScale);
+    if (typeof initialEdit.offsetX === 'number') state.offsetX = initialEdit.offsetX;
+    if (typeof initialEdit.offsetY === 'number') state.offsetY = initialEdit.offsetY;
+    applySurfaceColor(initialEdit.surfaceColor ? String(initialEdit.surfaceColor) : DEFAULT_SURFACE_COLOR);
     applyTransform();
   }
 
@@ -521,15 +819,15 @@
 
     // Mobile cover: image fills the EXTENDED container (390×386), then we show
     // only the visible 300px strip (starting 30px from the extended top).
-    var mBaseS = Math.max(MOBILE_W / vw, MOBILE_IMG_H / vh);
-    var mOffX = (MOBILE_W - vw * mBaseS) / 2;
+    var mBaseS = Math.max(MOBILE_IMG_W / vw, MOBILE_IMG_H / vh);
+    var mOffX = (MOBILE_IMG_W - vw * mBaseS) / 2;
     var mOffY = (MOBILE_IMG_H - vh * mBaseS) / 2;
 
     // Combined: map original image pixels directly to canvas pixels.
     // Shift Y up by MOBILE_IMG_TOP so the canvas shows the visible hero slice.
     var combined = adminBaseS * mBaseS;
     var cs = cw / MOBILE_W;
-    var dx = (mOffX + aOffX * mBaseS) * cs;
+    var dx = (mOffX + aOffX * mBaseS - MOBILE_IMG_LEFT) * cs;
     var dy = (mOffY + aOffY * mBaseS - MOBILE_IMG_TOP) * cs;
     var dw = iw * combined * cs;
     var dh = ih * combined * cs;
@@ -538,7 +836,7 @@
   }
 
   // Canvas export: replicate CSS object-fit:cover + JS transform (scale around center + translate).
-  // getBoundingClientRect is intentionally NOT used — it ignores object-fit and causes distortion.
+  // getBoundingClientRect is intentionally not used; it ignores object-fit and causes distortion.
   function renderExportDataUrl() {
     if (!hasImage()) return '';
     var vw = stage.clientWidth || 1;
@@ -573,14 +871,12 @@
     return canvas.toDataURL('image/jpeg', 0.82);
   }
 
-  fileTrigger.addEventListener('click', function () {
-    fileInput.value = '';
-    fileInput.click();
-  });
-
-  fileInput.addEventListener('change', function () {
-    var file = fileInput.files && fileInput.files[0];
+  function setSelectedFile(file) {
     if (!file) return;
+    if (!/^image\//.test(String(file.type || ''))) {
+      alert('Lutfen bir gorsel dosyasi sec.');
+      return;
+    }
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = URL.createObjectURL(file);
     previewImage.onload = function () {
@@ -592,7 +888,39 @@
       helpText.textContent = 'Resim secildi. Zoom/konum ayarindan sonra Yayinla.';
     };
     previewImage.src = objectUrl;
-    fileTrigger.textContent = file.name || 'Resim seçildi';
+    if (fileLabel) fileLabel.textContent = file.name || 'Resim seçildi';
+  }
+
+  fileTrigger.addEventListener('click', function () {
+    fileInput.value = '';
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', function () {
+    var file = fileInput.files && fileInput.files[0];
+    setSelectedFile(file);
+  });
+
+  fileTrigger.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    fileTrigger.classList.add('is-dragover');
+  });
+
+  fileTrigger.addEventListener('dragleave', function () {
+    fileTrigger.classList.remove('is-dragover');
+  });
+
+  fileTrigger.addEventListener('drop', function (e) {
+    e.preventDefault();
+    fileTrigger.classList.remove('is-dragover');
+    var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    try {
+      var dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+    } catch (_) {}
+    setSelectedFile(file);
   });
 
   stage.addEventListener('wheel', function (e) {
@@ -678,35 +1006,21 @@
     });
   });
 
+  initialEdit = readInitialEdit();
+
   if (previewImage.src && previewImage.src !== window.location.href) {
     if (previewImage.complete && previewImage.naturalWidth > 1) {
       previewImage.style.display = 'block';
-      resetTransform();
-      updateMobilePreview();
+      applyInitialEdit();
     } else {
       previewImage.onload = function () {
         previewImage.style.display = 'block';
-        resetTransform();
-        updateMobilePreview();
+        applyInitialEdit();
       };
     }
   } else {
     previewImage.style.display = 'none';
-  }
-
-  if (initialEditRaw) {
-    try {
-      var parsed = JSON.parse(initialEditRaw);
-      if (parsed && typeof parsed === 'object' && parsed.surfaceColor) {
-        applySurfaceColor(String(parsed.surfaceColor));
-      } else {
-        applySurfaceColor(DEFAULT_SURFACE_COLOR);
-      }
-    } catch (_) {
-      applySurfaceColor(DEFAULT_SURFACE_COLOR);
-    }
-  } else {
-    applySurfaceColor(DEFAULT_SURFACE_COLOR);
+    applyInitialEdit();
   }
 })();
 </script>
