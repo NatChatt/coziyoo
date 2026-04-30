@@ -114,7 +114,7 @@
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     transform-origin: center center;
     will-change: transform;
     pointer-events: none;
@@ -964,8 +964,9 @@
     var vw = stage.clientWidth || 1;
     var vh = stage.clientHeight || 1;
 
-    // Replicate admin stage: object-fit cover + user zoom/pan
-    var adminBaseS = Math.max(vw / iw, vh / ih) * state.scale;
+    // Replicate admin stage: object-fit contain + user zoom/pan.
+    // The image should not be cropped until the user zooms/pans it manually.
+    var adminBaseS = Math.min(vw / iw, vh / ih) * state.scale;
     var aOffX = (vw - iw * adminBaseS) / 2 + state.offsetX;
     var aOffY = (vh - ih * adminBaseS) / 2 + state.offsetY;
 
@@ -987,7 +988,7 @@
     ctx.drawImage(previewImage, dx, dy, dw, dh);
   }
 
-  // Canvas export: replicate CSS object-fit:cover + JS transform (scale around center + translate).
+  // Canvas export: replicate CSS object-fit:contain + JS transform (scale around center + translate).
   // getBoundingClientRect is intentionally not used; it ignores object-fit and causes distortion.
   function renderExportDataUrl() {
     if (!hasImage()) return '';
@@ -1004,8 +1005,8 @@
     var ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
-    // baseS replicates object-fit:cover — fills stage, preserves aspect ratio.
-    var baseS = Math.max(vw / iw, vh / ih);
+    // baseS replicates object-fit:contain — shows the whole image first.
+    var baseS = Math.min(vw / iw, vh / ih);
     var finalScale = baseS * state.scale;
     var drawW = iw * finalScale;
     var drawH = ih * finalScale;
