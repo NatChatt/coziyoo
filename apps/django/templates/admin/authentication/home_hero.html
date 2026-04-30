@@ -309,7 +309,7 @@
   .hero-phone-hero-wrap {
     position: relative;
     width: 100%;
-    height: 332px;
+    height: 250px;
     background: #fffbf4;
     overflow: hidden;
     margin-top: 0;
@@ -317,7 +317,7 @@
   .hero-phone-hero-wrap canvas {
     display: block;
     width: 100%;
-    height: 332px;
+    height: 250px;
     object-fit: cover;
   }
   .hero-phone-hero-fade {
@@ -393,7 +393,7 @@
   }
   .hero-phone-slogan {
     position: relative;
-    margin: -139px 4px 10px;
+    margin: -60px 4px 10px;
     z-index: 3;
     color: #2f221b;
   }
@@ -728,7 +728,7 @@
                 </div>
               </div>
               <div class="hero-phone-hero-wrap">
-                <canvas id="hero-mobile-canvas" width="390" height="407"></canvas>
+                <canvas id="hero-mobile-canvas" width="390" height="306"></canvas>
                 <div class="hero-phone-hero-fade"></div>
                 <div class="hero-phone-avatar-row">
                   <div class="hero-phone-avatar"></div>
@@ -862,12 +862,12 @@
   var initialEdit = null;
 
   var MOBILE_W = 390;
-  var MOBILE_H = 407;
+  var MOBILE_H = 306;
   // HomeScreen renders the image in an extended ImageBackground:
-  // left/right:-24, top:-30, bottom:-56. The admin phone preview uses
-  // a taller 390x407 slice so it resembles the real buyer Home screen.
+  // left/right:-24, top:-30, bottom:-56. The admin phone preview uses the
+  // same visible hero slice as the buyer Home screen, scaled down to fit.
   var MOBILE_IMG_W = 438;   // 390 + 24 + 24
-  var MOBILE_IMG_H = 493;   // 407 + 30 + 56
+  var MOBILE_IMG_H = 392;   // 306 + 30 + 56
   var MOBILE_IMG_LEFT = 24; // visible hero starts 24px from extended left
   var MOBILE_IMG_TOP = 30;  // visible hero starts 30px from extended top
 
