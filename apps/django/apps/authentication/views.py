@@ -1,11 +1,16 @@
+import base64
+import binascii
 import re
 import uuid
+from time import time
+from django.conf import settings
 from django.db import connection, transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.throttling import AnonRateThrottle
 
+from coziyoo import s3 as s3_utils
 from .token_service import sign_access_token, generate_refresh_token, hash_refresh_token, refresh_expires_at
 from .security import verify_password, hash_password
 
@@ -15,6 +20,122 @@ from .security import verify_password, hash_password
 class IsAppRealm(IsAuthenticated):
     def has_permission(self, request, view):
         return super().has_permission(request, view) and getattr(request.user, "realm", None) == "app"
+
+
+_ALLOWED_IMAGE_TYPES = {"image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp"}
+_MAX_UPLOAD_IMAGE_BYTES = 12 * 1024 * 1024
+
+
+def _has_users_column(column_name):
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'users'
+                  AND column_name = %s
+            )
+            """,
+            [column_name],
+        )
+        return bool(cur.fetchone()[0])
+
+
+def _decode_image_upload(request):
+    uploaded_file = request.FILES.get("file")
+    if uploaded_file is not None:
+        content_type = str(getattr(uploaded_file, "content_type", "") or "").lower().strip()
+        if content_type not in _ALLOWED_IMAGE_TYPES:
+            return None, content_type, "Unsupported image type"
+        content = uploaded_file.read()
+        if not content or len(content) > _MAX_UPLOAD_IMAGE_BYTES:
+            return None, content_type, "Image is empty or too large"
+        return content, content_type, None
+
+    data = request.data if isinstance(request.data, dict) else {}
+    content_type = str(data.get("contentType") or "image/jpeg").lower().strip()
+    if content_type not in _ALLOWED_IMAGE_TYPES:
+        return None, content_type, "Unsupported image type"
+
+    raw_base64 = str(data.get("dataBase64") or "").strip()
+    if "," in raw_base64 and raw_base64.startswith("data:image/"):
+        raw_base64 = raw_base64.split(",", 1)[1]
+    try:
+        content = base64.b64decode(raw_base64, validate=True)
+    except (binascii.Error, ValueError):
+        return None, content_type, "Invalid image data"
+    if not content or len(content) > _MAX_UPLOAD_IMAGE_BYTES:
+        return None, content_type, "Image is empty or too large"
+    return content, content_type, None
+
+
+def _store_user_image(user_id, kind, content, content_type):
+    ext = _ALLOWED_IMAGE_TYPES[content_type]
+    if s3_utils.is_configured() and getattr(settings, "S3_BUCKET_SELLER_DOCS", ""):
+        bucket = settings.S3_BUCKET_SELLER_DOCS
+        key = f"seller/{user_id}/images/{kind}/{int(time() * 1000)}-{uuid.uuid4().hex[:8]}.{ext}"
+        return s3_utils.put_bytes(bucket, key, content, content_type)
+    encoded = base64.b64encode(content).decode("ascii")
+    return f"data:{content_type};base64,{encoded}"
+
+
+def _public_image_url(value):
+    if not value:
+        return None
+    return s3_utils.hydrate_file_url(value)
+
+
+class UserImageUploadView(APIView):
+    permission_classes = [IsAppRealm]
+
+    image_kind = "profile"
+    column_name = "profile_image_url"
+    response_field = "profileImageUrl"
+
+    def post(self, request):
+        if not _has_users_column(self.column_name):
+            return Response(
+                {"error": {"code": "IMAGE_COLUMN_MISSING", "message": f"users.{self.column_name} is not available"}},
+                status=501,
+            )
+
+        content, content_type, error = _decode_image_upload(request)
+        if error:
+            return Response({"error": {"code": "INVALID_IMAGE", "message": error}}, status=400)
+
+        with connection.cursor() as cur:
+            cur.execute(f"SELECT {self.column_name} FROM users WHERE id = %s", [request.user.id])
+            row = cur.fetchone()
+        if not row:
+            return Response({"error": {"code": "NOT_FOUND", "message": "User not found"}}, status=404)
+
+        old_pointer = row[0]
+        next_pointer = _store_user_image(str(request.user.id), self.image_kind, content, content_type)
+        with connection.cursor() as cur:
+            cur.execute(
+                f"UPDATE users SET {self.column_name} = %s, updated_at = now() WHERE id = %s",
+                [next_pointer, request.user.id],
+            )
+
+        replace = str(request.data.get("replace", "true")).lower() != "false" if hasattr(request, "data") else True
+        if replace and old_pointer and old_pointer != next_pointer and str(old_pointer).startswith("s3://"):
+            s3_utils.delete_object(old_pointer)
+
+        return Response({"data": {self.response_field: _public_image_url(next_pointer)}})
+
+
+class ProfileImageUploadView(UserImageUploadView):
+    image_kind = "profile"
+    column_name = "profile_image_url"
+    response_field = "profileImageUrl"
+
+
+class HomeCardImageUploadView(UserImageUploadView):
+    image_kind = "home-card"
+    column_name = "home_card_image_url"
+    response_field = "homeCardImageUrl"
 
 
 # ── App Auth ──────────────────────────────────────────────────────────────────

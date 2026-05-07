@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from coziyoo import s3 as s3_utils
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,23 @@ def _row_as_dict(cursor):
     cols = [col.name for col in cursor.description]
     row = cursor.fetchone()
     return dict(zip(cols, row)) if row else None
+
+
+def _has_users_column(column_name):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'users'
+                      AND column_name = %s
+                )
+            """,
+            [column_name],
+        )
+        return bool(cursor.fetchone()[0])
 
 
 def _stringify_uuids(obj, fields):
@@ -141,14 +159,21 @@ class SellerProfileView(APIView):
     permission_classes = [IsAppRealm]
 
     def get(self, request):
+        home_card_image_sql = (
+            "home_card_image_url"
+            if _has_users_column("home_card_image_url")
+            else "NULL::text AS home_card_image_url"
+        )
         sql = """
-            SELECT id, email, display_name, kitchen_title, kitchen_description,
+            SELECT id, email, display_name, username, kitchen_title, kitchen_description,
                    kitchen_specialties, delivery_enabled, delivery_radius_km,
                    delivery_terms, working_hours_json,
-                   profile_image_url
+                   profile_image_url,
+                   seller_profile_status,
+                   {home_card_image_sql}
             FROM users
             WHERE id = %s
-        """
+        """.format(home_card_image_sql=home_card_image_sql)
         with connection.cursor() as cursor:
             cursor.execute(sql, [request.user.id])
             profile = _row_as_dict(cursor)
@@ -159,8 +184,65 @@ class SellerProfileView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        _stringify_uuids(profile, ["id"])
-        return Response({"data": profile})
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    SELECT title, address_line
+                    FROM user_addresses
+                    WHERE user_id = %s AND is_default = TRUE
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                """,
+                [request.user.id],
+            )
+            default_address = _row_as_dict(cursor)
+
+        raw_status = str(profile.get("seller_profile_status") or "").strip()
+        api_status = "active" if raw_status == "approved" else "pending_review" if raw_status == "pending" else "incomplete"
+        specialties = profile.get("kitchen_specialties")
+        if isinstance(specialties, str):
+            try:
+                specialties = json.loads(specialties)
+            except (json.JSONDecodeError, ValueError):
+                specialties = []
+        working_hours = profile.get("working_hours_json")
+        if isinstance(working_hours, str):
+            try:
+                working_hours = json.loads(working_hours)
+            except (json.JSONDecodeError, ValueError):
+                working_hours = []
+
+        data = {
+            "id": str(profile["id"]),
+            "email": profile.get("email"),
+            "displayName": profile.get("display_name"),
+            "username": profile.get("username"),
+            "profileImageUrl": s3_utils.hydrate_file_url(profile.get("profile_image_url")),
+            "homeCardImageUrl": s3_utils.hydrate_file_url(profile.get("home_card_image_url")),
+            "kitchenTitle": profile.get("kitchen_title"),
+            "kitchenDescription": profile.get("kitchen_description"),
+            "kitchenSpecialties": specialties if isinstance(specialties, list) else [],
+            "deliveryEnabled": bool(profile.get("delivery_enabled")),
+            "deliveryRadiusKm": profile.get("delivery_radius_km"),
+            "deliveryTerms": profile.get("delivery_terms"),
+            "workingHours": working_hours if isinstance(working_hours, list) else [],
+            "status": api_status,
+            "defaultAddress": {
+                "title": default_address.get("title"),
+                "addressLine": default_address.get("address_line"),
+            } if default_address else None,
+            "requirements": {
+                "hasPhone": False,
+                "hasDefaultAddress": bool(default_address),
+                "hasKitchenTitle": bool(str(profile.get("kitchen_title") or "").strip()),
+                "hasKitchenDescription": bool(str(profile.get("kitchen_description") or "").strip()),
+                "hasDeliveryRadius": profile.get("delivery_radius_km") is not None,
+                "hasWorkingHours": bool(working_hours),
+                "complianceRequiredCount": 0,
+                "complianceUploadedRequiredCount": 0,
+            },
+        }
+        return Response({"data": data})
 
     def put(self, request):
         data = request.data

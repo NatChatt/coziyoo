@@ -12,6 +12,8 @@ urlpatterns = [
     path("forgot-password/request", views.ForgotPasswordRequestView.as_view(), name="auth-forgot-password-request"),
     path("forgot-password/confirm", views.ForgotPasswordConfirmView.as_view(), name="auth-forgot-password-confirm"),
     path("me/enable-seller", views.EnableSellerView.as_view(), name="auth-enable-seller"),
+    path("me/profile-image/upload", views.ProfileImageUploadView.as_view(), name="auth-profile-image-upload"),
+    path("me/home-card-image/upload", views.HomeCardImageUploadView.as_view(), name="auth-home-card-image-upload"),
     path("me/addresses", views.UserAddressListView.as_view(), name="auth-addresses"),
     path("me/addresses/<uuid:address_id>", views.UserAddressDetailView.as_view(), name="auth-address-detail"),
 ]
