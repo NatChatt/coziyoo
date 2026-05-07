@@ -91,6 +91,7 @@ import { apiRequest } from '../utils/api';
 import { readJsonSafe } from '../utils/http';
 import { theme } from '../theme/colors';
 import { formatPrice } from '../components/OrderCard';
+import ScreenHeader from '../components/ScreenHeader';
 import ProfileEditScreen from './ProfileEditScreen';
 import AddressScreen from './AddressScreen';
 import { type BrandCopyKey, formatCopy, randomHomeGreetingSubtitle, requestErrorLine, t } from '../copy/brandCopy';
@@ -176,7 +177,7 @@ type Props = {
   auth: AuthSession;
   initialTab?: TabKey;
   onOpenSettings: () => void;
-  onOpenOrders: () => void;
+  onOpenOrders: (source?: 'home' | 'profile') => void;
   onOpenComplaints: () => void;
   onOpenOrderDetail?: (orderId: string) => void;
   onOpenPayment?: (orderId: string) => void;
@@ -4189,7 +4190,7 @@ export default function HomeScreen({
 
     if (context === 'home') {
       return (
-        <TouchableOpacity style={styles.nearbyHeader} activeOpacity={0.88} onPress={onOpenOrders}>
+        <TouchableOpacity style={styles.nearbyHeader} activeOpacity={0.88} onPress={() => onOpenOrders()}>
           {content}
         </TouchableOpacity>
       );
@@ -4197,10 +4198,10 @@ export default function HomeScreen({
 
     return (
       <View style={styles.tabPanelCard}>
-        <TouchableOpacity style={styles.nearbyHeaderCompact} activeOpacity={0.88} onPress={onOpenOrders}>
+        <TouchableOpacity style={styles.nearbyHeaderCompact} activeOpacity={0.88} onPress={() => onOpenOrders()}>
           {content}
         </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryOrdersBtn} activeOpacity={0.88} onPress={onOpenOrders}>
+        <TouchableOpacity style={styles.secondaryOrdersBtn} activeOpacity={0.88} onPress={() => onOpenOrders()}>
           <Text style={styles.secondaryOrdersBtnText}>{t('cta.orders.viewAll')}</Text>
         </TouchableOpacity>
       </View>
@@ -4228,7 +4229,7 @@ export default function HomeScreen({
           const openOrderFlowDetail = Boolean(onOpenOrderDetail);
           const handleCardPress = openOrderFlowDetail
             ? () => onOpenOrderDetail?.(order.id)
-            : onOpenOrders;
+            : () => onOpenOrders();
 
           return (
             <TouchableOpacity
@@ -4726,25 +4727,22 @@ export default function HomeScreen({
         && Boolean(paymentInfo || paymentStatus);
       return (
         <View style={styles.cartWrap}>
-          <View style={styles.cartHeader}>
-            <View style={styles.cartHeaderLeft}>
-              <TouchableOpacity
-                style={styles.cartBackBtn}
-                onPress={handleCartBackPress}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="chevron-back" size={22} color="#4E433A" />
-              </TouchableOpacity>
-              <Text style={styles.tabPanelTitle}>
-                {showCartQuickOrderCard
-                  ? t('headline.orders.quickActiveTitle')
-                  : t('headline.home.foodListTitle')}
-              </Text>
-            </View>
-            <Text style={styles.cartHeaderCount}>
-              {cartItems.length === 0 ? '' : `${cartCount} ${t('status.home.foodListCountSuffix')}`}
-            </Text>
-          </View>
+          <ScreenHeader
+            title={
+              showCartQuickOrderCard
+                ? t('headline.orders.quickActiveTitle')
+                : t('headline.home.foodListTitle')
+            }
+            onBack={handleCartBackPress}
+            borderBottom={false}
+            rightAction={
+              cartItems.length === 0 ? null : (
+                <Text style={styles.cartHeaderCount}>
+                  {`${cartCount} ${t('status.home.foodListCountSuffix')}`}
+                </Text>
+              )
+            }
+          />
           {cartItems.length === 0 ? (
             showCartPendingApprovalState ? (
               <View style={styles.tabPanelCard}>
@@ -4935,18 +4933,6 @@ export default function HomeScreen({
           contentContainerStyle={styles.profileScreenContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.profileTopBar}>
-            <TouchableOpacity
-              style={styles.profileTopBackButton}
-              onPress={() => handleTabPress('home')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="chevron-back" size={22} color="#4E433A" />
-            </TouchableOpacity>
-            <Text style={styles.profileTopTitle}>{t('status.home.profileTitle')}</Text>
-            <View style={styles.profileTopSpacer} />
-          </View>
-
           <View style={styles.profileHeader}>
             <TouchableOpacity
               style={styles.profileAvatar}
@@ -4995,7 +4981,7 @@ export default function HomeScreen({
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.profileActionRow, styles.profileActionRowDivider]}
-              onPress={onOpenOrders}
+              onPress={() => onOpenOrders('profile')}
               activeOpacity={0.85}
             >
               <View style={styles.profileActionMain}>
@@ -5828,7 +5814,7 @@ export default function HomeScreen({
             >
               <Ionicons
                 name="home-outline"
-                size={21}
+                size={24}
                 style={[
                   styles.navIcon,
                   activeTab === 'home' && styles.navIconActive,
@@ -5849,7 +5835,7 @@ export default function HomeScreen({
             >
               <Ionicons
                 name="chatbubble-ellipses-outline"
-                size={21}
+                size={24}
                 style={[
                   styles.navIcon,
                   activeTab === 'messages' && styles.navIconActive,
@@ -5871,7 +5857,7 @@ export default function HomeScreen({
             >
               <Ionicons
                 name="basket-outline"
-                size={21}
+                size={24}
                 style={[
                   styles.navIcon,
                   cartCount > 0 && styles.navIconFilled,
@@ -5894,7 +5880,7 @@ export default function HomeScreen({
             >
               <Ionicons
                 name="notifications-outline"
-                size={21}
+                size={24}
                 style={[
                   styles.navIcon,
                   activeTab === 'notifications' && styles.navIconActive,
@@ -7316,25 +7302,7 @@ const styles = StyleSheet.create({
   },
   tabPanelTitle: { color: '#3D3229', fontSize: 20, fontWeight: '700' },
   tabPanelText: { color: '#8D8072', fontSize: 14, marginTop: 8, lineHeight: 20 },
-  cartWrap: { flex: 1, marginTop: 16, paddingHorizontal: 18 },
-  cartHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  cartHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  cartBackBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  cartWrap: { flex: 1, paddingHorizontal: 18 },
   cartHeaderCount: { color: '#8D8072', fontSize: 13, fontWeight: '600' },
   cartList: { flex: 1 },
   cartListContent: { paddingBottom: 14 },
@@ -7859,47 +7827,43 @@ const styles = StyleSheet.create({
 
   /* --- Profile --- */
   profileScreen: { flex: 1 },
-  profileScreenContent: { paddingTop: 18, paddingHorizontal: 18, paddingBottom: 124 },
-  profileTopBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 18,
+  profileScreenContent: {
+    paddingTop: Platform.OS === 'ios' ? 68 : 28,
+    paddingHorizontal: 18,
+    paddingBottom: 124,
   },
-  profileTopBackButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileTopTitle: { color: '#3D3229', fontSize: 16, fontWeight: '700' },
-  profileTopSpacer: { width: 34, height: 34 },
   profileHeader: { alignItems: 'center', justifyContent: 'center' },
   profileAvatar: {
-    width: 98,
-    height: 98,
-    borderRadius: 30,
-    backgroundColor: '#EDE8E0',
+    width: 116,
+    height: 116,
+    borderRadius: 58,
+    backgroundColor: '#F4EFE7',
+    borderWidth: 3,
+    borderColor: '#E4EDDF',
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    overflow: 'visible',
+    shadowColor: '#6A5846',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 6,
   },
   profileAvatarBadge: {
     position: 'absolute',
-    right: 2,
-    bottom: 2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    right: 4,
+    bottom: 4,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#3F855C',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderWidth: 3,
+    borderColor: '#FFFDF9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileAvatarImage: { width: '100%', height: '100%' },
-  profileAvatarText: { fontSize: 34, color: '#4E433A', fontWeight: '700' },
+  profileAvatarImage: { width: '100%', height: '100%', borderRadius: 55 },
+  profileAvatarText: { fontSize: 38, color: '#4E433A', fontWeight: '700' },
   profileName: {
     color: '#3D3229',
     fontSize: 18,
@@ -8061,10 +8025,10 @@ const styles = StyleSheet.create({
   navItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     paddingTop: 0,
     paddingBottom: 0,
-    transform: [{ translateY: 2 }],
+    transform: [{ translateY: -2 }],
   },
   navSpacer: { width: 72 },
   navIcon: { color: '#A89B8C', marginBottom: 3 },

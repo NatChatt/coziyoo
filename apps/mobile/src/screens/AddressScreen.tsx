@@ -19,6 +19,7 @@ import { loadSettings } from '../utils/settings';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { readJsonSafe } from '../utils/http';
 import { formatCopy, t } from '../copy/brandCopy';
+import ScreenHeader from '../components/ScreenHeader';
 
 type Address = {
   id: string;
@@ -228,16 +229,15 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('headline.address.title')}</Text>
-        <TouchableOpacity onPress={openAddForm} style={styles.addBtn}>
-          <Ionicons name="add" size={24} color={theme.primary} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title={t('headline.address.title')}
+        onBack={onBack}
+        rightAction={
+          <TouchableOpacity onPress={openAddForm} hitSlop={8}>
+            <Ionicons name="add" size={26} color={theme.primary} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
@@ -387,20 +387,6 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 16,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: theme.background,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: theme.text, fontSize: 18, fontWeight: '700' },
-  addBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   content: { padding: 16, paddingBottom: 40 },
   center: { alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 12 },
   errorText: { color: theme.error, fontSize: 14, textAlign: 'center' },

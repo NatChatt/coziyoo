@@ -5,17 +5,22 @@ import { theme } from '../theme/colors';
 
 type Props = {
   title: string;
-  onBack: () => void;
+  onBack?: () => void;
+  hideBack?: boolean;
   rightAction?: React.ReactNode;
   borderBottom?: boolean;
 };
 
-export default function ScreenHeader({ title, onBack, rightAction, borderBottom = true }: Props) {
+export default function ScreenHeader({ title, onBack, hideBack, rightAction, borderBottom = true }: Props) {
   return (
     <View style={[styles.header, borderBottom && styles.borderBottom]}>
-      <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-        <Ionicons name="chevron-back" size={24} color={theme.text} />
-      </TouchableOpacity>
+      {hideBack || !onBack ? (
+        <View style={styles.backBtn} />
+      ) : (
+        <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={8}>
+          <Ionicons name="chevron-back" size={26} color={theme.text} />
+        </TouchableOpacity>
+      )}
       <Text style={styles.title} numberOfLines={1}>{title}</Text>
       <View style={styles.rightSlot}>
         {rightAction ?? null}
@@ -32,7 +37,6 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 16,
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: theme.background,
   },
   borderBottom: {
     borderBottomWidth: 1,

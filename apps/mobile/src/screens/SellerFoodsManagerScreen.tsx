@@ -132,7 +132,7 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={theme.text} />
+          <Ionicons name="chevron-back" size={26} color={theme.text} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
           <Text style={styles.pageTitle}>{t('headline.seller.foodsManager.title')}</Text>

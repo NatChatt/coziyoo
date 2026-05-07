@@ -18,6 +18,7 @@ import { theme } from '../theme/colors';
 import { loadSettings } from '../utils/settings';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { formatCopy, t } from '../copy/brandCopy';
+import ScreenHeader from '../components/ScreenHeader';
 
 type UserProfile = {
   id: string;
@@ -275,20 +276,11 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        {isNewRegistration ? (
-          <View style={{ width: 40 }} />
-        ) : (
-          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={24} color={theme.text} />
-          </TouchableOpacity>
-        )}
-        <Text style={styles.headerTitle}>
-          {isNewRegistration ? t('headline.profileEdit.completeTitle') : t('headline.profileEdit.title')}
-        </Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <ScreenHeader
+        title={isNewRegistration ? t('headline.profileEdit.completeTitle') : t('headline.profileEdit.title')}
+        onBack={onBack}
+        hideBack={isNewRegistration}
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -519,19 +511,6 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
   flex: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 16,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: theme.background,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: theme.text, fontSize: 18, fontWeight: '700' },
   content: { padding: 20, paddingBottom: 24 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
   mandatoryBanner: {

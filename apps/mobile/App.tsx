@@ -174,6 +174,7 @@ export default function App() {
   // Screen params
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [orderDetailBackTarget, setOrderDetailBackTarget] = useState<OrderDetailBackTarget>('orders');
+  const [ordersBackTab, setOrdersBackTab] = useState<TabKey>('home');
   const [sellerOrderModalVisible, setSellerOrderModalVisible] = useState(false);
   const sheetTranslateY = useRef(new Animated.Value(0)).current;
   const sheetPanResponder = useRef(
@@ -572,7 +573,7 @@ export default function App() {
     return (
       <OrdersScreen
         auth={auth}
-        onBack={() => goHome('home')}
+        onBack={() => goHome(ordersBackTab)}
         onOpenOrderDetail={(id) => {
           setSelectedOrderId(id);
           setOrderDetailBackTarget('orders');
@@ -944,7 +945,10 @@ export default function App() {
       auth={auth}
       initialTab={homeTab}
       onOpenSettings={() => setScreen('settings')}
-      onOpenOrders={() => setScreen('orders')}
+      onOpenOrders={(source) => {
+        setOrdersBackTab(source ?? 'home');
+        setScreen('orders');
+      }}
       onOpenComplaints={() => {
         setTicketBackTarget('buyerProfile');
         setScreen('ticketList');
