@@ -415,53 +415,58 @@
            noteInput: '',
            tagSaving: false,
            noteSaving: false,
+           tagError: '',
+           noteError: '',
            csrf: '{{ csrf_token }}',
+           async _post(url, body) {
+             const fd = new FormData();
+             for (const [k, v] of Object.entries(body)) fd.append(k, v);
+             fd.append('csrfmiddlewaretoken', this.csrf);
+             let r;
+             try {
+               r = await fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+             } catch (e) {
+               return { ok: false, message: 'Ağ hatası: ' + e.message };
+             }
+             let d = {};
+             try { d = await r.json(); } catch (_) { d = {}; }
+             if (!r.ok && !d.message) d.message = `Sunucu hatası (HTTP ${r.status})`;
+             d.ok = Boolean(d.ok);
+             return d;
+           },
            async addTag() {
              const val = this.tagInput.trim();
              if (!val || this.tagSaving) return;
-             this.tagSaving = true;
+             this.tagSaving = true; this.tagError = '';
              try {
-               const fd = new FormData();
-               fd.append('tag', val);
-               fd.append('csrfmiddlewaretoken', this.csrf);
-               const r = await fetch('{% url "admin:authentication_buyerusers_add_tag" user.id %}', {
-                 method: 'POST', body: fd,
-                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
-               });
-               const d = await r.json();
+               const d = await this._post('{% url "admin:authentication_buyerusers_add_tag" user.id %}', { tag: val });
                if (d.ok) {
                  this.tags.push({ tag: d.tag, style: d.style });
                  this.tagInput = '';
+               } else {
+                 this.tagError = d.message || 'Etiket kaydedilemedi.';
                }
              } finally { this.tagSaving = false; }
            },
            async deleteTag(tag, idx) {
-             const fd = new FormData();
-             fd.append('tag', tag);
-             fd.append('csrfmiddlewaretoken', this.csrf);
-             const r = await fetch('{% url "admin:authentication_buyerusers_delete_tag" user.id %}', {
-               method: 'POST', body: fd,
-               headers: { 'X-Requested-With': 'XMLHttpRequest' }
-             });
-             const d = await r.json();
-             if (d.ok) this.tags.splice(idx, 1);
+             const d = await this._post('{% url "admin:authentication_buyerusers_delete_tag" user.id %}', { tag });
+             if (d.ok) {
+               this.tags.splice(idx, 1);
+             } else {
+               this.tagError = d.message || 'Etiket silinemedi.';
+             }
            },
            async addNote() {
              const val = this.noteInput.trim();
              if (!val || this.noteSaving) return;
-             this.noteSaving = true;
+             this.noteSaving = true; this.noteError = '';
              try {
-               const fd = new FormData();
-               fd.append('note', val);
-               fd.append('csrfmiddlewaretoken', this.csrf);
-               const r = await fetch('{% url "admin:authentication_buyerusers_add_note" user.id %}', {
-                 method: 'POST', body: fd,
-                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
-               });
-               const d = await r.json();
+               const d = await this._post('{% url "admin:authentication_buyerusers_add_note" user.id %}', { note: val });
                if (d.ok) {
                  this.notes.unshift(d.note);
                  this.noteInput = '';
+               } else {
+                 this.noteError = d.message || 'Not kaydedilemedi.';
                }
              } finally { this.noteSaving = false; }
            }
@@ -480,6 +485,9 @@
                    :disabled="tagSaving"
                    placeholder="{% trans 'Etiket adı gir, Enter ile ekle' %}"
                    class="w-full rounded-lg border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 py-2 text-sm text-base-900 dark:text-base-100 placeholder-base-400 dark:placeholder-base-500 outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition" />
+
+            <p x-show="tagError" x-text="tagError" x-cloak
+               class="mt-2 text-xs text-rose-600 dark:text-rose-400"></p>
 
             <div class="mt-4 pt-4 border-t border-base-200 dark:border-base-700">
               <template x-if="tags.length > 0">
@@ -516,6 +524,9 @@
                       :disabled="noteSaving"
                       placeholder="{% trans 'Not ekle, Enter ile kaydet…' %}"
                       class="w-full rounded-lg border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 py-2 text-sm text-base-900 dark:text-base-100 placeholder-base-400 dark:placeholder-base-500 outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition resize-none"></textarea>
+
+            <p x-show="noteError" x-text="noteError" x-cloak
+               class="mt-2 text-xs text-rose-600 dark:text-rose-400"></p>
 
             <div class="mt-4 space-y-0">
               <template x-if="notes.length > 0">
