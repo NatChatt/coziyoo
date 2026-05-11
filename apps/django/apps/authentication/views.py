@@ -7,19 +7,14 @@ from django.conf import settings
 from django.db import connection, transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.throttling import AnonRateThrottle
 
+from apps.common.permissions import IsAppRealm
+from apps.common.responses import error_response
 from coziyoo import s3 as s3_utils
 from .token_service import sign_access_token, generate_refresh_token, hash_refresh_token, refresh_expires_at
 from .security import verify_password, hash_password
-
-
-# ── Permissions ──────────────────────────────────────────────────────────────
-
-class IsAppRealm(IsAuthenticated):
-    def has_permission(self, request, view):
-        return super().has_permission(request, view) and getattr(request.user, "realm", None) == "app"
 
 
 _ALLOWED_IMAGE_TYPES = {"image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp"}
@@ -96,20 +91,17 @@ class UserImageUploadView(APIView):
 
     def post(self, request):
         if not _has_users_column(self.column_name):
-            return Response(
-                {"error": {"code": "IMAGE_COLUMN_MISSING", "message": f"users.{self.column_name} is not available"}},
-                status=501,
-            )
+            return error_response("IMAGE_COLUMN_MISSING", f"users.{self.column_name} is not available", 501)
 
         content, content_type, error = _decode_image_upload(request)
         if error:
-            return Response({"error": {"code": "INVALID_IMAGE", "message": error}}, status=400)
+            return error_response("INVALID_IMAGE", error, 400)
 
         with connection.cursor() as cur:
             cur.execute(f"SELECT {self.column_name} FROM users WHERE id = %s", [request.user.id])
             row = cur.fetchone()
         if not row:
-            return Response({"error": {"code": "NOT_FOUND", "message": "User not found"}}, status=404)
+            return error_response("NOT_FOUND", "User not found", 404)
 
         old_pointer = row[0]
         next_pointer = _store_user_image(str(request.user.id), self.image_kind, content, content_type)
@@ -148,7 +140,7 @@ class LoginView(APIView):
         email = request.data.get("email", "").lower().strip()
         password = request.data.get("password", "")
         if not email or not password:
-            return Response({"error": {"code": "VALIDATION_ERROR", "message": "email and password required"}}, status=400)
+            return error_response("VALIDATION_ERROR", "email and password required", 400)
 
         with connection.cursor() as cur:
             cur.execute(
@@ -158,11 +150,11 @@ class LoginView(APIView):
             row = cur.fetchone()
 
         if not row or not verify_password(row[2], password):
-            return Response({"error": {"code": "INVALID_CREDENTIALS", "message": "Email or password invalid"}}, status=401)
+            return error_response("INVALID_CREDENTIALS", "Email or password invalid", 401)
 
         user_id, user_email, _, user_type, is_active = row
         if not is_active:
-            return Response({"error": {"code": "ACCOUNT_DISABLED", "message": "Account is disabled"}}, status=403)
+            return error_response("ACCOUNT_DISABLED", "Account is disabled", 403)
 
         refresh_token = generate_refresh_token()
         with connection.cursor() as cur:
@@ -187,7 +179,7 @@ class RefreshView(APIView):
     def post(self, request):
         refresh_token = request.data.get("refreshToken", "")
         if not refresh_token:
-            return Response({"error": {"code": "VALIDATION_ERROR", "message": "refreshToken required"}}, status=400)
+            return error_response("VALIDATION_ERROR", "refreshToken required", 400)
 
         refresh_hash = hash_refresh_token(refresh_token)
 
@@ -202,7 +194,7 @@ class RefreshView(APIView):
                 )
                 row = cur.fetchone()
                 if not row:
-                    return Response({"error": {"code": "REFRESH_INVALID", "message": "Invalid or expired refresh token"}}, status=401)
+                    return error_response("REFRESH_INVALID", "Invalid or expired refresh token", 401)
 
                 session_id, user_id, user_type = row
                 cur.execute("UPDATE auth_sessions SET revoked_at = now() WHERE id = %s", [session_id])
@@ -255,7 +247,7 @@ class MeView(APIView):
             row = cur.fetchone()
 
         if not row:
-            return Response({"error": {"code": "NOT_FOUND", "message": "User not found"}}, status=404)
+            return error_response("NOT_FOUND", "User not found", 404)
 
         return Response({"data": {
             "id": str(row[0]), "email": row[1], "displayName": row[2],
@@ -316,7 +308,7 @@ class MeView(APIView):
             row = cur.fetchone()
 
         if not row:
-            return Response({"error": {"code": "NOT_FOUND", "message": "User not found"}}, status=404)
+            return error_response("NOT_FOUND", "User not found", 404)
 
         return Response({"data": {
             "id": str(row[0]), "email": row[1], "displayName": row[2],
@@ -340,14 +332,14 @@ class RegisterView(APIView):
         username_raw = request.data.get("username") or re.sub(r"[^a-z0-9_]", "_", email.split("@")[0].lower())[:30]
 
         if not email or not password or len(password) < 8:
-            return Response({"error": {"code": "VALIDATION_ERROR", "message": "Valid email and password (min 8 chars) required"}}, status=400)
+            return error_response("VALIDATION_ERROR", "Valid email and password (min 8 chars) required", 400)
 
         password_hash = hash_password(password)
 
         with connection.cursor() as cur:
             cur.execute("SELECT id FROM users WHERE email = %s", [email])
             if cur.fetchone():
-                return Response({"error": {"code": "EMAIL_TAKEN", "message": "Email already registered"}}, status=409)
+                return error_response("EMAIL_TAKEN", "Email already registered", 409)
 
             cur.execute("SELECT id FROM users WHERE username = %s", [username_raw])
             if cur.fetchone():
@@ -406,7 +398,7 @@ class ForgotPasswordRequestView(APIView):
 class ForgotPasswordConfirmView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
-        return Response({"error": {"code": "NOT_IMPLEMENTED", "message": "Not yet implemented"}}, status=501)
+        return error_response("NOT_IMPLEMENTED", "Not yet implemented", 501)
 
 
 class EnableSellerView(APIView):
@@ -419,7 +411,7 @@ class EnableSellerView(APIView):
             )
             row = cur.fetchone()
         if not row:
-            return Response({"error": {"code": "ALREADY_SELLER", "message": "Already a seller"}}, status=409)
+            return error_response("ALREADY_SELLER", "Already a seller", 409)
         return Response({"data": {"success": True}})
 
 
@@ -502,6 +494,6 @@ class UserAddressDetailView(APIView):
                 row = cur.fetchone()
 
         if not row:
-            return Response({"error": {"code": "NOT_FOUND", "message": "Address not found"}}, status=404)
+            return error_response("NOT_FOUND", "Address not found", 404)
 
         return Response({"data": {"id": str(row[0])}})

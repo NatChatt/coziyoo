@@ -3,16 +3,12 @@ import uuid
 from django.db import connection, transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from coziyoo.utils import _dictfetchone, _dictfetchall
 
-
-# ── Permissions ───────────────────────────────────────────────────────────────
-
-class IsAppRealm(IsAuthenticated):
-    def has_permission(self, request, view):
-        return super().has_permission(request, view) and getattr(request.user, "realm", None) == "app"
+from apps.common.permissions import IsAppRealm
+from apps.common.responses import error_response
+from apps.notifications.serializers import serialize_chat_message
 
 
 def _resolve_chat_actor(request):
@@ -64,10 +60,7 @@ class MarkReadView(APIView):
             row = cur.fetchone()
 
         if not row:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Notification not found"}},
-                status=404,
-            )
+            return error_response("NOT_FOUND", "Notification not found", 404)
 
         return Response({"data": {"success": True}})
 
@@ -83,16 +76,10 @@ class DeviceTokenView(APIView):
         platform = request.data.get("platform")
 
         if not token or not platform:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "token and platform are required"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "token and platform are required", 400)
 
         if platform not in ("ios", "android"):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "platform must be 'ios' or 'android'"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "platform must be 'ios' or 'android'", 400)
 
         with connection.cursor() as cur:
             cur.execute(
@@ -199,10 +186,7 @@ class ChatBootstrapView(APIView):
         initial_message = str(request.data.get("initialMessage") or "").strip()
 
         if not seller_id:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "sellerId is required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "sellerId is required", status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             with connection.cursor() as cur:
@@ -320,10 +304,7 @@ class ChatMessagesView(APIView):
                         [str(chat_id), user_id],
                     )
                 if cur.fetchone() is None:
-                    return Response(
-                        {"error": {"code": "NOT_FOUND", "message": "Chat not found"}},
-                        status=status.HTTP_404_NOT_FOUND,
-                    )
+                    return error_response("NOT_FOUND", "Chat not found", status.HTTP_404_NOT_FOUND)
 
                 cur.execute(
                     """
@@ -354,19 +335,7 @@ class ChatMessagesView(APIView):
                 )
                 rows = _dictfetchall(cur)
 
-        items = []
-        for row in rows:
-            items.append(
-                {
-                    "id": str(row["id"]),
-                    "senderId": str(row["sender_id"]),
-                    "senderType": row["sender_type"],
-                    "message": row["message"],
-                    "messageType": row["message_type"],
-                    "isRead": bool(row["is_read"]),
-                    "createdAt": row["created_at"].isoformat() if row["created_at"] else None,
-                }
-            )
+        items = [serialize_chat_message(row) for row in rows]
 
         return Response({"data": items})
 
@@ -377,15 +346,9 @@ class ChatMessagesView(APIView):
         message_type = str(request.data.get("messageType") or "text").strip().lower()
 
         if not message:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "message is required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "message is required", status.HTTP_400_BAD_REQUEST)
         if message_type != "text":
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "messageType must be text"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "messageType must be text", status.HTTP_400_BAD_REQUEST)
 
         message_id = str(uuid.uuid4())
 
@@ -412,10 +375,7 @@ class ChatMessagesView(APIView):
                         [str(chat_id), user_id],
                     )
                 if cur.fetchone() is None:
-                    return Response(
-                        {"error": {"code": "NOT_FOUND", "message": "Chat not found"}},
-                        status=status.HTTP_404_NOT_FOUND,
-                    )
+                    return error_response("NOT_FOUND", "Chat not found", status.HTTP_404_NOT_FOUND)
 
                 cur.execute(
                     """
@@ -456,16 +416,4 @@ class ChatMessagesView(APIView):
                         [message, str(chat_id)],
                     )
 
-        return Response(
-            {
-                "data": {
-                    "id": str(row["id"]),
-                    "senderId": str(row["sender_id"]),
-                    "senderType": row["sender_type"],
-                    "message": row["message"],
-                    "messageType": row["message_type"],
-                    "isRead": bool(row["is_read"]),
-                    "createdAt": row["created_at"].isoformat() if row["created_at"] else None,
-                }
-            }
-        )
+        return Response({"data": serialize_chat_message(row)})

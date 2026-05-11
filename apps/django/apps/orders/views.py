@@ -1,5 +1,4 @@
 import json
-import math
 import secrets
 import uuid
 
@@ -10,6 +9,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from coziyoo.utils import _dictfetchone, _dictfetchall
+
+from apps.common.geo import (
+    to_finite_number as _to_finite_number,
+    haversine_km as _haversine_km,
+    estimate_delivery_metrics_from_radius as _estimate_delivery_metrics_from_radius,
+)
+from apps.common.responses import error_response
+from apps.common.serialization import json_dumps as _json_dumps, json_object as _json_object
 
 # ---------------------------------------------------------------------------
 # State machine
@@ -45,33 +52,11 @@ def can_transition(current: str, next_status: str) -> bool:
 def _check_app_auth(request):
     """Return (user, error_response) tuple."""
     if not getattr(request.user, "is_authenticated", False):
-        return None, Response(
-            {"error": {"code": "UNAUTHORIZED", "message": "Authentication required"}},
-            status=status.HTTP_401_UNAUTHORIZED,
-        )
+        return None, error_response("UNAUTHORIZED", "Authentication required", status.HTTP_401_UNAUTHORIZED)
     if getattr(request.user, "realm", None) != "app":
-        return None, Response(
-            {"error": {"code": "FORBIDDEN", "message": "App realm required"}},
-            status=status.HTTP_403_FORBIDDEN,
-        )
+        return None, error_response("FORBIDDEN", "App realm required", status.HTTP_403_FORBIDDEN)
     return request.user, None
 
-
-
-def _json_dumps(value):
-    return json.dumps(value, ensure_ascii=False)
-
-
-def _json_object(value):
-    if isinstance(value, dict):
-        return value
-    if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-        except json.JSONDecodeError:
-            return {}
-        return parsed if isinstance(parsed, dict) else {}
-    return {}
 
 
 def _selected_addons_total(selected_addons):
@@ -107,34 +92,6 @@ def _gated_delivery_address(address_json, *, caller_is_seller: bool, active_deli
     if caller_is_seller and active_delivery_type != "delivery":
         return {"distanceKm": addr.get("distanceKm"), "durationMinutes": addr.get("durationMinutes")}
     return addr
-
-
-def _haversine_km(lat1, lon1, lat2, lon2):
-    """Great-circle distance in km between two (lat, lon) pairs."""
-    R = 6371.0
-    phi1, phi2 = math.radians(float(lat1)), math.radians(float(lat2))
-    dphi = math.radians(float(lat2) - float(lat1))
-    dlambda = math.radians(float(lon2) - float(lon1))
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    return 2 * R * math.asin(math.sqrt(a))
-
-
-def _to_finite_number(value):
-    try:
-        parsed = float(value)
-    except (TypeError, ValueError):
-        return None
-    return parsed if math.isfinite(parsed) else None
-
-
-def _estimate_delivery_metrics_from_radius(radius_km):
-    """Return (distance_km, duration_minutes) estimate when precise coordinates are unavailable."""
-    radius = _to_finite_number(radius_km)
-    if radius is None or radius <= 0:
-        radius = 5.0
-    distance_km = round(max(0.5, min(radius, radius * 0.6)), 2)
-    duration_minutes = int(max(5, round(distance_km / 30 * 60 + 5)))
-    return distance_km, duration_minutes
 
 
 def _normalize_seller_decision(value):
@@ -277,20 +234,11 @@ class OrderListCreateView(APIView):
 
         # --- Basic validation ---
         if not seller_id:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "sellerId is required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "sellerId is required", status.HTTP_400_BAD_REQUEST)
         if not items or not isinstance(items, list) or len(items) == 0:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "items must be a non-empty list"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "items must be a non-empty list", status.HTTP_400_BAD_REQUEST)
         if delivery_type not in ("pickup", "delivery"):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "deliveryType must be pickup or delivery"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "deliveryType must be pickup or delivery", status.HTTP_400_BAD_REQUEST)
 
         buyer_id = str(user.id)
 
@@ -301,28 +249,19 @@ class OrderListCreateView(APIView):
                 [seller_id],
             )
             if cursor.fetchone() is None:
-                return Response(
-                    {"error": {"code": "NOT_FOUND", "message": "Seller not found or not active"}},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+                return error_response("NOT_FOUND", "Seller not found or not active", status.HTTP_404_NOT_FOUND)
 
             normalized_items = []
             lot_ids = []
             food_ids = []
             for item in items:
                 if not isinstance(item, dict):
-                    return Response(
-                        {"error": {"code": "VALIDATION_ERROR", "message": "Each item must be an object"}},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+                    return error_response("VALIDATION_ERROR", "Each item must be an object", status.HTTP_400_BAD_REQUEST)
 
                 lot_id = item.get("lotId")
                 food_id = item.get("foodId")
                 if not lot_id and not food_id:
-                    return Response(
-                        {"error": {"code": "VALIDATION_ERROR", "message": "Each item must have a lotId or foodId"}},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+                    return error_response("VALIDATION_ERROR", "Each item must have a lotId or foodId", status.HTTP_400_BAD_REQUEST)
 
                 normalized_items.append(
                     {
@@ -359,15 +298,7 @@ class OrderListCreateView(APIView):
 
                 invalid_lots = [lot_id for lot_id in lot_ids if lot_id not in lot_details]
                 if invalid_lots:
-                    return Response(
-                        {
-                            "error": {
-                                "code": "VALIDATION_ERROR",
-                                "message": f"Lot(s) not found or not active: {invalid_lots}",
-                            }
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+                    return error_response("VALIDATION_ERROR", f"Lot(s) not found or not active: {invalid_lots}", status.HTTP_400_BAD_REQUEST)
 
             food_prices = {}
             if food_ids:
@@ -380,15 +311,7 @@ class OrderListCreateView(APIView):
 
                 invalid = [food_id for food_id in food_ids if food_id not in food_prices]
                 if invalid:
-                    return Response(
-                        {
-                            "error": {
-                                "code": "VALIDATION_ERROR",
-                                "message": f"Food(s) not found or not active: {invalid}",
-                            }
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+                    return error_response("VALIDATION_ERROR", f"Food(s) not found or not active: {invalid}", status.HTTP_400_BAD_REQUEST)
 
         # 3. Validate quantities and inject prices from DB
         for item in normalized_items:
@@ -401,15 +324,9 @@ class OrderListCreateView(APIView):
             try:
                 item["quantity"] = int(item["quantity"])
             except (ValueError, TypeError):
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "Invalid quantity"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("VALIDATION_ERROR", "Invalid quantity", status.HTTP_400_BAD_REQUEST)
             if item["quantity"] <= 0:
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "quantity must be > 0"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("VALIDATION_ERROR", "quantity must be > 0", status.HTTP_400_BAD_REQUEST)
             addons_total = _selected_addons_total(item.get("selectedAddons"))
             item["lineTotal"] = (item["quantity"] * item["unitPrice"]) + addons_total
 
@@ -538,10 +455,7 @@ class OrderDetailView(APIView):
             order = _dictfetchone(cursor)
 
         if order is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Order not found", status.HTTP_404_NOT_FOUND)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -660,10 +574,7 @@ class OrderStatusView(APIView):
 
         new_status = request.data.get("status") or request.data.get("toStatus")
         if not new_status:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "status is required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "status is required", status.HTTP_400_BAD_REQUEST)
 
         user_id = str(user.id)
         order_id_str = str(order_id)
@@ -676,32 +587,18 @@ class OrderStatusView(APIView):
             order = _dictfetchone(cursor)
 
         if order is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Order not found", status.HTTP_404_NOT_FOUND)
 
         buyer_id = str(order["buyer_id"])
         seller_id = str(order["seller_id"])
         effective_delivery_type = str(order.get("active_delivery_type") or order.get("delivery_type") or "").strip().lower()
 
         if user_id not in (buyer_id, seller_id):
-            return Response(
-                {"error": {"code": "FORBIDDEN", "message": "You are not a participant in this order"}},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return error_response("FORBIDDEN", "You are not a participant in this order", status.HTTP_403_FORBIDDEN)
 
         pickup_buyer_owned_statuses = {"preparing", "ready", "in_delivery", "approaching", "at_door", "delivered", "completed"}
         if effective_delivery_type == "pickup" and user_id == seller_id and str(new_status).strip().lower() in pickup_buyer_owned_statuses:
-            return Response(
-                {
-                    "error": {
-                        "code": "FORBIDDEN",
-                        "message": "Gel al akışını alıcı ilerletir.",
-                    }
-                },
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return error_response("FORBIDDEN", "Gel al akışını alıcı ilerletir.", status.HTTP_403_FORBIDDEN)
 
         current_status = str(order["status"])
         normalized_new_status = str(new_status).strip().lower()
@@ -712,15 +609,7 @@ class OrderStatusView(APIView):
             and current_status in {"paid", "preparing", "ready"}
         )
         if not pickup_fast_start_allowed and not can_transition(current_status, new_status):
-            return Response(
-                {
-                    "error": {
-                        "code": "INVALID_TRANSITION",
-                        "message": f"Cannot transition from '{current_status}' to '{new_status}'",
-                    }
-                },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+            return error_response("INVALID_TRANSITION", f"Cannot transition from '{current_status}' to '{new_status}'", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         with transaction.atomic():
             with connection.cursor() as cursor:
@@ -802,15 +691,9 @@ class OrderCancelView(APIView):
         order_id_str = str(order_id)
         cancel_reason = str(request.data.get("reason") or "").strip()
         if not cancel_reason:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "İptal sebebi zorunludur."}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "İptal sebebi zorunludur.", status.HTTP_400_BAD_REQUEST)
         if len(cancel_reason) > 500:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "İptal sebebi en fazla 500 karakter olabilir."}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "İptal sebebi en fazla 500 karakter olabilir.", status.HTTP_400_BAD_REQUEST)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -820,19 +703,13 @@ class OrderCancelView(APIView):
             order = _dictfetchone(cursor)
 
         if order is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Order not found", status.HTTP_404_NOT_FOUND)
 
         buyer_id = str(order["buyer_id"])
         seller_id = str(order["seller_id"])
 
         if user_id not in (buyer_id, seller_id):
-            return Response(
-                {"error": {"code": "FORBIDDEN", "message": "You are not a participant in this order"}},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return error_response("FORBIDDEN", "You are not a participant in this order", status.HTTP_403_FORBIDDEN)
 
         with transaction.atomic():
             with connection.cursor() as cursor:
@@ -862,15 +739,7 @@ class OrderCancelView(APIView):
                 updated = cursor.fetchone()
 
                 if updated is None:
-                    return Response(
-                        {
-                            "error": {
-                                "code": "INVALID_TRANSITION",
-                                "message": "Order cannot be cancelled in its current state",
-                            }
-                        },
-                        status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    )
+                    return error_response("INVALID_TRANSITION", "Order cannot be cancelled in its current state", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
                 cursor.execute(
                     """
@@ -912,10 +781,7 @@ class BuyerDeliveryRequestView(APIView):
 
         requested_delivery_type = request.data.get("requestedDeliveryType")
         if requested_delivery_type != "delivery":
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "requestedDeliveryType must be delivery"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "requestedDeliveryType must be delivery", status.HTTP_400_BAD_REQUEST)
 
         user_id = str(user.id)
         order_id_str = str(order_id)
@@ -932,23 +798,14 @@ class BuyerDeliveryRequestView(APIView):
             order = _dictfetchone(cursor)
 
         if order is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Order not found", status.HTTP_404_NOT_FOUND)
 
         if str(order["buyer_id"]) != user_id:
-            return Response(
-                {"error": {"code": "FORBIDDEN", "message": "Only the buyer can request delivery"}},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return error_response("FORBIDDEN", "Only the buyer can request delivery", status.HTTP_403_FORBIDDEN)
 
         current_status = str(order["status"] or "")
         if current_status != "pending_seller_approval":
-            return Response(
-                {"error": {"code": "INVALID_STATE", "message": "Delivery can only be requested while seller approval is pending"}},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+            return error_response("INVALID_STATE", "Delivery can only be requested while seller approval is pending", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         if str(order.get("active_delivery_type") or "") == "delivery":
             return Response({"data": {"orderId": order_id_str, "requestedDeliveryType": "delivery", "activeDeliveryType": "delivery"}})
@@ -1112,25 +969,16 @@ class SellerDeliveryRequestResolveView(APIView):
         eta_minutes = request.data.get("etaMinutes")
 
         if delivery_type not in ("pickup", "delivery"):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "deliveryType must be pickup or delivery"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "deliveryType must be pickup or delivery", status.HTTP_400_BAD_REQUEST)
 
         seller_eta_minutes = None
         if eta_minutes not in (None, ""):
             try:
                 seller_eta_minutes = int(eta_minutes)
             except (TypeError, ValueError):
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "etaMinutes must be an integer"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("VALIDATION_ERROR", "etaMinutes must be an integer", status.HTTP_400_BAD_REQUEST)
             if seller_eta_minutes < 0:
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "etaMinutes must be >= 0"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("VALIDATION_ERROR", "etaMinutes must be >= 0", status.HTTP_400_BAD_REQUEST)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1144,29 +992,17 @@ class SellerDeliveryRequestResolveView(APIView):
             order = _dictfetchone(cursor)
 
         if order is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Order not found", status.HTTP_404_NOT_FOUND)
 
         if str(order["seller_id"]) != user_id:
-            return Response(
-                {"error": {"code": "FORBIDDEN", "message": "Only the seller can resolve this request"}},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return error_response("FORBIDDEN", "Only the seller can resolve this request", status.HTTP_403_FORBIDDEN)
 
         current_status = str(order.get("status") or "")
         if current_status != "seller_approved":
-            return Response(
-                {"error": {"code": "INVALID_STATE", "message": "Delivery request can only be resolved after seller approval"}},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+            return error_response("INVALID_STATE", "Delivery request can only be resolved after seller approval", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         if str(order.get("requested_delivery_type") or "") != "delivery" or str(order.get("active_delivery_type") or "") == "delivery":
-            return Response(
-                {"error": {"code": "INVALID_STATE", "message": "There is no pending delivery request to resolve"}},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+            return error_response("INVALID_STATE", "There is no pending delivery request to resolve", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         event_type = "seller_delivery_request_accepted" if delivery_type == "delivery" else "seller_delivery_request_declined"
         next_status = "pending_buyer_confirmation" if delivery_type == "delivery" else current_status
@@ -1314,22 +1150,13 @@ class OrderReviewView(APIView):
         comment = request.data.get("comment", "")
 
         if rating is None:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "rating is required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "rating is required", status.HTTP_400_BAD_REQUEST)
         try:
             rating = int(rating)
         except (ValueError, TypeError):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "rating must be an integer"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "rating must be an integer", status.HTTP_400_BAD_REQUEST)
         if rating < 1 or rating > 5:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "rating must be between 1 and 5"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "rating must be between 1 and 5", status.HTTP_400_BAD_REQUEST)
 
         user_id = str(user.id)
         order_id_str = str(order_id)
@@ -1342,10 +1169,7 @@ class OrderReviewView(APIView):
                     [order_id_str, user_id],
                 )
                 if cursor.fetchone() is not None:
-                    return Response(
-                        {"error": {"code": "CONFLICT", "message": "You have already reviewed this order"}},
-                        status=status.HTTP_409_CONFLICT,
-                    )
+                    return error_response("CONFLICT", "You have already reviewed this order", status.HTTP_409_CONFLICT)
 
                 # Insert review; fails gracefully if order not found / not completed / not buyer
                 cursor.execute(
@@ -1365,15 +1189,7 @@ class OrderReviewView(APIView):
                 inserted = cursor.fetchone()
 
         if inserted is None:
-            return Response(
-                {
-                    "error": {
-                        "code": "FORBIDDEN",
-                        "message": "Order not found, not completed, or you are not the buyer",
-                    }
-                },
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return error_response("FORBIDDEN", "Order not found, not completed, or you are not the buyer", status.HTTP_403_FORBIDDEN)
 
         return Response(
             {"data": {"reviewId": str(inserted[0]), "orderId": order_id_str, "rating": rating}},
@@ -1401,15 +1217,7 @@ class SellerDecisionView(APIView):
         eta_minutes = request.data.get("etaMinutes")
 
         if decision not in self.DECISION_STATUS_MAP:
-            return Response(
-                {
-                    "error": {
-                        "code": "VALIDATION_ERROR",
-                        "message": "decision must be one of: approved, rejected, revised",
-                    }
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "decision must be one of: approved, rejected, revised", status.HTTP_400_BAD_REQUEST)
 
         user_id = str(user.id)
         order_id_str = str(order_id)
@@ -1422,16 +1230,10 @@ class SellerDecisionView(APIView):
             order = _dictfetchone(cursor)
 
         if order is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Order not found", status.HTTP_404_NOT_FOUND)
 
         if str(order["seller_id"]) != user_id:
-            return Response(
-                {"error": {"code": "FORBIDDEN", "message": "Only the seller can make this decision"}},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return error_response("FORBIDDEN", "Only the seller can make this decision", status.HTTP_403_FORBIDDEN)
 
         current_status = order["status"]
         new_status = self.DECISION_STATUS_MAP[decision]
@@ -1446,52 +1248,22 @@ class SellerDecisionView(APIView):
             new_status = "pending_buyer_confirmation"
 
         if decision == "revised" and current_status not in ("pending", "pending_seller_approval"):
-            return Response(
-                {
-                    "error": {
-                        "code": "INVALID_TRANSITION",
-                        "message": "revised decision is only valid for pending seller approval orders",
-                    }
-                },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+            return error_response("INVALID_TRANSITION", "revised decision is only valid for pending seller approval orders", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         if decision != "revised" and not can_transition(current_status, new_status):
-            return Response(
-                {
-                    "error": {
-                        "code": "INVALID_TRANSITION",
-                        "message": f"Cannot apply decision '{decision}' when order is '{current_status}'",
-                    }
-                },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+            return error_response("INVALID_TRANSITION", f"Cannot apply decision '{decision}' when order is '{current_status}'", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         if requested_delivery_type not in (None, "", "pickup", "delivery"):
-            return Response(
-                {
-                    "error": {
-                        "code": "VALIDATION_ERROR",
-                        "message": "deliveryType must be pickup or delivery",
-                    }
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "deliveryType must be pickup or delivery", status.HTTP_400_BAD_REQUEST)
 
         seller_eta_minutes = None
         if eta_minutes not in (None, ""):
             try:
                 seller_eta_minutes = int(eta_minutes)
             except (TypeError, ValueError):
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "etaMinutes must be an integer"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("VALIDATION_ERROR", "etaMinutes must be an integer", status.HTTP_400_BAD_REQUEST)
             if seller_eta_minutes < 0:
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "etaMinutes must be >= 0"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("VALIDATION_ERROR", "etaMinutes must be >= 0", status.HTTP_400_BAD_REQUEST)
 
         metadata = {
             "decision": decision,
@@ -1583,10 +1355,7 @@ class BuyerConfirmTermsView(APIView):
 
         confirm = request.data.get("confirm")
         if confirm is None:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "confirm field is required (true or false)"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "confirm field is required (true or false)", status.HTTP_400_BAD_REQUEST)
 
         user_id = str(user.id)
         order_id_str = str(order_id)
@@ -1599,16 +1368,10 @@ class BuyerConfirmTermsView(APIView):
             order = _dictfetchone(cursor)
 
         if order is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Sipariş bulunamadı."}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Sipariş bulunamadı.", status.HTTP_404_NOT_FOUND)
 
         if str(order["buyer_id"]) != user_id:
-            return Response(
-                {"error": {"code": "FORBIDDEN", "message": "Only the buyer can confirm terms"}},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return error_response("FORBIDDEN", "Only the buyer can confirm terms", status.HTTP_403_FORBIDDEN)
 
         current_status = str(order.get("status") or "")
         requested_delivery_type = str(order.get("requested_delivery_type") or "")
@@ -1632,10 +1395,7 @@ class BuyerConfirmTermsView(APIView):
         )
 
         if current_status != "pending_buyer_confirmation" and not allow_delivery_confirmation:
-            return Response(
-                {"error": {"code": "INVALID_STATE", "message": "Bu sipariş onay beklemiyor."}},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+            return error_response("INVALID_STATE", "Bu sipariş onay beklemiyor.", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         if confirm:
             # Buyer is the final approver in delivery-request flow.
@@ -1732,10 +1492,10 @@ class OrderNotesView(APIView):
         order = self._get_order_parties(order_id_str)
 
         if order is None:
-            return Response({"error": {"code": "NOT_FOUND", "message": "Sipariş bulunamadı."}}, status=status.HTTP_404_NOT_FOUND)
+            return error_response("NOT_FOUND", "Sipariş bulunamadı.", status.HTTP_404_NOT_FOUND)
 
         if user_id not in (str(order['buyer_id']), str(order['seller_id'])):
-            return Response({"error": {"code": "FORBIDDEN", "message": "Erişim reddedildi."}}, status=status.HTTP_403_FORBIDDEN)
+            return error_response("FORBIDDEN", "Erişim reddedildi.", status.HTTP_403_FORBIDDEN)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1774,13 +1534,13 @@ class OrderNotesView(APIView):
         message = (request.data.get('message') or '').strip()
 
         if not message:
-            return Response({"error": {"code": "VALIDATION_ERROR", "message": "Mesaj boş olamaz."}}, status=status.HTTP_400_BAD_REQUEST)
+            return error_response("VALIDATION_ERROR", "Mesaj boş olamaz.", status.HTTP_400_BAD_REQUEST)
         if len(message) > 500:
-            return Response({"error": {"code": "VALIDATION_ERROR", "message": "Mesaj en fazla 500 karakter olabilir."}}, status=status.HTTP_400_BAD_REQUEST)
+            return error_response("VALIDATION_ERROR", "Mesaj en fazla 500 karakter olabilir.", status.HTTP_400_BAD_REQUEST)
 
         order = self._get_order_parties(order_id_str)
         if order is None:
-            return Response({"error": {"code": "NOT_FOUND", "message": "Sipariş bulunamadı."}}, status=status.HTTP_404_NOT_FOUND)
+            return error_response("NOT_FOUND", "Sipariş bulunamadı.", status.HTTP_404_NOT_FOUND)
 
         buyer_id = str(order['buyer_id'])
         seller_id = str(order['seller_id'])
@@ -1792,10 +1552,10 @@ class OrderNotesView(APIView):
             event_type = 'seller_note'
             sender_role = 'seller'
         else:
-            return Response({"error": {"code": "FORBIDDEN", "message": "Erişim reddedildi."}}, status=status.HTTP_403_FORBIDDEN)
+            return error_response("FORBIDDEN", "Erişim reddedildi.", status.HTTP_403_FORBIDDEN)
 
         if order['status'] in self.NON_MESSAGEABLE_STATUSES:
-            return Response({"error": {"code": "INVALID_STATE", "message": "Bu sipariş için not gönderilemez."}}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+            return error_response("INVALID_STATE", "Bu sipariş için not gönderilemez.", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         note_id = str(uuid.uuid4())
         with transaction.atomic():
@@ -1867,16 +1627,10 @@ class DeliveryProofView(APIView):
             order = _dictfetchone(cursor)
 
         if order is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Order not found", status.HTTP_404_NOT_FOUND)
 
         if str(order["buyer_id"]) != user_id:
-            return Response(
-                {"error": {"code": "FORBIDDEN", "message": "Only the buyer can view the delivery PIN"}},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return error_response("FORBIDDEN", "Only the buyer can view the delivery PIN", status.HTTP_403_FORBIDDEN)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1891,10 +1645,7 @@ class DeliveryProofView(APIView):
             proof = _dictfetchone(cursor)
 
         if proof is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Delivery proof record not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Delivery proof record not found", status.HTTP_404_NOT_FOUND)
 
         # Allow buyer screen to resolve gracefully after seller verification.
         # If order moved forward (delivered/completed) and proof is verified,
@@ -1912,10 +1663,7 @@ class DeliveryProofView(APIView):
                         "status": "verified",
                     }
                 })
-            return Response(
-                {"error": {"code": "INVALID_STATE", "message": "Delivery PIN is only available when order is at_door"}},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+            return error_response("INVALID_STATE", "Delivery PIN is only available when order is at_door", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         meta = _json_object(proof["metadata_json"])
         plain_pin = meta.get("pin") if proof["status"] == "pending" else None
@@ -1948,10 +1696,7 @@ class VerifyDeliveryPinView(APIView):
         submitted_pin = str(request.data.get("pin") or "").strip()
 
         if not submitted_pin:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "pin is required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "pin is required", status.HTTP_400_BAD_REQUEST)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1961,22 +1706,13 @@ class VerifyDeliveryPinView(APIView):
             order = _dictfetchone(cursor)
 
         if order is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Order not found", status.HTTP_404_NOT_FOUND)
 
         if str(order["seller_id"]) != user_id:
-            return Response(
-                {"error": {"code": "FORBIDDEN", "message": "Only the seller can verify the delivery PIN"}},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return error_response("FORBIDDEN", "Only the seller can verify the delivery PIN", status.HTTP_403_FORBIDDEN)
 
         if order["status"] != "at_door":
-            return Response(
-                {"error": {"code": "INVALID_STATE", "message": "PIN verification is only valid when order is at_door"}},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+            return error_response("INVALID_STATE", "PIN verification is only valid when order is at_door", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1986,16 +1722,10 @@ class VerifyDeliveryPinView(APIView):
             proof = _dictfetchone(cursor)
 
         if proof is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Delivery proof record not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Delivery proof record not found", status.HTTP_404_NOT_FOUND)
 
         if proof["status"] in ("verified", "failed"):
-            return Response(
-                {"error": {"code": "INVALID_STATE", "message": f"Delivery proof is already {proof['status']}"}},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
+            return error_response("INVALID_STATE", f"Delivery proof is already {proof['status']}", status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         attempts = int(proof["verification_attempts"] or 0)
 
@@ -2005,10 +1735,7 @@ class VerifyDeliveryPinView(APIView):
                     "UPDATE delivery_proof_records SET status = 'failed', metadata_json = NULL WHERE order_id = %s",
                     [order_id_str],
                 )
-            return Response(
-                {"error": {"code": "TOO_MANY_ATTEMPTS", "message": "Maximum PIN attempts exceeded"}},
-                status=status.HTTP_423_LOCKED,
-            )
+            return error_response("TOO_MANY_ATTEMPTS", "Maximum PIN attempts exceeded", status.HTTP_423_LOCKED)
 
         pin_valid = check_password(submitted_pin, proof["pin_hash"])
 

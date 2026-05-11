@@ -2,14 +2,9 @@ import uuid
 from django.db import connection, transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 
-
-# ── Permissions ───────────────────────────────────────────────────────────────
-
-class IsAppRealm(IsAuthenticated):
-    def has_permission(self, request, view):
-        return super().has_permission(request, view) and getattr(request.user, "realm", None) == "app"
+from apps.common.permissions import IsAppRealm
+from apps.common.responses import error_response
 
 
 # ── Payment Status ────────────────────────────────────────────────────────────
@@ -28,10 +23,7 @@ class PaymentStatusView(APIView):
             order_row = cur.fetchone()
 
         if not order_row:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
-                status=404,
-            )
+            return error_response("NOT_FOUND", "Order not found", 404)
 
         order_status = order_row[0]
 
@@ -78,10 +70,7 @@ class PaymentInitView(APIView):
     def post(self, request):
         order_id = request.data.get("orderId")
         if not order_id:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "orderId is required"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "orderId is required", 400)
 
         user_id = request.user.id
 
@@ -98,10 +87,7 @@ class PaymentInitView(APIView):
                 order = cur.fetchone()
 
             if not order:
-                return Response(
-                    {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
-                    status=404,
-                )
+                return error_response("NOT_FOUND", "Order not found", 404)
 
             db_order_id, status, _, buyer_id, seller_decision_state = order
 
@@ -113,16 +99,10 @@ class PaymentInitView(APIView):
                 "paid",
                 "preparing",
             ):
-                return Response(
-                    {"error": {"code": "INVALID_ORDER_STATUS", "message": f"Order status '{status}' does not allow payment"}},
-                    status=409,
-                )
+                return error_response("INVALID_ORDER_STATUS", f"Order status '{status}' does not allow payment", 409)
 
             if status in ("seller_approved", "awaiting_payment", "paid", "preparing") and seller_decision_state not in ("approved", None):
-                return Response(
-                    {"error": {"code": "SELLER_NOT_APPROVED", "message": "Satıcı onayı bekleniyor"}},
-                    status=409,
-                )
+                return error_response("SELLER_NOT_APPROVED", "Satıcı onayı bekleniyor", 409)
 
             attempt_id = str(uuid.uuid4())
             provider_session_id = str(uuid.uuid4())
@@ -176,16 +156,10 @@ class MockProcessView(APIView):
         result = request.data.get("result", "success")
 
         if not order_id and not session_id:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "orderId or sessionId is required"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "orderId or sessionId is required", 400)
 
         if result not in ("success", "failed"):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "result must be 'success' or 'failed'"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "result must be 'success' or 'failed'", 400)
 
         with transaction.atomic():
             with connection.cursor() as cur:
@@ -210,10 +184,7 @@ class MockProcessView(APIView):
                 row = cur.fetchone()
 
             if not row:
-                return Response(
-                    {"error": {"code": "NOT_FOUND", "message": "No pending payment attempt found for this order"}},
-                    status=404,
-                )
+                return error_response("NOT_FOUND", "No pending payment attempt found for this order", 404)
 
             attempt_id, resolved_order_id = row
             order_id = resolved_order_id

@@ -2,14 +2,11 @@ import json
 import uuid
 
 from django.db import connection, ProgrammingError
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-
-class IsAppRealm(IsAuthenticated):
-    def has_permission(self, request, view):
-        return super().has_permission(request, view) and getattr(request.user, "realm", None) == "app"
+from apps.common.permissions import IsAppRealm
+from apps.common.responses import error_response
 
 
 def _actor_role(request):
@@ -108,16 +105,10 @@ class ComplaintListCreateView(APIView):
         order_id = request.data.get("orderId")
 
         if not category_code or not description:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "category and description are required"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "category and description are required", 400)
 
         if not order_id:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "orderId is required"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "orderId is required", 400)
 
         with connection.cursor() as cur:
             cur.execute(
@@ -133,10 +124,7 @@ class ComplaintListCreateView(APIView):
                 [order_id, user_id],
             )
             if not cur.fetchone():
-                return Response(
-                    {"error": {"code": "NOT_FOUND", "message": "Order not found"}},
-                    status=404,
-                )
+                return error_response("NOT_FOUND", "Order not found", 404)
 
         with connection.cursor() as cur:
             cur.execute(
@@ -152,15 +140,7 @@ class ComplaintListCreateView(APIView):
             )
             existing = cur.fetchone()
             if existing:
-                return Response(
-                    {
-                        "error": {
-                            "code": "DUPLICATE_COMPLAINT",
-                            "message": "A complaint already exists for this order",
-                        }
-                    },
-                    status=409,
-                )
+                return error_response("DUPLICATE_COMPLAINT", "A complaint already exists for this order", 409)
 
         with connection.cursor() as cur:
             cur.execute(
@@ -227,10 +207,7 @@ class ComplaintDetailView(APIView):
             row = cur.fetchone()
 
         if not row:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Ticket not found"}},
-                status=404,
-            )
+            return error_response("NOT_FOUND", "Ticket not found", 404)
 
         cols = ["id", "orderId", "status", "priority", "description", "createdAt",
                 "ticketNo", "categoryName", "resolutionNote", "complainantId"]
@@ -337,10 +314,7 @@ class ComplaintMessagesView(APIView):
         body = (request.data.get("body") or request.data.get("message") or "").strip()
 
         if not body:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "body is required"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "body is required", 400)
 
         with connection.cursor() as cur:
             if actor_role == "seller":
@@ -377,16 +351,10 @@ class ComplaintMessagesView(APIView):
                 )
             complaint_row = cur.fetchone()
             if not complaint_row:
-                return Response(
-                    {"error": {"code": "NOT_FOUND", "message": "Ticket not found"}},
-                    status=404,
-                )
+                return error_response("NOT_FOUND", "Ticket not found", 404)
             complaint_status = str(complaint_row[1] or "").strip().lower()
             if complaint_status in {"resolved", "closed"}:
-                return Response(
-                    {"error": {"code": "TICKET_CLOSED", "message": "Ticket is closed for messaging"}},
-                    status=409,
-                )
+                return error_response("TICKET_CLOSED", "Ticket is closed for messaging", 409)
             assigned_admin_id = complaint_row[2]
             ticket_no = complaint_row[3]
 
@@ -409,10 +377,7 @@ class ComplaintMessagesView(APIView):
                 )
                 admin_started = cur.fetchone() is not None
                 if not admin_started:
-                    return Response(
-                        {"error": {"code": "ADMIN_REPLY_REQUIRED", "message": "Admin must send the first reply"}},
-                        status=409,
-                    )
+                    return error_response("ADMIN_REPLY_REQUIRED", "Admin must send the first reply", 409)
 
                 cur.execute(
                     """
@@ -498,10 +463,7 @@ class ComplaintMessagesView(APIView):
                         )
         except ProgrammingError as exc:
             if "ticket_messages" in str(exc) or "does not exist" in str(exc):
-                return Response(
-                    {"error": {"code": "NOT_IMPLEMENTED", "message": "Ticket messages are not yet available"}},
-                    status=501,
-                )
+                return error_response("NOT_IMPLEMENTED", "Ticket messages are not yet available", 501)
             raise
 
         return Response({"data": {"id": message_id}}, status=201)

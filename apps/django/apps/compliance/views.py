@@ -3,6 +3,7 @@ from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from apps.common.responses import error_response
 from coziyoo import s3 as s3_utils
 
 
@@ -10,7 +11,7 @@ from coziyoo import s3 as s3_utils
 
 def _require_app(request):
     if not request.user.is_authenticated or request.user.realm != 'app':
-        return Response({"error": {"code": "UNAUTHORIZED", "message": "Authentication required"}}, status=401)
+        return error_response("UNAUTHORIZED", "Authentication required", 401)
     return None
 
 
@@ -69,10 +70,7 @@ class SellerComplianceSubmitView(APIView):
             count = cur.fetchone()[0]
 
         if count == 0:
-            return Response(
-                {"error": {"code": "NO_DOCUMENTS", "message": "Upload at least one document first"}},
-                status=400,
-            )
+            return error_response("NO_DOCUMENTS", "Upload at least one document first", 400)
 
         return Response({"data": {"success": True, "status": "under_review"}})
 
@@ -109,10 +107,7 @@ class SellerDocumentListView(APIView):
         notes = request.data.get("notes", "")
 
         if not document_list_id or not file_url:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "documentListId and fileUrl are required"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "documentListId and fileUrl are required", 400)
 
         with connection.cursor() as cur:
             cur.execute(
@@ -140,10 +135,7 @@ class SellerDocumentPresignView(APIView):
             return err
 
         if not s3_utils.is_configured():
-            return Response(
-                {"error": {"code": "STORAGE_NOT_CONFIGURED", "message": "S3 storage is not configured"}},
-                status=503,
-            )
+            return error_response("STORAGE_NOT_CONFIGURED", "S3 storage is not configured", 503)
 
         _ALLOWED_EXTENSIONS = {
             ".pdf": "application/pdf",
@@ -158,17 +150,11 @@ class SellerDocumentPresignView(APIView):
         file_name = request.data.get("fileName", "document.bin")
 
         if not doc_type:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "docType is required"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "docType is required", 400)
 
         ext = "." + file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
         if ext not in _ALLOWED_EXTENSIONS:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "Desteklenmeyen dosya türü. İzin verilenler: PDF, JPG, PNG, DOC, DOCX"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "Desteklenmeyen dosya türü. İzin verilenler: PDF, JPG, PNG, DOC, DOCX", 400)
         content_type = _ALLOWED_EXTENSIONS[ext]
 
         with connection.cursor() as cur:
@@ -177,10 +163,7 @@ class SellerDocumentPresignView(APIView):
                 [doc_type],
             )
             if cur.fetchone() is None:
-                return Response(
-                    {"error": {"code": "DOCUMENT_TYPE_NOT_FOUND", "message": "Document type not found"}},
-                    status=404,
-                )
+                return error_response("DOCUMENT_TYPE_NOT_FOUND", "Document type not found", 404)
 
         seller_id = str(request.user.id)
         bucket = settings.S3_BUCKET_SELLER_DOCS
@@ -236,10 +219,7 @@ class SellerOptionalUploadsView(APIView):
         notes = request.data.get("notes", "")
 
         if not name or not file_url:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "name and fileUrl are required"}},
-                status=400,
-            )
+            return error_response("VALIDATION_ERROR", "name and fileUrl are required", 400)
 
         with connection.cursor() as cur:
             cur.execute(

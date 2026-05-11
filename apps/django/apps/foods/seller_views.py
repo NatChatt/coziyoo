@@ -5,38 +5,31 @@ but role enforcement is left to the JWT payload (role == 'seller').
 """
 import json
 import logging
-import math
 import uuid
 from datetime import datetime
 
 from django.db import DatabaseError, connection, transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from coziyoo import s3 as s3_utils
+
+from apps.common.permissions import IsAppRealm
+from apps.common.responses import error_response
+from apps.common.db import (
+    rows_as_dicts as _rows_as_dicts,
+    row_as_dict as _row_as_dict,
+    stringify_uuids as _stringify_uuids,
+)
+from apps.common.geo import (
+    to_finite_number as _to_finite_number,
+    haversine_km as _haversine_km,
+    estimate_delivery_metrics_from_radius as _estimate_delivery_metrics_from_radius,
+)
 
 logger = logging.getLogger(__name__)
 
 _LOT_ACTIVE_STATUS_CACHE = None
-
-
-class IsAppRealm(IsAuthenticated):
-    def has_permission(self, request, view):
-        return super().has_permission(request, view) and getattr(request.user, "realm", None) == "app"
-
-
-def _rows_as_dicts(cursor):
-    """Convert cursor results to list of dicts using cursor.description."""
-    cols = [col.name for col in cursor.description]
-    return [dict(zip(cols, row)) for row in cursor.fetchall()]
-
-
-def _row_as_dict(cursor):
-    """Return first row as dict, or None if no rows."""
-    cols = [col.name for col in cursor.description]
-    row = cursor.fetchone()
-    return dict(zip(cols, row)) if row else None
 
 
 def _has_users_column(column_name):
@@ -54,14 +47,6 @@ def _has_users_column(column_name):
             [column_name],
         )
         return bool(cursor.fetchone()[0])
-
-
-def _stringify_uuids(obj, fields):
-    """Convert UUID fields to strings in-place."""
-    for f in fields:
-        if obj.get(f) is not None:
-            obj[f] = str(obj[f])
-    return obj
 
 
 _JSON_ARRAY_FIELDS = [
@@ -123,35 +108,6 @@ def _parse_iso(value):
     return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
 
 
-def _to_finite_number(value):
-    try:
-        num = float(value)
-    except (TypeError, ValueError):
-        return None
-    return num if math.isfinite(num) else None
-
-
-def _haversine_km(lat1, lon1, lat2, lon2):
-    """Great-circle distance in km between two (lat, lon) pairs."""
-    radius_km = 6371.0
-    phi1 = math.radians(float(lat1))
-    phi2 = math.radians(float(lat2))
-    dphi = math.radians(float(lat2) - float(lat1))
-    dlambda = math.radians(float(lon2) - float(lon1))
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    return 2 * radius_km * math.asin(math.sqrt(a))
-
-
-def _estimate_delivery_metrics_from_radius(radius_km):
-    """Return (distance_km, duration_minutes) estimate when precise coordinates are unavailable."""
-    radius = _to_finite_number(radius_km)
-    if radius is None or radius <= 0:
-        radius = 5.0
-    distance_km = round(max(0.5, min(radius, radius * 0.6)), 2)
-    duration_minutes = int(max(5, round(distance_km / 30 * 60 + 5)))
-    return distance_km, duration_minutes
-
-
 class SellerProfileView(APIView):
     """GET /v1/seller/profile — Fetch own seller profile.
     PUT /v1/seller/profile — Update seller profile fields."""
@@ -179,10 +135,7 @@ class SellerProfileView(APIView):
             profile = _row_as_dict(cursor)
 
         if profile is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "User not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "User not found", status.HTTP_404_NOT_FOUND)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -284,10 +237,7 @@ class SellerProfileView(APIView):
             row = cursor.fetchone()
 
         if row is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "User not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "User not found", status.HTTP_404_NOT_FOUND)
 
         return Response({"data": {"id": str(row[0])}})
 
@@ -376,10 +326,7 @@ class SellerFoodListView(APIView):
         )
 
         if not name or price is None:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "name and price are required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "name and price are required", status.HTTP_400_BAD_REQUEST)
 
         description = data.get("description")
         card_summary = data.get("cardSummary")
@@ -403,48 +350,25 @@ class SellerFoodListView(APIView):
             try:
                 initial_stock = int(initial_stock)
             except (TypeError, ValueError):
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "initialStock must be an integer"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("VALIDATION_ERROR", "initialStock must be an integer", status.HTTP_400_BAD_REQUEST)
 
             if initial_stock < 1:
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "initialStock must be greater than 0"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("VALIDATION_ERROR", "initialStock must be greater than 0", status.HTTP_400_BAD_REQUEST)
 
             if not initial_sale_starts_at or not initial_sale_ends_at:
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "initialSaleStartsAt and initialSaleEndsAt are required"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("VALIDATION_ERROR", "initialSaleStartsAt and initialSaleEndsAt are required", status.HTTP_400_BAD_REQUEST)
 
             try:
                 sale_start_dt = _parse_iso(initial_sale_starts_at)
                 sale_end_dt = _parse_iso(initial_sale_ends_at)
             except (TypeError, ValueError):
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "Invalid initial sale window"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("VALIDATION_ERROR", "Invalid initial sale window", status.HTTP_400_BAD_REQUEST)
 
             if sale_start_dt > sale_end_dt:
-                return Response(
-                    {"error": {"code": "VALIDATION_ERROR", "message": "initialSaleStartsAt must be before initialSaleEndsAt"}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("VALIDATION_ERROR", "initialSaleStartsAt must be before initialSaleEndsAt", status.HTTP_400_BAD_REQUEST)
 
             if not recipe or not ingredients or not allergens:
-                return Response(
-                    {
-                        "error": {
-                            "code": "LOT_SNAPSHOT_REQUIRED",
-                            "message": "Recipe, ingredients, and allergens must be defined before creating the first lot",
-                        }
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return error_response("LOT_SNAPSHOT_REQUIRED", "Recipe, ingredients, and allergens must be defined before creating the first lot", status.HTTP_400_BAD_REQUEST)
 
         sql = """
             INSERT INTO foods
@@ -460,10 +384,7 @@ class SellerFoodListView(APIView):
             active_lot_status = _resolve_lot_active_status()
         except DatabaseError as exc:
             logger.exception("Failed to resolve lot active status")
-            return Response(
-                {"error": {"code": "DB_ERROR", "message": f"Veritabanı hatası: {exc}"}},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            return error_response("DB_ERROR", f"Veritabanı hatası: {exc}", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         now = datetime.utcnow()
         produced_at = now.isoformat() + "Z"
@@ -551,10 +472,7 @@ class SellerFoodListView(APIView):
                         )
         except DatabaseError as exc:
             logger.exception("Database error while creating food for seller %s", request.user.id)
-            return Response(
-                {"error": {"code": "DB_ERROR", "message": f"Veritabanı hatası: {exc}"}},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            return error_response("DB_ERROR", f"Veritabanı hatası: {exc}", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         payload = {"id": food_id, "foodId": food_id}
         if lot_id:
@@ -619,10 +537,7 @@ class SellerFoodDetailView(APIView):
             params.append(first_image_url)
 
         if not set_clauses:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "No updatable fields provided"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "No updatable fields provided", status.HTTP_400_BAD_REQUEST)
 
         set_clauses.append("updated_at = now()")
         set_sql = ", ".join(set_clauses)
@@ -639,10 +554,7 @@ class SellerFoodDetailView(APIView):
             row = cursor.fetchone()
 
         if row is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Food not found or does not belong to seller"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Food not found or does not belong to seller", status.HTTP_404_NOT_FOUND)
 
         return Response({"data": {"id": str(row[0]), "foodId": str(row[0])}})
 
@@ -655,10 +567,7 @@ class SellerFoodStatusView(APIView):
     def patch(self, request, food_id):
         is_active = request.data.get("isActive")
         if is_active is None:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "isActive is required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "isActive is required", status.HTTP_400_BAD_REQUEST)
 
         sql = """
             UPDATE foods
@@ -671,10 +580,7 @@ class SellerFoodStatusView(APIView):
             row = cursor.fetchone()
 
         if row is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Food not found or does not belong to seller"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Food not found or does not belong to seller", status.HTTP_404_NOT_FOUND)
 
         return Response({"data": {"id": str(row[0]), "isActive": bool(is_active)}})
 
@@ -949,25 +855,16 @@ class SellerLotListView(APIView):
             if value in (None, "")
         ]
         if missing:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": f"Missing required fields: {', '.join(missing)}"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", f"Missing required fields: {', '.join(missing)}", status.HTTP_400_BAD_REQUEST)
 
         try:
             quantity_produced = int(quantity_produced)
             quantity_available = int(quantity_available)
         except (TypeError, ValueError):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "quantityProduced and quantityAvailable must be integers"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "quantityProduced and quantityAvailable must be integers", status.HTTP_400_BAD_REQUEST)
 
         if quantity_produced < 1 or quantity_available < 0 or quantity_available > quantity_produced:
-            return Response(
-                {"error": {"code": "LOT_INVALID_QUANTITY", "message": "Available cannot exceed produced"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("LOT_INVALID_QUANTITY", "Available cannot exceed produced", status.HTTP_400_BAD_REQUEST)
 
         def _parse_iso(value):
             return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
@@ -979,16 +876,10 @@ class SellerLotListView(APIView):
             use_by_dt = _parse_iso(use_by) if use_by else None
             best_before_dt = _parse_iso(best_before) if best_before else None
         except (TypeError, ValueError):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "Invalid ISO datetime payload"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "Invalid ISO datetime payload", status.HTTP_400_BAD_REQUEST)
 
         if produced_dt > sale_start_dt or sale_start_dt > sale_end_dt:
-            return Response(
-                {"error": {"code": "LOT_INVALID_TIMELINE", "message": "producedAt must be before saleStartsAt and saleStartsAt before saleEndsAt"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("LOT_INVALID_TIMELINE", "producedAt must be before saleStartsAt and saleStartsAt before saleEndsAt", status.HTTP_400_BAD_REQUEST)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1002,10 +893,7 @@ class SellerLotListView(APIView):
             food = _row_as_dict(cursor)
 
         if food is None:
-            return Response(
-                {"error": {"code": "FOOD_NOT_FOUND", "message": "Food not found in seller scope"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("FOOD_NOT_FOUND", "Food not found in seller scope", status.HTTP_404_NOT_FOUND)
 
         if not has_all_snapshot_overrides:
             missing_fields = []
@@ -1099,10 +987,7 @@ class SellerLotDetailView(APIView):
         quantity_available = data.get("quantityAvailable")
 
         if sale_starts_at in (None, "") and sale_ends_at in (None, "") and quantity_available in (None, ""):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "saleStartsAt, saleEndsAt, or quantityAvailable is required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "saleStartsAt, saleEndsAt, or quantityAvailable is required", status.HTTP_400_BAD_REQUEST)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1117,10 +1002,7 @@ class SellerLotDetailView(APIView):
             current_lot = _row_as_dict(cursor)
 
         if current_lot is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Lot not found or does not belong to seller"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Lot not found or does not belong to seller", status.HTTP_404_NOT_FOUND)
 
         try:
             next_quantity_available = (
@@ -1130,16 +1012,10 @@ class SellerLotDetailView(APIView):
             )
             current_quantity_produced = int(current_lot["quantity_produced"])
         except (TypeError, ValueError):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "quantityAvailable must be an integer"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "quantityAvailable must be an integer", status.HTTP_400_BAD_REQUEST)
 
         if next_quantity_available < 0:
-            return Response(
-                {"error": {"code": "LOT_INVALID_QUANTITY", "message": "quantityAvailable cannot be negative"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("LOT_INVALID_QUANTITY", "quantityAvailable cannot be negative", status.HTTP_400_BAD_REQUEST)
 
         next_quantity_produced = max(current_quantity_produced, next_quantity_available)
 
@@ -1148,16 +1024,10 @@ class SellerLotDetailView(APIView):
             sale_start_dt = _parse_iso(sale_starts_at) if sale_starts_at not in (None, "") else _parse_iso(current_lot["sale_starts_at"])
             sale_end_dt = _parse_iso(sale_ends_at) if sale_ends_at not in (None, "") else _parse_iso(current_lot["sale_ends_at"])
         except (TypeError, ValueError):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "Invalid ISO datetime payload"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "Invalid ISO datetime payload", status.HTTP_400_BAD_REQUEST)
 
         if produced_dt > sale_start_dt or sale_start_dt > sale_end_dt:
-            return Response(
-                {"error": {"code": "LOT_INVALID_TIMELINE", "message": "producedAt must be before saleStartsAt and saleStartsAt before saleEndsAt"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("LOT_INVALID_TIMELINE", "producedAt must be before saleStartsAt and saleStartsAt before saleEndsAt", status.HTTP_400_BAD_REQUEST)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1198,18 +1068,12 @@ class SellerLotAdjustView(APIView):
         active_lot_status = _resolve_lot_active_status()
 
         if delta is None:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "delta is required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "delta is required", status.HTTP_400_BAD_REQUEST)
 
         try:
             delta = int(delta)
         except (ValueError, TypeError):
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "delta must be an integer"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "delta must be an integer", status.HTTP_400_BAD_REQUEST)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1223,18 +1087,12 @@ class SellerLotAdjustView(APIView):
             current = _row_as_dict(cursor)
 
         if current is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Lot not found or does not belong to seller"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Lot not found or does not belong to seller", status.HTTP_404_NOT_FOUND)
 
         next_quantity = int(current.get("quantity_available") or 0) + delta
         quantity_produced = int(current.get("quantity_produced") or 0)
         if next_quantity < 0 or next_quantity > quantity_produced:
-            return Response(
-                {"error": {"code": "LOT_INVALID_QUANTITY", "message": "Available cannot be negative or exceed produced"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("LOT_INVALID_QUANTITY", "Available cannot be negative or exceed produced", status.HTTP_400_BAD_REQUEST)
 
         sql = """
             UPDATE production_lots
@@ -1285,16 +1143,10 @@ class SellerLotRecallView(APIView):
             lot = _row_as_dict(cursor)
 
         if lot is None:
-            return Response(
-                {"error": {"code": "LOT_NOT_FOUND", "message": "Lot not found in seller scope"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("LOT_NOT_FOUND", "Lot not found in seller scope", status.HTTP_404_NOT_FOUND)
 
         if lot.get("status") == "recalled":
-            return Response(
-                {"error": {"code": "LOT_ALREADY_RECALLED", "message": "Lot is already recalled"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("LOT_ALREADY_RECALLED", "Lot is already recalled", status.HTTP_400_BAD_REQUEST)
 
         with connection.cursor() as cursor:
             cursor.execute(

@@ -1,14 +1,9 @@
 from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 
-
-# ── Permissions ───────────────────────────────────────────────────────────────
-
-class IsAppRealm(IsAuthenticated):
-    def has_permission(self, request, view):
-        return super().has_permission(request, view) and getattr(request.user, "realm", None) == "app"
+from apps.common.permissions import IsAppRealm
+from apps.common.responses import error_response
 
 
 # ── Seller Finance Summary ────────────────────────────────────────────────────
@@ -19,10 +14,7 @@ class SellerFinanceBaseView(APIView):
     def _check_seller_access(self, request, seller_id):
         user_id = str(request.user.id)
         if user_id != str(seller_id):
-            return Response(
-                {"error": {"code": "FORBIDDEN", "message": "You can only view your own finance summary"}},
-                status=403,
-            )
+            return error_response("FORBIDDEN", "You can only view your own finance summary", 403)
         return None
 
 

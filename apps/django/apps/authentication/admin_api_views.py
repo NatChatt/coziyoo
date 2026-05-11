@@ -4,7 +4,7 @@ import uuid
 from django.db import connection, transaction
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -16,12 +16,9 @@ from apps.authentication.token_service import (
     refresh_expires_at,
     sign_access_token,
 )
+from apps.common.permissions import IsAdminRealm
+from apps.common.responses import error_response
 from coziyoo.dashboard_views import dashboard_data
-
-
-class IsAdminRealm(IsAuthenticated):
-    def has_permission(self, request, view):
-        return super().has_permission(request, view) and getattr(request.user, "realm", None) == "admin"
 
 
 class AdminJWTAuthentication(BaseJWTAuthentication):
@@ -41,23 +38,11 @@ class AdminAPIView(APIView):
     permission_classes = [IsAdminRealm]
 
 
-def _rows_as_dicts(cursor):
-    cols = [col.name for col in cursor.description]
-    return [dict(zip(cols, row)) for row in cursor.fetchall()]
-
-
-def _row_as_dict(cursor):
-    cols = [col.name for col in cursor.description]
-    row = cursor.fetchone()
-    return dict(zip(cols, row)) if row else None
-
-
-def _stringify_uuids(obj, fields):
-    for field in fields:
-        value = obj.get(field)
-        if value is not None:
-            obj[field] = str(value)
-    return obj
+from apps.common.db import (
+    rows_as_dicts as _rows_as_dicts,
+    row_as_dict as _row_as_dict,
+    stringify_uuids as _stringify_uuids,
+)
 
 
 def _admin_payload(row):
@@ -101,10 +86,7 @@ class AdminLoginView(APIView):
         email = str(request.data.get("email", "")).strip().lower()
         password = str(request.data.get("password", ""))
         if not email or not password:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "email and password required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "email and password required", status.HTTP_400_BAD_REQUEST)
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -125,10 +107,7 @@ class AdminLoginView(APIView):
                 failure_reason="invalid_credentials",
                 request=request,
             )
-            return Response(
-                {"error": {"code": "INVALID_CREDENTIALS", "message": "Email or password invalid"}},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+            return error_response("INVALID_CREDENTIALS", "Email or password invalid", status.HTTP_401_UNAUTHORIZED)
 
         if not admin_user["is_active"]:
             _log_security_login_event(
@@ -139,10 +118,7 @@ class AdminLoginView(APIView):
                 actor_user_id=str(admin_user["id"]),
                 request=request,
             )
-            return Response(
-                {"error": {"code": "ACCOUNT_DISABLED", "message": "Account is disabled"}},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return error_response("ACCOUNT_DISABLED", "Account is disabled", status.HTTP_403_FORBIDDEN)
 
         refresh_token = generate_refresh_token()
         session_id = str(uuid.uuid4())
@@ -191,10 +167,7 @@ class AdminRefreshView(APIView):
     def post(self, request):
         refresh_token = str(request.data.get("refreshToken", "")).strip()
         if not refresh_token:
-            return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "refreshToken required"}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return error_response("VALIDATION_ERROR", "refreshToken required", status.HTTP_400_BAD_REQUEST)
 
         refresh_hash = hash_refresh_token(refresh_token)
         with transaction.atomic():
@@ -213,10 +186,7 @@ class AdminRefreshView(APIView):
                 )
                 row = cursor.fetchone()
                 if not row:
-                    return Response(
-                        {"error": {"code": "REFRESH_INVALID", "message": "Invalid or expired refresh token"}},
-                        status=status.HTTP_401_UNAUTHORIZED,
-                    )
+                    return error_response("REFRESH_INVALID", "Invalid or expired refresh token", status.HTTP_401_UNAUTHORIZED)
 
                 old_session_id, admin_user_id, role = row
                 cursor.execute("UPDATE admin_auth_sessions SET revoked_at = now() WHERE id = %s", [old_session_id])
@@ -267,10 +237,7 @@ class AdminMeView(AdminAPIView):
             row = _row_as_dict(cursor)
 
         if row is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Admin user not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Admin user not found", status.HTTP_404_NOT_FOUND)
 
         return Response({"data": _admin_payload(row)})
 
@@ -358,10 +325,7 @@ class AdminUserDetailView(AdminAPIView):
             user = _row_as_dict(cursor)
 
         if user is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "User not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "User not found", status.HTTP_404_NOT_FOUND)
 
         _stringify_uuids(user, ["id"])
         return Response({"data": user})
@@ -407,10 +371,7 @@ class AdminComplaintDetailView(AdminAPIView):
             complaint = _row_as_dict(cursor)
 
         if complaint is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Complaint not found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "Complaint not found", status.HTTP_404_NOT_FOUND)
 
         _stringify_uuids(complaint, ["id"])
         return Response({"data": complaint})
@@ -517,10 +478,7 @@ class AdminSalesCommissionLatestView(AdminAPIView):
             row = _row_as_dict(cursor)
 
         if row is None:
-            return Response(
-                {"error": {"code": "NOT_FOUND", "message": "No commission settings found"}},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return error_response("NOT_FOUND", "No commission settings found", status.HTTP_404_NOT_FOUND)
 
         _stringify_uuids(row, ["id"])
         return Response({"data": row})
