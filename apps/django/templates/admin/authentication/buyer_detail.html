@@ -520,7 +520,7 @@
           </div>
           <div class="px-5 py-4">
             <textarea x-model="noteInput" rows="3"
-                      @keydown.enter.exact.prevent="addNote()"
+                      @keydown.enter="if (!$event.shiftKey && !$event.isComposing) { $event.preventDefault(); addNote(); }"
                       :disabled="noteSaving"
                       placeholder="{% trans 'Not yaz' %}"
                       class="w-full rounded-lg border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 py-2 text-sm text-base-900 dark:text-base-100 placeholder-base-400 dark:placeholder-base-500 outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition resize-none"></textarea>
