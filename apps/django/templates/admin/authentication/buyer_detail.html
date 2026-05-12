@@ -409,8 +409,8 @@
     {# ── Notes & Tags Tab ── #}
     <div x-show="tab === 'notes'" class="p-4 sm:p-6"
          x-data="{
-           tags: {{ tags_json|safe }},
-           notes: {{ notes_json|safe }},
+           tags: {{ tags_json }},
+           notes: {{ notes_json }},
            tagInput: '',
            noteInput: '',
            tagSaving: false,
