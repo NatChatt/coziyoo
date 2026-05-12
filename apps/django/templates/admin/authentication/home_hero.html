@@ -175,6 +175,17 @@
     justify-content: flex-end;
     gap: 8px;
   }
+  .hero-actions-sticky {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    border-top: 1px solid #e4e7ec;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+  }
+  .hero-actions-inline {
+    margin-top: 14px;
+  }
   .hero-btn-primary {
     border: none;
     border-radius: 8px;
@@ -687,6 +698,9 @@
             <span class="hero-dropzone-sub">veya dosyayı buraya sürükle</span>
           </span>
         </button>
+        <div class="hero-actions hero-actions-inline">
+          <button type="submit" class="hero-btn-primary">Onayla ve Yayınla</button>
+        </div>
       </div>
 
       <div class="hero-two-col">
@@ -818,9 +832,9 @@
         </div>
       </div>
 
-      <div class="hero-panel-body">
+      <div class="hero-panel-body hero-actions-sticky">
         <div class="hero-actions">
-          <button type="submit" class="hero-btn-primary">Yayınla</button>
+          <button type="submit" class="hero-btn-primary">Onayla ve Yayınla</button>
         </div>
         <div class="hero-help" id="hero-help-text">Resim seç, konumlandır, sonra Yayınla.</div>
       </div>
