@@ -363,6 +363,7 @@ class BuyerUsersAdmin(ModelAdmin):
             path("<uuid:user_id>/buyer-detail/add-note/", self.admin_site.admin_view(self.buyer_add_note_view), name="authentication_buyerusers_add_note"),
             path("<uuid:user_id>/buyer-detail/add-tag/", self.admin_site.admin_view(self.buyer_add_tag_view), name="authentication_buyerusers_add_tag"),
             path("<uuid:user_id>/buyer-detail/delete-tag/", self.admin_site.admin_view(self.buyer_delete_tag_view), name="authentication_buyerusers_delete_tag"),
+            path("<uuid:user_id>/buyer-detail/delete-note/", self.admin_site.admin_view(self.buyer_delete_note_view), name="authentication_buyerusers_delete_note"),
         ]
         return custom + urls
 
@@ -765,6 +766,33 @@ class BuyerUsersAdmin(ModelAdmin):
             messages.success(request, "Etiket silindi.")
         else:
             messages.info(request, "Etiket bulunamadi.")
+        return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
+
+    def buyer_delete_note_view(self, request, user_id):
+        if request.method != "POST":
+            return JsonResponse({"error": "Method not allowed"}, status=405)
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+        note_id = (request.POST.get("note_id") or "").strip()
+        if not note_id:
+            if is_ajax:
+                return JsonResponse({"ok": False, "message": "Not bulunamadı."}, status=400)
+            messages.error(request, "Silinecek not bulunamadi.")
+            return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
+
+        with connection.cursor() as cur:
+            cur.execute(
+                "DELETE FROM buyer_notes WHERE id = %s AND buyer_id = %s",
+                [note_id, str(user_id)],
+            )
+            deleted = cur.rowcount
+
+        if is_ajax:
+            return JsonResponse({"ok": True, "deleted": deleted > 0})
+        if deleted:
+            messages.success(request, "Not silindi.")
+        else:
+            messages.info(request, "Not bulunamadi.")
         return _detail_tab_redirect("admin:authentication_buyerusers_buyer_detail", user_id)
 
     @display(description=_("Name"), ordering="display_name")
