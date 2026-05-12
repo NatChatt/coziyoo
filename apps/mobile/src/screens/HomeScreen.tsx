@@ -22,8 +22,24 @@ import {
   View,
   type GestureResponderEvent,
   type ImageSourcePropType,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  blendHexColors,
+  DEFAULT_HERO_SEED,
+  deriveCardColors,
+  deriveHeroColors,
+  deriveRecommendationCardColors,
+  hexToRgba,
+  normalizeHexColor,
+  pickImagePaletteColor,
+  pickSurfacePaletteColor,
+  toRgba,
+  type CardColors,
+  type HeroColors,
+} from '../utils/color';
 let LinearGradient: React.ComponentType<{
   colors: string[];
   locations?: number[];
@@ -43,34 +59,19 @@ try {
   // Optional at runtime; fallback views are used when unavailable.
 }
 import * as ImagePicker from 'expo-image-picker';
-let getColors: typeof import('react-native-image-colors').getColors | null = null;
-try {
-  getColors = require('react-native-image-colors').getColors;
-} catch {
-  // Native module not available — adaptive colors will use fallback
-}
-let manipulateAsync: typeof import('expo-image-manipulator').manipulateAsync | null = null;
-let ManipulatorSaveFormat: typeof import('expo-image-manipulator').SaveFormat | null = null;
-try {
-  const imageManipulator = require('expo-image-manipulator');
-  manipulateAsync = imageManipulator.manipulateAsync;
-  ManipulatorSaveFormat = imageManipulator.SaveFormat;
-} catch {
-  // Optional at runtime; local-region sampling falls back to defaults when unavailable.
-}
-let fileSystemCacheDirectory: string | null = null;
-let fileSystemWriteAsStringAsync: null | ((fileUri: string, contents: string, options?: { encoding?: string }) => Promise<void>) = null;
-let fileSystemGetInfoAsync: null | ((fileUri: string) => Promise<{ exists: boolean }>) = null;
-let fileSystemEncodingTypeBase64: string | null = null;
-try {
-  const fileSystem = require('expo-file-system');
-  fileSystemCacheDirectory = fileSystem.cacheDirectory ?? null;
-  fileSystemWriteAsStringAsync = fileSystem.writeAsStringAsync ?? null;
-  fileSystemGetInfoAsync = fileSystem.getInfoAsync ?? null;
-  fileSystemEncodingTypeBase64 = fileSystem.EncodingType?.Base64 ?? 'base64';
-} catch {
-  // Optional at runtime; inline image files fall back when unavailable.
-}
+import { getColors as getImageColors } from '../utils/lazyNativeModules';
+import {
+  sampleImageBottomBandColor,
+  sampleImageTopBandColor,
+} from '../utils/imageSampling';
+import { FoodCard } from '../components/FoodCard/FoodCard';
+import { ProfileMenuItem } from '../components/ProfileMenuItem';
+import { QuantityStepper } from '../components/QuantityStepper';
+import type { MealCard } from '../types/meal';
+import {
+  formatCuisineLabel,
+  formatSellerIdentity,
+} from '../utils/mealFormat';
 let PaymentWebView: React.ComponentType<{
   source: { uri: string };
   onNavigationStateChange?: (state: { url?: string }) => void;
@@ -247,58 +248,6 @@ type ApiFoodItem = {
   seller: { id: string; name: string; username?: string | null; image: string | null; tagline?: string | null; homeCardImage?: string | null };
 };
 
-type MealCard = {
-  id: string;
-  title: string;
-  sellerId: string;
-  seller: string;
-  sellerUsername?: string | null;
-  sellerImage?: string | null;
-  sellerTagline?: string | null;
-  sellerHomeCardImage?: string | null;
-  allergens: string[];
-  ingredients: string[];
-  menuItems: string[];
-  addons: Array<{
-    name: string;
-    kind: "sauce" | "extra" | "appetizer";
-    pricing: "free" | "paid";
-    price?: number;
-  }>;
-  description: string;
-  cuisine: string;
-  lotId?: string | null;
-  stock: number;
-  rating: string;
-  time: string;
-  distance: string;
-  price: string;
-  deliveryFee: number;
-  deliveryOptions: {
-    pickup: boolean;
-    delivery: boolean;
-  };
-  backgroundColor: string;
-  category: string;
-  imageUrl?: string;
-  imageUrls?: string[];
-  locationBasisLabel?: string;
-};
-
-function formatSellerIdentity(name: string, username?: string | null): string {
-  const cleanUsername = (username ?? "").trim().replace(/^@+/, "");
-  if (!cleanUsername) return name;
-  return `@${cleanUsername}`;
-}
-
-function formatCuisineLabel(cuisine?: string | null): string {
-  const value = (cuisine ?? "").trim();
-  if (!value) return "";
-  const lower = value.toLocaleLowerCase("tr-TR");
-  if (lower.endsWith(" mutfağı") || lower.endsWith(" mutfagi")) return value;
-  return `${value} ${t('helper.home.cuisineSuffix')}`;
-}
-
 function normalizeMealAddons(value: ApiFoodItem["menuItems"]): MealCard["addons"] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
@@ -412,29 +361,6 @@ type UiCategory =
   | 'Meze'
   | 'Tatlılar'
   | 'İçecekler';
-
-type CardColors = {
-  bg: string;
-  border: string;
-  title: string;
-  subtitle: string;
-  price: string;
-  meta: string;
-  photoTitle: string;
-  photoCuisine: string;
-  photoStock: string;
-  photoMeta: string;
-};
-
-type HeroColors = {
-  bg: string;
-  gradTop: string;
-  gradMid: string;
-  gradLight: string;
-  featherMain: string;
-  featherSoft: string;
-  overlay: string;
-};
 
 type SellerProfile = {
   startedYear: number;
@@ -815,455 +741,9 @@ function resolveGreetingTitleMetrics(text: string): { fontSize: number; lineHeig
   return { fontSize: 33, lineHeight: 46 };
 }
 
-function resolveFoodPhotoTitleMetrics(text: string): { fontSize: number; lineHeight: number } {
-  const length = text.trim().length;
-  if (length >= 24) return { fontSize: 26, lineHeight: 30 };
-  if (length >= 18) return { fontSize: 31, lineHeight: 35 };
-  if (length >= 12) return { fontSize: 36, lineHeight: 39 };
-  return { fontSize: 42, lineHeight: 44 };
-}
-
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-
-function darken(hex: string, amount: number): string {
-  const h = hex.replace('#', '');
-  const r = Math.max(
-    0,
-    Math.round(parseInt(h.substring(0, 2), 16) * (1 - amount)),
-  );
-  const g = Math.max(
-    0,
-    Math.round(parseInt(h.substring(2, 4), 16) * (1 - amount)),
-  );
-  const b = Math.max(
-    0,
-    Math.round(parseInt(h.substring(4, 6), 16) * (1 - amount)),
-  );
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-
-function normalizeHexColor(color: string, fallback = '#8A7B6A'): string {
-  const normalized = color.trim();
-  const withHash = normalized.startsWith('#') ? normalized : `#${normalized}`;
-  if (!/^#[0-9a-fA-F]{6}$/.test(withHash)) return fallback;
-  return withHash.toUpperCase();
-}
-
-function lighten(hex: string, amount: number): string {
-  const h = hex.replace('#', '');
-  const r = Math.min(
-    255,
-    Math.round(parseInt(h.substring(0, 2), 16) + (255 - parseInt(h.substring(0, 2), 16)) * amount),
-  );
-  const g = Math.min(
-    255,
-    Math.round(parseInt(h.substring(2, 4), 16) + (255 - parseInt(h.substring(2, 4), 16)) * amount),
-  );
-  const b = Math.min(
-    255,
-    Math.round(parseInt(h.substring(4, 6), 16) + (255 - parseInt(h.substring(4, 6), 16)) * amount),
-  );
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  const clean = normalizeHexColor(hex).replace('#', '');
-  return {
-    r: parseInt(clean.slice(0, 2), 16),
-    g: parseInt(clean.slice(2, 4), 16),
-    b: parseInt(clean.slice(4, 6), 16),
-  };
-}
-
-function hexToRgba(hex: string, alpha: number): string {
-  const { r, g, b } = hexToRgb(hex);
-  const safeAlpha = Math.max(0, Math.min(1, alpha));
-  return `rgba(${r},${g},${b},${safeAlpha})`;
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value));
-}
-
-function smoothstep01(value: number): number {
-  const t = clamp01(value);
-  return t * t * (3 - 2 * t);
-}
-
-function blendHexColors(fromHex: string, toHex: string, ratio: number): string {
-  const a = hexToRgb(fromHex);
-  const b = hexToRgb(toHex);
-  const t = clamp01(ratio);
-  const r = Math.round(a.r + (b.r - a.r) * t);
-  const g = Math.round(a.g + (b.g - a.g) * t);
-  const bch = Math.round(a.b + (b.b - a.b) * t);
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bch.toString(16).padStart(2, '0')}`.toUpperCase();
-}
-
-function relativeLuminanceFromHex(hex: string): number {
-  const { r, g, b } = hexToRgb(hex);
-  const [rs, gs, bs] = [r, g, b].map((channel) => {
-    const normalized = channel / 255;
-    if (normalized <= 0.03928) return normalized / 12.92;
-    return ((normalized + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
-}
-
-function getImageSizeAsync(uri: string): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    Image.getSize(
-      uri,
-      (width, height) => resolve({ width, height }),
-      (error) => reject(error),
-    );
-  });
-}
-
-async function sampleImageTopBandColor(uri: string, fallback: string): Promise<string> {
-  if (!uri || !manipulateAsync || !ManipulatorSaveFormat || !getColors) {
-    return normalizeHexColor(fallback);
-  }
-  try {
-    const { width, height } = await getImageSizeAsync(uri);
-    if (width < 4 || height < 4) return normalizeHexColor(fallback);
-    const cropHeight = Math.max(24, Math.min(height, Math.round(height * 0.18)));
-    const cropped = await manipulateAsync(
-      uri,
-      [{ crop: { originX: 0, originY: 0, width, height: cropHeight } }],
-      { compress: 0.5, format: ManipulatorSaveFormat.JPEG, base64: false },
-    );
-    const colors = await getColors(cropped.uri, {
-      fallback: normalizeHexColor(fallback),
-      cache: true,
-      key: `${uri}#safe-top:${width}:${cropHeight}`,
-    });
-    let sampled = normalizeHexColor(fallback);
-    if (Platform.OS === 'ios' && 'background' in colors) sampled = normalizeHexColor(colors.background, sampled);
-    else if (Platform.OS === 'android' && 'dominant' in colors) sampled = normalizeHexColor(colors.dominant, sampled);
-    return sampled;
-  } catch {
-    return normalizeHexColor(fallback);
-  }
-}
-
-async function sampleImageBottomBandColor(uri: string, fallback: string): Promise<string> {
-  if (!uri || !manipulateAsync || !ManipulatorSaveFormat || !getColors) {
-    return normalizeHexColor(fallback);
-  }
-  try {
-    const { width, height } = await getImageSizeAsync(uri);
-    if (width < 4 || height < 4) return normalizeHexColor(fallback);
-    const cropHeight = Math.max(24, Math.min(height, Math.round(height * 0.22)));
-    const originY = Math.max(0, height - cropHeight);
-    const cropped = await manipulateAsync(
-      uri,
-      [{ crop: { originX: 0, originY, width, height: cropHeight } }],
-      { compress: 0.5, format: ManipulatorSaveFormat.JPEG, base64: false },
-    );
-    const colors = await getColors(cropped.uri, {
-      fallback: normalizeHexColor(fallback),
-      cache: true,
-      key: `${uri}#safe-bottom:${width}:${cropHeight}`,
-    });
-    let sampled = normalizeHexColor(fallback);
-    if (Platform.OS === 'ios' && 'background' in colors) sampled = normalizeHexColor(colors.background, sampled);
-    else if (Platform.OS === 'android' && 'dominant' in colors) sampled = normalizeHexColor(colors.dominant, sampled);
-    return sampled;
-  } catch {
-    return normalizeHexColor(fallback);
-  }
-}
-
-function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
-  const rn = r / 255;
-  const gn = g / 255;
-  const bn = b / 255;
-  const max = Math.max(rn, gn, bn);
-  const min = Math.min(rn, gn, bn);
-  const delta = max - min;
-  let h = 0;
-  const l = (max + min) / 2;
-  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
-
-  if (delta !== 0) {
-    if (max === rn) h = ((gn - bn) / delta) % 6;
-    else if (max === gn) h = (bn - rn) / delta + 2;
-    else h = (rn - gn) / delta + 4;
-  }
-  h = Math.round(h * 60);
-  if (h < 0) h += 360;
-
-  return { h, s, l };
-}
-
-function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const hp = h / 60;
-  const x = c * (1 - Math.abs((hp % 2) - 1));
-  let r1 = 0;
-  let g1 = 0;
-  let b1 = 0;
-
-  if (hp >= 0 && hp < 1) {
-    r1 = c;
-    g1 = x;
-  } else if (hp >= 1 && hp < 2) {
-    r1 = x;
-    g1 = c;
-  } else if (hp >= 2 && hp < 3) {
-    g1 = c;
-    b1 = x;
-  } else if (hp >= 3 && hp < 4) {
-    g1 = x;
-    b1 = c;
-  } else if (hp >= 4 && hp < 5) {
-    r1 = x;
-    b1 = c;
-  } else {
-    r1 = c;
-    b1 = x;
-  }
-
-  const m = l - c / 2;
-  return {
-    r: Math.round((r1 + m) * 255),
-    g: Math.round((g1 + m) * 255),
-    b: Math.round((b1 + m) * 255),
-  };
-}
-
-function rgbToHex(r: number, g: number, b: number): string {
-  return `#${Math.max(0, Math.min(255, Math.round(r))).toString(16).padStart(2, '0')}${Math.max(0, Math.min(255, Math.round(g))).toString(16).padStart(2, '0')}${Math.max(0, Math.min(255, Math.round(b))).toString(16).padStart(2, '0')}`.toUpperCase();
-}
-
-function colorFromHsl(h: number, s: number, l: number): string {
-  const { r, g, b } = hslToRgb(
-    ((h % 360) + 360) % 360,
-    Math.max(0, Math.min(1, s)),
-    Math.max(0, Math.min(1, l)),
-  );
-  return rgbToHex(r, g, b);
-}
-
-function toneFromHue(h: number, saturation: number, lightness: number): string {
-  return colorFromHsl(h, saturation, lightness);
-}
-
-function isPaletteHexColor(value: unknown): value is string {
-  if (typeof value !== 'string') return false;
-  const normalized = value.trim();
-  return /^#?[0-9a-fA-F]{6}$/.test(normalized);
-}
-
-function toRgba(hex: string, alpha: number): string {
-  const { r, g, b } = hexToRgb(normalizeHexColor(hex));
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-function pickImagePaletteColor(result: any, fallback: string): string {
-  // Keys ordered by preference; average/background/darkMuted tend to return neutral tones
-  const candidateKeys = [
-    'vibrant',
-    'lightVibrant',
-    'primary',
-    'detail',
-    'secondary',
-    'dominant',
-    'darkVibrant',
-    'muted',
-    'lightMuted',
-    'darkMuted',
-    'average',
-    'background',
-  ];
-
-  type Candidate = { color: string; score: number };
-  const candidates: Candidate[] = [];
-
-  for (const key of candidateKeys) {
-    const raw = result?.[key];
-    if (!isPaletteHexColor(raw)) continue;
-    const color = normalizeHexColor(raw);
-    const { r, g, b } = hexToRgb(color);
-    const { h, s, l } = rgbToHsl(r, g, b);
-    // Skip near-grayscale colors — they'd produce invisible card tints
-    if (s < 0.12) continue;
-    const vibranceScore = s * 2.8;
-    const midLightnessScore = 1 - Math.abs(l - 0.50);
-    // Penalise very dark colors
-    const darkPenalty = l < 0.22 ? 0.8 : 0;
-    // Penalise desaturated / muddy colors more aggressively
-    const muddyPenalty = s < 0.35 ? (0.35 - s) * 2.2 : 0;
-    // Penalise very light / washed-out colors (they look like white on the card)
-    const lightPenalty = l > 0.80 ? (l - 0.80) * 3.5 : 0;
-    // Brown/orange mid-tones often come from dish backgrounds, not the food itself
-    const brownBand = h >= 16 && h <= 42;
-    const brownPenalty = brownBand && l < 0.52 ? 0.5 : 0;
-    // vibrant / darkVibrant are the most reliable keys for food color
-    const keyBoost =
-      key === 'vibrant' || key === 'darkVibrant'
-        ? 0.28
-        : key === 'primary' || key === 'detail'
-          ? 0.18
-          : key === 'lightVibrant'
-            ? 0.12
-            : key === 'secondary'
-              ? 0.10
-              : key === 'dominant'
-                ? 0.04
-                : 0;
-    const score = vibranceScore + midLightnessScore + keyBoost
-      - darkPenalty - muddyPenalty - lightPenalty - brownPenalty;
-    candidates.push({ color, score });
-  }
-
-  if (!candidates.length) return normalizeHexColor(fallback);
-  candidates.sort((a, b) => b.score - a.score);
-  return candidates[0].color;
-}
-
-function deriveCardColors(dominant: string): CardColors {
-  const safe = normalizeHexColor(dominant);
-  const title = darken(safe, 0.62);
-  const subtitle = darken(safe, 0.46);
-  const price = darken(safe, 0.56);
-  const metaBase = darken(safe, 0.38);
-  return {
-    bg: lighten(safe, 0.96),
-    border: lighten(safe, 0.88),
-    title,
-    subtitle,
-    price,
-    meta: metaBase,
-    photoTitle: lighten(safe, 0.94),
-    photoCuisine: lighten(safe, 0.88),
-    photoStock: lighten(safe, 0.82),
-    photoMeta: lighten(safe, 0.78),
-  };
-}
-
-function deriveRecommendationCardColors(dominant: string): CardColors {
-  const safe = normalizeHexColor(dominant);
-  return {
-    bg: lighten(safe, 0.90),
-    border: lighten(safe, 0.72),
-    title: darken(safe, 0.66),
-    subtitle: darken(safe, 0.46),
-    price: darken(safe, 0.56),
-    meta: darken(safe, 0.38),
-    photoTitle: lighten(safe, 0.94),
-    photoCuisine: lighten(safe, 0.88),
-    photoStock: lighten(safe, 0.82),
-    photoMeta: lighten(safe, 0.78),
-  };
-}
-
-const DEFAULT_HERO_SEED = '#F0BB82';
-
-function deriveHeroColors(dominant: string): HeroColors {
-  const safe = normalizeHexColor(dominant);
-  const { r, g, b } = hexToRgb(safe);
-  const { h, s } = rgbToHsl(r, g, b);
-  const vividSat = Math.max(0.38, Math.min(0.78, s * 1.1));
-  return {
-    bg: colorFromHsl(h, vividSat * 0.16, 0.965),
-    gradTop: colorFromHsl(h, vividSat * 0.28, 0.935),
-    gradMid: colorFromHsl(h, vividSat * 0.40, 0.885),
-    gradLight: colorFromHsl(h, vividSat * 0.13, 0.960),
-    featherMain: colorFromHsl(h, vividSat * 0.40, 0.885),
-    featherSoft: colorFromHsl(h, vividSat * 0.24, 0.930),
-    overlay: colorFromHsl(h, vividSat * 0.62, 0.70),
-  };
-}
-
-// Picks the lightest (highest lightness) sufficiently saturated color from the palette.
-// This is used for text overlaid on dark food photos.
-function pickLightestPaletteColor(result: any, fallback: string): string {
-  const keys = ['lightVibrant', 'lightMuted', 'muted', 'vibrant', 'secondary', 'primary', 'dominant'];
-  let bestColor = normalizeHexColor(fallback);
-  let bestL = -1;
-
-  for (const key of keys) {
-    const raw = result?.[key];
-    if (!isPaletteHexColor(raw)) continue;
-    const color = normalizeHexColor(raw);
-    const { r, g, b } = hexToRgb(color);
-    const { h, s, l } = rgbToHsl(r, g, b);
-    if (s < 0.14) continue; // skip near-greys
-    if (l > bestL) {
-      bestL = l;
-      bestColor = color;
-    }
-  }
-
-  // Boost to a reliably light shade if the candidate is still too mid-tone
-  if (bestL >= 0 && bestL < 0.80) {
-    const { r, g, b } = hexToRgb(bestColor);
-    const { h, s } = rgbToHsl(r, g, b);
-    return colorFromHsl(h, Math.max(s, 0.52), 0.90);
-  }
-  return bestColor;
-}
-
-// Picks the palette color that contrasts most with the photo's background:
-// highest hue distance + saturation, then lightness is forced to be readable.
-function pickContrastingPaletteColor(result: any, bgHex: string, darkBg: boolean, fallback: string): string {
-  const keys = ['vibrant', 'lightVibrant', 'darkVibrant', 'primary', 'detail', 'secondary', 'muted', 'lightMuted', 'dominant', 'average', 'background'];
-  const bgSafe = normalizeHexColor(bgHex);
-  const { r: br, g: bg2, b: bb } = hexToRgb(bgSafe);
-  const { h: bh } = rgbToHsl(br, bg2, bb);
-
-  type Candidate = { color: string; score: number };
-  const candidates: Candidate[] = [];
-
-  for (const key of keys) {
-    const raw = result?.[key];
-    if (!isPaletteHexColor(raw)) continue;
-    const color = normalizeHexColor(raw);
-    const { r, g, b } = hexToRgb(color);
-    const { h, s, l } = rgbToHsl(r, g, b);
-    if (s < 0.10) continue;
-    // Hue angular distance 0–180
-    const rawDist = Math.abs(h - bh) % 360;
-    const hueDist = rawDist > 180 ? 360 - rawDist : rawDist;
-    const hueScore = hueDist / 180;
-    // Vibrant colors pop more
-    const satScore = s;
-    // Penalise if hue too similar to background
-    const huePenalty = hueDist < 20 ? (20 - hueDist) / 20 * 0.7 : 0;
-    const score = hueScore * 1.5 + satScore * 1.2 - huePenalty;
-    candidates.push({ color, score });
-  }
-
-  const winner = candidates.length
-    ? candidates.sort((a, b) => b.score - a.score)[0].color
-    : normalizeHexColor(fallback);
-
-  const { r, g, b } = hexToRgb(winner);
-  const { h, s } = rgbToHsl(r, g, b);
-  // For dark photo bg → bright text; for light photo bg → deep text
-  const targetL = darkBg ? 0.22 : 0.88;
-  return colorFromHsl(h, Math.max(s, 0.60), targetL);
-}
-
-function derivePhotoOverlayText(
-  overlayColor: string,
-  _seed: string,
-  _tone: 'light' | 'dark',
-): { title: string; cuisine: string } {
-  // overlayColor is already lightness-adjusted by pickContrastingPaletteColor
-  const { r, g, b } = hexToRgb(normalizeHexColor(overlayColor));
-  const { h, s, l } = rgbToHsl(r, g, b);
-  // Cuisine: same hue family, slightly less bright/dark
-  const cuisineL = l > 0.5 ? Math.max(l - 0.07, 0.72) : Math.min(l + 0.06, 0.30);
-  return {
-    title: overlayColor,
-    cuisine: colorFromHsl(h + 6, Math.max(s * 0.88, 0.32), cuisineL),
-  };
-}
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -1279,28 +759,6 @@ const DAILY_FLASH_MEALS = [
   'Sütlaç',
 ] as const;
 const SLOGAN_MARQUEE_GAP = 22;
-const PHOTO_TEXT_TONE_CACHE = new Map<string, 'light' | 'dark'>();
-const FOOD_CARD_RENDER_URI_CACHE = new Map<string, string>();
-
-function isInlineBase64ImageUri(value: string | null | undefined): value is string {
-  const raw = String(value ?? '').trim().toLocaleLowerCase('en-US');
-  return raw.startsWith('data:image/') && raw.includes(';base64,');
-}
-
-function hashInlineImageUri(value: string): string {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
-  }
-  return Math.abs(hash).toString(36);
-}
-
-function inlineImageExtension(value: string): string {
-  const lower = value.toLocaleLowerCase('en-US');
-  if (lower.startsWith('data:image/png')) return 'png';
-  if (lower.startsWith('data:image/webp')) return 'webp';
-  return 'jpg';
-}
 
 const CATEGORY_BG_COLORS: Record<string, string> = {
   Çorbalar: '#F1DED0',
@@ -1724,12 +1182,12 @@ function RecommendationCard({
   );
 
   useEffect(() => {
-    if (!meal.imageUrl || !getColors) {
+    if (!meal.imageUrl || !getImageColors) {
       setColors(deriveRecommendationCardColors(meal.backgroundColor));
       return;
     }
 
-    getColors(meal.imageUrl, {
+    getImageColors(meal.imageUrl, {
       fallback: meal.backgroundColor,
       cache: true,
       key: `${meal.id}:${meal.imageUrl}`,
@@ -1767,552 +1225,13 @@ function RecommendationCard({
           {meal.title}
         </Text>
         <Text style={[styles.sellerChipMeta, { color: colors.subtitle }]} numberOfLines={1}>
-          {formatSellerIdentity(meal.seller, meal.sellerUsername)}
+          {meal.reason || formatSellerIdentity(meal.seller, meal.sellerUsername)}
         </Text>
       </View>
     </TouchableOpacity>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  FoodCard                                                           */
-/* ------------------------------------------------------------------ */
-
-function FoodCard({
-  meal,
-  isFavorite,
-  favoritePending,
-  onPress,
-  onFavoritePress,
-}: {
-  meal: MealCard;
-  isFavorite: boolean;
-  favoritePending: boolean;
-  onPress: () => void;
-  onFavoritePress: () => void;
-}) {
-  const defaultCardImageWidth = Math.max(260, Math.round(Dimensions.get('window').width - 32));
-  const [colors, setColors] = useState<CardColors>(
-    deriveCardColors(meal.backgroundColor),
-  );
-  const [paletteSeed, setPaletteSeed] = useState<string>(
-    normalizeHexColor(meal.backgroundColor),
-  );
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [imageIndex, setImageIndex] = useState(0);
-  const [imageFrameWidth, setImageFrameWidth] = useState(defaultCardImageWidth);
-  const [imageFrameHeight, setImageFrameHeight] = useState(155);
-  const [photoTextTone, setPhotoTextTone] = useState<'light' | 'dark'>('light');
-  const [photoLightColor, setPhotoLightColor] = useState('#FFFFFF');
-  const [sellerThumbFailed, setSellerThumbFailed] = useState(false);
-  const [renderableImageUri, setRenderableImageUri] = useState<string | null>(null);
-  const textToneRequestRef = useRef(0);
-  const primaryImageUrl = imageUrls[0];
-  const activeImageUrl = imageUrls[imageIndex] ?? primaryImageUrl;
-
-  useEffect(() => {
-    const next = [...(meal.imageUrls ?? []), meal.imageUrl ?? '']
-      .map((value) => String(value ?? '').trim())
-      .filter(Boolean)
-      .slice(0, 5);
-    setImageUrls(next);
-    setImageIndex(0);
-  }, [meal.imageUrl, meal.imageUrls]);
-
-  useEffect(() => {
-    if (!primaryImageUrl || !getColors) {
-      setColors(deriveCardColors(meal.backgroundColor));
-      setPaletteSeed(normalizeHexColor(meal.backgroundColor));
-      return;
-    }
-    getColors(primaryImageUrl, {
-      fallback: meal.backgroundColor,
-      cache: true,
-      key: `${meal.id}:${primaryImageUrl}`,
-    })
-      .then((result) => {
-        let dominant = meal.backgroundColor;
-        if (Platform.OS === 'ios' && 'background' in result) {
-          dominant = result.background;
-        } else if (Platform.OS === 'android' && 'dominant' in result) {
-          dominant = result.dominant;
-        }
-        const lightColor = pickLightestPaletteColor(result, '#FFFFFF');
-        setPaletteSeed(normalizeHexColor(dominant));
-        setPhotoLightColor(lightColor);
-        setColors(deriveCardColors(dominant));
-      })
-      .catch(() => {
-        setColors(deriveCardColors(meal.backgroundColor));
-        setPaletteSeed(normalizeHexColor(meal.backgroundColor));
-      });
-  }, [primaryImageUrl, meal.backgroundColor]);
-
-  useEffect(() => {
-    if (!activeImageUrl || !manipulateAsync || !ManipulatorSaveFormat || !getColors) {
-      setPhotoTextTone('light');
-      return;
-    }
-    if (imageFrameWidth < 120 || imageFrameHeight < 80) return;
-
-    let cancelled = false;
-    const requestId = ++textToneRequestRef.current;
-
-    const detectTextToneFromVisibleRegion = async () => {
-      try {
-        const toneCacheKey = `${activeImageUrl}#${imageFrameWidth}x${imageFrameHeight}`;
-        const cachedTone = PHOTO_TEXT_TONE_CACHE.get(toneCacheKey);
-        if (cachedTone) {
-          if (!cancelled && requestId === textToneRequestRef.current) {
-            setPhotoTextTone((prev) => (prev === cachedTone ? prev : cachedTone));
-          }
-          return;
-        }
-
-        const { width: sourceWidth, height: sourceHeight } = await getImageSizeAsync(activeImageUrl);
-        if (cancelled || requestId !== textToneRequestRef.current) return;
-
-        const sampleFrameX = 10;
-        const sampleFrameY = Math.max(0, Math.round(imageFrameHeight * 0.34));
-        const sampleFrameWidth = Math.max(
-          72,
-          Math.min(Math.round(imageFrameWidth * 0.52), imageFrameWidth - 132),
-        );
-        const maxSampleHeight = Math.max(36, imageFrameHeight - sampleFrameY - 14);
-        const sampleFrameHeight = Math.max(
-          36,
-          Math.min(Math.round(imageFrameHeight * 0.46), maxSampleHeight),
-        );
-
-        const scale = Math.max(imageFrameWidth / sourceWidth, imageFrameHeight / sourceHeight);
-        const renderedWidth = sourceWidth * scale;
-        const renderedHeight = sourceHeight * scale;
-        const offsetX = Math.max(0, (renderedWidth - imageFrameWidth) / 2);
-        const offsetY = Math.max(0, (renderedHeight - imageFrameHeight) / 2);
-
-        const cropOriginX = Math.max(
-          0,
-          Math.min(sourceWidth - 2, Math.round((sampleFrameX + offsetX) / scale)),
-        );
-        const cropOriginY = Math.max(
-          0,
-          Math.min(sourceHeight - 2, Math.round((sampleFrameY + offsetY) / scale)),
-        );
-        const cropWidth = Math.max(
-          2,
-          Math.min(sourceWidth - cropOriginX, Math.round(sampleFrameWidth / scale)),
-        );
-        const cropHeight = Math.max(
-          2,
-          Math.min(sourceHeight - cropOriginY, Math.round(sampleFrameHeight / scale)),
-        );
-
-        const cropped = await manipulateAsync(
-          activeImageUrl,
-          [{ crop: { originX: cropOriginX, originY: cropOriginY, width: cropWidth, height: cropHeight } }],
-          { compress: 0.45, format: ManipulatorSaveFormat.JPEG, base64: false },
-        );
-        if (cancelled || requestId !== textToneRequestRef.current) return;
-
-        const sampledColors = await getColors(cropped.uri, {
-          fallback: meal.backgroundColor,
-          cache: false,
-          key: `${activeImageUrl}#text-tone:${cropOriginX}:${cropOriginY}:${cropWidth}:${cropHeight}`,
-        });
-
-        let sampledDominant = meal.backgroundColor;
-        if (Platform.OS === 'ios' && 'background' in sampledColors) {
-          sampledDominant = sampledColors.background;
-        } else if (Platform.OS === 'android' && 'dominant' in sampledColors) {
-          sampledDominant = sampledColors.dominant;
-        }
-        setPaletteSeed(normalizeHexColor(sampledDominant));
-        const nextColors = deriveCardColors(sampledDominant);
-        setColors((prev) => (prev.bg === nextColors.bg && prev.title === nextColors.title ? prev : nextColors));
-
-        const luminance = relativeLuminanceFromHex(sampledDominant);
-        const nextTone: 'light' | 'dark' = luminance > 0.47 ? 'dark' : 'light';
-        // Pick the most hue-contrasting color from the sampled region for overlay text
-        const darkBg = nextTone === 'light'; // dark background → we want bright text
-        const overlayColor = pickContrastingPaletteColor(sampledColors, sampledDominant, darkBg, meal.backgroundColor);
-        PHOTO_TEXT_TONE_CACHE.set(toneCacheKey, nextTone);
-        if (!cancelled && requestId === textToneRequestRef.current) {
-          setPhotoTextTone((prev) => (prev === nextTone ? prev : nextTone));
-          setPhotoLightColor(overlayColor);
-        }
-      } catch {
-        if (!cancelled && requestId === textToneRequestRef.current) {
-          setPhotoTextTone('light');
-        }
-      }
-    };
-
-    void detectTextToneFromVisibleRegion();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeImageUrl, imageFrameWidth, imageFrameHeight, meal.backgroundColor]);
-
-  useEffect(() => {
-    setSellerThumbFailed(false);
-  }, [meal.sellerImage]);
-
-  useEffect(() => {
-    if (!activeImageUrl) {
-      setRenderableImageUri(null);
-      return;
-    }
-
-    if (!isInlineBase64ImageUri(activeImageUrl)) {
-      setRenderableImageUri(activeImageUrl);
-      return;
-    }
-
-    const cachedUri = FOOD_CARD_RENDER_URI_CACHE.get(activeImageUrl);
-    if (cachedUri) {
-      setRenderableImageUri(cachedUri);
-      return;
-    }
-
-    let cancelled = false;
-    setRenderableImageUri(null);
-
-    const materializeInlineImage = async () => {
-      try {
-        const commaIndex = activeImageUrl.indexOf(',');
-        if (commaIndex <= 0) {
-          setRenderableImageUri(activeImageUrl);
-          return;
-        }
-        const base64Payload = activeImageUrl.slice(commaIndex + 1);
-        if (
-          fileSystemCacheDirectory &&
-          fileSystemWriteAsStringAsync &&
-          fileSystemGetInfoAsync &&
-          fileSystemEncodingTypeBase64
-        ) {
-          const extension = inlineImageExtension(activeImageUrl);
-          const fileUri = `${fileSystemCacheDirectory}food-card-${hashInlineImageUri(activeImageUrl)}.${extension}`;
-          const info = await fileSystemGetInfoAsync(fileUri);
-          if (!info.exists) {
-            await fileSystemWriteAsStringAsync(fileUri, base64Payload, {
-              encoding: fileSystemEncodingTypeBase64,
-            });
-          }
-          if (cancelled) return;
-          FOOD_CARD_RENDER_URI_CACHE.set(activeImageUrl, fileUri);
-          setRenderableImageUri(fileUri);
-          return;
-        }
-
-        if (manipulateAsync && ManipulatorSaveFormat) {
-          const format = activeImageUrl.startsWith('data:image/png')
-            ? ManipulatorSaveFormat.PNG
-            : ManipulatorSaveFormat.JPEG;
-          const result = await manipulateAsync(
-            activeImageUrl,
-            [],
-            { compress: 1, format, base64: false },
-          );
-          if (cancelled || !result?.uri) return;
-          FOOD_CARD_RENDER_URI_CACHE.set(activeImageUrl, result.uri);
-          setRenderableImageUri(result.uri);
-          return;
-        }
-
-        setRenderableImageUri(activeImageUrl);
-      } catch {
-        if (!cancelled) {
-          setRenderableImageUri(null);
-        }
-      }
-    };
-
-    void materializeInlineImage();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeImageUrl]);
-
-  const allergens = Array.isArray(meal.allergens) ? meal.allergens : [];
-  const mealDeliveryOptions = meal.deliveryOptions ?? { pickup: true, delivery: false };
-  const timeDistanceParts = [
-    meal.time,
-    mealDeliveryOptions.delivery ? meal.distance : "",
-  ].filter((value) => String(value ?? "").trim().length > 0);
-  const timeDistanceText = timeDistanceParts.join(" · ");
-  const stockSummary = Number.isFinite(meal.stock) && meal.stock > 0
-    ? t('status.home.foodCard.lastPortions').replace('{stock}', String(meal.stock))
-    : '';
-  const photoOverlayColors = derivePhotoOverlayText(photoLightColor, paletteSeed, photoTextTone);
-  const hasAllergens = allergens.length > 0;
-  const titleMetrics = resolveFoodPhotoTitleMetrics(meal.title);
-  const sellerHandle = formatSellerIdentity(meal.seller, meal.sellerUsername);
-  const sellerTagline = String(meal.sellerTagline ?? '').trim() || t('status.home.foodCard.sellerTaglineFallback');
-  const ratingValue = Number(String(meal.rating ?? '').replace(',', '.'));
-  const ratingBadgeText = Number.isFinite(ratingValue)
-    ? Number(ratingValue).toFixed(1)
-    : '0.0';
-  const slideWidth = Math.max(1, imageFrameWidth);
-  const sellerInitial = (() => {
-    const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
-    if (!raw) return 'U';
-    return raw.charAt(0).toLocaleUpperCase('tr-TR');
-  })();
-  return (
-    <View
-      style={[
-        styles.foodCardWrap,
-      ]}
-    >
-      <View
-        style={[
-          styles.foodCard,
-          { backgroundColor: colors.bg, borderColor: colors.border },
-        ]}
-      >
-        <View
-          style={[styles.foodPhoto, { backgroundColor: meal.backgroundColor }]}
-          onLayout={(event) => {
-            const nextWidth = Math.max(220, Math.round(event.nativeEvent.layout.width));
-            const nextHeight = Math.max(120, Math.round(event.nativeEvent.layout.height));
-            setImageFrameWidth((prev) => (prev === nextWidth ? prev : nextWidth));
-            setImageFrameHeight((prev) => (prev === nextHeight ? prev : nextHeight));
-          }}
-        >
-          {/* Food image slider */}
-          {imageUrls.length > 0 ? (
-            <ScrollView
-              horizontal
-              pagingEnabled
-              bounces={false}
-              showsHorizontalScrollIndicator={false}
-              style={styles.foodImageCarousel}
-              contentContainerStyle={styles.foodImageCarouselContent}
-              onMomentumScrollEnd={(event) => {
-                const width = Math.max(1, event.nativeEvent.layoutMeasurement.width);
-                const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
-                const safeIndex = Math.max(0, Math.min(nextIndex, imageUrls.length - 1));
-                setImageIndex(safeIndex);
-              }}
-            >
-              {imageUrls.map((uri, idx) => {
-                const sourceUri = idx === imageIndex ? (renderableImageUri || uri) : uri;
-                return (
-                  <View key={`${uri}-${idx}`} style={[styles.foodImageSlide, { width: slideWidth }]}>
-                    <Image
-                      source={{ uri: sourceUri }}
-                      style={styles.foodImage}
-                      resizeMode="cover"
-                      onError={() => {
-                        if (idx === imageIndex && isInlineBase64ImageUri(uri)) {
-                          setRenderableImageUri(null);
-                        }
-                      }}
-                    />
-                  </View>
-                );
-              })}
-            </ScrollView>
-          ) : (
-            <View style={styles.foodImageFallback} />
-          )}
-          {LinearGradient ? (
-            <View pointerEvents="none" style={styles.foodPhotoBottomGradient}>
-              <LinearGradient
-                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.46)', 'rgba(0,0,0,0.82)']}
-                locations={[0, 0.44, 1]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={styles.foodPhotoBottomGradientFill}
-              />
-            </View>
-          ) : (
-            <View pointerEvents="none" style={styles.foodPhotoBottomGradientFallback} />
-          )}
-          {imageUrls.length > 1 ? (
-            <View pointerEvents="none" style={styles.foodPhotoDotsRow}>
-              {imageUrls.map((_, idx) => (
-                <View
-                  key={`dot-${idx}`}
-                  style={[
-                    styles.foodPhotoDot,
-                    idx === imageIndex && styles.foodPhotoDotActive,
-                  ]}
-                />
-              ))}
-            </View>
-          ) : null}
-          <View pointerEvents="none" style={styles.foodPhotoTitleOverlay}>
-            <Text
-              numberOfLines={2}
-              style={[
-                styles.foodPhotoTitleText,
-                titleMetrics,
-                photoTextTone === 'dark' && styles.foodPhotoTitleTextDark,
-                { color: photoOverlayColors.title },
-              ]}
-            >
-              {meal.title}
-            </Text>
-            {meal.cuisine ? (
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.foodPhotoCuisineText,
-                  photoTextTone === 'dark' && styles.foodPhotoCuisineTextDark,
-                  { color: photoOverlayColors.cuisine },
-                ]}
-              >
-                {formatCuisineLabel(meal.cuisine)}
-              </Text>
-            ) : null}
-          </View>
-          <View style={styles.foodBadgesRight}>
-            <View style={styles.foodPriceBadge}>
-              <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
-            </View>
-            <View style={styles.foodRatingBadge}>
-              <Ionicons name="star" size={14} color="#F2B23A" />
-              <Text style={styles.foodRatingBadgeText}>{ratingBadgeText}</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            activeOpacity={0.82}
-            onPress={(event) => {
-              event.stopPropagation();
-              onFavoritePress();
-            }}
-            style={[
-              styles.foodPhotoFavoriteBtn,
-              isFavorite && styles.foodFooterFavoriteBtnActive,
-            ]}
-            disabled={favoritePending}
-          >
-            <Ionicons
-              name={isFavorite ? 'heart' : 'heart-outline'}
-              size={24}
-              color={isFavorite ? '#FFF4F1' : '#FFFDFB'}
-            />
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity
-          activeOpacity={0.96}
-          onPress={onPress}
-          style={[
-            styles.foodInfo,
-            {
-              backgroundColor: hexToRgba(colors.bg, 0.95),
-              borderTopColor: hexToRgba(colors.border, 0.44),
-            },
-          ]}
-        >
-          <View style={styles.foodInfoContent}>
-            {/* Row 1: stock info (left) | allergen (right) — equal halves, no divider */}
-            <View style={styles.foodInfoMainRow}>
-              <View style={styles.foodInfoHalfCol}>
-                <View
-                  style={[
-                    styles.foodInfoIconBubble,
-                    { backgroundColor: hexToRgba(colors.meta, 0.16) },
-                  ]}
-                >
-                  <Ionicons name="restaurant-outline" size={16} color={colors.price} />
-                </View>
-                <View style={[styles.foodInfoTextWrap, styles.foodInfoTextWrapCentered]}>
-                  <Text style={styles.foodInfoTitle}>
-                    {stockSummary || t('status.home.foodCard.preparingToday')}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.foodInfoHalfCol}>
-                <View style={[styles.foodInfoIconBubble, hasAllergens ? styles.foodInfoIconBubbleAlert : styles.foodInfoIconBubbleOk]}>
-                  <Ionicons name={hasAllergens ? 'warning-outline' : 'checkmark-circle-outline'} size={16} color={hasAllergens ? '#B13B2E' : '#2F6F4A'} />
-                </View>
-                <View style={[styles.foodInfoTextWrap, styles.foodInfoTextWrapCentered]}>
-                  <Text numberOfLines={1} style={[styles.foodInfoTitle, hasAllergens ? styles.foodInfoAlertTitle : styles.foodInfoOkTitle]}>
-                    {hasAllergens ? t('status.home.foodCard.hasAllergens') : t('status.home.foodCard.noAllergens')}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            {/* Row 2: prep time | short divider | distance — equal halves */}
-            <View style={styles.foodStatsRow}>
-              <View style={styles.foodInfoHalfCol}>
-                <View
-                  style={[
-                    styles.foodInfoIconBubble,
-                    { backgroundColor: hexToRgba(colors.meta, 0.16) },
-                  ]}
-                >
-                  <Ionicons name="time-outline" size={16} color={colors.price} />
-                </View>
-                <View style={styles.foodInfoTextWrap}>
-                  <Text style={styles.foodInfoTitle}>
-                    {meal.time || t('status.home.foodCard.timeSoon')}
-                  </Text>
-                  <Text style={styles.foodInfoSubtitle}>
-                    {t('label.home.foodCard.prepTime')}
-                  </Text>
-                </View>
-              </View>
-              {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
-                <>
-                  <View style={[styles.foodStatDivider, { backgroundColor: hexToRgba(colors.border, 0.4) }]} />
-                  <View style={styles.foodInfoHalfCol}>
-                    <View
-                      style={[
-                        styles.foodInfoIconBubble,
-                        { backgroundColor: hexToRgba(colors.meta, 0.16) },
-                      ]}
-                    >
-                      <Ionicons name="location-outline" size={16} color={colors.price} />
-                    </View>
-                    <View style={styles.foodInfoTextWrap}>
-                      <Text style={styles.foodInfoTitle}>
-                        {meal.distance}
-                      </Text>
-                      <Text style={styles.foodInfoSubtitle}>
-                        {t('label.home.foodCard.distance')}
-                      </Text>
-                    </View>
-                  </View>
-                </>
-              ) : null}
-            </View>
-            <View style={[styles.foodFooterRow, { borderTopColor: hexToRgba(colors.border, 0.4) }]}>
-              <View style={styles.foodFooterSeller}>
-                <View style={styles.foodSellerThumbWrap}>
-                  <View style={styles.foodSellerThumb}>
-                    {meal.sellerImage && !sellerThumbFailed ? (
-                      <Image
-                        source={{ uri: meal.sellerImage }}
-                        style={styles.foodSellerThumbImage}
-                        onError={() => setSellerThumbFailed(true)}
-                      />
-                    ) : (
-                      <View style={styles.foodSellerThumbFallback}>
-                        <Text style={[styles.foodSellerThumbFallbackText, { color: colors.price }]}>{sellerInitial}</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-                <View style={styles.foodFooterSellerText}>
-                  <Text style={[styles.foodFooterSellerHandle, { color: colors.price }]}>
-                    {sellerHandle}
-                  </Text>
-                  <Text style={[styles.foodFooterSellerTagline, { color: colors.subtitle }]}>
-                    {sellerTagline}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  HomeScreen                                                         */
@@ -2372,7 +1291,6 @@ export default function HomeScreen({
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [activeOrderIds, setActiveOrderIds] = useState<string[]>([]);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [allergenWarnMeal, setAllergenWarnMeal] = useState<MealCard | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatusSnapshot | null>(null);
@@ -2588,7 +1506,7 @@ export default function HomeScreen({
     () =>
       meals.slice(0, 8).map((meal) => ({
         ...meal,
-        reason: 'Öneri',
+        reason: 'Popüler ve yüksek puanlı',
       })),
     [meals],
   );
@@ -3007,8 +1925,8 @@ export default function HomeScreen({
     setHeaderImageSource({ uri: heroUrl });
     void saveCachedHomeHeroImageUrl(heroUrl);
 
-    if (getColors) {
-      getColors(heroUrl, { fallback: DEFAULT_HERO_SEED, cache: true, key: `hero:${heroUrl}` })
+    if (getImageColors) {
+      getImageColors(heroUrl, { fallback: DEFAULT_HERO_SEED, cache: true, key: `hero:${heroUrl}` })
         .then((result) => {
           if (cancelled) return;
           const seed = pickImagePaletteColor(result, DEFAULT_HERO_SEED);
@@ -4802,23 +3720,16 @@ export default function HomeScreen({
                                   <Text style={styles.cartAddonLine}>
                                     • {addon.name} x{addon.quantity} (+₺{(addon.price * addon.quantity).toFixed(2)})
                                   </Text>
-                                  <View style={styles.cartAddonQtyRow}>
-                                    <TouchableOpacity
-                                      style={styles.cartAddonQtyBtn}
-                                      onPress={() => adjustCartPaidAddonQuantity(item.key, addon, -1)}
-                                      activeOpacity={0.85}
-                                    >
-                                      <Ionicons name="remove" size={12} color="#8A4B16" />
-                                    </TouchableOpacity>
-                                    <Text style={styles.cartAddonQtyText}>{addon.quantity}</Text>
-                                    <TouchableOpacity
-                                      style={styles.cartAddonQtyBtn}
-                                      onPress={() => adjustCartPaidAddonQuantity(item.key, addon, 1)}
-                                      activeOpacity={0.85}
-                                    >
-                                      <Ionicons name="add" size={12} color="#8A4B16" />
-                                    </TouchableOpacity>
-                                  </View>
+                                  <QuantityStepper
+                                    value={addon.quantity}
+                                    onDecrease={() => adjustCartPaidAddonQuantity(item.key, addon, -1)}
+                                    onIncrease={() => adjustCartPaidAddonQuantity(item.key, addon, 1)}
+                                    iconSize={12}
+                                    iconColor="#8A4B16"
+                                    containerStyle={styles.cartAddonQtyRow}
+                                    buttonStyle={styles.cartAddonQtyBtn}
+                                    valueStyle={styles.cartAddonQtyText}
+                                  />
                                 </View>
                               ))}
                             </>
@@ -4829,23 +3740,14 @@ export default function HomeScreen({
                             ₺{unitPrice.toFixed(2)} x {item.quantity}
                           </Text>
                           <Text style={styles.cartItemTotal}>Ara toplam: ₺{itemTotal.toFixed(2)}</Text>
-                          <View style={styles.cartQtyRow}>
-                            <TouchableOpacity
-                              style={styles.cartQtyBtn}
-                              onPress={() => decreaseCartItem(item.key)}
-                              activeOpacity={0.85}
-                            >
-                              <Ionicons name="remove" size={14} color="#5F5246" />
-                            </TouchableOpacity>
-                            <Text style={styles.cartQtyText}>{item.quantity}</Text>
-                            <TouchableOpacity
-                              style={styles.cartQtyBtn}
-                              onPress={() => increaseCartItem(item.key)}
-                              activeOpacity={0.85}
-                            >
-                              <Ionicons name="add" size={14} color="#5F5246" />
-                            </TouchableOpacity>
-                          </View>
+                          <QuantityStepper
+                            value={item.quantity}
+                            onDecrease={() => decreaseCartItem(item.key)}
+                            onIncrease={() => increaseCartItem(item.key)}
+                            containerStyle={styles.cartQtyRow}
+                            buttonStyle={styles.cartQtyBtn}
+                            valueStyle={styles.cartQtyText}
+                          />
                         </View>
                       </View>
                     );
@@ -4966,117 +3868,98 @@ export default function HomeScreen({
           <Text style={styles.profileEmail}>{currentAuth.email}</Text>
 
           <View style={styles.profileGroupCard}>
-            <TouchableOpacity
-              style={[styles.profileActionRow, styles.profileActionRowDivider]}
+            <ProfileMenuItem
+              iconName="person-circle-outline"
+              iconColor="#4A7C59"
+              iconBgColor="#E9F2EB"
+              iconSize={20}
+              title={t('cta.home.profileEdit')}
               onPress={() => setProfileEditModalVisible(true)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.profileActionMain}>
-                <View style={[styles.profileActionIconWrap, { backgroundColor: '#E9F2EB' }]}>
-                  <Ionicons name="person-circle-outline" size={20} color="#4A7C59" />
-                </View>
-                <Text style={styles.profileActionTitle}>{t('cta.home.profileEdit')}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#A79B8E" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.profileActionRow, styles.profileActionRowDivider]}
+              rowStyle={[styles.profileActionRow, styles.profileActionRowDivider]}
+              iconWrapStyle={styles.profileActionIconWrap}
+              mainStyle={styles.profileActionMain}
+              titleStyle={styles.profileActionTitle}
+            />
+            <ProfileMenuItem
+              iconName="receipt-outline"
+              iconColor="#5D7394"
+              iconBgColor="#E8EDF6"
+              title={t('cta.home.myOrders')}
+              subtitle={t('helper.home.myOrdersHint')}
               onPress={() => onOpenOrders('profile')}
-              activeOpacity={0.85}
-            >
-              <View style={styles.profileActionMain}>
-                <View style={[styles.profileActionIconWrap, { backgroundColor: '#E8EDF6' }]}>
-                  <Ionicons name="receipt-outline" size={18} color="#5D7394" />
-                </View>
-                <View style={styles.profileActionTextBlock}>
-                  <Text style={styles.profileActionTitle}>{t('cta.home.myOrders')}</Text>
-                  <Text style={styles.profileActionSubtitle}>{t('helper.home.myOrdersHint')}</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#A79B8E" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.profileActionRow, styles.profileActionRowDivider]}
+              rowStyle={[styles.profileActionRow, styles.profileActionRowDivider]}
+              iconWrapStyle={styles.profileActionIconWrap}
+              mainStyle={styles.profileActionMain}
+              textBlockStyle={styles.profileActionTextBlock}
+              titleStyle={styles.profileActionTitle}
+              subtitleStyle={styles.profileActionSubtitle}
+            />
+            <ProfileMenuItem
+              iconName="chatbubbles-outline"
+              iconColor="#B45C37"
+              iconBgColor="#FCEFE7"
+              title={t('headline.ticket.list')}
+              subtitle={t('helper.settings.supportTicketsBody')}
               onPress={onOpenComplaints}
-              activeOpacity={0.85}
-            >
-              <View style={styles.profileActionMain}>
-                <View style={[styles.profileActionIconWrap, { backgroundColor: '#FCEFE7' }]}>
-                  <Ionicons name="chatbubbles-outline" size={18} color="#B45C37" />
-                </View>
-                <View style={styles.profileActionTextBlock}>
-                  <Text style={styles.profileActionTitle}>{t('headline.ticket.list')}</Text>
-                  <Text style={styles.profileActionSubtitle}>{t('helper.settings.supportTicketsBody')}</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#A79B8E" />
-            </TouchableOpacity>
+              rowStyle={[styles.profileActionRow, styles.profileActionRowDivider]}
+              iconWrapStyle={styles.profileActionIconWrap}
+              mainStyle={styles.profileActionMain}
+              textBlockStyle={styles.profileActionTextBlock}
+              titleStyle={styles.profileActionTitle}
+              subtitleStyle={styles.profileActionSubtitle}
+            />
             {onOpenFavorites && (
-            <TouchableOpacity
-              style={[styles.profileActionRow, styles.profileActionRowDivider]}
-              onPress={onOpenFavorites}
-              activeOpacity={0.85}
-            >
-              <View style={styles.profileActionMain}>
-                <View style={[styles.profileActionIconWrap, { backgroundColor: '#FDECEC' }]}>
-                  <Ionicons name="heart-outline" size={18} color="#C0392B" />
-                </View>
-                <Text style={styles.profileActionTitle}>Favorilerim</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#A79B8E" />
-            </TouchableOpacity>
+              <ProfileMenuItem
+                iconName="heart-outline"
+                iconColor="#C0392B"
+                iconBgColor="#FDECEC"
+                title="Favorilerim"
+                onPress={onOpenFavorites}
+                rowStyle={[styles.profileActionRow, styles.profileActionRowDivider]}
+                iconWrapStyle={styles.profileActionIconWrap}
+                mainStyle={styles.profileActionMain}
+                titleStyle={styles.profileActionTitle}
+              />
             )}
-            <TouchableOpacity
-              style={styles.profileActionRow}
+            <ProfileMenuItem
+              iconName="location"
+              iconColor="#8B7255"
+              iconBgColor="#F1EADF"
+              title={t('cta.home.deliveryAddressChange')}
+              subtitle={defaultAddress ? formatAddressLine(defaultAddress) : t('helper.home.deliveryAddressHint')}
               onPress={() => setAddressModalVisible(true)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.profileActionMain}>
-                <View style={[styles.profileActionIconWrap, { backgroundColor: '#F1EADF' }]}>
-                  <Ionicons name="location" size={18} color="#8B7255" />
-                </View>
-                <View style={styles.profileActionTextBlock}>
-                  <Text style={styles.profileActionTitle}>{t('cta.home.deliveryAddressChange')}</Text>
-                  <Text style={styles.profileActionSubtitle}>
-                    {defaultAddress ? formatAddressLine(defaultAddress) : t('helper.home.deliveryAddressHint')}
-                  </Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#A79B8E" />
-            </TouchableOpacity>
+              rowStyle={styles.profileActionRow}
+              iconWrapStyle={styles.profileActionIconWrap}
+              mainStyle={styles.profileActionMain}
+              textBlockStyle={styles.profileActionTextBlock}
+              titleStyle={styles.profileActionTitle}
+              subtitleStyle={styles.profileActionSubtitle}
+            />
           </View>
 
-          <TouchableOpacity
-            style={styles.profileGroupCard}
+          <ProfileMenuItem
+            iconName="shield-checkmark-outline"
+            iconColor="#6A5846"
+            iconBgColor="#EFEAE3"
+            title={t('cta.home.security')}
             onPress={onOpenSettings}
-            activeOpacity={0.85}
-          >
-            <View style={styles.profileActionRow}>
-              <View style={styles.profileActionMain}>
-                <View style={[styles.profileActionIconWrap, { backgroundColor: '#EFEAE3' }]}>
-                  <Ionicons name="shield-checkmark-outline" size={18} color="#6A5846" />
-                </View>
-                <Text style={styles.profileActionTitle}>{t('cta.home.security')}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#A79B8E" />
-            </View>
-          </TouchableOpacity>
+            rowStyle={[styles.profileGroupCard, styles.profileActionRow]}
+            iconWrapStyle={styles.profileActionIconWrap}
+            mainStyle={styles.profileActionMain}
+            titleStyle={styles.profileActionTitle}
+          />
 
-          <TouchableOpacity
-            style={styles.profileGroupCard}
+          <ProfileMenuItem
+            iconName="options-outline"
+            iconColor="#3E845B"
+            iconBgColor="#EAF4ED"
+            title={t('headline.home.generalSettingsTitle')}
             onPress={() => setGeneralSettingsModalVisible(true)}
-            activeOpacity={0.85}
-          >
-            <View style={styles.profileActionRow}>
-              <View style={styles.profileActionMain}>
-                <View style={[styles.profileActionIconWrap, { backgroundColor: '#EAF4ED' }]}>
-                  <Ionicons name="options-outline" size={18} color="#3E845B" />
-                </View>
-                <Text style={styles.profileActionTitle}>{t('headline.home.generalSettingsTitle')}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#A79B8E" />
-            </View>
-          </TouchableOpacity>
+            rowStyle={[styles.profileGroupCard, styles.profileActionRow]}
+            iconWrapStyle={styles.profileActionIconWrap}
+            mainStyle={styles.profileActionMain}
+            titleStyle={styles.profileActionTitle}
+          />
 
           <View style={styles.profileSellerCard}>
             <View style={styles.profileSellerContent}>
@@ -5596,23 +4479,14 @@ export default function HomeScreen({
                                 +₺{addonPrice.toFixed(2)}
                               </Text>
                             </View>
-                            <View style={styles.modalAddonStepper}>
-                              <TouchableOpacity
-                                style={styles.modalAddonStepperButton}
-                                onPress={() => adjustSelectedPaidAddonQuantity(addon, -1)}
-                                activeOpacity={0.85}
-                              >
-                                <Ionicons name="remove" size={14} color="#5F5246" />
-                              </TouchableOpacity>
-                              <Text style={styles.modalAddonStepperQty}>{selectedQuantity}</Text>
-                              <TouchableOpacity
-                                style={styles.modalAddonStepperButton}
-                                onPress={() => adjustSelectedPaidAddonQuantity(addon, 1)}
-                                activeOpacity={0.85}
-                              >
-                                <Ionicons name="add" size={14} color="#5F5246" />
-                              </TouchableOpacity>
-                            </View>
+                            <QuantityStepper
+                              value={selectedQuantity}
+                              onDecrease={() => adjustSelectedPaidAddonQuantity(addon, -1)}
+                              onIncrease={() => adjustSelectedPaidAddonQuantity(addon, 1)}
+                              containerStyle={styles.modalAddonStepper}
+                              buttonStyle={styles.modalAddonStepperButton}
+                              valueStyle={styles.modalAddonStepperQty}
+                            />
                           </View>
                         );
                       })}
@@ -6219,13 +5093,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   greetingTitleWrap: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', maxWidth: '100%' },
-  greetingTitle: {
-    color: '#1E1B18',
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
   heroGreetingLine: {
     color: '#6B4A38',
     fontSize: 15,
@@ -6266,25 +5133,6 @@ const styles = StyleSheet.create({
     height: 1.6,
     borderRadius: 2,
     backgroundColor: '#A4714E',
-  },
-  heroSubtitle: {
-    color: '#B15735',
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 12,
-    lineHeight: 21,
-  },
-  heroLocationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    gap: 4,
-    alignSelf: 'flex-start',
-  },
-  heroLocationText: {
-    color: '#B15735',
-    fontSize: 12,
-    fontWeight: '700',
   },
   heroAvatarCircle: {
     width: 44,
@@ -6382,18 +5230,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
-  stickySearchBottomFade: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 56,
-  },
-  body: {
-    backgroundColor: '#F3EEE4',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-  },
 
   /* --- Floating Search Bar (premium shadow) --- */
   floatingSearchWrap: {
@@ -6465,10 +5301,6 @@ const styles = StyleSheet.create({
   chipActive: {
     backgroundColor: '#3C2920',
     borderColor: '#3C2920',
-  },
-  chipEmoji: {
-    fontSize: 18,
-    marginRight: 6,
   },
   chipText: {
     color: '#3D2B22',
@@ -6645,7 +5477,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  quickOrderPrice: { color: '#3A281F', fontSize: 16, fontWeight: '800', flexShrink: 0 },
   quickOrderActions: {
     flexDirection: 'column',
     alignItems: 'stretch',
@@ -6783,75 +5614,47 @@ const styles = StyleSheet.create({
   },
   secondaryOrdersBtnText: { color: '#5F5246', fontSize: 13, fontWeight: '700' },
 
-  debugBox: {
-    backgroundColor: '#FFF3CD',
-    borderWidth: 1,
-    borderColor: '#E8D9A8',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 12,
-  },
-  headerDebugBox: {
-    marginTop: 8,
-    marginBottom: 0,
-  },
-  debugText: { color: '#5C4B1D', fontSize: 12, fontWeight: '500' },
-  debugError: { color: '#B42318', fontSize: 12, fontWeight: '600', marginTop: 4 },
 
   /* --- Categories (legacy - kept for compat) --- */
-  sellersSection: {
-    marginBottom: 12,
-    marginHorizontal: 12,
-  },
-  sellersSectionTitle: {
-    color: '#3D2B22',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
   recommendationsSection: {
-    marginBottom: 22,
+    marginBottom: 8,
     marginHorizontal: 12,
-    marginTop: 8,
+    marginTop: 2,
   },
   recommendationsSectionTitle: {
     color: '#3A281F',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
+    marginBottom: 6,
+    marginLeft: 2,
+    textAlign: 'left',
   },
   recommendationsScroller: {
     marginHorizontal: -12,
-    marginBottom: 8,
+    marginBottom: 0,
   },
   recommendationsRow: {
     gap: 8,
     paddingHorizontal: 14,
     paddingRight: 18,
   },
-  sellersRow: {
-    gap: 8,
-    paddingRight: 6,
-  },
   sellerChip: {
-    minWidth: 232,
-    maxWidth: 272,
+    minWidth: 218,
+    maxWidth: 252,
     borderWidth: 1,
     borderColor: '#E8DCCB',
-    borderRadius: 14,
+    borderRadius: 12,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 10,
   },
   sellerChipAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 46,
+    height: 46,
+    borderRadius: 12,
     backgroundColor: '#F2EBE1',
     alignItems: 'center',
     justifyContent: 'center',
@@ -6860,8 +5663,8 @@ const styles = StyleSheet.create({
   sellerChipAvatarImage: { width: '100%', height: '100%' },
   sellerChipAvatarEmoji: { fontSize: 18 },
   sellerChipTextWrap: { flex: 1, minWidth: 0 },
-  sellerChipName: { color: '#3D3229', fontSize: 17, fontWeight: '700' },
-  sellerChipMeta: { color: '#8D8072', fontSize: 14, marginTop: 3 },
+  sellerChipName: { color: '#3D3229', fontSize: 15, fontWeight: '700', lineHeight: 18 },
+  sellerChipMeta: { color: '#8D8072', fontSize: 12, marginTop: 1, lineHeight: 15 },
   topSoldLoadingChip: {
     borderWidth: 1,
     borderColor: '#E8DCCB',
@@ -6875,416 +5678,6 @@ const styles = StyleSheet.create({
   },
   topSoldLoadingText: { color: '#7E7163', fontSize: 12, fontWeight: '600' },
 
-  /* --- Food card --- */
-  foodCardWrap: {
-    marginBottom: 12,
-    marginHorizontal: 10,
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 6,
-  },
-  foodCard: {
-    borderWidth: 1,
-    borderRadius: 30,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  foodPhoto: {
-    width: '100%',
-    height: 180,
-    overflow: 'hidden',
-    backgroundColor: '#B96C44',
-  },
-  foodImageCarousel: {
-    width: '100%',
-    height: '100%',
-  },
-  foodImageCarouselContent: {
-    height: '100%',
-  },
-  foodImageSlide: {
-    height: '100%',
-  },
-  foodImage: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  foodImageFallback: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#8E593C',
-  },
-  foodPhotoBottomGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 128,
-  },
-  foodPhotoBottomGradientFill: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  foodPhotoBottomGradientFallback: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 102,
-    backgroundColor: 'rgba(0,0,0,0.34)',
-  },
-  foodPhotoDotsRow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 8,
-    zIndex: 7,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-  },
-  foodPhotoDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.38)',
-  },
-  foodPhotoDotActive: {
-    width: 16,
-    borderRadius: 4,
-    backgroundColor: '#F5D08A',
-  },
-  foodBadgesRight: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    alignItems: 'flex-end',
-    gap: 8,
-    zIndex: 7,
-  },
-  foodRatingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(51,36,27,0.9)',
-    borderRadius: 18,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-  },
-  foodRatingBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  foodPhotoTitleOverlay: {
-    position: 'absolute',
-    left: 18,
-    right: 16,
-    bottom: 14,
-    zIndex: 7,
-  },
-  foodPhotoTitleText: {
-    color: '#FFFFFF',
-    fontSize: 39,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    letterSpacing: -2,
-    textShadowColor: 'rgba(0,0,0,0.72)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
-  foodPhotoTitleTextDark: {
-    textShadowColor: 'rgba(255,255,255,0.60)',
-    textShadowRadius: 7,
-  },
-  foodPhotoCuisineText: {
-    marginTop: 1,
-    color: '#F4ECE0',
-    fontSize: 15,
-    fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.65)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 5,
-  },
-  foodPhotoCuisineTextDark: {
-    textShadowColor: 'rgba(255,255,255,0.55)',
-    textShadowRadius: 4,
-  },
-  foodPriceBadge: {
-    backgroundColor: 'rgba(51,36,27,0.9)',
-    borderRadius: 18,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-  },
-  foodPriceBadgeText: { color: '#FFFFFF', fontSize: 17, fontWeight: '900' },
-  foodPhotoFavoriteBtn: {
-    position: 'absolute',
-    right: 14,
-    bottom: 14,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 1.2,
-    borderColor: 'rgba(255,255,255,0.48)',
-    backgroundColor: 'rgba(76,56,42,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 7,
-    shadowColor: '#1F130D',
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  foodInfo: {
-    backgroundColor: '#FAFAF8',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(125,95,71,0.1)',
-    overflow: 'visible',
-  },
-  foodInfoContent: {
-    paddingTop: 12,
-    paddingBottom: 8,
-    paddingHorizontal: 16,
-    overflow: 'visible',
-  },
-  foodInfoMainRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 21,
-    marginBottom: 0,
-  },
-  foodInfoHalfCol: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    minWidth: 0,
-  },
-  foodInfoLeadCol: {
-    flex: 1,
-    minWidth: 0,
-    gap: 10,
-  },
-  foodInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  foodInfoColDivider: {
-    width: 1,
-    alignSelf: 'stretch',
-    backgroundColor: 'rgba(112,88,68,0.16)',
-    marginHorizontal: 10,
-  },
-  foodInfoRightCol: {
-    width: '34%',
-    flexShrink: 0,
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  foodInfoRightItem: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  foodInfoIconBubble: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#F3E6D8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  foodInfoIconBubbleAlert: {
-    backgroundColor: '#FBE8E4',
-  },
-  foodInfoIconBubbleOk: {
-    backgroundColor: '#E4F2EB',
-  },
-  foodInfoTextWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  foodInfoTextWrapCentered: {
-    minHeight: 30,
-    justifyContent: 'center',
-  },
-  foodInfoAlertSlot: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    justifyContent: 'flex-end',
-  },
-  foodInfoAlertTextWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  foodInfoAlertSpacer: {
-    flex: 1,
-    minWidth: 0,
-  },
-  foodInfoDividerGhost: {
-    opacity: 0,
-  },
-  foodInfoInlineBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  foodInfoTitle: {
-    color: '#433126',
-    fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 16,
-  },
-  foodInfoSubtitle: {
-    marginTop: 0,
-    color: '#7B6758',
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 15,
-  },
-  foodInfoAlertTitle: {
-    color: '#B13B2E',
-  },
-  foodInfoOkTitle: {
-    color: '#2F6F4A',
-  },
-  foodStatsRow: {
-    marginTop: 8,
-    paddingBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 0,
-  },
-  foodStatItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  foodStatItemRightCol: {
-    width: '34%',
-    flexGrow: 0,
-    flexShrink: 0,
-  },
-  foodStatIconBubble: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F4EBE1',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  foodStatTextWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  foodStatValue: {
-    color: '#3E3025',
-    fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 16,
-  },
-  foodStatLabel: {
-    marginTop: 2,
-    color: '#8B7768',
-    fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 14,
-  },
-  foodStatDivider: {
-    width: 1,
-    backgroundColor: 'rgba(112,88,68,0.16)',
-    marginHorizontal: 10,
-    alignSelf: 'stretch',
-    flexShrink: 0,
-  },
-  foodFooterRow: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(112,88,68,0.16)',
-    marginTop: 6,
-    paddingTop: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    overflow: 'visible',
-  },
-  foodFooterSeller: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    overflow: 'visible',
-  },
-  foodSellerThumbWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    position: 'relative',
-    zIndex: 12,
-    transform: [{ translateY: 0 }],
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  foodSellerThumb: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 0.7,
-    borderColor: 'rgba(141,128,114,0.24)',
-    backgroundColor: '#F4EEE6',
-  },
-  foodSellerThumbImage: { width: '100%', height: '100%' },
-  foodSellerThumbFallback: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  foodSellerThumbFallbackText: { color: '#6D5D50', fontSize: 18, fontWeight: '800' },
-  foodFooterSellerText: {
-    flex: 1,
-    minWidth: 0,
-    justifyContent: 'flex-start',
-    paddingTop: 0,
-  },
-  foodFooterSellerHandle: {
-    color: '#33241C',
-    fontSize: 13,
-    fontWeight: '900',
-    lineHeight: 16,
-  },
-  foodFooterSellerTagline: {
-    marginTop: 1,
-    color: '#7D695A',
-    fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 14,
-  },
-  foodFooterFavoriteBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 1.5,
-    borderColor: '#DFAEAB',
-    backgroundColor: '#FFF7F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  foodFooterFavoriteBtnActive: {
-    backgroundColor: 'rgba(161,58,47,0.52)',
-    borderColor: 'rgba(255,240,236,0.72)',
-  },
 
   /* --- Tab panels --- */
   tabPanelCard: {
@@ -7361,13 +5754,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     backgroundColor: '#F7F4EF',
   },
-  cartDeliveryFeeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cartDeliveryFeeLabel: { color: '#8D8072', fontSize: 13, fontWeight: '600' },
-  cartDeliveryFeeValue: { color: '#3D3229', fontSize: 15, fontWeight: '700' },
   cartTotalRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -7375,53 +5761,6 @@ const styles = StyleSheet.create({
   },
   cartTotalLabel: { color: '#8D8072', fontSize: 13, fontWeight: '600' },
   cartTotalValue: { color: '#3D3229', fontSize: 20, fontWeight: '700' },
-  checkoutAddressCard: {
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#E6DDCF',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    backgroundColor: '#FFFBF5',
-    gap: 10,
-  },
-  checkoutAddressTitle: { color: '#3D3229', fontSize: 13, fontWeight: '700' },
-  deliveryTypeRow: { flexDirection: 'row', gap: 8 },
-  deliveryTypeChip: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#DDD2C3',
-    borderRadius: 10,
-    paddingVertical: 8,
-    alignItems: 'center',
-    backgroundColor: '#FFFDF9',
-  },
-  deliveryTypeChipActive: {
-    backgroundColor: '#4A7C59',
-    borderColor: '#4A7C59',
-  },
-  deliveryTypeChipText: { color: '#5F5246', fontSize: 13, fontWeight: '700' },
-  deliveryTypeChipTextActive: { color: '#FFFFFF' },
-  checkoutAddressBox: {
-    borderWidth: 1,
-    borderColor: '#E8DED0',
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    padding: 10,
-    gap: 6,
-  },
-  checkoutAddressLabel: { color: '#8D8072', fontSize: 12, fontWeight: '600' },
-  checkoutAddressValue: { color: '#3D3229', fontSize: 13, lineHeight: 19, fontWeight: '600' },
-  checkoutAddressActions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  checkoutAddressActionBtn: {
-    borderWidth: 1,
-    borderColor: '#DDD2C3',
-    borderRadius: 9,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    backgroundColor: '#FFFDF9',
-  },
-  checkoutAddressActionText: { color: '#5F5246', fontSize: 12, fontWeight: '700' },
   checkoutAddressManageBtn: {
     borderWidth: 1,
     borderColor: '#4A7C59',
@@ -7445,7 +5784,6 @@ const styles = StyleSheet.create({
   paymentInfoText: { color: '#2F6F4A', fontSize: 12, fontWeight: '600', marginTop: 8 },
   paymentInfoTextCompact: { color: '#2F6F4A', fontSize: 12, fontWeight: '600', marginTop: 10, marginHorizontal: 18 },
   paymentActionsColumn: { gap: 8, marginTop: 10 },
-  paymentActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   paymentActionBtn: {
     width: '100%',
     height: 42,
@@ -7477,12 +5815,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  paymentActionHint: {
-    color: '#6B5D4F',
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-  },
   paymentActionHintStrong: {
     color: '#3D3229',
     fontSize: 12,
@@ -7491,63 +5823,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 6,
   },
-  paymentRefreshBtn: {
-    height: 42,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#DDD2C3',
-    backgroundColor: '#FFFDF9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   paymentRefreshBtnDisabled: { opacity: 0.55 },
-  paymentRefreshBtnText: { color: '#5F5246', fontSize: 13, fontWeight: '700' },
-  pendingBackHomeBtn: {
-    marginTop: 18,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: theme.buttonActive,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pendingBackHomeBtnText: {
-    color: theme.onPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  paymentWebSafe: { flex: 1, backgroundColor: '#FFFDF9' },
-  paymentWebHeader: {
-    height: 56,
-    paddingHorizontal: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EDE8E0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  paymentWebTitle: { color: '#3D3229', fontSize: 16, fontWeight: '700' },
-  paymentWebClose: {
-    borderWidth: 1,
-    borderColor: '#DDD2C3',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: '#FFF',
-  },
-  paymentWebCloseText: { color: '#5F5246', fontSize: 13, fontWeight: '700' },
-  paymentWebLoading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  paymentWebErrorText: { color: '#B42318', fontSize: 14, fontWeight: '600' },
-  paymentWebFallbackBtn: {
-    marginTop: 10,
-    height: 40,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    backgroundColor: '#4A7C59',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  paymentWebFallbackBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
   messagesTabWrap: { flex: 1, marginTop: 16, paddingBottom: 72 },
   messagesWallpaper: {
     ...StyleSheet.absoluteFillObject,
@@ -7968,7 +6244,6 @@ const styles = StyleSheet.create({
   profileLogoutText: { color: '#A04A4A', fontSize: 14, fontWeight: '600' },
 
   /* --- Inline error --- */
-  inlineError: { color: '#D45454', fontSize: 13, lineHeight: 18, textAlign: 'center', marginTop: 6 },
 
   /* --- FAB --- */
   floatingWrap: {
@@ -8096,36 +6371,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalAddonStepperQty: { minWidth: 20, textAlign: 'center', color: '#3D3229', fontSize: 14, fontWeight: '700' },
-  modalAddonsWrap: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 8 },
-  modalAddonChip: {
-    borderWidth: 1,
-    borderColor: '#D8CEBF',
-    borderRadius: 999,
-    backgroundColor: '#FFFDF9',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  modalAddonChipSelected: {
-    borderColor: '#3E845B',
-    backgroundColor: '#EAF4EC',
-  },
-  modalAddonChipText: { color: '#5E5247', fontSize: 12, fontWeight: '600' },
-  modalAddonChipTextSelected: { color: '#2E6B44', fontWeight: '700' },
   modalIngredientsPlain: { color: '#5F5246', fontSize: 14, lineHeight: 20 },
   modalAllergenTag: { backgroundColor: '#FDECEA', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#F5C6CB' },
   modalAllergenText: { color: '#DC3545', fontSize: 13, fontWeight: '600' },
-  allergenOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 32 },
-  allergenModal: { backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%', gap: 10 },
-  allergenIconRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  allergenModalTitle: { fontSize: 18, fontWeight: '800', color: '#C0392B' },
-  allergenModalBody: { fontSize: 14, color: '#5F5246' },
-  allergenModalList: { fontSize: 15, fontWeight: '700', color: '#C0392B' },
-  allergenModalQuestion: { fontSize: 14, color: '#5F5246', marginTop: 4 },
-  allergenModalActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  allergenCancelBtn: { flex: 1, borderRadius: 12, paddingVertical: 12, backgroundColor: '#F0EBE4', alignItems: 'center' },
-  allergenCancelText: { fontSize: 15, fontWeight: '600', color: '#71685F' },
-  allergenAddBtn: { flex: 1, borderRadius: 12, paddingVertical: 12, backgroundColor: '#C0392B', alignItems: 'center' },
-  allergenAddText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   modalPrice: { color: '#5B7A4A', fontSize: 28, fontWeight: '700', marginTop: 8, marginBottom: 20 },
   modalCartButton: {
     backgroundColor: '#4A7C59', borderRadius: 16, paddingVertical: 16,
@@ -8394,30 +6642,6 @@ const styles = StyleSheet.create({
   },
 
   /* --- Agent modal --- */
-  agentModalSafe: { flex: 1, backgroundColor: '#F5F1EB' },
-  agentHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-  },
-  agentCloseBtn: {
-    width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.05)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  agentHeaderTitle: { fontSize: 15, fontWeight: '600', color: '#3D3229' },
-  modePill: { backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 12, padding: 3, flexDirection: 'row' },
-  modeBtn: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 10 },
-  modeBtnActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
-  },
-  modeBtnText: { color: '#A89B8C', fontSize: 13, fontWeight: '600' },
-  modeBtnTextActive: { color: '#3D3229' },
-  agentContent: { flex: 1 },
-  agentCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 32 },
-  agentStatusText: { color: '#3D3229', fontSize: 16, fontWeight: '600' },
-  agentErrorText: { color: '#D45454', fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  agentRetryBtn: { backgroundColor: '#4A7C59', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  agentRetryText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 
   /* --- Chat (text mode) --- */
   chatListContainer: { flex: 1 },
@@ -8440,10 +6664,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 16, paddingVertical: 12,
     borderTopWidth: 1, borderTopColor: '#EDE8E0',
-  },
-  chatMicBtn: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.05)',
-    alignItems: 'center', justifyContent: 'center',
   },
   chatTextInput: {
     flex: 1, borderWidth: 1, borderColor: '#DDD7CC', borderRadius: 24,
