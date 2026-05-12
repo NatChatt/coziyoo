@@ -13,29 +13,13 @@ from django.http import Http404, HttpRequest, HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from coziyoo import s3 as s3_utils
 
+from apps.common.permissions import IsAppRealm
+from apps.common.responses import error_response
+from apps.common.db import rows_as_dicts as _rows_as_dicts, stringify_uuids as _stringify_uuids
+
 _COLUMN_EXISTS_CACHE = {}
-
-
-class IsAppRealm(IsAuthenticated):
-    def has_permission(self, request, view):
-        return super().has_permission(request, view) and getattr(request.user, "realm", None) == "app"
-
-
-def _rows_as_dicts(cursor):
-    """Convert cursor results to list of dicts using cursor.description."""
-    cols = [col.name for col in cursor.description]
-    return [dict(zip(cols, row)) for row in cursor.fetchall()]
-
-
-def _stringify_uuids(row: dict, fields: list) -> dict:
-    """Convert UUID fields to strings in-place."""
-    for f in fields:
-        if row.get(f) is not None:
-            row[f] = str(row[f])
-    return row
 
 
 def _coerce_json(value):
@@ -396,6 +380,19 @@ def _load_category_map(category_ids):
     }
 
 
+def _collect_food_category_ids(items):
+    category_ids = []
+    for item in items:
+        if item.get("category_id"):
+            category_ids.append(item["category_id"])
+        for menu_item in _coerce_json(item.get("menu_items_json")) or []:
+            if isinstance(menu_item, dict) and menu_item.get("categoryId"):
+                category_ids.append(menu_item["categoryId"])
+        for secondary_id in _coerce_json(item.get("secondary_category_ids_json")) or []:
+            category_ids.append(secondary_id)
+    return category_ids
+
+
 def _serialize_food_row(row, category_map, request=None):
     image_urls = _parse_image_urls(row.get("image_urls_json"))
     ingredients = _parse_text_list(row.get("ingredients_json"))
@@ -520,10 +517,7 @@ class FavoriteToggleView(APIView):
 
     def post(self, request, food_id):
         if not _food_exists(food_id):
-            return Response(
-                {"error": {"code": "FOOD_NOT_FOUND", "message": "Yemek bulunamadı."}},
-                status=404,
-            )
+            return error_response("FOOD_NOT_FOUND", "Yemek bulunamadı.", 404)
 
         with transaction.atomic():
             with connection.cursor() as cursor:
@@ -541,10 +535,7 @@ class FavoriteToggleView(APIView):
 
     def delete(self, request, food_id):
         if not _food_exists(food_id):
-            return Response(
-                {"error": {"code": "FOOD_NOT_FOUND", "message": "Yemek bulunamadı."}},
-                status=404,
-            )
+            return error_response("FOOD_NOT_FOUND", "Yemek bulunamadı.", 404)
 
         with transaction.atomic():
             with connection.cursor() as cursor:
@@ -646,21 +637,253 @@ class FoodListView(APIView):
             cursor.execute(data_sql, params)
             items = _rows_as_dicts(cursor)
 
-        category_ids = []
-        for item in items:
-            if item.get("category_id"):
-                category_ids.append(item["category_id"])
-            for menu_item in _coerce_json(item.get("menu_items_json")) or []:
-                if isinstance(menu_item, dict) and menu_item.get("categoryId"):
-                    category_ids.append(menu_item["categoryId"])
-            for secondary_id in _coerce_json(item.get("secondary_category_ids_json")) or []:
-                category_ids.append(secondary_id)
-        category_map = _load_category_map(category_ids)
+        category_map = _load_category_map(_collect_food_category_ids(items))
         return Response({
             "data": [_serialize_food_row(item, category_map, request) for item in items],
             "mobileHomeHeaderImageUrl": _resolve_mobile_home_header_image_url(request),
             "mobileHomeHeroSurfaceColor": _resolve_mobile_home_surface_color(),
         })
+
+
+RECOMMENDATION_DEFAULT_LIMIT = 8
+RECOMMENDATION_MAX_LIMIT = 20
+RECOMMENDATION_MAX_ITEMS_PER_SELLER = 2
+
+
+def _parse_recommendation_limit(value):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return RECOMMENDATION_DEFAULT_LIMIT
+    return max(1, min(parsed, RECOMMENDATION_MAX_LIMIT))
+
+
+def _recommendation_reason(row):
+    if row.get("has_favorite"):
+        return "Favorilerinden tanıdık bir lezzet"
+    if float(row.get("favorite_category_score") or 0) > 0:
+        return "Favorilerindeki tatlara yakın"
+    if float(row.get("order_category_score") or 0) > 0:
+        return "Daha önce sevdiğin kategoriden"
+    if float(row.get("order_cuisine_score") or 0) > 0:
+        return "Damak tadına yakın bir mutfak"
+    if float(row.get("seller_order_score") or 0) > 0:
+        return "Daha önce tercih ettiğin satıcıdan"
+    if int(row.get("seller_order_count") or 0) == 0 and bool(row.get("has_profile_signal")):
+        return "Yeni bir satıcı keşfi"
+    return "Popüler ve yüksek puanlı"
+
+
+def _select_fair_recommendations(items, limit):
+    selected = []
+    selected_ids = set()
+    seller_counts = {}
+    min_distinct_sellers = max(1, min(limit, (limit + 1) // 2))
+
+    def add_item(item, enforce_cap=True):
+        if item["id"] in selected_ids:
+            return False
+        seller_id = str(item.get("seller_id") or "")
+        if enforce_cap and seller_counts.get(seller_id, 0) >= RECOMMENDATION_MAX_ITEMS_PER_SELLER:
+            return False
+        selected.append(item)
+        selected_ids.add(item["id"])
+        seller_counts[seller_id] = seller_counts.get(seller_id, 0) + 1
+        return True
+
+    for item in items:
+        if len(selected) >= limit or len(seller_counts) >= min_distinct_sellers:
+            break
+        seller_id = str(item.get("seller_id") or "")
+        if seller_counts.get(seller_id, 0) == 0:
+            add_item(item)
+
+    for item in items:
+        if len(selected) >= limit:
+            break
+        add_item(item)
+
+    for item in items:
+        if len(selected) >= limit:
+            break
+        add_item(item, enforce_cap=False)
+
+    return selected[:limit]
+
+
+class FoodRecommendationsView(APIView):
+    """GET /v1/foods/recommendations - Personalized buyer recommendations."""
+
+    permission_classes = [IsAppRealm]
+
+    def get(self, request):
+        limit = _parse_recommendation_limit(request.query_params.get("limit"))
+        candidate_limit = min(max(limit * 8, 40), 140)
+        seller_home_card_image_sql = (
+            "u.home_card_image_url AS seller_home_card_image"
+            if _has_public_column("users", "home_card_image_url")
+            else "NULL::text AS seller_home_card_image"
+        )
+        paid_addons_sql = (
+            "f.paid_addons_json"
+            if _has_public_column("foods", "paid_addons_json")
+            else "'[]'::jsonb AS paid_addons_json"
+        )
+        favorite_count_sql = (
+            "COALESCE(f.favorite_count, 0)"
+            if _has_public_column("foods", "favorite_count")
+            else "0"
+        )
+
+        sql = f"""
+            WITH buyer_orders AS (
+                SELECT
+                    oi.food_id,
+                    f.category_id,
+                    NULLIF(LOWER(TRIM(f.cuisine)), '') AS cuisine_key,
+                    f.seller_id,
+                    SUM(GREATEST(oi.quantity, 1))::float AS order_weight,
+                    MAX(o.created_at) AS last_ordered_at
+                FROM orders o
+                JOIN order_items oi ON oi.order_id = o.id
+                JOIN foods f ON f.id = oi.food_id
+                WHERE o.buyer_id = %s
+                  AND o.status = 'completed'
+                GROUP BY oi.food_id, f.category_id, cuisine_key, f.seller_id
+            ),
+            order_categories AS (
+                SELECT category_id, SUM(order_weight)::float AS score
+                FROM buyer_orders
+                WHERE category_id IS NOT NULL
+                GROUP BY category_id
+            ),
+            order_cuisines AS (
+                SELECT cuisine_key, SUM(order_weight)::float AS score
+                FROM buyer_orders
+                WHERE cuisine_key IS NOT NULL
+                GROUP BY cuisine_key
+            ),
+            order_sellers AS (
+                SELECT seller_id, SUM(order_weight)::float AS score
+                FROM buyer_orders
+                GROUP BY seller_id
+            ),
+            favorite_foods AS (
+                SELECT
+                    fav.food_id,
+                    f.category_id,
+                    NULLIF(LOWER(TRIM(f.cuisine)), '') AS cuisine_key
+                FROM favorites fav
+                JOIN foods f ON f.id = fav.food_id
+                WHERE fav.user_id = %s
+            ),
+            favorite_categories AS (
+                SELECT category_id, COUNT(*)::float AS score
+                FROM favorite_foods
+                WHERE category_id IS NOT NULL
+                GROUP BY category_id
+            ),
+            favorite_cuisines AS (
+                SELECT cuisine_key, COUNT(*)::float AS score
+                FROM favorite_foods
+                WHERE cuisine_key IS NOT NULL
+                GROUP BY cuisine_key
+            ),
+            food_sales AS (
+                SELECT oi.food_id, SUM(GREATEST(oi.quantity, 1))::float AS total_sold
+                FROM order_items oi
+                JOIN orders o ON o.id = oi.order_id AND o.status = 'completed'
+                GROUP BY oi.food_id
+            ),
+            candidate_scores AS (
+                SELECT
+                    f.id,
+                    f.name,
+                    f.card_summary,
+                    f.description,
+                    f.price,
+                    f.image_url,
+                    f.image_urls_json,
+                    f.updated_at,
+                    f.rating,
+                    f.review_count,
+                    f.preparation_time_minutes,
+                    f.allergens_json,
+                    f.ingredients_json,
+                    f.cuisine,
+                    f.menu_items_json,
+                    {paid_addons_sql},
+                    f.secondary_category_ids_json,
+                    COALESCE(u.delivery_enabled, FALSE) AS seller_delivery_enabled,
+                    u.delivery_radius_km AS seller_delivery_radius_km,
+                    f.category_id,
+                    {_preferred_lot_id_sql("f")} AS lot_id,
+                    c.name_tr AS category,
+                    f.seller_id,
+                    u.display_name AS seller_name,
+                    u.username AS seller_username,
+                    u.profile_image_url AS seller_image,
+                    u.kitchen_description AS seller_tagline,
+                    {seller_home_card_image_sql},
+                    {_stock_sql("f")} AS stock,
+                    COALESCE(bo.order_weight, 0)::float AS exact_order_score,
+                    COALESCE(oc.score, 0)::float AS order_category_score,
+                    COALESCE(ocu.score, 0)::float AS order_cuisine_score,
+                    COALESCE(os.score, 0)::float AS seller_order_score,
+                    COALESCE(fc.score, 0)::float AS favorite_category_score,
+                    COALESCE(fcu.score, 0)::float AS favorite_cuisine_score,
+                    COALESCE(fs.total_sold, 0)::float AS total_sold,
+                    (ff.food_id IS NOT NULL) AS has_favorite,
+                    EXISTS (SELECT 1 FROM buyer_orders) OR EXISTS (SELECT 1 FROM favorite_foods) AS has_profile_signal,
+                    (
+                        COALESCE(bo.order_weight, 0) * 2.2
+                        + COALESCE(oc.score, 0) * 1.45
+                        + COALESCE(ocu.score, 0) * 1.05
+                        + COALESCE(os.score, 0) * 0.28
+                        + COALESCE(fc.score, 0) * 2.4
+                        + COALESCE(fcu.score, 0) * 1.7
+                        + CASE WHEN ff.food_id IS NOT NULL THEN 4.0 ELSE 0 END
+                        + LEAST(COALESCE(f.rating, 0)::float, 5.0) * 0.18
+                        + LN(1 + GREATEST(COALESCE(f.review_count, 0), 0)) * 0.16
+                        + LN(1 + GREATEST({favorite_count_sql}, 0)) * 0.12
+                        + LN(1 + COALESCE(fs.total_sold, 0)) * 0.24
+                        + CASE WHEN os.seller_id IS NULL THEN 0.35 ELSE 0 END
+                    ) AS recommendation_score,
+                    COUNT(bo.food_id) OVER (PARTITION BY f.seller_id) AS seller_order_count
+                FROM foods f
+                JOIN users u ON u.id = f.seller_id
+                LEFT JOIN categories c ON c.id = f.category_id
+                LEFT JOIN buyer_orders bo ON bo.food_id = f.id
+                LEFT JOIN order_categories oc ON oc.category_id = f.category_id
+                LEFT JOIN order_cuisines ocu ON ocu.cuisine_key = NULLIF(LOWER(TRIM(f.cuisine)), '')
+                LEFT JOIN order_sellers os ON os.seller_id = f.seller_id
+                LEFT JOIN favorite_foods ff ON ff.food_id = f.id
+                LEFT JOIN favorite_categories fc ON fc.category_id = f.category_id
+                LEFT JOIN favorite_cuisines fcu ON fcu.cuisine_key = NULLIF(LOWER(TRIM(f.cuisine)), '')
+                LEFT JOIN food_sales fs ON fs.food_id = f.id
+                WHERE f.is_active = TRUE
+                  AND {_visibility_gate_sql("f")}
+                  AND {_stock_sql("f")} > 0
+            )
+            SELECT *
+            FROM candidate_scores
+            ORDER BY recommendation_score DESC, total_sold DESC, rating DESC NULLS LAST, review_count DESC, name ASC
+            LIMIT %s
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(sql, [request.user.id, request.user.id, candidate_limit])
+            candidates = _rows_as_dicts(cursor)
+
+        selected = _select_fair_recommendations(candidates, limit)
+        category_map = _load_category_map(_collect_food_category_ids(selected))
+        data = []
+        for item in selected:
+            serialized = _serialize_food_row(item, category_map, request)
+            serialized["reason"] = _recommendation_reason(item)
+            serialized["totalSold"] = int(float(item.get("total_sold") or 0))
+            data.append(serialized)
+        return Response({"data": data})
 
 
 class TopSoldFoodsView(APIView):
