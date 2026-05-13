@@ -153,8 +153,14 @@ export const foodCardStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 4,
+    gap: 5,
     paddingBottom: 8,
+  },
+  foodInfoDivider: {
+    width: 1,
+    height: 18,
+    borderRadius: 1,
+    flexShrink: 0,
   },
   foodInfoChip: {
     minHeight: 24,

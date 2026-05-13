@@ -186,8 +186,7 @@ export function FoodCard({
   const ratingBadgeText = Number.isFinite(ratingValue) ? Number(ratingValue).toFixed(1) : '0.0';
   const slideWidth = Math.max(1, imageFrameWidth);
   const compactStockSummary = (stockSummary || t('status.home.foodCard.preparingToday'))
-    .replace(/^Son\s+/i, '')
-    .replace(/\s+porsiyon$/i, ' pors.');
+    .replace(/^Son\s+/i, '');
   const compactDistanceText = (() => {
     const raw = mealDeliveryOptions.delivery && String(meal.distance ?? '').trim()
       ? String(meal.distance).trim()
@@ -199,6 +198,38 @@ export function FoodCard({
     }
     return raw.replace(/\s+/g, ' ');
   })();
+  const infoItems = [
+    {
+      key: 'stock',
+      iconName: 'restaurant-outline' as const,
+      iconColor: colors.price,
+      label: compactStockSummary,
+      labelColor: colors.title,
+    },
+    {
+      key: 'time',
+      iconName: 'time-outline' as const,
+      iconColor: colors.price,
+      label: meal.time || t('status.home.foodCard.timeSoon'),
+      labelColor: colors.title,
+    },
+    compactDistanceText
+      ? {
+          key: 'distance',
+          iconName: 'location-outline' as const,
+          iconColor: colors.price,
+          label: compactDistanceText,
+          labelColor: colors.title,
+        }
+      : null,
+    {
+      key: 'allergens',
+      iconName: hasAllergens ? 'warning-outline' as const : 'checkmark-circle-outline' as const,
+      iconColor: hasAllergens ? '#B13B2E' : '#2F6F4A',
+      label: hasAllergens ? t('status.home.foodCard.hasAllergens') : t('status.home.foodCard.noAllergens'),
+      labelColor: hasAllergens ? '#9D3026' : '#2F6F4A',
+    },
+  ].filter(Boolean);
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
@@ -306,32 +337,19 @@ export function FoodCard({
         >
           <View style={styles.foodInfoContent}>
             <View style={styles.foodInfoChipRow}>
-              <FoodInfoChip
-                iconName="restaurant-outline"
-                iconColor={colors.price}
-                label={compactStockSummary}
-                labelColor={colors.title}
-              />
-              <FoodInfoChip
-                iconName="time-outline"
-                iconColor={colors.price}
-                label={meal.time || t('status.home.foodCard.timeSoon')}
-                labelColor={colors.title}
-              />
-              {compactDistanceText ? (
-                <FoodInfoChip
-                  iconName="location-outline"
-                  iconColor={colors.price}
-                  label={compactDistanceText}
-                  labelColor={colors.title}
-                />
-              ) : null}
-              <FoodInfoChip
-                iconName={hasAllergens ? 'warning-outline' : 'checkmark-circle-outline'}
-                iconColor={hasAllergens ? '#B13B2E' : '#2F6F4A'}
-                label={hasAllergens ? t('status.home.foodCard.hasAllergens') : t('status.home.foodCard.noAllergens')}
-                labelColor={hasAllergens ? '#9D3026' : '#2F6F4A'}
-              />
+              {infoItems.map((item, index) => item ? (
+                <React.Fragment key={item.key}>
+                  {index > 0 ? (
+                    <View style={[styles.foodInfoDivider, { backgroundColor: hexToRgba(colors.border, 0.5) }]} />
+                  ) : null}
+                  <FoodInfoChip
+                    iconName={item.iconName}
+                    iconColor={item.iconColor}
+                    label={item.label}
+                    labelColor={item.labelColor}
+                  />
+                </React.Fragment>
+              ) : null)}
             </View>
             <View style={[styles.foodFooterRow, { borderTopColor: hexToRgba(colors.border, 0.4) }]}>
               <View style={styles.foodFooterSeller}>
