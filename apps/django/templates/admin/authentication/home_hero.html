@@ -3,13 +3,13 @@
 {% block content %}
 <style>
   .hero-simple-wrap {
-    max-width: 1480px;
+    max-width: 1440px;
     margin: 0 auto;
     padding: 24px 18px 32px;
   }
   .hero-page-head {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 18px;
     margin: 0 0 20px;
@@ -29,7 +29,7 @@
   .hero-simple-panel {
     border: 1px solid rgba(226, 232, 240, 0.16);
     border-radius: 18px;
-    background: #121715;
+    background: #101513;
     padding: 0;
     overflow: hidden;
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
@@ -39,9 +39,9 @@
   }
   .hero-upload-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 18px;
-    align-items: end;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    align-items: stretch;
   }
   .hero-field-label {
     font-size: 14px;
@@ -54,7 +54,7 @@
     min-height: 92px;
     border: 1.5px dashed rgba(127, 86, 217, 0.42);
     border-radius: 14px;
-    background: #171c1a;
+    background: #141a17;
     color: #cfc7bd;
     font-size: 14px;
     padding: 16px;
@@ -111,17 +111,10 @@
     height: auto;
     aspect-ratio: 1792 / 1024;
     margin: 0 auto;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.10);
     border-radius: 14px;
     overflow: hidden;
-    background:
-      linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%),
-      linear-gradient(-45deg, rgba(255,255,255,0.05) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.05) 75%),
-      linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.05) 75%),
-      #0f1412;
-    background-size: 22px 22px;
-    background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+    background: #f8f1e8;
     cursor: grab;
     user-select: none;
     touch-action: none;
@@ -147,7 +140,7 @@
     gap: 14px;
     padding: 14px 16px;
     margin-top: 18px;
-    border: 1px solid rgba(226, 232, 240, 0.14);
+    border: 1px solid rgba(226, 232, 240, 0.12);
     border-radius: 12px;
     background: #171c1a;
   }
@@ -203,9 +196,6 @@
     background: rgba(18, 23, 21, 0.96);
     backdrop-filter: blur(8px);
   }
-  .hero-actions-inline {
-    margin-top: 0;
-  }
   .hero-btn-primary {
     border: none;
     border-radius: 8px;
@@ -232,8 +222,8 @@
   }
   .hero-two-col {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 430px;
-    gap: 28px;
+    grid-template-columns: minmax(0, 1fr) 448px;
+    gap: 26px;
     border-top: none;
     padding: 0 24px 22px;
   }
@@ -248,7 +238,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 22px 18px 16px;
+    padding: 22px 18px 18px;
     gap: 12px;
   }
   @media (max-width: 800px) {
@@ -287,7 +277,7 @@
     background: #05070a;
     border-radius: 42px;
     padding: 10px;
-    box-shadow: 0 0 0 1px #30343b, 0 0 0 4px #111827, 0 18px 34px rgba(15,23,42,0.27);
+    box-shadow: 0 0 0 1px #30343b, 0 0 0 4px #111827, 0 18px 34px rgba(0,0,0,0.32);
   }
   .hero-phone-frame::before {
     content: "";
@@ -357,8 +347,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    height: 178px;
-    background: linear-gradient(180deg, rgba(255,251,244,0) 0%, rgba(255,251,244,0.86) 76%, #fffbf4 100%);
+    height: 150px;
+    background: linear-gradient(180deg, rgba(255,251,244,0) 0%, rgba(255,251,244,0) 34%, rgba(255,251,244,0.52) 76%, #fffbf4 100%);
     pointer-events: none;
   }
   .hero-phone-avatar-row {
@@ -569,9 +559,9 @@
   }
   .hero-phone-reco-card {
     flex: 0 0 166px;
-    height: 74px;
-    border-radius: 16px;
-    border: 1px solid #f0ece5;
+    height: 70px;
+    border-radius: 12px;
+    border: 1px solid #f4d5cb;
     background: #fff;
     display: flex;
     align-items: center;
@@ -579,9 +569,9 @@
     padding: 10px;
   }
   .hero-phone-reco-thumb {
-    width: 58px;
-    height: 40px;
-    border-radius: 18px;
+    width: 52px;
+    height: 44px;
+    border-radius: 10px;
     background: linear-gradient(135deg, #fff 0%, #8fb86e 45%, #d75d3d 100%);
     box-shadow: inset 0 0 0 10px rgba(255,255,255,0.32);
   }
@@ -589,15 +579,34 @@
     flex: 1;
     min-width: 0;
   }
+  .hero-phone-reco-name {
+    color: #3d3229;
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hero-phone-reco-reason {
+    margin-top: 2px;
+    color: #9a5a42;
+    font-size: 10px;
+    line-height: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .hero-phone-reco-title {
-    height: 11px;
+    height: 12px;
     width: 84px;
     background: #5b514b;
     border-radius: 99px;
     margin-bottom: 8px;
   }
   .hero-phone-reco-sub {
-    height: 8px;
+    height: 9px;
     width: 72px;
     background: #b7b1aa;
     border-radius: 99px;
@@ -617,7 +626,7 @@
     width: 100%;
     height: 152px;
     border-radius: 0;
-    background: linear-gradient(135deg, #f2c078 0%, #c55c2d 100%);
+    background: linear-gradient(135deg, #f6e2bc 0%, #d58b42 44%, #8f3a26 100%);
   }
   .hero-phone-card-lines {
     position: absolute;
@@ -696,7 +705,6 @@
       <div class="hero-simple-title">Home Hero</div>
       <div class="hero-simple-subtitle">Resmi seç, kadrajı telefonda kontrol et, sonra yayınla.</div>
     </div>
-    <button type="submit" form="home-hero-form" class="hero-btn-primary">Onayla ve Yayınla</button>
   </div>
 
   <form method="post" id="home-hero-form" enctype="multipart/form-data" novalidate>
@@ -726,9 +734,6 @@
                 <span class="hero-dropzone-sub">veya dosyayı buraya sürükle</span>
               </span>
             </button>
-          </div>
-          <div class="hero-actions hero-actions-inline">
-            <button type="submit" class="hero-btn-primary">Onayla ve Yayınla</button>
           </div>
         </div>
       </div>
@@ -811,15 +816,15 @@
                   <div class="hero-phone-reco-card">
                     <div class="hero-phone-reco-thumb"></div>
                     <div class="hero-phone-reco-lines">
-                      <div class="hero-phone-reco-title"></div>
-                      <div class="hero-phone-reco-sub"></div>
+                      <div class="hero-phone-reco-name">Makarna</div>
+                      <div class="hero-phone-reco-reason">Daha önce sevdiğin...</div>
                     </div>
                   </div>
                   <div class="hero-phone-reco-card">
                     <div class="hero-phone-reco-thumb" style="background:linear-gradient(135deg,#fff 0%,#d76a39 50%,#a33224 100%);"></div>
                     <div class="hero-phone-reco-lines">
-                      <div class="hero-phone-reco-title" style="width:76px;"></div>
-                      <div class="hero-phone-reco-sub" style="width:64px;"></div>
+                      <div class="hero-phone-reco-name">Fırında kuzu</div>
+                      <div class="hero-phone-reco-reason">Daha önce sevdiğin...</div>
                     </div>
                   </div>
                 </div>

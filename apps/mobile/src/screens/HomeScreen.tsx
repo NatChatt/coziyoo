@@ -3458,13 +3458,13 @@ export default function HomeScreen({
             <LinearGradient
               colors={[
                 toRgba(heroBottomBandColor, 0),
-                toRgba(heroBottomBandColor, 0.56),
-                toRgba(heroBottomBandColor, 0.34),
-                toRgba(heroBottomBandColor, 0.18),
-                toRgba(heroBottomBandColor, 0.08),
-                toRgba(homeBaseBg, 0),
+                toRgba(heroBottomBandColor, 0.22),
+                toRgba(homeBaseBg, 0.48),
+                toRgba(homeBaseBg, 0.76),
+                toRgba(homeBaseBg, 0.94),
+                homeBaseBg,
               ]}
-              locations={[0, 0.22, 0.48, 0.7, 0.86, 1]}
+              locations={[0, 0.2, 0.46, 0.68, 0.86, 1]}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
               style={styles.stickySearchFade}
@@ -3519,31 +3519,33 @@ export default function HomeScreen({
               )}
             </TouchableOpacity>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
-            style={styles.chipScroller}
-          >
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.chip, activeCategory === cat && styles.chipActive]}
-                activeOpacity={0.85}
-                onPress={() => setActiveCategory(cat)}
-              >
-                <Ionicons
-                  name={cat === 'Tümü' ? 'grid' : (CATEGORY_ICONS[cat] || 'restaurant-outline')}
-                  size={18}
-                  color={activeCategory === cat ? '#fff' : '#5A3E2B'}
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={[styles.chipText, activeCategory === cat && styles.chipTextActive]}>
-                  {CATEGORY_KEYS[cat] ? t(CATEGORY_KEYS[cat]) : cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <View style={[styles.chipBand, { backgroundColor: homeBaseBg }]}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipRow}
+              style={styles.chipScroller}
+            >
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.chip, activeCategory === cat && styles.chipActive]}
+                  activeOpacity={0.85}
+                  onPress={() => setActiveCategory(cat)}
+                >
+                  <Ionicons
+                    name={cat === 'Tümü' ? 'grid' : (CATEGORY_ICONS[cat] || 'restaurant-outline')}
+                    size={18}
+                    color={activeCategory === cat ? '#fff' : '#5A3E2B'}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={[styles.chipText, activeCategory === cat && styles.chipTextActive]}>
+                    {CATEGORY_KEYS[cat] ? t(CATEGORY_KEYS[cat]) : cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </View>
         <View onLayout={(e) => setFoodSectionOffsetY(e.nativeEvent.layout.y)} />
         <View style={styles.recommendationsSection}>
@@ -5111,8 +5113,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: -82,
-    height: 236,
+    bottom: -96,
+    height: 206,
   },
   heroTextArea: {
     zIndex: 3,
@@ -5209,10 +5211,10 @@ const styles = StyleSheet.create({
   },
   stickySearchFade: {
     position: 'absolute',
-    top: 8,
+    top: 30,
     left: 0,
     right: 0,
-    bottom: -24,
+    height: 112,
   },
   homeSloganBanner: {
     marginHorizontal: 12,
@@ -5316,9 +5318,13 @@ const styles = StyleSheet.create({
   },
 
   /* --- Category Chips --- */
-  chipScroller: {
+  chipBand: {
     marginTop: -2,
     marginBottom: 6,
+    paddingTop: 2,
+    paddingBottom: 4,
+  },
+  chipScroller: {
     marginHorizontal: 0,
   },
   chipRow: {
