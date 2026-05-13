@@ -128,6 +128,49 @@ def _resolve_mobile_home_surface_color() -> str | None:
     return None
 
 
+def _load_latest_mobile_home_hero_texts() -> dict[str, str]:
+    columns = [
+        "mobile_home_hero_question_text",
+        "mobile_home_hero_slogan_title",
+        "mobile_home_hero_slogan_subtitle",
+    ]
+    available_columns = [
+        column for column in columns
+        if _has_public_column("admin_sales_commission_settings", column)
+    ]
+    if not available_columns:
+        return {}
+
+    select_sql = ", ".join(available_columns)
+    where_sql = " OR ".join(
+        f"({column} IS NOT NULL AND TRIM({column}) <> '')"
+        for column in available_columns
+    )
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+                SELECT {select_sql}
+                FROM admin_sales_commission_settings
+                WHERE {where_sql}
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+        )
+        row = cursor.fetchone()
+
+    if not row:
+        return {}
+    result = {}
+    for index, column in enumerate(available_columns):
+        value = row[index]
+        if value is None:
+            continue
+        normalized = str(value).strip()
+        if normalized:
+            result[column] = normalized
+    return result
+
+
 def mobile_home_hero_image_view(request: HttpRequest):
     value, _raw = _load_latest_mobile_home_header_raw()
     if not value:
@@ -638,10 +681,14 @@ class FoodListView(APIView):
             items = _rows_as_dicts(cursor)
 
         category_map = _load_category_map(_collect_food_category_ids(items))
+        hero_texts = _load_latest_mobile_home_hero_texts()
         return Response({
             "data": [_serialize_food_row(item, category_map, request) for item in items],
             "mobileHomeHeaderImageUrl": _resolve_mobile_home_header_image_url(request),
             "mobileHomeHeroSurfaceColor": _resolve_mobile_home_surface_color(),
+            "mobileHomeHeroQuestionText": hero_texts.get("mobile_home_hero_question_text"),
+            "mobileHomeHeroSloganTitle": hero_texts.get("mobile_home_hero_slogan_title"),
+            "mobileHomeHeroSloganSubtitle": hero_texts.get("mobile_home_hero_slogan_subtitle"),
         })
 
 

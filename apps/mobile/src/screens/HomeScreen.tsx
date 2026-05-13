@@ -1043,6 +1043,57 @@ function resolveHomeHeroSurfaceColor(payload: unknown): string | null {
   return null;
 }
 
+type HomeHeroCopyOverrides = {
+  questionText: string | null;
+  sloganTitle: string | null;
+  sloganSubtitle: string | null;
+};
+
+function pickNonEmptyText(...candidates: unknown[]): string | null {
+  for (const item of candidates) {
+    if (typeof item !== 'string') continue;
+    const normalized = item.replace(/\s+/g, ' ').trim();
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
+function resolveHomeHeroCopyOverrides(payload: unknown): HomeHeroCopyOverrides {
+  const empty = { questionText: null, sloganTitle: null, sloganSubtitle: null };
+  if (!payload || typeof payload !== 'object') return empty;
+  const root = payload as Record<string, unknown>;
+  const nestedDataCandidate = root.data;
+  const data = (
+    nestedDataCandidate
+    && typeof nestedDataCandidate === 'object'
+    && !Array.isArray(nestedDataCandidate)
+      ? nestedDataCandidate
+      : root
+  ) as Record<string, unknown>;
+  const branding = (data.branding && typeof data.branding === 'object' ? data.branding : null) as Record<string, unknown> | null;
+  const home = (data.home && typeof data.home === 'object' ? data.home : null) as Record<string, unknown> | null;
+  return {
+    questionText: pickNonEmptyText(
+      data.mobileHomeHeroQuestionText,
+      data.homeHeroQuestionText,
+      branding?.mobileHomeHeroQuestionText,
+      home?.heroQuestionText,
+    ),
+    sloganTitle: pickNonEmptyText(
+      data.mobileHomeHeroSloganTitle,
+      data.homeHeroSloganTitle,
+      branding?.mobileHomeHeroSloganTitle,
+      home?.heroSloganTitle,
+    ),
+    sloganSubtitle: pickNonEmptyText(
+      data.mobileHomeHeroSloganSubtitle,
+      data.homeHeroSloganSubtitle,
+      branding?.mobileHomeHeroSloganSubtitle,
+      home?.heroSloganSubtitle,
+    ),
+  };
+}
+
 function hashString(input: string): number {
   let hash = 0;
   for (let i = 0; i < input.length; i += 1) {
@@ -1435,6 +1486,11 @@ export default function HomeScreen({
   const [heroTopBandColor, setHeroTopBandColor] = useState('#FDDEB7');
   const [heroBottomBandColor, setHeroBottomBandColor] = useState('#FFFBF4');
   const [heroSurfaceColorOverride, setHeroSurfaceColorOverride] = useState<string | null>(null);
+  const [homeHeroCopyOverrides, setHomeHeroCopyOverrides] = useState<HomeHeroCopyOverrides>({
+    questionText: null,
+    sloganTitle: null,
+    sloganSubtitle: null,
+  });
   const [profileDisplayName, setProfileDisplayName] = useState<string>(() =>
     resolveProfileDisplayName(null, auth.email),
   );
@@ -2261,12 +2317,16 @@ export default function HomeScreen({
         const json = await readJsonSafe<{
           data?: ApiFoodItem[];
           mobileHomeHeroSurfaceColor?: string | null;
+          mobileHomeHeroQuestionText?: string | null;
+          mobileHomeHeroSloganTitle?: string | null;
+          mobileHomeHeroSloganSubtitle?: string | null;
           error?: { message?: string };
         }>(response);
 
         if (response.ok) {
           setAdminHeroImageUrl(resolveHomeHeaderImageUrl(json));
           setHeroSurfaceColorOverride(resolveHomeHeroSurfaceColor(json));
+          setHomeHeroCopyOverrides(resolveHomeHeroCopyOverrides(json));
           setHeroImageResolved(true);
           if (!Array.isArray(json.data)) {
             if (!silent) setMealsError(t('error.home.noMealsInResponse'));
@@ -3445,7 +3505,9 @@ export default function HomeScreen({
                 </View>
               </View>
             </View>
-            <Text style={styles.heroQuestion}>{t('headline.home.heroQuestion')}</Text>
+            <Text style={styles.heroQuestion}>
+              {homeHeroCopyOverrides.questionText || t('headline.home.heroQuestion')}
+            </Text>
             <View style={styles.heroQuestionMarkerRow}>
               <Text style={styles.heroQuestionLeafIcon}>↝</Text>
               <View style={styles.heroQuestionLine} />
@@ -3476,9 +3538,11 @@ export default function HomeScreen({
                 <Ionicons name="home-outline" size={22} color="#B57B4A" />
                 <Ionicons name="heart-outline" size={10} color="#B57B4A" style={styles.homeSloganTopIconHeart} />
               </View>
-              <Text style={styles.homeSloganBannerTitle}>{t('headline.home.slogan')}</Text>
+              <Text style={styles.homeSloganBannerTitle}>
+                {homeHeroCopyOverrides.sloganTitle || t('headline.home.slogan')}
+              </Text>
               <Text style={styles.homeSloganBannerSubline} numberOfLines={1}>
-                {t('helper.home.sloganWarm')}
+                {homeHeroCopyOverrides.sloganSubtitle || t('helper.home.sloganWarm')}
               </Text>
               <View style={styles.homeSloganBannerLine} />
             </View>

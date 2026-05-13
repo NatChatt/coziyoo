@@ -59,6 +59,13 @@ def _normalize_edit_json(value: str) -> str:
     return json.dumps(parsed, ensure_ascii=False)
 
 
+def _normalize_hero_text(value: str, max_length: int = 120) -> str:
+    raw = re.sub(r"\s+", " ", str(value or "")).strip()
+    if not raw:
+        return ""
+    return raw[:max_length]
+
+
 def _decode_data_url(data_url: str):
     raw = str(data_url or "").strip()
     match = _DATA_URL_RE.match(raw)
@@ -153,7 +160,14 @@ def _get_latest_optional_field(latest_id, column_name: str) -> str:
     return str(row[0]).strip()
 
 
-def _set_latest_optional_fields(latest_id, edit_json: str, asset_key: str) -> None:
+def _set_latest_optional_fields(
+    latest_id,
+    edit_json: str,
+    asset_key: str,
+    hero_question_text: str = "",
+    hero_slogan_title: str = "",
+    hero_slogan_subtitle: str = "",
+) -> None:
     if not latest_id:
         return
     with connection.cursor() as cursor:
@@ -167,6 +181,17 @@ def _set_latest_optional_fields(latest_id, edit_json: str, asset_key: str) -> No
                 "UPDATE admin_sales_commission_settings SET mobile_home_header_asset_key = %s WHERE id = %s",
                 [asset_key or None, latest_id],
             )
+        optional_text_fields = {
+            "mobile_home_hero_question_text": hero_question_text,
+            "mobile_home_hero_slogan_title": hero_slogan_title,
+            "mobile_home_hero_slogan_subtitle": hero_slogan_subtitle,
+        }
+        for column_name, value in optional_text_fields.items():
+            if _has_public_column("admin_sales_commission_settings", column_name):
+                cursor.execute(
+                    f"UPDATE admin_sales_commission_settings SET {column_name} = %s WHERE id = %s",
+                    [value or None, latest_id],
+                )
 
 
 def _hydrate_for_admin(value: str) -> str:
@@ -246,6 +271,9 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
             if not image_data:
                 image_data = _normalize_hero_url(request.POST.get("mobile_home_header_image_url", ""))
             edit_json = _normalize_edit_json(request.POST.get("mobile_home_header_edit_json", ""))
+            hero_question_text = _normalize_hero_text(request.POST.get("mobile_home_hero_question_text", ""), 90)
+            hero_slogan_title = _normalize_hero_text(request.POST.get("mobile_home_hero_slogan_title", ""), 120)
+            hero_slogan_subtitle = _normalize_hero_text(request.POST.get("mobile_home_hero_slogan_subtitle", ""), 120)
 
             if not uploaded_file and not image_data:
                 messages.error(request, "Yayınlamak için geçerli bir görsel seç.")
@@ -301,7 +329,14 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
                     next_asset_key = None
             latest.mobile_home_header_image_url = next_pointer or None
             latest.save(update_fields=["mobile_home_header_image_url"])
-            _set_latest_optional_fields(latest.id, edit_json, next_asset_key or "")
+            _set_latest_optional_fields(
+                latest.id,
+                edit_json,
+                next_asset_key or "",
+                hero_question_text,
+                hero_slogan_title,
+                hero_slogan_subtitle,
+            )
 
             if (
                 old_pointer
@@ -323,6 +358,13 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
         current_url_raw = str(latest.mobile_home_header_image_url).strip()
     if latest:
         current_edit_json = _get_latest_optional_field(latest.id, "mobile_home_header_edit_json")
+    current_hero_question_text = ""
+    current_hero_slogan_title = ""
+    current_hero_slogan_subtitle = ""
+    if latest:
+        current_hero_question_text = _get_latest_optional_field(latest.id, "mobile_home_hero_question_text")
+        current_hero_slogan_title = _get_latest_optional_field(latest.id, "mobile_home_hero_slogan_title")
+        current_hero_slogan_subtitle = _get_latest_optional_field(latest.id, "mobile_home_hero_slogan_subtitle")
 
     # Use same-origin proxy URL so canvas can draw the image without CORS issues.
     has_image = bool(current_url_raw and current_url_raw.startswith("s3://"))
@@ -333,6 +375,9 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
         "current_url": proxy_image_url,
         "current_url_raw": current_url_raw,
         "current_edit_json": current_edit_json,
+        "current_hero_question_text": current_hero_question_text or "Bugün ne yemek istersin?",
+        "current_hero_slogan_title": current_hero_slogan_title or "Komşunun mutfağından, kapına.",
+        "current_hero_slogan_subtitle": current_hero_slogan_subtitle or "Sıcacık ev yemekleri.",
         "saved": request.GET.get("saved") == "1",
         "opts": AdminSalesCommissionSettings._meta,
     }

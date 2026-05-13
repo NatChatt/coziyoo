@@ -43,6 +43,39 @@
     gap: 12px;
     align-items: stretch;
   }
+  .hero-copy-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .hero-copy-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .hero-copy-field label {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 800;
+    color: #d8d1c9;
+  }
+  .hero-copy-field input {
+    width: 100%;
+    height: 42px;
+    border: 1px solid rgba(226, 232, 240, 0.14);
+    border-radius: 9px;
+    background: #101513;
+    color: #f3eee7;
+    font-size: 14px;
+    font-weight: 650;
+    padding: 0 12px;
+    outline: none;
+  }
+  .hero-copy-field input:focus {
+    border-color: rgba(127, 86, 217, 0.72);
+    box-shadow: 0 0 0 3px rgba(127, 86, 217, 0.16);
+  }
   .hero-field-label {
     font-size: 14px;
     font-weight: 700;
@@ -246,6 +279,7 @@
     .hero-two-col-right { border-left: 1px solid rgba(127, 86, 217, 0.26); border-top: 1px solid rgba(127, 86, 217, 0.26); }
     .hero-controls { flex-wrap: wrap; }
     .hero-upload-row { grid-template-columns: 1fr; }
+    .hero-copy-grid { grid-template-columns: 1fr; }
   }
   .hero-preview-section {
     border-top: 1px solid #e4e7ec;
@@ -335,12 +369,18 @@
     background: #fffbf4;
     overflow: hidden;
     margin-top: 0;
+    cursor: grab;
+    touch-action: none;
+  }
+  .hero-phone-hero-wrap.dragging {
+    cursor: grabbing;
   }
   .hero-phone-hero-wrap canvas {
     display: block;
     width: 100%;
     height: 300px;
     object-fit: cover;
+    pointer-events: auto;
   }
   .hero-phone-hero-fade {
     position: absolute;
@@ -391,6 +431,7 @@
     line-height: 30px;
     font-weight: 700;
     letter-spacing: 0;
+    white-space: pre-line;
   }
   .hero-phone-hero-mark {
     display: flex;
@@ -734,6 +775,20 @@
                 <span class="hero-dropzone-sub">veya dosyayı buraya sürükle</span>
               </span>
             </button>
+            <div class="hero-copy-grid">
+              <div class="hero-copy-field">
+                <label for="hero-question-text">Hero başlık</label>
+                <input id="hero-question-text" name="mobile_home_hero_question_text" type="text" maxlength="90" value="{{ current_hero_question_text|default:'Bugün ne yemek istersin?' }}" />
+              </div>
+              <div class="hero-copy-field">
+                <label for="hero-slogan-title">Alt başlık</label>
+                <input id="hero-slogan-title" name="mobile_home_hero_slogan_title" type="text" maxlength="120" value="{{ current_hero_slogan_title|default:'Komşunun mutfağından, kapına.' }}" />
+              </div>
+              <div class="hero-copy-field">
+                <label for="hero-slogan-subtitle">Alt açıklama</label>
+                <input id="hero-slogan-subtitle" name="mobile_home_hero_slogan_subtitle" type="text" maxlength="120" value="{{ current_hero_slogan_subtitle|default:'Sıcacık ev yemekleri.' }}" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -764,7 +819,7 @@
 
         <div class="hero-two-col-right">
           <div class="hero-preview-header" style="width:100%;">
-            <span class="hero-preview-title">Mobil Önizleme</span>
+            <span class="hero-preview-title">Canlı Telefon Kadrajı</span>
           </div>
           <div class="hero-phone-frame">
             <div class="hero-phone-screen">
@@ -784,7 +839,7 @@
                   <div class="hero-phone-avatar-text">Günaydın, Demo ✶</div>
                 </div>
                 <div class="hero-phone-hero-copy">
-                  <div class="hero-phone-hero-title">Bugün ne<br>yemek istersin?</div>
+                  <div class="hero-phone-hero-title" id="hero-phone-question-text">{{ current_hero_question_text|default:'Bugün ne yemek istersin?' }}</div>
                   <div class="hero-phone-hero-mark">⌁</div>
                 </div>
               </div>
@@ -797,8 +852,8 @@
                       <path d="M10 20v-5h4v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                   </div>
-                  <div class="hero-phone-slogan-title">Komşunun mutfağından, kapına.</div>
-                  <div class="hero-phone-slogan-sub">Sıcacık ev yemekleri.</div>
+                  <div class="hero-phone-slogan-title" id="hero-phone-slogan-title">{{ current_hero_slogan_title|default:'Komşunun mutfağından, kapına.' }}</div>
+                  <div class="hero-phone-slogan-sub" id="hero-phone-slogan-subtitle">{{ current_hero_slogan_subtitle|default:'Sıcacık ev yemekleri.' }}</div>
                   <div class="hero-phone-slogan-line"></div>
                 </div>
                 <div class="hero-phone-searchbar">
@@ -862,7 +917,7 @@
             </div>
           </div>
           <div class="hero-help" style="margin-top:0;text-align:center;font-size:10px;line-height:1.5;">
-            Sağdaki önizleme uygulamadaki ana ekran ölçüsünü taklit eder.<br>Önemli nesneleri yazının ve arama alanının altında bırakma.
+            Bu telefonda gördüğün kadraj yayınlanır.<br>Resmi burada sürükle, tekerlek ile zoom yap.
           </div>
         </div>
       </div>
@@ -893,7 +948,14 @@
   var phoneUi = document.getElementById('hero-phone-ui');
   var phoneScreen = document.querySelector('.hero-phone-screen');
   var phoneHeroWrap = document.querySelector('.hero-phone-hero-wrap');
+  var phoneCanvas = document.getElementById('hero-mobile-canvas');
   var phoneHeroFade = document.querySelector('.hero-phone-hero-fade');
+  var heroQuestionInput = document.getElementById('hero-question-text');
+  var heroSloganTitleInput = document.getElementById('hero-slogan-title');
+  var heroSloganSubtitleInput = document.getElementById('hero-slogan-subtitle');
+  var phoneQuestionText = document.getElementById('hero-phone-question-text');
+  var phoneSloganTitle = document.getElementById('hero-phone-slogan-title');
+  var phoneSloganSubtitle = document.getElementById('hero-phone-slogan-subtitle');
   var resetBtn = document.getElementById('hero-reset');
   var helpText = document.getElementById('hero-help-text');
 
@@ -902,8 +964,11 @@
   var wheelStep = 0.05;
   var objectUrl = '';
   var dragging = false;
+  var phoneDragging = false;
   var startX = 0;
   var startY = 0;
+  var startPhoneX = 0;
+  var startPhoneY = 0;
   var state = { scale: 1, offsetX: 0, offsetY: 0 };
   var DEFAULT_SURFACE_COLOR = '#fffbf4';
   var surfaceColor = DEFAULT_SURFACE_COLOR;
@@ -920,6 +985,23 @@
   var MOBILE_IMG_TOP = 30;  // visible hero starts 30px from extended top
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+  function normalizePreviewText(value, fallback) {
+    var text = String(value || '').replace(/\s+/g, ' ').trim();
+    return text || fallback;
+  }
+
+  function syncHeroCopyPreview() {
+    if (phoneQuestionText && heroQuestionInput) {
+      phoneQuestionText.textContent = normalizePreviewText(heroQuestionInput.value, 'Bugün ne yemek istersin?');
+    }
+    if (phoneSloganTitle && heroSloganTitleInput) {
+      phoneSloganTitle.textContent = normalizePreviewText(heroSloganTitleInput.value, 'Komşunun mutfağından, kapına.');
+    }
+    if (phoneSloganSubtitle && heroSloganSubtitleInput) {
+      phoneSloganSubtitle.textContent = normalizePreviewText(heroSloganSubtitleInput.value, 'Sıcacık ev yemekleri.');
+    }
+  }
 
   function hasImage() {
     return (
@@ -1010,7 +1092,7 @@
   }
 
   function updateMobilePreview() {
-    var canvas = document.getElementById('hero-mobile-canvas');
+    var canvas = phoneCanvas || document.getElementById('hero-mobile-canvas');
     if (!canvas) return;
     var ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -1151,6 +1233,52 @@
     applyTransform();
   }, { passive: false });
 
+  function mobileDeltaToStageDelta(dx, dy) {
+    var vw = stage.clientWidth || 1;
+    var mBaseS = Math.max(MOBILE_IMG_W / vw, MOBILE_IMG_H / (stage.clientHeight || 1));
+    var cs = (phoneCanvas ? phoneCanvas.width : MOBILE_W) / MOBILE_W;
+    var denom = mBaseS * cs;
+    if (!denom) return { x: dx, y: dy };
+    return { x: dx / denom, y: dy / denom };
+  }
+
+  if (phoneHeroWrap) {
+    phoneHeroWrap.addEventListener('wheel', function (e) {
+      if (!hasImage()) return;
+      e.preventDefault();
+      var delta = e.deltaY > 0 ? -wheelStep : wheelStep;
+      state.scale = clamp(state.scale + delta, minScale, maxScale);
+      applyTransform();
+    }, { passive: false });
+
+    phoneHeroWrap.addEventListener('pointerdown', function (e) {
+      if (!hasImage()) return;
+      phoneDragging = true;
+      phoneHeroWrap.classList.add('dragging');
+      startPhoneX = e.clientX;
+      startPhoneY = e.clientY;
+      phoneHeroWrap.setPointerCapture(e.pointerId);
+    });
+
+    phoneHeroWrap.addEventListener('pointermove', function (e) {
+      if (!phoneDragging) return;
+      var delta = mobileDeltaToStageDelta(e.clientX - startPhoneX, e.clientY - startPhoneY);
+      state.offsetX += delta.x;
+      state.offsetY += delta.y;
+      startPhoneX = e.clientX;
+      startPhoneY = e.clientY;
+      applyTransform();
+    });
+
+    function stopPhoneDrag(e) {
+      phoneDragging = false;
+      phoneHeroWrap.classList.remove('dragging');
+      try { phoneHeroWrap.releasePointerCapture(e.pointerId); } catch (_) {}
+    }
+    phoneHeroWrap.addEventListener('pointerup', stopPhoneDrag);
+    phoneHeroWrap.addEventListener('pointercancel', stopPhoneDrag);
+  }
+
   stage.addEventListener('pointerdown', function (e) {
     if (!hasImage()) return;
     dragging = true;
@@ -1219,6 +1347,10 @@
       applySurfaceColor(surfaceColorInput.value);
     });
   }
+  [heroQuestionInput, heroSloganTitleInput, heroSloganSubtitleInput].forEach(function (input) {
+    if (!input) return;
+    input.addEventListener('input', syncHeroCopyPreview);
+  });
   document.querySelectorAll('.hero-color-swatch').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var c = btn.getAttribute('data-color');
@@ -1227,6 +1359,7 @@
   });
 
   initialEdit = readInitialEdit();
+  syncHeroCopyPreview();
 
   if (previewImage.src && previewImage.src !== window.location.href) {
     if (previewImage.complete && previewImage.naturalWidth > 1) {
