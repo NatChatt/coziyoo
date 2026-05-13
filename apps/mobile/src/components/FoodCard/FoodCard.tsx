@@ -6,8 +6,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  type StyleProp,
-  type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -37,46 +35,25 @@ import { foodCardStyles as styles } from './styles';
 
 const FOOD_CARD_RENDER_URI_CACHE = new Map<string, string>();
 
-type FoodInfoBubbleProps = {
+type FoodInfoChipProps = {
   iconName: React.ComponentProps<typeof Ionicons>['name'];
-  bubbleStyle?: StyleProp<ViewStyle>;
   iconColor: string;
-  title: string;
-  titleColor: string;
-  subtitle?: string;
-  subtitleColor?: string;
-  align?: 'left' | 'right';
-  centered?: boolean;
-  titleNumberOfLines?: number;
+  label: string;
+  labelColor: string;
 };
 
-function FoodInfoBubble({
+function FoodInfoChip({
   iconName,
-  bubbleStyle,
   iconColor,
-  title,
-  titleColor,
-  subtitle,
-  subtitleColor,
-  align = 'left',
-  centered = false,
-  titleNumberOfLines,
-}: FoodInfoBubbleProps) {
+  label,
+  labelColor,
+}: FoodInfoChipProps) {
   return (
-    <View style={[styles.foodInfoHalfCol, align === 'right' && styles.foodInfoRightHalfCol]}>
-      <View style={[styles.foodInfoIconBubble, bubbleStyle]}>
-        <Ionicons name={iconName} size={16} color={iconColor} />
-      </View>
-      <View style={[styles.foodInfoTextWrap, centered && styles.foodInfoTextWrapCentered]}>
-        <Text numberOfLines={titleNumberOfLines} style={[styles.foodInfoTitle, { color: titleColor }]}>
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text style={[styles.foodInfoSubtitle, { color: subtitleColor }]}>
-            {subtitle}
-          </Text>
-        ) : null}
-      </View>
+    <View style={styles.foodInfoChip}>
+      <Ionicons name={iconName} size={15} color={iconColor} />
+      <Text numberOfLines={1} style={[styles.foodInfoChipText, { color: labelColor }]}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -208,13 +185,25 @@ export function FoodCard({
   const ratingValue = Number(String(meal.rating ?? '').replace(',', '.'));
   const ratingBadgeText = Number.isFinite(ratingValue) ? Number(ratingValue).toFixed(1) : '0.0';
   const slideWidth = Math.max(1, imageFrameWidth);
+  const compactStockSummary = (stockSummary || t('status.home.foodCard.preparingToday'))
+    .replace(/^Son\s+/i, '')
+    .replace(/\s+porsiyon$/i, ' pors.');
+  const compactDistanceText = (() => {
+    const raw = mealDeliveryOptions.delivery && String(meal.distance ?? '').trim()
+      ? String(meal.distance).trim()
+      : '';
+    if (!raw) return '';
+    const numeric = Number(raw.replace(',', '.').replace(/\s*km$/i, ''));
+    if (Number.isFinite(numeric)) {
+      return `${Number.isInteger(numeric) ? numeric.toFixed(0) : numeric.toFixed(1)} km`;
+    }
+    return raw.replace(/\s+/g, ' ');
+  })();
   const sellerInitial = (() => {
     const raw = (meal.sellerUsername || meal.seller || 'U').replace(/^@+/, '').trim();
     if (!raw) return 'U';
     return raw.charAt(0).toLocaleUpperCase('tr-TR');
   })();
-
-  const metaBubble = { backgroundColor: hexToRgba(colors.meta, 0.16) };
 
   return (
     <View style={styles.foodCardWrap}>
@@ -316,51 +305,33 @@ export function FoodCard({
           ]}
         >
           <View style={styles.foodInfoContent}>
-            <View style={styles.foodInfoMainRow}>
-              <FoodInfoBubble
+            <View style={styles.foodInfoChipRow}>
+              <FoodInfoChip
                 iconName="restaurant-outline"
-                bubbleStyle={metaBubble}
                 iconColor={colors.price}
-                title={stockSummary || t('status.home.foodCard.preparingToday')}
-                titleColor={colors.title}
-                centered
+                label={compactStockSummary}
+                labelColor={colors.title}
               />
-              <FoodInfoBubble
-                iconName={hasAllergens ? 'warning-outline' : 'checkmark-circle-outline'}
-                bubbleStyle={hasAllergens ? styles.foodInfoIconBubbleAlert : styles.foodInfoIconBubbleOk}
-                iconColor={hasAllergens ? '#B13B2E' : '#2F6F4A'}
-                title={hasAllergens ? t('status.home.foodCard.hasAllergens') : t('status.home.foodCard.noAllergens')}
-                titleColor={hasAllergens ? colors.price : colors.title}
-                align="right"
-                centered
-                titleNumberOfLines={1}
-              />
-            </View>
-            <View style={styles.foodStatsRow}>
-              <FoodInfoBubble
+              <FoodInfoChip
                 iconName="time-outline"
-                bubbleStyle={metaBubble}
                 iconColor={colors.price}
-                title={meal.time || t('status.home.foodCard.timeSoon')}
-                titleColor={colors.title}
-                subtitle={t('label.home.foodCard.prepTime')}
-                subtitleColor={colors.subtitle}
+                label={meal.time || t('status.home.foodCard.timeSoon')}
+                labelColor={colors.title}
               />
-              {mealDeliveryOptions.delivery && String(meal.distance ?? '').trim() ? (
-                <>
-                  <View style={[styles.foodStatDivider, { backgroundColor: hexToRgba(colors.border, 0.4) }]} />
-                  <FoodInfoBubble
-                    iconName="location-outline"
-                    bubbleStyle={metaBubble}
-                    iconColor={colors.price}
-                    title={String(meal.distance)}
-                    titleColor={colors.title}
-                    subtitle={t('label.home.foodCard.distance')}
-                    subtitleColor={colors.subtitle}
-                    align="right"
-                  />
-                </>
+              {compactDistanceText ? (
+                <FoodInfoChip
+                  iconName="location-outline"
+                  iconColor={colors.price}
+                  label={compactDistanceText}
+                  labelColor={colors.title}
+                />
               ) : null}
+              <FoodInfoChip
+                iconName={hasAllergens ? 'warning-outline' : 'checkmark-circle-outline'}
+                iconColor={hasAllergens ? '#B13B2E' : '#2F6F4A'}
+                label={hasAllergens ? t('status.home.foodCard.hasAllergens') : t('status.home.foodCard.noAllergens')}
+                labelColor={hasAllergens ? '#9D3026' : '#2F6F4A'}
+              />
             </View>
             <View style={[styles.foodFooterRow, { borderTopColor: hexToRgba(colors.border, 0.4) }]}>
               <View style={styles.foodFooterSeller}>
