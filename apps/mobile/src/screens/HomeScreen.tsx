@@ -20,6 +20,7 @@ import {
   TouchableOpacity as RNTouchableOpacity,
   UIManager,
   View,
+  useWindowDimensions,
   type GestureResponderEvent,
   type ImageSourcePropType,
   type StyleProp,
@@ -102,6 +103,18 @@ const AnimatedTouchableOpacity: any = Animated.createAnimatedComponent(RNTouchab
 const PICKUP_ADDRESS_REQUEST_TIMEOUT_MS = 12000;
 const BUYER_HOME_TAB_BAR_HEIGHT = 70;
 const TOP_BLEND_STRIP_HEIGHT = 10;
+const HOME_HERO_VISIBLE_HEIGHT = 300;
+const HOME_HERO_BASE_WIDTH = 390;
+const HOME_HERO_HORIZONTAL_BLEED = 24;
+const HOME_HERO_TOP_BLEED = 30;
+const HOME_HERO_BOTTOM_BLEED = 56;
+const HOME_HERO_BASE_EXTENDED_WIDTH = HOME_HERO_BASE_WIDTH + HOME_HERO_HORIZONTAL_BLEED * 2;
+const HOME_HERO_BASE_EXTENDED_HEIGHT =
+  HOME_HERO_VISIBLE_HEIGHT + HOME_HERO_TOP_BLEED + HOME_HERO_BOTTOM_BLEED;
+const HOME_HERO_BASE_EXTENDED_ASPECT =
+  HOME_HERO_BASE_EXTENDED_WIDTH / HOME_HERO_BASE_EXTENDED_HEIGHT;
+const HOME_TABLET_BREAKPOINT = 600;
+const HOME_TABLET_CONTENT_MAX_WIDTH = 430;
 
 function shouldDisableGlobalPressFx(style: unknown, activeOpacity?: number): boolean {
   if (activeOpacity === 1) return true;
@@ -1254,6 +1267,7 @@ export default function HomeScreen({
   onAuthRefresh,
   onSwitchToSeller,
 }: Props) {
+  const { width: screenWidth } = useWindowDimensions();
   const [currentAuth, setCurrentAuth] = useState<AuthSession>(auth);
   const [apiUrl, setApiUrl] = useState('http://localhost:3000');
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'home');
@@ -1454,6 +1468,30 @@ export default function HomeScreen({
     () => blendHexColors('#FFFBF4', heroBottomBandColor, 0.14),
     [heroBottomBandColor],
   );
+  const homeContentWidth = screenWidth >= HOME_TABLET_BREAKPOINT
+    ? Math.min(screenWidth, HOME_TABLET_CONTENT_MAX_WIDTH)
+    : screenWidth;
+  const homeContentFrame = useMemo(
+    () => ({
+      width: homeContentWidth,
+      alignSelf: 'center' as const,
+    }),
+    [homeContentWidth],
+  );
+  const heroBgResponsiveFrame = useMemo(() => {
+    const extendedWidth = homeContentWidth + HOME_HERO_HORIZONTAL_BLEED * 2;
+    const targetHeight = Math.max(
+      HOME_HERO_BASE_EXTENDED_HEIGHT,
+      extendedWidth / HOME_HERO_BASE_EXTENDED_ASPECT,
+    );
+    const bleedScale = targetHeight / HOME_HERO_BASE_EXTENDED_HEIGHT;
+    const topBleed = Math.round(HOME_HERO_TOP_BLEED * bleedScale);
+    const bottomBleed = Math.round(targetHeight - HOME_HERO_VISIBLE_HEIGHT - topBleed);
+    return {
+      top: -topBleed,
+      bottom: -bottomBleed,
+    };
+  }, [homeContentWidth]);
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
     () => DAILY_FLASH_MEALS.join(' • '),
@@ -3309,7 +3347,7 @@ export default function HomeScreen({
 
     return (
       <View style={styles.screen}>
-        <View style={styles.homeContentLayer}>
+        <View style={[styles.homeContentLayer, homeContentFrame]}>
           <Animated.View style={[styles.scroll, { backgroundColor: homeSurfaceBg }]}>
             <ScrollView
           ref={feedScrollRef}
@@ -3340,7 +3378,7 @@ export default function HomeScreen({
         >
           <ImageBackground
             source={headerImageSource}
-            style={[styles.heroBgFullImage, styles.heroBgExtended]}
+            style={[styles.heroBgFullImage, styles.heroBgExtended, heroBgResponsiveFrame]}
             imageStyle={styles.heroBgFullImageInner}
             onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
           />
