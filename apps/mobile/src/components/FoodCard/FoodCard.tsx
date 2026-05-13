@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Dimensions,
   Image,
   ScrollView,
+  StyleProp,
   Text,
+  TextStyle,
   TouchableOpacity,
   View,
+  ViewStyle,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -40,6 +43,7 @@ type FoodInfoChipProps = {
   iconColor: string;
   label: string;
   labelColor: string;
+  textStyle?: StyleProp<TextStyle>;
 };
 
 function FoodInfoChip({
@@ -47,11 +51,12 @@ function FoodInfoChip({
   iconColor,
   label,
   labelColor,
+  textStyle,
 }: FoodInfoChipProps) {
   return (
     <View style={styles.foodInfoChip}>
       <Ionicons name={iconName} size={15} color={iconColor} />
-      <Text numberOfLines={1} style={[styles.foodInfoChipText, { color: labelColor }]}>
+      <Text numberOfLines={1} style={[styles.foodInfoChipText, textStyle, { color: labelColor }]}>
         {label}
       </Text>
     </View>
@@ -64,6 +69,7 @@ type FoodCardProps = {
   favoritePending: boolean;
   onPress: () => void;
   onFavoritePress: () => void;
+  style?: StyleProp<ViewStyle>;
 };
 
 export function FoodCard({
@@ -72,8 +78,24 @@ export function FoodCard({
   favoritePending,
   onPress,
   onFavoritePress,
+  style,
 }: FoodCardProps) {
-  const defaultCardImageWidth = Math.max(260, Math.round(Dimensions.get('window').width - 32));
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTabletLayout = Math.min(windowWidth, windowHeight) >= 600;
+  const defaultCardImageWidth = Math.max(260, Math.round(windowWidth - 32));
+  const tabletPhotoStyle = isTabletLayout ? styles.foodPhotoTablet : null;
+  const tabletTitleStyle = isTabletLayout ? styles.foodPhotoTitleTextTablet : null;
+  const tabletCuisineStyle = isTabletLayout ? styles.foodPhotoCuisineTextTablet : null;
+  const tabletBadgeWrapStyle = isTabletLayout ? styles.foodBadgesRightTablet : null;
+  const tabletPriceBadgeStyle = isTabletLayout ? styles.foodPriceBadgeTablet : null;
+  const tabletPriceTextStyle = isTabletLayout ? styles.foodPriceBadgeTextTablet : null;
+  const tabletRatingBadgeStyle = isTabletLayout ? styles.foodRatingBadgeTablet : null;
+  const tabletRatingTextStyle = isTabletLayout ? styles.foodRatingBadgeTextTablet : null;
+  const tabletFavoriteStyle = isTabletLayout ? styles.foodPhotoFavoriteBtnTablet : null;
+  const tabletInfoContentStyle = isTabletLayout ? styles.foodInfoContentTablet : null;
+  const tabletChipTextStyle = isTabletLayout ? styles.foodInfoChipTextTablet : null;
+  const tabletSellerHandleStyle = isTabletLayout ? styles.foodFooterSellerHandleTablet : null;
+  const tabletSellerTaglineStyle = isTabletLayout ? styles.foodFooterSellerTaglineTablet : null;
   const colors = deriveCardColors(meal.backgroundColor);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imageIndex, setImageIndex] = useState(0);
@@ -237,10 +259,10 @@ export function FoodCard({
   })();
 
   return (
-    <View style={styles.foodCardWrap}>
+    <View style={[styles.foodCardWrap, isTabletLayout && styles.foodCardWrapTablet, style]}>
       <View style={[styles.foodCard, { backgroundColor: colors.bg, borderColor: colors.border }]}>
         <View
-          style={[styles.foodPhoto, { backgroundColor: meal.backgroundColor }]}
+          style={[styles.foodPhoto, tabletPhotoStyle, { backgroundColor: meal.backgroundColor }]}
           onLayout={(event) => {
             const nextWidth = Math.max(220, Math.round(event.nativeEvent.layout.width));
             setImageFrameWidth((prev) => (prev === nextWidth ? prev : nextWidth));
@@ -293,22 +315,22 @@ export function FoodCard({
             </View>
           ) : null}
           <View pointerEvents="none" style={styles.foodPhotoTitleOverlay}>
-            <Text numberOfLines={2} style={[styles.foodPhotoTitleText, titleMetrics]}>
+            <Text numberOfLines={2} style={[styles.foodPhotoTitleText, tabletTitleStyle, titleMetrics]}>
               {meal.title}
             </Text>
             {meal.cuisine ? (
-              <Text numberOfLines={1} style={styles.foodPhotoCuisineText}>
+              <Text numberOfLines={1} style={[styles.foodPhotoCuisineText, tabletCuisineStyle]}>
                 {formatCuisineLabel(meal.cuisine)}
               </Text>
             ) : null}
           </View>
-          <View style={styles.foodBadgesRight}>
-            <View style={[styles.foodPriceBadge, { backgroundColor: hexToRgba(colors.price, 0.92) }]}>
-              <Text style={styles.foodPriceBadgeText}>{meal.price}</Text>
+          <View style={[styles.foodBadgesRight, tabletBadgeWrapStyle]}>
+            <View style={[styles.foodPriceBadge, tabletPriceBadgeStyle, { backgroundColor: hexToRgba(colors.price, 0.92) }]}>
+              <Text style={[styles.foodPriceBadgeText, tabletPriceTextStyle]}>{meal.price}</Text>
             </View>
-            <View style={[styles.foodRatingBadge, { backgroundColor: hexToRgba(colors.price, 0.92) }]}>
-              <Ionicons name="star" size={14} color="#F2B23A" />
-              <Text style={styles.foodRatingBadgeText}>{ratingBadgeText}</Text>
+            <View style={[styles.foodRatingBadge, tabletRatingBadgeStyle, { backgroundColor: hexToRgba(colors.price, 0.92) }]}>
+              <Ionicons name="star" size={isTabletLayout ? 11 : 14} color="#F2B23A" />
+              <Text style={[styles.foodRatingBadgeText, tabletRatingTextStyle]}>{ratingBadgeText}</Text>
             </View>
           </View>
           <TouchableOpacity
@@ -317,12 +339,12 @@ export function FoodCard({
               event.stopPropagation();
               onFavoritePress();
             }}
-            style={[styles.foodPhotoFavoriteBtn, isFavorite && styles.foodFooterFavoriteBtnActive]}
+            style={[styles.foodPhotoFavoriteBtn, tabletFavoriteStyle, isFavorite && styles.foodFooterFavoriteBtnActive]}
             disabled={favoritePending}
           >
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}
-              size={24}
+              size={isTabletLayout ? 19 : 24}
               color={isFavorite ? '#FFF4F1' : '#FFFDFB'}
             />
           </TouchableOpacity>
@@ -335,7 +357,7 @@ export function FoodCard({
             { backgroundColor: colors.bg, borderTopColor: hexToRgba(colors.border, 0.62) },
           ]}
         >
-          <View style={styles.foodInfoContent}>
+          <View style={[styles.foodInfoContent, tabletInfoContentStyle]}>
             <View style={styles.foodInfoChipRow}>
               {infoItems.map((item, index) => item ? (
                 <React.Fragment key={item.key}>
@@ -347,6 +369,7 @@ export function FoodCard({
                     iconColor={item.iconColor}
                     label={item.label}
                     labelColor={item.labelColor}
+                    textStyle={tabletChipTextStyle}
                   />
                 </React.Fragment>
               ) : null)}
@@ -371,10 +394,10 @@ export function FoodCard({
                   </View>
                 </View>
                 <View style={styles.foodFooterSellerText}>
-                  <Text style={[styles.foodFooterSellerHandle, { color: colors.price }]}>
+                  <Text style={[styles.foodFooterSellerHandle, tabletSellerHandleStyle, { color: colors.price }]}>
                     {sellerHandle}
                   </Text>
-                  <Text style={[styles.foodFooterSellerTagline, { color: colors.subtitle }]}>
+                  <Text style={[styles.foodFooterSellerTagline, tabletSellerTaglineStyle, { color: colors.subtitle }]}>
                     {sellerTagline}
                   </Text>
                 </View>

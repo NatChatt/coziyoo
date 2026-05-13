@@ -114,7 +114,7 @@ const HOME_HERO_BASE_EXTENDED_HEIGHT =
 const HOME_HERO_BASE_EXTENDED_ASPECT =
   HOME_HERO_BASE_EXTENDED_WIDTH / HOME_HERO_BASE_EXTENDED_HEIGHT;
 const HOME_TABLET_BREAKPOINT = 600;
-const HOME_TABLET_CONTENT_MAX_WIDTH = 430;
+const HOME_TABLET_CONTENT_MAX_WIDTH = 820;
 
 function shouldDisableGlobalPressFx(style: unknown, activeOpacity?: number): boolean {
   if (activeOpacity === 1) return true;
@@ -1318,7 +1318,8 @@ export default function HomeScreen({
   onAuthRefresh,
   onSwitchToSeller,
 }: Props) {
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const isTabletLayout = Math.min(screenWidth, screenHeight) >= 600;
   const [currentAuth, setCurrentAuth] = useState<AuthSession>(auth);
   const [apiUrl, setApiUrl] = useState('http://localhost:3000');
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'home');
@@ -1524,9 +1525,7 @@ export default function HomeScreen({
     () => blendHexColors('#FFFBF4', heroBottomBandColor, 0.14),
     [heroBottomBandColor],
   );
-  const homeContentWidth = screenWidth >= HOME_TABLET_BREAKPOINT
-    ? Math.min(screenWidth, HOME_TABLET_CONTENT_MAX_WIDTH)
-    : screenWidth;
+  const homeContentWidth = isTabletLayout ? Math.min(screenWidth, 1120) : screenWidth;
   const homeContentFrame = useMemo(
     () => ({
       width: homeContentWidth,
@@ -1534,6 +1533,10 @@ export default function HomeScreen({
     }),
     [homeContentWidth],
   );
+  const isLargeTabletLayout = isTabletLayout && Math.min(screenWidth, screenHeight) >= 900;
+  const heroVisibleHeight = isTabletLayout
+    ? Math.round(Math.min(isLargeTabletLayout ? 450 : 560, Math.max(420, screenHeight * 0.5)))
+    : HOME_HERO_VISIBLE_HEIGHT;
   const heroBgResponsiveFrame = useMemo(() => {
     const extendedWidth = homeContentWidth + HOME_HERO_HORIZONTAL_BLEED * 2;
     const targetHeight = Math.max(
@@ -1542,12 +1545,12 @@ export default function HomeScreen({
     );
     const bleedScale = targetHeight / HOME_HERO_BASE_EXTENDED_HEIGHT;
     const topBleed = Math.round(HOME_HERO_TOP_BLEED * bleedScale);
-    const bottomBleed = Math.round(targetHeight - HOME_HERO_VISIBLE_HEIGHT - topBleed);
+    const bottomBleed = Math.round(targetHeight - heroVisibleHeight - topBleed);
     return {
       top: -topBleed,
       bottom: -bottomBleed,
     };
-  }, [homeContentWidth]);
+  }, [heroVisibleHeight, homeContentWidth]);
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
     () => DAILY_FLASH_MEALS.join(' • '),
@@ -3427,7 +3430,7 @@ export default function HomeScreen({
           style={[
             styles.heroWrap,
             {
-              height: 300,
+              height: heroVisibleHeight,
               marginLeft: 0,
               marginRight: 0,
               marginTop: -30,
@@ -3515,24 +3518,8 @@ export default function HomeScreen({
           </View>
         </View>
         {/* Sticky: Search Bar + Category Chips */}
-        <View style={styles.stickySearchChips}>
-          {LinearGradient ? (
-            <LinearGradient
-              colors={[
-                toRgba(heroBottomBandColor, 0),
-                toRgba(heroBottomBandColor, 0.22),
-                toRgba(homeBaseBg, 0.48),
-                toRgba(homeBaseBg, 0.76),
-                toRgba(homeBaseBg, 0.94),
-                homeBaseBg,
-              ]}
-              locations={[0, 0.2, 0.46, 0.68, 0.86, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.stickySearchFade}
-            />
-          ) : null}
-          <View style={styles.homeSloganBanner}>
+        <View style={[styles.stickySearchChips, isTabletLayout && styles.stickySearchChipsTablet]}>
+          <View style={[styles.homeSloganBanner, isTabletLayout && styles.homeSloganBannerTablet]}>
             <View style={styles.homeSloganBannerTextWrap}>
               <View style={styles.homeSloganTopIconWrap}>
                 <Ionicons name="home-outline" size={22} color="#B57B4A" />
@@ -3653,9 +3640,9 @@ export default function HomeScreen({
           <View style={styles.topSoldLoadingChip}>
             <Text style={styles.topSoldLoadingText}>{t('helper.home.noActiveMeals')}</Text>
           </View>
-        ) : (
-          visibleMeals.map((meal) => {
-            return (
+        ) : isTabletLayout ? (
+          <View style={styles.foodGridTablet}>
+            {visibleMeals.map((meal) => (
               <FoodCard
                 key={meal.id}
                 meal={meal}
@@ -3665,9 +3652,23 @@ export default function HomeScreen({
                 onFavoritePress={() => {
                   void toggleFavorite(meal.id);
                 }}
+                style={styles.foodGridItemTablet}
               />
-            );
-          })
+            ))}
+          </View>
+        ) : (
+          visibleMeals.map((meal) => (
+            <FoodCard
+              key={meal.id}
+              meal={meal}
+              isFavorite={Boolean(favoriteIds[meal.id])}
+              favoritePending={Boolean(favoritePendingIds[meal.id])}
+              onPress={() => openMealDetail(meal)}
+              onFavoritePress={() => {
+                void toggleFavorite(meal.id);
+              }}
+            />
+          ))
         )}
 
             </ScrollView>
@@ -5273,6 +5274,11 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     elevation: 0,
   },
+  stickySearchChipsTablet: {
+    marginTop: 0,
+    paddingTop: 8,
+    backgroundColor: '#FFFBF4',
+  },
   stickySearchFade: {
     position: 'absolute',
     top: 30,
@@ -5291,6 +5297,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     zIndex: 22,
     elevation: 22,
+  },
+  homeSloganBannerTablet: {
+    marginTop: 0,
+    marginBottom: 8,
   },
   homeSloganBannerTextWrap: {
     flex: 1,
@@ -5745,6 +5755,19 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingRight: 18,
+  },
+  foodGridTablet: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    paddingHorizontal: 12,
+    paddingTop: 2,
+    paddingBottom: 8,
+  },
+  foodGridItemTablet: {
+    flexBasis: '48.8%',
+    flexGrow: 1,
+    flexShrink: 1,
   },
   sellerChip: {
     minWidth: 218,

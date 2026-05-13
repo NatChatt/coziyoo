@@ -8,7 +8,8 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "bundleIdentifier": "com.coziyoo.mobile",
-      "supportsTablet": false,
+      "supportsTablet": true,
+      "requireFullScreen": true,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Coziyoo needs microphone access for voice conversations with the AI agent.",
         "NSLocationWhenInUseUsageDescription": "Coziyoo needs your location to show the nearest available cook for selected dishes.",

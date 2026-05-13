@@ -11,6 +11,10 @@ export const foodCardStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
+  foodCardWrapTablet: {
+    marginHorizontal: 0,
+    marginBottom: 14,
+  },
   foodCard: {
     borderWidth: 1,
     borderRadius: 12,
@@ -22,6 +26,9 @@ export const foodCardStyles = StyleSheet.create({
     height: 180,
     overflow: 'hidden',
     backgroundColor: '#B96C44',
+  },
+  foodPhotoTablet: {
+    height: 150,
   },
   foodImageCarousel: {
     width: '100%',
@@ -71,6 +78,11 @@ export const foodCardStyles = StyleSheet.create({
     gap: 8,
     zIndex: 7,
   },
+  foodBadgesRightTablet: {
+    top: 10,
+    right: 10,
+    gap: 6,
+  },
   foodRatingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -80,10 +92,19 @@ export const foodCardStyles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 7,
   },
+  foodRatingBadgeTablet: {
+    gap: 4,
+    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
   foodRatingBadgeText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '900',
+  },
+  foodRatingBadgeTextTablet: {
+    fontSize: 11,
   },
   foodPhotoTitleOverlay: {
     position: 'absolute',
@@ -102,6 +123,11 @@ export const foodCardStyles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 6,
   },
+  foodPhotoTitleTextTablet: {
+    fontSize: 27,
+    letterSpacing: -1,
+    lineHeight: 31,
+  },
   foodPhotoCuisineText: {
     marginTop: 1,
     color: '#FFFFFF',
@@ -111,13 +137,23 @@ export const foodCardStyles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 4,
   },
+  foodPhotoCuisineTextTablet: {
+    fontSize: 12,
+    lineHeight: 15,
+  },
   foodPriceBadge: {
     backgroundColor: 'rgba(51,36,27,0.9)',
     borderRadius: 18,
     paddingHorizontal: 13,
     paddingVertical: 8,
   },
+  foodPriceBadgeTablet: {
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   foodPriceBadgeText: { color: '#FFFFFF', fontSize: 17, fontWeight: '900' },
+  foodPriceBadgeTextTablet: { fontSize: 13 },
   foodPhotoFavoriteBtn: {
     position: 'absolute',
     right: 14,
@@ -137,6 +173,13 @@ export const foodCardStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 6,
   },
+  foodPhotoFavoriteBtnTablet: {
+    right: 10,
+    bottom: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
   foodInfo: {
     backgroundColor: '#FFFDF9',
     borderTopWidth: 1,
@@ -148,6 +191,11 @@ export const foodCardStyles = StyleSheet.create({
     paddingBottom: 6,
     paddingHorizontal: 13,
     overflow: 'visible',
+  },
+  foodInfoContentTablet: {
+    paddingTop: 6,
+    paddingBottom: 6,
+    paddingHorizontal: 10,
   },
   foodInfoChipRow: {
     flexDirection: 'row',
@@ -177,6 +225,11 @@ export const foodCardStyles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.15,
     flexShrink: 1,
+  },
+  foodInfoChipTextTablet: {
+    fontSize: 10.5,
+    lineHeight: 13,
+    letterSpacing: 0,
   },
   foodInfoMainRow: {
     flexDirection: 'row',
@@ -305,12 +358,20 @@ export const foodCardStyles = StyleSheet.create({
     fontWeight: '900',
     lineHeight: 15,
   },
+  foodFooterSellerHandleTablet: {
+    fontSize: 11,
+    lineHeight: 14,
+  },
   foodFooterSellerTagline: {
     marginTop: 0,
     color: '#7D695A',
     fontSize: 10.5,
     fontWeight: '600',
     lineHeight: 13,
+  },
+  foodFooterSellerTaglineTablet: {
+    fontSize: 9.5,
+    lineHeight: 12,
   },
   foodFooterFavoriteBtnActive: {
     backgroundColor: 'rgba(161,58,47,0.52)',
