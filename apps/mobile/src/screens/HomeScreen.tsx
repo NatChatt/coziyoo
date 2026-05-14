@@ -115,6 +115,8 @@ const HOME_HERO_BASE_EXTENDED_ASPECT =
   HOME_HERO_BASE_EXTENDED_WIDTH / HOME_HERO_BASE_EXTENDED_HEIGHT;
 const HOME_TABLET_BREAKPOINT = 600;
 const HOME_TABLET_CONTENT_MAX_WIDTH = 820;
+// Status bar safe area approximation — sticky header inset when scrolled
+const HOME_STICKY_SAFE_TOP = Platform.OS === 'ios' ? 47 : 24;
 
 function shouldDisableGlobalPressFx(style: unknown, activeOpacity?: number): boolean {
   if (activeOpacity === 1) return true;
@@ -1049,11 +1051,21 @@ type HomeHeroCopyOverrides = {
   sloganSubtitle: string | null;
 };
 
+function looksLikeFilenameOrHash(value: string): boolean {
+  if (/\.(png|jpe?g|gif|webp|heic|svg)\b/i.test(value)) return true;
+  // Hash-like blocks: long runs of hex with no spaces and few/no letters outside [a-f]
+  const stripped = value.replace(/\s+/g, '');
+  if (stripped.length >= 16 && /^[0-9a-fA-F]+$/.test(stripped)) return true;
+  return false;
+}
+
 function pickNonEmptyText(...candidates: unknown[]): string | null {
   for (const item of candidates) {
     if (typeof item !== 'string') continue;
     const normalized = item.replace(/\s+/g, ' ').trim();
-    if (normalized) return normalized;
+    if (!normalized) continue;
+    if (looksLikeFilenameOrHash(normalized)) continue;
+    return normalized;
   }
   return null;
 }
@@ -1288,9 +1300,6 @@ function RecommendationCard({
         <Text style={[styles.sellerChipName, { color: colors.title }]} numberOfLines={1}>
           {meal.title}
         </Text>
-        <Text style={[styles.sellerChipMeta, { color: colors.subtitle }]} numberOfLines={1}>
-          {meal.reason || formatSellerIdentity(meal.seller, meal.sellerUsername)}
-        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -1351,6 +1360,7 @@ export default function HomeScreen({
   const [sellerReviews, setSellerReviews] = useState<SellerReview[]>([]);
   const [sellerReviewsLoading, setSellerReviewsLoading] = useState(false);
   const [sellerReviewsError, setSellerReviewsError] = useState<string | null>(null);
+  const [sellerActiveTab, setSellerActiveTab] = useState<'foods' | 'reviews'>('foods');
   const [sellerCompletedMealsSold, setSellerCompletedMealsSold] = useState<number | null>(null);
   const [sellerCompletedMealsLoading, setSellerCompletedMealsLoading] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -1507,6 +1517,8 @@ export default function HomeScreen({
   const [sloganTrackWidth, setSloganTrackWidth] = useState(0);
   const [sloganTextWidth, setSloganTextWidth] = useState(0);
   const [foodSectionOffsetY, setFoodSectionOffsetY] = useState(0);
+  const chipsCollapseAnim = useRef(new Animated.Value(0)).current;
+  const chipsCollapsedRef = useRef(false);
   const [recommendedMeals, setRecommendedMeals] = useState<RecommendationMeal[]>([]);
   const [recommendedMealsLoading, setRecommendedMealsLoading] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Record<string, true>>({});
@@ -1535,9 +1547,16 @@ export default function HomeScreen({
   );
   const isLargeTabletLayout = isTabletLayout && Math.min(screenWidth, screenHeight) >= 900;
   const heroVisibleHeight = isTabletLayout
-    ? Math.round(Math.min(isLargeTabletLayout ? 450 : 560, Math.max(420, screenHeight * 0.5)))
+    ? Math.round(Math.min(isLargeTabletLayout ? 620 : 540, screenHeight * 0.46))
     : HOME_HERO_VISIBLE_HEIGHT;
   const heroBgResponsiveFrame = useMemo(() => {
+    if (isTabletLayout) {
+      // Tablet: telefon ile aynı dikey bleed kullan, görsel cover ile kırpılır.
+      return {
+        top: -HOME_HERO_TOP_BLEED,
+        bottom: -HOME_HERO_BOTTOM_BLEED,
+      };
+    }
     const extendedWidth = homeContentWidth + HOME_HERO_HORIZONTAL_BLEED * 2;
     const targetHeight = Math.max(
       HOME_HERO_BASE_EXTENDED_HEIGHT,
@@ -1550,7 +1569,7 @@ export default function HomeScreen({
       top: -topBleed,
       bottom: -bottomBleed,
     };
-  }, [heroVisibleHeight, homeContentWidth]);
+  }, [heroVisibleHeight, homeContentWidth, isTabletLayout]);
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
     () => DAILY_FLASH_MEALS.join(' • '),
@@ -3406,6 +3425,16 @@ export default function HomeScreen({
         }).start();
       }
 
+      const shouldCollapse = y >= HERO_SWITCH_Y;
+      if (shouldCollapse !== chipsCollapsedRef.current) {
+        chipsCollapsedRef.current = shouldCollapse;
+        Animated.timing(chipsCollapseAnim, {
+          toValue: shouldCollapse ? 1 : 0,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }).start();
+      }
     };
 
     return (
@@ -3417,8 +3446,8 @@ export default function HomeScreen({
           showsVerticalScrollIndicator={false}
           onScroll={handleFeedScroll}
           scrollEventThrottle={16}
-          bounces
-          alwaysBounceVertical
+          bounces={false}
+          overScrollMode="never"
           contentInsetAdjustmentBehavior="never"
           automaticallyAdjustContentInsets={false}
           contentContainerStyle={[styles.scrollContent, { backgroundColor: homeBaseBg }]}
@@ -3441,7 +3470,12 @@ export default function HomeScreen({
         >
           <ImageBackground
             source={headerImageSource}
-            style={[styles.heroBgFullImage, styles.heroBgExtended, heroBgResponsiveFrame]}
+            style={[
+              styles.heroBgFullImage,
+              styles.heroBgExtended,
+              heroBgResponsiveFrame,
+              isTabletLayout && { left: -24, right: -Math.round(homeContentWidth * 0.28) },
+            ]}
             imageStyle={styles.heroBgFullImageInner}
             onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
           />
@@ -3461,53 +3495,42 @@ export default function HomeScreen({
           ) : null}
           {LinearGradient ? (
             <LinearGradient
-              colors={[
-                toRgba(heroBottomBandColor, 0),
-                toRgba(heroBottomBandColor, 0.22),
-                toRgba(heroBottomBandColor, 0.44),
-                toRgba(heroBottomBandColor, 0.66),
-                toRgba(heroBottomBandColor, 0.86),
-                homeBaseBg,
-              ]}
-              locations={[0, 0.2, 0.4, 0.6, 0.8, 1]}
+              colors={
+                isTabletLayout
+                  ? [
+                      toRgba(heroBottomBandColor, 0),
+                      toRgba(heroBottomBandColor, 0.3),
+                      toRgba(heroBottomBandColor, 0.6),
+                      toRgba(heroBottomBandColor, 0.85),
+                      homeBaseBg,
+                      homeBaseBg,
+                    ]
+                  : [
+                      toRgba(heroBottomBandColor, 0),
+                      toRgba(heroBottomBandColor, 0.22),
+                      toRgba(heroBottomBandColor, 0.44),
+                      toRgba(heroBottomBandColor, 0.66),
+                      toRgba(heroBottomBandColor, 0.86),
+                      homeBaseBg,
+                      homeBaseBg,
+                    ]
+              }
+              locations={
+                isTabletLayout
+                  ? [0, 0.1, 0.2, 0.3, 0.4, 1]
+                  : [0, 0.12, 0.24, 0.36, 0.48, 0.6, 1]
+              }
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
-              style={styles.heroNewBottomFade}
+              style={[
+                styles.heroNewBottomFade,
+                isTabletLayout
+                  ? { bottom: -220, height: 360 }
+                  : { bottom: -96, height: 130 },
+              ]}
             />
           ) : null}
           <View style={styles.heroTextArea}>
-            <View style={styles.heroIdentityRow}>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={styles.heroAvatarCircle}
-                onPress={() => handleTabPress('profile')}
-              >
-                {profileImageUrl && !profileImageLoadFailed ? (
-                  <Image
-                    source={{ uri: profileImageUrl }}
-                    style={styles.heroAvatarImage}
-                    onError={() => setProfileImageLoadFailed(true)}
-                  />
-                ) : cachedLocalImageUrl ? (
-                  <Image source={{ uri: cachedLocalImageUrl }} style={styles.heroAvatarImage} />
-                ) : (
-                  <Text style={styles.avatarEmoji}>👩‍🍳</Text>
-                )}
-              </TouchableOpacity>
-              <View style={styles.heroGreetingArea}>
-                <View style={styles.greetingTitleWrap}>
-                  <Text
-                    style={styles.heroGreetingLine}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.72}
-                  >
-                    {formatCopy('headline.home.greetingMorning', { name: greetingName })}
-                  </Text>
-                  <Text style={styles.heroGreetingSparkle}>✶</Text>
-                </View>
-              </View>
-            </View>
             <Text style={styles.heroQuestion}>
               {homeHeroCopyOverrides.questionText || t('headline.home.heroQuestion')}
             </Text>
@@ -3519,6 +3542,7 @@ export default function HomeScreen({
         </View>
         {/* Sticky: Search Bar + Category Chips */}
         <View style={[styles.stickySearchChips, isTabletLayout && styles.stickySearchChipsTablet]}>
+          {false ? (
           <View style={[styles.homeSloganBanner, isTabletLayout && styles.homeSloganBannerTablet]}>
             <View style={styles.homeSloganBannerTextWrap}>
               <View style={styles.homeSloganTopIconWrap}>
@@ -3534,6 +3558,7 @@ export default function HomeScreen({
               <View style={styles.homeSloganBannerLine} />
             </View>
           </View>
+          ) : null}
           <View style={styles.floatingSearchWrap}>
             <TouchableOpacity
               style={[styles.floatingSearchBar, searchMode && styles.floatingSearchBarActive]}
@@ -3561,16 +3586,36 @@ export default function HomeScreen({
                   activeOpacity={0.7}
                   onPress={() => { setSearchMode(false); setSearchQuery(''); }}
                 >
-                  <Ionicons name="close-outline" size={24} color="#6B4D3A" />
+                  <Ionicons name="close-outline" size={20} color="#9C8273" />
                 </TouchableOpacity>
               ) : (
                 <View style={styles.floatingSearchFilterBtn}>
-                  <Ionicons name="options-outline" size={22} color="#6B4D3A" />
+                  <Ionicons name="options-outline" size={18} color="#9C8273" />
                 </View>
               )}
             </TouchableOpacity>
           </View>
-          <View style={[styles.chipBand, { backgroundColor: homeBaseBg }]}>
+          <Animated.View
+            style={[
+              styles.chipBand,
+              {
+                backgroundColor: 'transparent',
+                opacity: chipsCollapseAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 0],
+                }),
+                transform: [
+                  {
+                    translateY: chipsCollapseAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -12],
+                    }),
+                  },
+                ],
+              },
+            ]}
+            pointerEvents={chipsCollapsedRef.current ? 'none' : 'auto'}
+          >
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -3584,49 +3629,15 @@ export default function HomeScreen({
                   activeOpacity={0.85}
                   onPress={() => setActiveCategory(cat)}
                 >
-                  <Ionicons
-                    name={cat === 'Tümü' ? 'grid' : (CATEGORY_ICONS[cat] || 'restaurant-outline')}
-                    size={18}
-                    color={activeCategory === cat ? '#fff' : '#5A3E2B'}
-                    style={{ marginRight: 6 }}
-                  />
                   <Text style={[styles.chipText, activeCategory === cat && styles.chipTextActive]}>
                     {CATEGORY_KEYS[cat] ? t(CATEGORY_KEYS[cat]) : cat}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </View>
+          </Animated.View>
         </View>
         <View onLayout={(e) => setFoodSectionOffsetY(e.nativeEvent.layout.y)} />
-        <View style={styles.recommendationsSection}>
-          <Text style={styles.recommendationsSectionTitle}>{t('status.home.recommendations')}</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.recommendationsScroller}
-            contentContainerStyle={styles.recommendationsRow}
-          >
-            {recommendedMealsLoading ? (
-              <View style={styles.topSoldLoadingChip}>
-                <ActivityIndicator size="small" color="#4A7C59" />
-                <Text style={styles.topSoldLoadingText}>{t('status.home.recommendationsLoading')}</Text>
-              </View>
-            ) : null}
-            {!recommendedMealsLoading && visibleRecommendedMeals.length === 0 ? (
-              <View style={styles.topSoldLoadingChip}>
-                <Text style={styles.topSoldLoadingText}>{t('status.home.recommendationsEmpty')}</Text>
-              </View>
-            ) : null}
-            {visibleRecommendedMeals.map((meal) => (
-              <RecommendationCard
-                key={`rec-${meal.id}`}
-                meal={meal}
-                onPress={() => openMealDetail(meal)}
-              />
-            ))}
-          </ScrollView>
-        </View>
         {mealsLoading ? (
           <View style={styles.topSoldLoadingChip}>
             <ActivityIndicator size="small" color="#4A7C59" />
@@ -4496,6 +4507,7 @@ export default function HomeScreen({
                 activeOpacity={0.82}
                 onPress={() => {
                   setSellerModalTouchGuardUntil(Date.now() + 350);
+                  setSellerActiveTab('foods');
                   setSelectedSeller({
                     id: selectedMeal.sellerId,
                     name: selectedMeal.seller,
@@ -4683,49 +4695,71 @@ export default function HomeScreen({
                 </View>
               ) : null}
 
-              <Text style={styles.sellerSectionTitle}>{t('status.home.sellerReviews')}</Text>
-              {sellerReviewsLoading ? (
-                <View style={styles.sellerReviewsLoadingRow}>
-                  <ActivityIndicator size="small" color="#4A7C59" />
-                  <Text style={styles.sellerReviewsLoadingText}>{t('status.home.sellerReviewsLoading')}</Text>
-                </View>
-              ) : null}
-              {sellerReviewsError ? (
-                <Text style={styles.sellerReviewsErrorText}>{sellerReviewsError}</Text>
-              ) : null}
-              {!sellerReviewsLoading && !sellerReviewsError && sellerReviews.length === 0 ? (
-                <Text style={styles.sellerEmptyReviewsText}>{t('helper.home.sellerReviewsEmpty')}</Text>
-              ) : null}
-              {!sellerReviewsLoading && !sellerReviewsError ? (
-                <View style={styles.sellerReviewList}>
-                  {sellerReviews.map((review) => (
-                    <View key={review.id} style={styles.sellerReviewItem}>
-                      <View style={styles.sellerReviewHead}>
-                        <Text style={styles.sellerReviewBuyer}>{review.buyerName}</Text>
-                        <View style={styles.sellerReviewRight}>
-                          <View style={styles.sellerReviewStars}>
-                            {[1, 2, 3, 4, 5].map((idx) => (
-                              <Ionicons
-                                key={`${review.id}-star-${idx}`}
-                                name={idx <= review.rating ? 'star' : 'star-outline'}
-                                size={13}
-                                color="#D4A017"
-                              />
-                            ))}
-                          </View>
-                          <Text style={styles.sellerReviewDate}>{formatReviewDate(review.createdAt)}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.sellerReviewFood}>{t('label.home.reviewFood').replace('{name}', review.foodName ?? '')}</Text>
-                      <Text style={styles.sellerReviewComment}>
-                        {review.comment?.trim() || t('helper.home.sellerCommentFallback')}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
+              <View style={styles.sellerTabBar}>
+                <TouchableOpacity
+                  style={[styles.sellerTabBtn, sellerActiveTab === 'foods' && styles.sellerTabBtnActive]}
+                  activeOpacity={0.85}
+                  onPress={() => setSellerActiveTab('foods')}
+                >
+                  <Text style={[styles.sellerTabText, sellerActiveTab === 'foods' && styles.sellerTabTextActive]}>
+                    {t('status.home.sellerMeals')} ({sellerMeals.length})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.sellerTabBtn, sellerActiveTab === 'reviews' && styles.sellerTabBtnActive]}
+                  activeOpacity={0.85}
+                  onPress={() => setSellerActiveTab('reviews')}
+                >
+                  <Text style={[styles.sellerTabText, sellerActiveTab === 'reviews' && styles.sellerTabTextActive]}>
+                    {t('status.home.sellerReviews')} ({sellerReviews.length})
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-              <Text style={styles.sellerSectionTitle}>{t('status.home.sellerMeals')}</Text>
+              {sellerActiveTab === 'reviews' ? (
+                <>
+                  {sellerReviewsLoading ? (
+                    <View style={styles.sellerReviewsLoadingRow}>
+                      <ActivityIndicator size="small" color="#4A7C59" />
+                      <Text style={styles.sellerReviewsLoadingText}>{t('status.home.sellerReviewsLoading')}</Text>
+                    </View>
+                  ) : null}
+                  {sellerReviewsError ? (
+                    <Text style={styles.sellerReviewsErrorText}>{sellerReviewsError}</Text>
+                  ) : null}
+                  {!sellerReviewsLoading && !sellerReviewsError && sellerReviews.length === 0 ? (
+                    <Text style={styles.sellerEmptyReviewsText}>{t('helper.home.sellerReviewsEmpty')}</Text>
+                  ) : null}
+                  {!sellerReviewsLoading && !sellerReviewsError ? (
+                    <View style={styles.sellerReviewList}>
+                      {sellerReviews.map((review) => (
+                        <View key={review.id} style={styles.sellerReviewItem}>
+                          <View style={styles.sellerReviewHead}>
+                            <Text style={styles.sellerReviewBuyer}>{review.buyerName}</Text>
+                            <View style={styles.sellerReviewRight}>
+                              <View style={styles.sellerReviewStars}>
+                                {[1, 2, 3, 4, 5].map((idx) => (
+                                  <Ionicons
+                                    key={`${review.id}-star-${idx}`}
+                                    name={idx <= review.rating ? 'star' : 'star-outline'}
+                                    size={13}
+                                    color="#D4A017"
+                                  />
+                                ))}
+                              </View>
+                              <Text style={styles.sellerReviewDate}>{formatReviewDate(review.createdAt)}</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.sellerReviewFood}>{t('label.home.reviewFood').replace('{name}', review.foodName ?? '')}</Text>
+                          <Text style={styles.sellerReviewComment}>
+                            {review.comment?.trim() || t('helper.home.sellerCommentFallback')}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </>
+              ) : (
               <View style={styles.sellerMealList}>
                 {sellerMeals.map((meal) => (
                   <TouchableOpacity
@@ -4751,6 +4785,7 @@ export default function HomeScreen({
                   </TouchableOpacity>
                 ))}
               </View>
+              )}
               </ScrollView>
             </Animated.View>
           </View>
@@ -5167,6 +5202,14 @@ const styles = StyleSheet.create({
   heroBgFullImageInner: {
     resizeMode: 'cover',
   },
+  heroLeftReadabilityFade: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: '70%',
+    zIndex: 2,
+  },
   heroNewTopFade: {
     position: 'absolute',
     left: 0,
@@ -5184,7 +5227,7 @@ const styles = StyleSheet.create({
   heroTextArea: {
     zIndex: 3,
     width: '64%',
-    paddingTop: 50,
+    paddingTop: 62,
     paddingBottom: 12,
     paddingLeft: 0,
   },
@@ -5192,6 +5235,73 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  heroIdentityCompactTopRight: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 58 : 22,
+    left: 14,
+    zIndex: 6,
+    elevation: 6,
+  },
+  heroAvatarFloating: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 58 : 22,
+    left: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    zIndex: 6,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+  },
+  heroAvatarFloatingImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  heroIdentityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 12,
+    paddingRight: 4,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(184,142,108,0.22)',
+  },
+  heroGreetingCompactName: {
+    color: '#5A3E2B',
+    fontSize: 12,
+    fontWeight: '600',
+    maxWidth: 130,
+  },
+  heroAvatarCircleCompact: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E2E0DC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  heroAvatarImageCompact: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  avatarEmojiCompact: {
+    fontSize: 16,
   },
   heroGreetingArea: {
     flexShrink: 1,
@@ -5214,8 +5324,8 @@ const styles = StyleSheet.create({
   },
   heroQuestion: {
     color: '#23170F',
-    fontSize: 22,
-    lineHeight: 27,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: '700',
     letterSpacing: -0.3,
     marginTop: 8,
@@ -5263,8 +5373,8 @@ const styles = StyleSheet.create({
   stickySearchChips: {
     position: 'relative',
     backgroundColor: 'transparent',
-    marginTop: -8,
-    paddingTop: 4,
+    marginTop: -8 - HOME_STICKY_SAFE_TOP,
+    paddingTop: 4 + HOME_STICKY_SAFE_TOP,
     paddingBottom: 6,
     overflow: 'visible',
     zIndex: 10,
@@ -5275,9 +5385,9 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   stickySearchChipsTablet: {
-    marginTop: 0,
-    paddingTop: 8,
-    backgroundColor: '#FFFBF4',
+    marginTop: -120 - 24,
+    paddingTop: 8 + 24,
+    backgroundColor: 'transparent',
   },
   stickySearchFade: {
     position: 'absolute',
@@ -5300,7 +5410,7 @@ const styles = StyleSheet.create({
   },
   homeSloganBannerTablet: {
     marginTop: 0,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   homeSloganBannerTextWrap: {
     flex: 1,
@@ -5347,8 +5457,8 @@ const styles = StyleSheet.create({
 
   /* --- Floating Search Bar (premium shadow) --- */
   floatingSearchWrap: {
-    marginTop: -8,
-    marginBottom: 10,
+    marginTop: 8,
+    marginBottom: 18,
     marginHorizontal: 8,
     zIndex: 5,
   },
@@ -5393,10 +5503,10 @@ const styles = StyleSheet.create({
 
   /* --- Category Chips --- */
   chipBand: {
-    marginTop: -2,
-    marginBottom: 6,
+    marginTop: 0,
+    marginBottom: 14,
     paddingTop: 2,
-    paddingBottom: 4,
+    paddingBottom: 6,
   },
   chipScroller: {
     marginHorizontal: 0,
@@ -5409,24 +5519,24 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: '#DDD2C2',
+    backgroundColor: 'transparent',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 0,
   },
   chipActive: {
-    backgroundColor: '#3C2920',
-    borderColor: '#3C2920',
+    backgroundColor: '#EFE3D2',
+    borderWidth: 0,
   },
   chipText: {
-    color: '#3D2B22',
-    fontSize: 15,
-    fontWeight: '600',
+    color: '#7A6557',
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0.1,
   },
   chipTextActive: {
-    color: '#FFFFFF',
+    color: '#3C2920',
     fontWeight: '700',
   },
 
@@ -5735,15 +5845,16 @@ const styles = StyleSheet.create({
 
   /* --- Categories (legacy - kept for compat) --- */
   recommendationsSection: {
-    marginBottom: 8,
+    marginBottom: 14,
     marginHorizontal: 12,
-    marginTop: 2,
+    marginTop: 10,
   },
   recommendationsSectionTitle: {
-    color: '#3A281F',
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 6,
+    color: '#5A4636',
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+    marginBottom: 10,
     marginLeft: 2,
     textAlign: 'left',
   },
@@ -6590,6 +6701,40 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   sellerMealList: {},
+  sellerTabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#F3EBDC',
+    borderRadius: 14,
+    padding: 4,
+    marginTop: 16,
+    marginBottom: 14,
+    gap: 4,
+  },
+  sellerTabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sellerTabBtnActive: {
+    backgroundColor: '#FFFDF9',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  sellerTabText: {
+    fontSize: 13,
+    color: '#8B7B6B',
+    fontWeight: '600',
+  },
+  sellerTabTextActive: {
+    color: '#2F221B',
+    fontWeight: '700',
+  },
   sellerMealItem: {
     borderWidth: 1,
     borderColor: '#EDE8E0',

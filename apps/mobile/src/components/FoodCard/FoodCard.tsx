@@ -314,23 +314,9 @@ export function FoodCard({
               ))}
             </View>
           ) : null}
-          <View pointerEvents="none" style={styles.foodPhotoTitleOverlay}>
-            <Text numberOfLines={2} style={[styles.foodPhotoTitleText, tabletTitleStyle, titleMetrics]}>
-              {meal.title}
-            </Text>
-            {meal.cuisine ? (
-              <Text numberOfLines={1} style={[styles.foodPhotoCuisineText, tabletCuisineStyle]}>
-                {formatCuisineLabel(meal.cuisine)}
-              </Text>
-            ) : null}
-          </View>
           <View style={[styles.foodBadgesRight, tabletBadgeWrapStyle]}>
-            <View style={[styles.foodPriceBadge, tabletPriceBadgeStyle, { backgroundColor: hexToRgba(colors.price, 0.92) }]}>
-              <Text style={[styles.foodPriceBadgeText, tabletPriceTextStyle]}>{meal.price}</Text>
-            </View>
-            <View style={[styles.foodRatingBadge, tabletRatingBadgeStyle, { backgroundColor: hexToRgba(colors.price, 0.92) }]}>
-              <Ionicons name="star" size={isTabletLayout ? 11 : 14} color="#F2B23A" />
-              <Text style={[styles.foodRatingBadgeText, tabletRatingTextStyle]}>{ratingBadgeText}</Text>
+            <View style={[styles.foodPriceBadge, tabletPriceBadgeStyle, styles.foodPriceBadgeClean]}>
+              <Text style={[styles.foodPriceBadgeText, tabletPriceTextStyle, styles.foodPriceBadgeTextClean]}>{meal.price}</Text>
             </View>
           </View>
           <TouchableOpacity
@@ -344,7 +330,7 @@ export function FoodCard({
           >
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}
-              size={isTabletLayout ? 19 : 24}
+              size={isTabletLayout ? 16 : 16}
               color={isFavorite ? '#FFF4F1' : '#FFFDFB'}
             />
           </TouchableOpacity>
@@ -358,6 +344,16 @@ export function FoodCard({
           ]}
         >
           <View style={[styles.foodInfoContent, tabletInfoContentStyle]}>
+            <View style={styles.foodTitleRow}>
+              <Text numberOfLines={1} style={[styles.foodTitleClean, { color: colors.title }]}>
+                {meal.title}
+              </Text>
+              {meal.cuisine ? (
+                <Text numberOfLines={1} style={[styles.foodCuisineClean, { color: colors.subtitle }]}>
+                  {formatCuisineLabel(meal.cuisine)}
+                </Text>
+              ) : null}
+            </View>
             <View style={styles.foodInfoChipRow}>
               {infoItems.map((item, index) => item ? (
                 <React.Fragment key={item.key}>
@@ -394,9 +390,15 @@ export function FoodCard({
                   </View>
                 </View>
                 <View style={styles.foodFooterSellerText}>
-                  <Text style={[styles.foodFooterSellerHandle, tabletSellerHandleStyle, { color: colors.price }]}>
-                    {sellerHandle}
-                  </Text>
+                  <View style={styles.foodFooterHandleRow}>
+                    <Text numberOfLines={1} style={[styles.foodFooterSellerHandle, tabletSellerHandleStyle, { color: colors.price, flex: 1 }]}>
+                      {sellerHandle}
+                    </Text>
+                    <View style={styles.foodFooterRatingInline}>
+                      <Ionicons name="star" size={11} color="#F0C04A" />
+                      <Text style={[styles.foodFooterRatingInlineText, { color: colors.price }]}>{ratingBadgeText}</Text>
+                    </View>
+                  </View>
                   <Text style={[styles.foodFooterSellerTagline, tabletSellerTaglineStyle, { color: colors.subtitle }]}>
                     {sellerTagline}
                   </Text>
