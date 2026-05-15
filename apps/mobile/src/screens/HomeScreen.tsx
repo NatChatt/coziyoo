@@ -3474,7 +3474,8 @@ export default function HomeScreen({
               styles.heroBgFullImage,
               styles.heroBgExtended,
               heroBgResponsiveFrame,
-              isTabletLayout && { left: -24, right: -Math.round(homeContentWidth * 0.28) },
+              isTabletLayout && { left: -54, right: -Math.round(homeContentWidth * 0.28) + 30 },
+              isTabletLayout && { transform: [{ translateY: -70 }] },
             ]}
             imageStyle={styles.heroBgFullImageInner}
             onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
@@ -3498,10 +3499,10 @@ export default function HomeScreen({
               colors={
                 isTabletLayout
                   ? [
-                      toRgba(heroBottomBandColor, 0),
-                      toRgba(heroBottomBandColor, 0.3),
-                      toRgba(heroBottomBandColor, 0.6),
-                      toRgba(heroBottomBandColor, 0.85),
+                      toRgba(heroBottomBandColor, 0.08),
+                      toRgba(heroBottomBandColor, 0.46),
+                      toRgba(heroBottomBandColor, 0.82),
+                      toRgba(heroBottomBandColor, 0.96),
                       homeBaseBg,
                       homeBaseBg,
                     ]
@@ -3517,7 +3518,7 @@ export default function HomeScreen({
               }
               locations={
                 isTabletLayout
-                  ? [0, 0.1, 0.2, 0.3, 0.4, 1]
+                  ? [0, 0.08, 0.16, 0.24, 0.34, 1]
                   : [0, 0.12, 0.24, 0.36, 0.48, 0.6, 1]
               }
               start={{ x: 0.5, y: 0 }}
@@ -3525,13 +3526,13 @@ export default function HomeScreen({
               style={[
                 styles.heroNewBottomFade,
                 isTabletLayout
-                  ? { bottom: -220, height: 360 }
+                  ? { bottom: -230, height: 390 }
                   : { bottom: -96, height: 130 },
               ]}
             />
           ) : null}
-          <View style={styles.heroTextArea}>
-            <Text style={styles.heroQuestion}>
+          <View style={[styles.heroTextArea, isTabletLayout && styles.heroTextAreaTablet]}>
+            <Text style={[styles.heroQuestion, isTabletLayout && styles.heroQuestionTablet]}>
               {homeHeroCopyOverrides.questionText || t('headline.home.heroQuestion')}
             </Text>
             <View style={styles.heroQuestionMarkerRow}>
@@ -5231,6 +5232,10 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     paddingLeft: 0,
   },
+  heroTextAreaTablet: {
+    paddingTop: 96,
+    width: '58%',
+  },
   heroIdentityRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -5330,6 +5335,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     marginTop: 8,
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  heroQuestionTablet: {
+    fontSize: 24,
+    lineHeight: 30,
   },
   heroQuestionMarkerRow: {
     flexDirection: 'row',
