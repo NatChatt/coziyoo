@@ -5877,7 +5877,7 @@ const styles = StyleSheet.create({
   },
   foodGridItemTablet: {
     flexBasis: '48.8%',
-    flexGrow: 1,
+    flexGrow: 0,
     flexShrink: 1,
   },
   sellerChip: {
