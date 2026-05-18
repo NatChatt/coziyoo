@@ -33,6 +33,7 @@ if [[ ! -f "${ROOT_ENV}" ]]; then
   log "Root .env missing; regenerating"
   bash "${local_gen}" --output "${ROOT_ENV}"
 fi
+ensure_ops_runtime_env "${ROOT_ENV}"
 
 # ── 3. Update Python venv ─────────────────────────────────────────────────────
 if [[ ! -d "${VENV_DIR}" ]]; then
@@ -73,6 +74,7 @@ else:
 )
 
 # ── 5. Restart service ────────────────────────────────────────────────────────
+deploy_ops_stack
 service_action restart "${SERVICE_NAME}"
 log "Service restarted"
 

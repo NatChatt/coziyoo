@@ -58,6 +58,7 @@ done
 PGHOST="${PGHOST:-127.0.0.1}"
 PGPORT="${PGPORT:-5432}"
 DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PGHOST}:${PGPORT}/${PG_DB}"
+REDIS_URL="redis://:${REDIS_PASSWORD:-CHANGE_ME_REDIS_PASSWORD_12345}@127.0.0.1:${REDIS_PORT:-6379}/1"
 CORS_VALUE="https://${ADMIN_DOMAIN},https://coziyoo.com,http://${ADMIN_DOMAIN},http://localhost:8081,http://localhost:5173,http://localhost:19006"
 
 # Generate secrets
@@ -101,6 +102,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     PGPASSWORD)                echo "PGPASSWORD=${PG_PASSWORD}" >> "$tmp_file" ;;
     PGDATABASE)                echo "PGDATABASE=${PG_DB}" >> "$tmp_file" ;;
     DATABASE_URL)              echo "DATABASE_URL=${DATABASE_URL}" >> "$tmp_file" ;;
+    REDIS_URL)                 echo "REDIS_URL=${REDIS_URL}" >> "$tmp_file" ;;
+    CACHE_KEY_PREFIX)          echo "CACHE_KEY_PREFIX=${CACHE_KEY_PREFIX:-coziyoo}" >> "$tmp_file" ;;
+    GRAFANA_ADMIN_USER)        echo "GRAFANA_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}" >> "$tmp_file" ;;
+    GRAFANA_ADMIN_PASSWORD)    echo "GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-CHANGE_ME_GRAFANA_PASSWORD_12345}" >> "$tmp_file" ;;
+    METRICS_ALLOWED_IPS)       echo "METRICS_ALLOWED_IPS=${METRICS_ALLOWED_IPS:-127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}" >> "$tmp_file" ;;
     CORS_ALLOWED_ORIGINS)      echo "CORS_ALLOWED_ORIGINS=${CORS_VALUE}" >> "$tmp_file" ;;
     DJANGO_SETTINGS_MODULE)    echo "DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-coziyoo.settings.production}" >> "$tmp_file" ;;
     *)                         echo "$line" >> "$tmp_file" ;;
@@ -117,6 +123,11 @@ _append_if_missing "PGUSER"            "${PG_USER}"
 _append_if_missing "PGPASSWORD"        "${PG_PASSWORD}"
 _append_if_missing "PGDATABASE"        "${PG_DB}"
 _append_if_missing "DATABASE_URL"      "${DATABASE_URL}"
+_append_if_missing "REDIS_URL"         "${REDIS_URL}"
+_append_if_missing "CACHE_KEY_PREFIX"  "${CACHE_KEY_PREFIX:-coziyoo}"
+_append_if_missing "GRAFANA_ADMIN_USER" "${GRAFANA_ADMIN_USER:-admin}"
+_append_if_missing "GRAFANA_ADMIN_PASSWORD" "${GRAFANA_ADMIN_PASSWORD:-CHANGE_ME_GRAFANA_PASSWORD_12345}"
+_append_if_missing "METRICS_ALLOWED_IPS" "${METRICS_ALLOWED_IPS:-127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}"
 _append_if_missing "CORS_ALLOWED_ORIGINS" "${CORS_VALUE}"
 
 # Final validation

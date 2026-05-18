@@ -114,6 +114,42 @@ service_action() {
   run_root systemctl "${1}" "${2}"
 }
 
+ensure_ops_runtime_env() {
+  local env_file="${1}"
+  [[ -f "${env_file}" ]] || return 0
+
+  local redis_url="redis://:${REDIS_PASSWORD:-CHANGE_ME_REDIS_PASSWORD_12345}@127.0.0.1:${REDIS_PORT:-6379}/1"
+  grep -q '^REDIS_URL=' "${env_file}" || printf '\nREDIS_URL=%s\n' "${redis_url}" >> "${env_file}"
+  grep -q '^CACHE_KEY_PREFIX=' "${env_file}" || printf 'CACHE_KEY_PREFIX=%s\n' "${CACHE_KEY_PREFIX:-coziyoo}" >> "${env_file}"
+  grep -q '^METRICS_ALLOWED_IPS=' "${env_file}" || printf 'METRICS_ALLOWED_IPS=%s\n' "${METRICS_ALLOWED_IPS:-127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}" >> "${env_file}"
+}
+
+deploy_ops_stack() {
+  [[ "${OPS_ENABLE_MONITORING:-true}" == "true" ]] || { log "OPS_ENABLE_MONITORING=false, skipping ops stack"; return 0; }
+  command -v docker >/dev/null 2>&1 || { log "Docker not installed, skipping ops stack"; return 0; }
+
+  local ops_dir; ops_dir="$(resolve_path "${OPS_DIR:-ops/monitoring}")"
+  local compose_file="${ops_dir}/docker-compose.yml"
+  [[ -f "${compose_file}" ]] || { log "Ops compose file not found at ${compose_file}, skipping"; return 0; }
+
+  log "Starting Redis, Prometheus, and Grafana"
+  (
+    cd "${ops_dir}"
+    export REDIS_PORT="${REDIS_PORT:-6379}"
+    export REDIS_PASSWORD="${REDIS_PASSWORD:-CHANGE_ME_REDIS_PASSWORD_12345}"
+    export PROMETHEUS_PORT="${PROMETHEUS_PORT:-9090}"
+    export GRAFANA_PORT="${GRAFANA_PORT:-3001}"
+    export GRAFANA_ADMIN_USER="${GRAFANA_ADMIN_USER:-admin}"
+    export GRAFANA_ADMIN_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-CHANGE_ME_GRAFANA_PASSWORD_12345}"
+
+    if docker compose version >/dev/null 2>&1; then
+      run_root docker compose -f "${compose_file}" up -d
+    else
+      run_root docker-compose -f "${compose_file}" up -d
+    fi
+  )
+}
+
 # Prevent concurrent deploys using a lock directory.
 acquire_update_lock() {
   local lock_dir="${REPO_ROOT}/.deploy-lock"

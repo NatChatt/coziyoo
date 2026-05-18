@@ -216,6 +216,21 @@ bash installation/scripts/run_all.sh status admin
 bash installation/scripts/run_all.sh logs api
 ```
 
+### Monitoring and Redis
+
+The deploy scripts start an ops stack from `ops/monitoring` when `OPS_ENABLE_MONITORING=true`.
+
+- Redis listens on `127.0.0.1:6379` and is used by Django when `REDIS_URL` is present in `/opt/coziyoo/.env`.
+- Prometheus listens on `127.0.0.1:9090` and scrapes Django `/metrics/`.
+- Grafana listens on `127.0.0.1:3001`; expose it through Nginx Proxy Manager only with authentication/TLS.
+- Django `/v1/health/` now reports both DB and cache status.
+
+```bash
+cd /opt/coziyoo/ops/monitoring
+docker compose ps
+docker compose logs -f prometheus grafana redis
+```
+
 ### Database Migrations (manual)
 
 If you need to run migrations manually:

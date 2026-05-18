@@ -38,6 +38,7 @@ urlpatterns = [
 
     # Health check
     path("v1/health/", include("coziyoo.health")),
+    path("metrics/", include("django_prometheus.urls")),
 
     # Deploy webhook
     path("webhook/", include("coziyoo.webhook")),

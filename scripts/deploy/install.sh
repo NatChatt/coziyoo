@@ -130,6 +130,7 @@ install_django() {
     log "Generating root .env"
     bash "${gen}" --output "${root_env}"
   fi
+  ensure_ops_runtime_env "${root_env}"
 
   # Ensure service user/group
   log "Ensuring service user: ${run_user}:${run_group}"
@@ -243,6 +244,7 @@ EOF
 # ─────────────────────────────────────────────────────────────────────────────
 install_prereqs
 install_nginx_proxy_manager
+deploy_ops_stack
 install_django
 
 log "All installation steps completed"
