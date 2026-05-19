@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import {
   ImageBackground,
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -243,33 +244,37 @@ const styles = StyleSheet.create({
   },
   textAreaTablet: {
     paddingTop: 96,
+    width: '58%',
   },
   question: {
-    color: '#2E241C',
-    fontSize: 24,
-    lineHeight: 29,
-    fontWeight: '900',
-    letterSpacing: 0,
+    color: '#23170F',
+    fontSize: 18,
+    lineHeight: 23,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginTop: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
   questionTablet: {
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 24,
+    lineHeight: 30,
   },
   markerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
     marginTop: 8,
+    gap: 4,
   },
   markerIcon: {
-    color: '#9B6A44',
+    color: '#7D5A45',
     fontSize: 13,
     lineHeight: 13,
-    fontWeight: '900',
+    marginTop: -1,
   },
   markerLine: {
-    width: 46,
-    height: 1,
-    backgroundColor: 'rgba(84, 55, 33, 0.22)',
+    width: 42,
+    height: 1.6,
+    borderRadius: 2,
+    backgroundColor: '#A4714E',
   },
 });
