@@ -240,7 +240,7 @@ class MeView(APIView):
         with connection.cursor() as cur:
             cur.execute(
                 """SELECT id, email, display_name, username, user_type, is_active, created_at,
-                          full_name, phone, dob, country_code, national_id
+                          full_name, phone, dob, country_code, national_id, profile_image_url
                    FROM users WHERE id = %s""",
                 [request.user.id],
             )
@@ -255,6 +255,7 @@ class MeView(APIView):
             "fullName": row[7], "phone": row[8],
             "dob": row[9].isoformat() if row[9] else None,
             "countryCode": row[10], "nationalId": row[11],
+            "profileImageUrl": _public_image_url(row[12]),
             "createdAt": row[6].isoformat() if row[6] else None,
         }})
 

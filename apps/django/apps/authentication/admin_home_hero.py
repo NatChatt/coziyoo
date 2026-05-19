@@ -59,6 +59,19 @@ def _normalize_edit_json(value: str) -> str:
     return json.dumps(parsed, ensure_ascii=False)
 
 
+def _with_hero_image_url(edit_json: str, image_url: str) -> str:
+    if not edit_json:
+        return ""
+    try:
+        parsed = json.loads(edit_json)
+    except (TypeError, ValueError):
+        return edit_json
+    if not isinstance(parsed, dict):
+        return edit_json
+    parsed["imageUrl"] = image_url or parsed.get("imageUrl") or ""
+    return json.dumps(parsed, ensure_ascii=False)
+
+
 def _normalize_hero_text(value: str, max_length: int = 120) -> str:
     raw = re.sub(r"\s+", " ", str(value or "")).strip()
     if not raw:
@@ -329,6 +342,7 @@ def home_hero_view(request: HttpRequest) -> HttpResponse:
                     next_asset_key = None
             latest.mobile_home_header_image_url = next_pointer or None
             latest.save(update_fields=["mobile_home_header_image_url"])
+            edit_json = _with_hero_image_url(edit_json, next_pointer or "")
             _set_latest_optional_fields(
                 latest.id,
                 edit_json,

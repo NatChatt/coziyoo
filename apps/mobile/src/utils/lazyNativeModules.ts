@@ -23,12 +23,16 @@ export let fileSystemWriteAsStringAsync:
   | null
   | ((fileUri: string, contents: string, options?: { encoding?: string }) => Promise<void>) = null;
 export let fileSystemGetInfoAsync: null | ((fileUri: string) => Promise<{ exists: boolean }>) = null;
+export let fileSystemDownloadAsync:
+  | null
+  | ((uri: string, fileUri: string) => Promise<{ uri: string }>) = null;
 export let fileSystemEncodingTypeBase64: string | null = null;
 try {
   const fileSystem = require('expo-file-system');
   fileSystemCacheDirectory = fileSystem.cacheDirectory ?? null;
   fileSystemWriteAsStringAsync = fileSystem.writeAsStringAsync ?? null;
   fileSystemGetInfoAsync = fileSystem.getInfoAsync ?? null;
+  fileSystemDownloadAsync = fileSystem.downloadAsync ?? null;
   fileSystemEncodingTypeBase64 = fileSystem.EncodingType?.Base64 ?? 'base64';
 } catch {
   // Optional at runtime; inline image files fall back when unavailable.

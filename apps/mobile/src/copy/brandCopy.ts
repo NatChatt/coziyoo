@@ -261,6 +261,7 @@ export const brandCopy = {
   'headline.home.tabMessages': 'Mesajlar',
   'headline.home.tabOrders': 'Siparişler',
   'headline.home.tabNotifications': 'Bildirim',
+  'headline.home.tabProfile': 'Profil',
 
   'headline.onboarding.brandTitle': 'Komşunun mutfağından, kapına.',
   'helper.onboarding.brandSubtitle': 'Coziyoo ile yakınındaki ev yemeklerine ulaş.',
@@ -1378,6 +1379,7 @@ const brandCopyEn: Partial<Record<BrandCopyKey, string>> = {
   'headline.home.tabMessages': 'Messages',
   'headline.home.tabOrders': 'Orders',
   'headline.home.tabNotifications': 'Notifications',
+  'headline.home.tabProfile': 'Profile',
   'status.voice.addedAction': 'Added to your food list',
   'status.voice.orderSummaryAction': 'Your food list is ready',
   'headline.common.error': 'Error',

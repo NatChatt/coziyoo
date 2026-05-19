@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, AppState, Easing, KeyboardAvoidingView, Modal, FlatList, PanResponder, Platform, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, AppState, Easing, Image, KeyboardAvoidingView, Modal, FlatList, PanResponder, Platform, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import type { AuthSession } from "../utils/auth";
 import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
@@ -367,6 +367,8 @@ export default function SellerHomeScreen({
   const [newOrderUntilById, setNewOrderUntilById] = useState<Record<string, number>>({});
   const [clockMs, setClockMs] = useState(() => Date.now());
   const [sellerCountryCode, setSellerCountryCode] = useState<string>(() => normalizeCountryCode(getSellerMeCache()?.countryCode ?? ""));
+  const [sellerProfileImageUrl, setSellerProfileImageUrl] = useState<string | null>(null);
+  const [sellerProfileImageLoadFailed, setSellerProfileImageLoadFailed] = useState(false);
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [pinCode, setPinCode] = useState("");
   const [pinOrderId, setPinOrderId] = useState<string | null>(null);
@@ -543,6 +545,8 @@ export default function SellerHomeScreen({
         const name = profileJson?.data?.displayName?.trim() || "Usta";
         setDisplayName(name);
         setSellerDisplayNameCache(name);
+        setSellerProfileImageUrl(profileJson?.data?.profileImageUrl ?? null);
+        setSellerProfileImageLoadFailed(false);
       }
 
       const reviewsJson = await reviewsRes.json().catch(() => ({}));
@@ -832,40 +836,41 @@ export default function SellerHomeScreen({
   return (
     <View style={styles.container}>
       <View style={styles.stickyTop}>
-        {/* Greeting + Avatar */}
+        {/* Avatar */}
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.title} numberOfLines={1}>{formatCopy('headline.seller.home.greeting', { name: displayName })}</Text>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.avatar} onPress={onOpenProfile} activeOpacity={0.8}>
-                {loading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.avatarText}>{initials}</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-          <View style={styles.headerMetaRow}>
-            <TouchableOpacity
-              style={styles.notificationBellUnderGreeting}
-              activeOpacity={0.75}
-              onPress={() => onOpenNotifications?.()}
-            >
-              <Text style={styles.notificationBellInlineIcon}>🔔</Text>
-              {!loading && notificationUnreadCount > 0 ? (
-                <View style={styles.notificationBellInlineBadge}>
-                  <Text style={styles.notificationBellInlineBadgeText}>{notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}</Text>
-                </View>
-              ) : null}
+            <TouchableOpacity style={styles.avatar} onPress={onOpenProfile} activeOpacity={0.8}>
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : sellerProfileImageUrl && !sellerProfileImageLoadFailed ? (
+                <Image
+                  source={{ uri: sellerProfileImageUrl }}
+                  style={styles.avatarImage}
+                  onError={() => setSellerProfileImageLoadFailed(true)}
+                />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
             </TouchableOpacity>
-            <View style={styles.ratingRow}>
-              <View style={styles.ratingMetaGroup}>
-                <Text style={styles.ratingStar}>★</Text>
-                <Text style={styles.ratingAvg}>{ratingSummary.avg.toFixed(1)}</Text>
-                <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: ratingSummary.count })}</Text>
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.notificationBellUnderGreeting}
+                activeOpacity={0.75}
+                onPress={() => onOpenNotifications?.()}
+              >
+                <Text style={styles.notificationBellInlineIcon}>🔔</Text>
+                {!loading && notificationUnreadCount > 0 ? (
+                  <View style={styles.notificationBellInlineBadge}>
+                    <Text style={styles.notificationBellInlineBadgeText}>{notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}</Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+              <View style={styles.ratingRow}>
+                <View style={styles.ratingMetaGroup}>
+                  <Text style={styles.ratingStar}>★</Text>
+                  <Text style={styles.ratingAvg}>{ratingSummary.avg.toFixed(1)}</Text>
+                  <Text style={styles.ratingCount}>{formatCopy('status.seller.home.ratingCount', { count: ratingSummary.count })}</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -1311,27 +1316,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
   },
-  headerMetaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 0,
-  },
-  headerLeft: {
-    flex: 1,
-    paddingRight: 14,
-  },
   headerRight: {
     alignItems: "flex-end",
-  },
-  title: {
-    fontSize: 24,
-    color: "#4A3B2F",
-    letterSpacing: -0.5,
-    marginTop: 4,
-    ...(Platform.OS === "ios"
-      ? { fontFamily: "AvenirNextCondensed-Bold", fontWeight: "700" }
-      : { fontFamily: "sans-serif-condensed", fontWeight: "700" }),
+    gap: 8,
   },
   ratingRow: {
     flexDirection: "row",
@@ -1369,6 +1356,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   avatarText: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  avatarImage: { width: "100%", height: "100%", borderRadius: 22 },
   quickButtonsRow: { flexDirection: "row", gap: 12, marginBottom: 2, alignItems: "stretch" },
   quickButton: {
     flex: 1,

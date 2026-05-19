@@ -8,7 +8,6 @@ import {
   Easing,
   FlatList,
   Image,
-  ImageBackground,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -26,6 +25,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import {
   blendHexColors,
@@ -37,7 +37,6 @@ import {
   normalizeHexColor,
   pickImagePaletteColor,
   pickSurfacePaletteColor,
-  toRgba,
   type CardColors,
   type HeroColors,
 } from '../utils/color';
@@ -66,6 +65,7 @@ import {
   sampleImageTopBandColor,
 } from '../utils/imageSampling';
 import { FoodCard } from '../components/FoodCard/FoodCard';
+import { HomeHeroRenderer, type HomeHeroRenderConfig } from '../components/HomeHeroRenderer';
 import { ProfileMenuItem } from '../components/ProfileMenuItem';
 import { QuantityStepper } from '../components/QuantityStepper';
 import type { MealCard } from '../types/meal';
@@ -88,7 +88,7 @@ import { loadSettings, saveSettings, subscribeSettings, type AppSettings } from 
 import { subscribeBuyerFeedRealtime, subscribeBuyerOrdersRealtime } from '../utils/realtime';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { loadCachedProfileImageUrl, saveCachedProfileImageUrl } from '../utils/profileImage';
-import { loadCachedHomeHeroImageUrl, saveCachedHomeHeroImageUrl } from '../utils/homeHeroImage';
+import { cacheHomeHeroImageUrl, loadCachedHomeHeroImageUrl } from '../utils/homeHeroImage';
 import { apiRequest } from '../utils/api';
 import { readJsonSafe } from '../utils/http';
 import { theme } from '../theme/colors';
@@ -101,20 +101,17 @@ import { HOME_FEED_CATEGORIES } from '../constants/foodCategories';
 
 const AnimatedTouchableOpacity: any = Animated.createAnimatedComponent(RNTouchableOpacity as any);
 const PICKUP_ADDRESS_REQUEST_TIMEOUT_MS = 12000;
+const HOME_API_REQUEST_TIMEOUT_MS = 12000;
+const HOME_FEED_CACHE_KEY = '@coziyoo:buyer_home_feed:v1';
 const BUYER_HOME_TAB_BAR_HEIGHT = 70;
 const TOP_BLEND_STRIP_HEIGHT = 10;
 const HOME_HERO_VISIBLE_HEIGHT = 300;
-const HOME_HERO_BASE_WIDTH = 390;
-const HOME_HERO_HORIZONTAL_BLEED = 24;
 const HOME_HERO_TOP_BLEED = 30;
 const HOME_HERO_BOTTOM_BLEED = 56;
-const HOME_HERO_BASE_EXTENDED_WIDTH = HOME_HERO_BASE_WIDTH + HOME_HERO_HORIZONTAL_BLEED * 2;
-const HOME_HERO_BASE_EXTENDED_HEIGHT =
-  HOME_HERO_VISIBLE_HEIGHT + HOME_HERO_TOP_BLEED + HOME_HERO_BOTTOM_BLEED;
-const HOME_HERO_BASE_EXTENDED_ASPECT =
-  HOME_HERO_BASE_EXTENDED_WIDTH / HOME_HERO_BASE_EXTENDED_HEIGHT;
 const HOME_TABLET_BREAKPOINT = 600;
 const HOME_TABLET_CONTENT_MAX_WIDTH = 820;
+const DEFAULT_MOBILE_API_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000').trim().replace(/\/$/, '');
+const DEFAULT_ADMIN_HERO_IMAGE_URL = `${DEFAULT_MOBILE_API_URL}/v1/foods/home-hero-image`;
 // Status bar safe area approximation — sticky header inset when scrolled
 const HOME_STICKY_SAFE_TOP = Platform.OS === 'ios' ? 47 : 24;
 
@@ -192,6 +189,7 @@ function TouchableOpacity(props: React.ComponentProps<typeof RNTouchableOpacity>
 type Props = {
   auth: AuthSession;
   initialTab?: TabKey;
+  bootstrapPreview?: boolean;
   onOpenSettings: () => void;
   onOpenOrders: (source?: 'home' | 'profile') => void;
   onOpenComplaints: () => void;
@@ -261,6 +259,22 @@ type ApiFoodItem = {
   lotId?: string | null;
   stock: number;
   seller: { id: string; name: string; username?: string | null; image: string | null; tagline?: string | null; homeCardImage?: string | null };
+};
+
+type HomeFoodsPayload = {
+  data?: ApiFoodItem[];
+  mobileHomeHeaderImageCacheKey?: string | null;
+  mobileHomeHeroSurfaceColor?: string | null;
+  mobileHomeHeroRenderConfig?: unknown;
+  mobileHomeHeroQuestionText?: string | null;
+  mobileHomeHeroSloganTitle?: string | null;
+  mobileHomeHeroSloganSubtitle?: string | null;
+  error?: { message?: string };
+};
+
+type CachedHomeFoodsPayload = {
+  savedAt: number;
+  payload: HomeFoodsPayload;
 };
 
 function normalizeMealAddons(value: ApiFoodItem["menuItems"]): MealCard["addons"] {
@@ -673,6 +687,7 @@ function isAuthErrorMessage(message: string | null | undefined): boolean {
 
 function normalizeHomeRequestError(error: unknown, fallbackKey: string): string {
   if (error instanceof Error) {
+    if (error.name === 'AbortError') return t('error.home.retryLater');
     const message = error.message?.trim();
     if (isAuthErrorMessage(message)) return t('error.home.sessionExpired');
     if (message) return message;
@@ -812,11 +827,15 @@ const CATEGORY_KEYS: Record<string, BrandCopyKey> = {
   'İçecekler': 'category.drinks',
 };
 
-const LOCAL_HOME_HEADER_FALLBACK = require('../../assets/images/home-header-fallback.png');
+const LOCAL_HOME_HEADER_FALLBACK = require('../../assets/images/hero-food-fade.png');
 const ENV_HOME_HEADER_IMAGE_URL = (process.env.EXPO_PUBLIC_HOME_HEADER_IMAGE_URL || '').trim();
 const DEFAULT_HOME_HEADER_IMAGE_URL =
   'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1800&q=80';
 const HERO_AKCABAT_IMAGE_URL = resolveSecondaryDishImage('Akçaabat Köfte', 'Ana Yemekler');
+
+function isInlineImageUrl(value: string | null | undefined): boolean {
+  return String(value ?? '').trim().startsWith('data:image/');
+}
 
 function normalizeDishText(value: string): string {
   return value
@@ -921,12 +940,47 @@ function resolveSecondaryDishImage(title: string, category: string | null): stri
   return bucket[seed % bucket.length];
 }
 
+const LOCAL_KURU_FASULYE_IMAGE_URI = Image.resolveAssetSource(
+  require('../../assets/images/kuru-fasulye-pilav.jpg'),
+).uri;
+const LOCAL_YUNAN_SALATASI_IMAGE_URI = Image.resolveAssetSource(
+  require('../../assets/images/yunan-salatasi.jpg'),
+).uri;
+const LOCAL_ICLI_KOFTE_IMAGE_URI = Image.resolveAssetSource(
+  require('../../assets/images/icli-kofte.jpg'),
+).uri;
+const LOCAL_MAKARNA_IMAGE_URI = Image.resolveAssetSource(
+  require('../../assets/images/makarna.jpg'),
+).uri;
+const LOCAL_FIRINDA_KUZU_IMAGE_URI = Image.resolveAssetSource(
+  require('../../assets/images/firinda-kuzu.jpg'),
+).uri;
+
+function isKuruFasulyePilavTitle(value: string | null | undefined): boolean {
+  const normalized = normalizeDishText(value ?? '');
+  return normalized.includes('kuru fasulye') && normalized.includes('pilav');
+}
+
+function resolveLocalFoodImageOverride(item: ApiFoodItem): string | null {
+  const normalized = normalizeDishText(item.name ?? '');
+  if (isKuruFasulyePilavTitle(item.name)) return LOCAL_KURU_FASULYE_IMAGE_URI;
+  if (normalized.includes('yunan') && normalized.includes('salatasi')) return LOCAL_YUNAN_SALATASI_IMAGE_URI;
+  if (normalized.includes('icli') && normalized.includes('kofte')) return LOCAL_ICLI_KOFTE_IMAGE_URI;
+  if (normalized.includes('makarna')) return LOCAL_MAKARNA_IMAGE_URI;
+  if (normalized.includes('firinda') && normalized.includes('kuzu')) return LOCAL_FIRINDA_KUZU_IMAGE_URI;
+  return null;
+}
+
 function apiToMealCard(item: ApiFoodItem): MealCard {
   const uiCategory = inferUiCategory(item);
-  const normalizedImageUrls = [item.imageUrl ?? '', ...(Array.isArray(item.imageUrls) ? item.imageUrls : [])]
-    .map((value) => String(value ?? '').trim())
-    .filter(Boolean)
-    .slice(0, 5);
+  const localImageOverride = resolveLocalFoodImageOverride(item);
+  const normalizedImageUrls = localImageOverride
+    ? [localImageOverride]
+    : [item.imageUrl ?? '', ...(Array.isArray(item.imageUrls) ? item.imageUrls : [])]
+      .map((value) => String(value ?? '').trim())
+      .filter(Boolean)
+      .filter((value) => !isInlineImageUrl(value))
+      .slice(0, 5);
   const menuItems = Array.isArray(item.menuItems)
     ? item.menuItems
       .map((entry) => String(entry?.name ?? "").trim())
@@ -980,6 +1034,44 @@ function apiToMealCard(item: ApiFoodItem): MealCard {
   };
 }
 
+const QUICK_START_HOME_FOODS: HomeFoodsPayload = {
+  data: [
+    {
+      id: 'quick-start-kuru-fasulye-pilav',
+      name: 'Kuru fasulye pilav',
+      cardSummary: '',
+      description: 'Tencereden çıktığı gibi, sıcacık.',
+      price: 45,
+      deliveryFee: 0,
+      deliveryOptions: { pickup: true, delivery: true },
+      imageUrl: LOCAL_KURU_FASULYE_IMAGE_URI,
+      imageUrls: [LOCAL_KURU_FASULYE_IMAGE_URI],
+      rating: '0.0',
+      reviewCount: 0,
+      prepTime: 15,
+      maxDistance: 2,
+      distanceKm: 2,
+      distance: 2,
+      category: 'Ana Yemekler',
+      allergens: [],
+      ingredients: ['Et', 'Maydanoz'],
+      menuItems: [{ name: 'Pilav', kind: 'extra', pricing: 'free' }],
+      secondaryCategories: [],
+      cuisine: 'Bolu',
+      lotId: null,
+      stock: 50,
+      seller: {
+        id: 'quick-start-demo-seller',
+        name: 'Bolu Mutfağı',
+        username: 'demo.satici',
+        image: 'https://randomuser.me/api/portraits/women/44.jpg',
+        tagline: 'Tencereden çıktığı gibi, sıcacık.',
+        homeCardImage: null,
+      },
+    },
+  ],
+};
+
 function resolveHomeHeaderImageUrl(payload: unknown): string | null {
   if (!payload || typeof payload !== 'object') return null;
   const root = payload as Record<string, unknown>;
@@ -1009,7 +1101,7 @@ function resolveHomeHeaderImageUrl(payload: unknown): string | null {
   for (const item of candidates) {
     if (typeof item !== 'string') continue;
     const normalized = item.trim();
-    if (/^https?:\/\//.test(normalized) || /^data:image\//.test(normalized)) {
+    if (/^https?:\/\//.test(normalized)) {
       return normalized;
     }
   }
@@ -1043,6 +1135,60 @@ function resolveHomeHeroSurfaceColor(payload: unknown): string | null {
     }
   }
   return null;
+}
+
+function numberFromUnknown(value: unknown, fallback: number, min: number, max: number): number {
+  const next = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(next)) return fallback;
+  return Math.min(max, Math.max(min, next));
+}
+
+function resolveHomeHeroRenderConfig(payload: unknown): HomeHeroRenderConfig {
+  const defaults: HomeHeroRenderConfig = {
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+    focalX: 0.5,
+    focalY: 0.5,
+    gradientOpacity: 1,
+    overlayColor: null,
+    devicePreviewMode: null,
+    topFadeOpacity: 1,
+    safeAreaTop: HOME_HERO_TOP_BLEED,
+    textSafeAreaTop: 62,
+    bottomSafeArea: HOME_HERO_BOTTOM_BLEED,
+  };
+  if (!payload || typeof payload !== 'object') return defaults;
+  const root = payload as Record<string, unknown>;
+  const nestedDataCandidate = root.data;
+  const data = (
+    nestedDataCandidate
+    && typeof nestedDataCandidate === 'object'
+    && !Array.isArray(nestedDataCandidate)
+      ? nestedDataCandidate
+      : root
+  ) as Record<string, unknown>;
+  const raw = data.mobileHomeHeroRenderConfig;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return defaults;
+  const config = raw as Record<string, unknown>;
+  const overlayColor = typeof (config.overlayColor ?? config.surfaceColor) === 'string' && /^#[0-9a-fA-F]{6}$/.test(String(config.overlayColor ?? config.surfaceColor).trim())
+    ? String(config.overlayColor ?? config.surfaceColor).trim().toLowerCase()
+    : null;
+  const devicePreviewMode = typeof config.devicePreviewMode === 'string' ? config.devicePreviewMode.trim() || null : null;
+  return {
+    scale: numberFromUnknown(config.scale ?? config.zoom, defaults.scale, 0.5, 3),
+    offsetX: numberFromUnknown(config.offsetX ?? config.translateX, defaults.offsetX, -500, 500),
+    offsetY: numberFromUnknown(config.offsetY ?? config.translateY, defaults.offsetY, -500, 500),
+    focalX: numberFromUnknown(config.focalX ?? config.focusX, defaults.focalX, 0, 1),
+    focalY: numberFromUnknown(config.focalY ?? config.focusY, defaults.focalY, 0, 1),
+    gradientOpacity: numberFromUnknown(config.gradientOpacity ?? config.bottomFadeOpacity, defaults.gradientOpacity, 0, 1),
+    overlayColor,
+    devicePreviewMode,
+    topFadeOpacity: numberFromUnknown(config.topFadeOpacity, defaults.topFadeOpacity, 0, 1),
+    safeAreaTop: numberFromUnknown(config.safeAreaTop, defaults.safeAreaTop, 0, 90),
+    textSafeAreaTop: numberFromUnknown(config.textSafeAreaTop, defaults.textSafeAreaTop, 20, 140),
+    bottomSafeArea: numberFromUnknown(config.bottomSafeArea, defaults.bottomSafeArea, 0, 160),
+  };
 }
 
 type HomeHeroCopyOverrides = {
@@ -1313,6 +1459,7 @@ function RecommendationCard({
 export default function HomeScreen({
   auth,
   initialTab,
+  bootstrapPreview = false,
   onOpenSettings,
   onOpenOrders,
   onOpenComplaints,
@@ -1330,15 +1477,18 @@ export default function HomeScreen({
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const isTabletLayout = Math.min(screenWidth, screenHeight) >= 600;
   const [currentAuth, setCurrentAuth] = useState<AuthSession>(auth);
-  const [apiUrl, setApiUrl] = useState('http://localhost:3000');
+  const [apiUrl, setApiUrl] = useState(DEFAULT_MOBILE_API_URL);
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'home');
   const [activeCategory, setActiveCategory] = useState('Tümü');
   const [nearbyOnly, setNearbyOnly] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [meals, setMeals] = useState<MealCard[]>([]);
-  const [mealsLoading, setMealsLoading] = useState(true);
+  const [meals, setMeals] = useState<MealCard[]>(() =>
+    (QUICK_START_HOME_FOODS.data ?? []).map(apiToMealCard),
+  );
+  const [mealsLoading, setMealsLoading] = useState(false);
   const [mealsError, setMealsError] = useState<string | null>(null);
+  const [homeFeedCacheHydrated, setHomeFeedCacheHydrated] = useState(false);
   const [inboxMessages, setInboxMessages] =
     useState<ChatMessage[]>(INITIAL_INBOX_MESSAGES);
   const [inboxInput, setInboxInput] = useState('');
@@ -1490,13 +1640,19 @@ export default function HomeScreen({
   }, []);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocationLabel, setSelectedLocationLabel] = useState(() => `Kadıköy • 2.5 km ${t('helper.home.locationRadius')}`);
-  const [headerImageSource, setHeaderImageSource] = useState<ImageSourcePropType>(LOCAL_HOME_HEADER_FALLBACK);
-  const [adminHeroImageUrl, setAdminHeroImageUrl] = useState<string | null>(null);
-  const [heroImageResolved, setHeroImageResolved] = useState(false);
+  const [headerImageSource, setHeaderImageSource] = useState<ImageSourcePropType | null>(
+    DEFAULT_ADMIN_HERO_IMAGE_URL ? { uri: DEFAULT_ADMIN_HERO_IMAGE_URL } : null,
+  );
+  const [adminHeroImageUrl, setAdminHeroImageUrl] = useState<string | null>(
+    DEFAULT_ADMIN_HERO_IMAGE_URL || null,
+  );
+  const [adminHeroImageCacheKey, setAdminHeroImageCacheKey] = useState<string | null>(null);
+  const [heroImageResolved, setHeroImageResolved] = useState(Boolean(DEFAULT_ADMIN_HERO_IMAGE_URL));
   const [heroColors, setHeroColors] = useState<HeroColors>(() => deriveHeroColors(DEFAULT_HERO_SEED));
   const [heroTopBandColor, setHeroTopBandColor] = useState('#FDDEB7');
   const [heroBottomBandColor, setHeroBottomBandColor] = useState('#FFFBF4');
   const [heroSurfaceColorOverride, setHeroSurfaceColorOverride] = useState<string | null>(null);
+  const [homeHeroRenderConfig, setHomeHeroRenderConfig] = useState<HomeHeroRenderConfig>(() => resolveHomeHeroRenderConfig(null));
   const [homeHeroCopyOverrides, setHomeHeroCopyOverrides] = useState<HomeHeroCopyOverrides>({
     questionText: null,
     sloganTitle: null,
@@ -1549,27 +1705,6 @@ export default function HomeScreen({
   const heroVisibleHeight = isTabletLayout
     ? Math.round(Math.min(isLargeTabletLayout ? 620 : 540, screenHeight * 0.46))
     : HOME_HERO_VISIBLE_HEIGHT;
-  const heroBgResponsiveFrame = useMemo(() => {
-    if (isTabletLayout) {
-      // Tablet: telefon ile aynı dikey bleed kullan, görsel cover ile kırpılır.
-      return {
-        top: -HOME_HERO_TOP_BLEED,
-        bottom: -HOME_HERO_BOTTOM_BLEED,
-      };
-    }
-    const extendedWidth = homeContentWidth + HOME_HERO_HORIZONTAL_BLEED * 2;
-    const targetHeight = Math.max(
-      HOME_HERO_BASE_EXTENDED_HEIGHT,
-      extendedWidth / HOME_HERO_BASE_EXTENDED_ASPECT,
-    );
-    const bleedScale = targetHeight / HOME_HERO_BASE_EXTENDED_HEIGHT;
-    const topBleed = Math.round(HOME_HERO_TOP_BLEED * bleedScale);
-    const bottomBleed = Math.round(targetHeight - heroVisibleHeight - topBleed);
-    return {
-      top: -topBleed,
-      bottom: -bottomBleed,
-    };
-  }, [heroVisibleHeight, homeContentWidth, isTabletLayout]);
   const showSloganCard = false;
   const mealsMarqueeText = useMemo(
     () => DAILY_FLASH_MEALS.join(' • '),
@@ -1679,7 +1814,8 @@ export default function HomeScreen({
   const sloganMarqueeLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const feedScrollRef = useRef<ScrollView>(null);
   const searchInputRef = useRef<TextInput>(null);
-  const mealsLoadedOnceRef = useRef(false);
+  const mealsLoadedOnceRef = useRef(true);
+  const mealsFetchInFlightRef = useRef(false);
   const recommendedMealsLoadedOnceRef = useRef(false);
   const buyerFeedRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const buyerOrdersRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1695,9 +1831,29 @@ export default function HomeScreen({
   }, [auth.accessToken, auth.refreshToken, auth.userId, auth.userType, auth.email]);
 
   const handleAuthRefresh = useCallback((session: AuthSession) => {
+    if (bootstrapPreview) return;
     setCurrentAuth((prev) => (areAuthSessionsEqual(prev, session) ? prev : session));
     onAuthRefresh?.(session);
-  }, [onAuthRefresh]);
+  }, [bootstrapPreview, onAuthRefresh]);
+
+  const applyHomeFoodsPayload = useCallback((payload: HomeFoodsPayload) => {
+    setAdminHeroImageUrl(resolveHomeHeaderImageUrl(payload));
+    setAdminHeroImageCacheKey(
+      typeof payload.mobileHomeHeaderImageCacheKey === 'string'
+        ? payload.mobileHomeHeaderImageCacheKey.trim() || null
+        : null,
+    );
+    const renderConfig = resolveHomeHeroRenderConfig(payload);
+    setHomeHeroRenderConfig(renderConfig);
+    setHeroSurfaceColorOverride(renderConfig.overlayColor || resolveHomeHeroSurfaceColor(payload));
+    setHomeHeroCopyOverrides(resolveHomeHeroCopyOverrides(payload));
+    setHeroImageResolved(true);
+    if (!Array.isArray(payload.data)) return false;
+    setMeals(payload.data.map(apiToMealCard));
+    setMealsError(null);
+    mealsLoadedOnceRef.current = true;
+    return true;
+  }, []);
 
   // Stable callback — reads auth from ref so it never needs to be recreated on
   // token refresh, which would cascade into a useEffect re-fire loop.
@@ -1916,9 +2072,10 @@ export default function HomeScreen({
   }, []);
 
   useEffect(() => {
+    if (bootstrapPreview) return;
     if (activeTab !== 'home' && activeTab !== 'cart') return;
     void fetchRecentBuyerOrders();
-  }, [activeTab, fetchRecentBuyerOrders]);
+  }, [activeTab, bootstrapPreview, fetchRecentBuyerOrders]);
 
   useEffect(() => {
     const atDoorOrder = actionableHomeOrders.find((order) => String(order.status ?? '').trim().toLowerCase() === 'at_door');
@@ -1978,25 +2135,20 @@ export default function HomeScreen({
   }, []);
 
   useEffect(() => {
-    loadCachedHomeHeroImageUrl().then((cached) => {
-      if (!cached) return;
-      setHeaderImageSource({ uri: cached });
-    });
-  }, []);
-
-  useEffect(() => {
     setProfileImageLoadFailed(false);
   }, [profileImageUrl]);
 
   useEffect(() => {
+    if (bootstrapPreview) return;
     if (!apiUrl) return;
     void fetchMeProfile(apiUrl, currentAuth.accessToken);
-  }, [apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [apiUrl, bootstrapPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (bootstrapPreview) return;
     if (!apiUrl) return;
     void fetchUserAddresses();
-  }, [apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [apiUrl, bootstrapPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!selectedCheckoutAddressId) return;
@@ -2017,29 +2169,38 @@ export default function HomeScreen({
 
   useEffect(() => {
     let cancelled = false;
+    loadCachedHomeHeroImageUrl()
+      .then((cached) => {
+        if (cancelled || !cached) return;
+        setHeaderImageSource({ uri: cached });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     if (!heroImageResolved) {
+      setHeaderImageSource(null);
       setHeroTopBandColor('#FDDEB7');
       setHeroBottomBandColor(heroSurfaceColorOverride || '#FFFBF4');
       return;
     }
 
-    const heroCandidate = !adminHeroImageUrl
-      ? meals.find((meal) => {
-          const normalized = normalizeDishText(meal.title ?? '');
-          const hasImage = Boolean(meal.imageUrl && meal.imageUrl.trim());
-          const isAkcaabat = normalized.includes('akcabat') && normalized.includes('kofte');
-          return hasImage && !isAkcaabat;
+    const heroUrl = adminHeroImageUrl || Image.resolveAssetSource(LOCAL_HOME_HEADER_FALLBACK).uri;
+    if (adminHeroImageUrl) {
+      setHeaderImageSource((current) => current ?? { uri: adminHeroImageUrl });
+      cacheHomeHeroImageUrl(adminHeroImageUrl, adminHeroImageCacheKey)
+        .then((cached) => {
+          if (cancelled || !cached) return;
+          setHeaderImageSource({ uri: cached });
         })
-      : null;
-
-    const heroUrl = adminHeroImageUrl || heroCandidate?.imageUrl?.trim();
-    if (!heroUrl) {
-      setHeroTopBandColor('#FDDEB7');
-      setHeroBottomBandColor(heroSurfaceColorOverride || '#FFFBF4');
-      return;
+        .catch(() => {});
+    } else {
+      setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK);
     }
-    setHeaderImageSource({ uri: heroUrl });
-    void saveCachedHomeHeroImageUrl(heroUrl);
 
     if (getImageColors) {
       getImageColors(heroUrl, { fallback: DEFAULT_HERO_SEED, cache: true, key: `hero:${heroUrl}` })
@@ -2075,7 +2236,7 @@ export default function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, [adminHeroImageUrl, meals, heroImageResolved, heroSurfaceColorOverride]);
+  }, [adminHeroImageCacheKey, adminHeroImageUrl, heroImageResolved, heroSurfaceColorOverride]);
 
   useEffect(() => {
     setGreetingName(resolveGreetingName(null, currentAuth.email));
@@ -2119,28 +2280,56 @@ export default function HomeScreen({
     };
   }, [sloganMarqueeX, sloganTextWidth, sloganTrackWidth]);
 
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(HOME_FEED_CACHE_KEY)
+      .then((raw) => {
+        if (cancelled || !raw) return;
+        const cached = JSON.parse(raw) as CachedHomeFoodsPayload;
+        if (!cached?.payload || typeof cached.payload !== 'object') return;
+        const didApply = applyHomeFoodsPayload(cached.payload);
+        if (didApply) {
+          setMealsLoading(false);
+        }
+      })
+      .catch(() => {
+        // Cache is only a startup accelerator; corrupted entries should not block live data.
+      })
+      .finally(() => {
+        if (!cancelled) setHomeFeedCacheHydrated(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [applyHomeFoodsPayload]);
+
   // Fetch foods from API — authedJsonFetch handles token refresh internally,
   // no need to re-run this on every access token change.
   useEffect(() => {
+    if (bootstrapPreview) return;
+    if (!homeFeedCacheHydrated) return;
     if (!apiUrl || apiUrl === 'http://localhost:3000') {
       // Wait until apiUrl is loaded from settings
       loadSettings().then((s) => {
-        if (s.apiUrl) fetchFoods(s.apiUrl);
+        if (s.apiUrl) fetchFoods(s.apiUrl, { silent: mealsLoadedOnceRef.current });
       });
       return;
     }
     fetchFoods(apiUrl, { silent: mealsLoadedOnceRef.current });
-  }, [apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [apiUrl, bootstrapPreview, homeFeedCacheHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refresh feed every time user returns to home tab (e.g. after publishing from seller side)
   useEffect(() => {
+    if (bootstrapPreview) return;
     if (activeTab !== 'home') return;
     if (!apiUrl) return;
+    if (!mealsLoadedOnceRef.current) return;
     fetchFoods(apiUrl, { silent: true });
-  }, [activeTab, apiUrl]);
+  }, [activeTab, apiUrl, bootstrapPreview]);
 
   // Refresh feed when app comes back from background while home is open.
   useEffect(() => {
+    if (bootstrapPreview) return () => {};
     const sub = AppState.addEventListener('change', (nextState) => {
       if (nextState !== 'active') return;
       if (activeTab !== 'home') return;
@@ -2148,18 +2337,21 @@ export default function HomeScreen({
       fetchFoods(apiUrl, { silent: true });
     });
     return () => sub.remove();
-  }, [activeTab, apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, apiUrl, bootstrapPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep home feed fresh while app stays open on Home.
   useEffect(() => {
+    if (bootstrapPreview) return () => {};
     if (activeTab !== 'home' || !apiUrl) return;
+    if (!mealsLoadedOnceRef.current) return;
     const id = setInterval(() => {
       fetchFoods(apiUrl, { silent: true });
     }, 15000);
     return () => clearInterval(id);
-  }, [activeTab, apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, apiUrl, bootstrapPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (bootstrapPreview) return () => {};
     if (activeTab !== 'home' || !apiUrl) return;
     const unsubscribe = subscribeBuyerFeedRealtime(() => {
       if (buyerFeedRefreshTimerRef.current) return;
@@ -2175,10 +2367,11 @@ export default function HomeScreen({
       }
       unsubscribe();
     };
-  }, [activeTab, apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, apiUrl, bootstrapPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refresh home order card in real time when seller responds.
   useEffect(() => {
+    if (bootstrapPreview) return () => {};
     const buyerId = currentAuthRef.current?.userId;
     if ((activeTab !== 'home' && activeTab !== 'cart') || !buyerId) return;
     const unsubscribe = subscribeBuyerOrdersRealtime(buyerId, () => {
@@ -2195,13 +2388,14 @@ export default function HomeScreen({
       }
       unsubscribe();
     };
-  }, [activeTab, fetchRecentBuyerOrders]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, bootstrapPreview, fetchRecentBuyerOrders]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Poll order statuses periodically when active orders exist.
   // Realtime subscription uses buyer_id filter which may not match UPDATE events
   // if the orders table lacks REPLICA IDENTITY FULL — polling ensures status
   // changes from the seller (ready, in_delivery, approaching, at_door) are picked up.
   useEffect(() => {
+    if (bootstrapPreview) return () => {};
     const hasActiveTab = activeTab === 'home' || activeTab === 'cart';
     const hasOrders = actionableHomeOrders.length > 0;
     if (!hasActiveTab || !hasOrders) {
@@ -2221,9 +2415,10 @@ export default function HomeScreen({
         buyerOrdersPollRef.current = null;
       }
     };
-  }, [activeTab, actionableHomeOrders.length, fetchRecentBuyerOrders]);
+  }, [activeTab, actionableHomeOrders.length, bootstrapPreview, fetchRecentBuyerOrders]);
 
   useEffect(() => {
+    if (bootstrapPreview) return;
     let cancelled = false;
     const showLoading = !recommendedMealsLoadedOnceRef.current;
     if (showLoading) setRecommendedMealsLoading(true);
@@ -2255,9 +2450,10 @@ export default function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, [apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [apiUrl, bootstrapPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (bootstrapPreview) return;
     if (!authSnapshot.accessToken) return;
     let cancelled = false;
 
@@ -2281,7 +2477,7 @@ export default function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, [apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [apiUrl, bootstrapPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleFavorite = useCallback(async (foodId: string) => {
     if (!foodId || favoritePendingIds[foodId]) return;
@@ -2323,6 +2519,8 @@ export default function HomeScreen({
   }, [authSnapshot, favoriteIds, favoritePendingIds, handleAuthRefresh]);
 
   async function fetchFoods(url: string, options?: { silent?: boolean }) {
+    if (mealsFetchInFlightRef.current) return;
+    mealsFetchInFlightRef.current = true;
     const silent = Boolean(options?.silent) && mealsLoadedOnceRef.current;
     if (!silent) {
       setMealsLoading(true);
@@ -2335,33 +2533,25 @@ export default function HomeScreen({
             headers: {
               'x-actor-role': 'buyer',
             },
-        });
-        const json = await readJsonSafe<{
-          data?: ApiFoodItem[];
-          mobileHomeHeroSurfaceColor?: string | null;
-          mobileHomeHeroQuestionText?: string | null;
-          mobileHomeHeroSloganTitle?: string | null;
-          mobileHomeHeroSloganSubtitle?: string | null;
-          error?: { message?: string };
-        }>(response);
+          }, { refreshOnUnauthorized: false });
+        const json = await readJsonSafe<HomeFoodsPayload>(response);
 
         if (response.ok) {
-          setAdminHeroImageUrl(resolveHomeHeaderImageUrl(json));
-          setHeroSurfaceColorOverride(resolveHomeHeroSurfaceColor(json));
-          setHomeHeroCopyOverrides(resolveHomeHeroCopyOverrides(json));
-          setHeroImageResolved(true);
-          if (!Array.isArray(json.data)) {
+          const didApply = applyHomeFoodsPayload(json);
+          if (!didApply) {
             if (!silent) setMealsError(t('error.home.noMealsInResponse'));
             return;
           }
-          setMeals(json.data.map(apiToMealCard));
-          setMealsError(null);
-          mealsLoadedOnceRef.current = true;
+          void AsyncStorage.setItem(
+            HOME_FEED_CACHE_KEY,
+            JSON.stringify({ savedAt: Date.now(), payload: json } satisfies CachedHomeFoodsPayload),
+          );
           return;
         }
 
         if (response.status === 401) {
           if (!silent) setMealsError(t('error.home.sessionExpired'));
+          void onLogout();
           return;
         }
 
@@ -2384,6 +2574,7 @@ export default function HomeScreen({
     } catch (err) {
       if (!silent) setMealsError(normalizeHomeRequestError(err, 'error.home.requestFailed'));
     } finally {
+      mealsFetchInFlightRef.current = false;
       if (!silent) setMealsLoading(false);
     }
   }
@@ -2407,19 +2598,34 @@ export default function HomeScreen({
     }
   }
 
-  async function authedJsonFetch(url: string, options?: RequestInit) {
-    const requestWithToken = async (token: string) =>
-      fetch(url, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          ...(options?.headers ?? {}),
-        },
-      });
+  async function authedJsonFetch(
+    url: string,
+    options?: RequestInit,
+    behavior?: { refreshOnUnauthorized?: boolean },
+  ) {
+    const requestWithToken = async (token: string) => {
+      const controller = options?.signal ? null : new AbortController();
+      const timeoutId = controller
+        ? setTimeout(() => controller.abort(), HOME_API_REQUEST_TIMEOUT_MS)
+        : null;
+      try {
+        return await fetch(url, {
+          ...options,
+          signal: options?.signal ?? controller?.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            ...(options?.headers ?? {}),
+          },
+        });
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+      }
+    };
 
     let response = await requestWithToken(currentAuth.accessToken);
     if (response.status !== 401) return response;
+    if (behavior?.refreshOnUnauthorized === false) return response;
 
     // Always use a freshly-loaded API URL for the refresh call so a stale closure
     // value (e.g. 'http://localhost:3000' during app startup) never causes the
@@ -3455,92 +3661,20 @@ export default function HomeScreen({
           stickyHeaderIndices={[1]}
         >
         {/* Hero Header */}
-        <View
-          style={[
-            styles.heroWrap,
-            {
-              height: heroVisibleHeight,
-              marginLeft: 0,
-              marginRight: 0,
-              marginTop: -30,
-              paddingTop: 20,
-              backgroundColor: heroTopBandColor,
-            },
-          ]}
-        >
-          <ImageBackground
-            source={headerImageSource}
-            style={[
-              styles.heroBgFullImage,
-              styles.heroBgExtended,
-              heroBgResponsiveFrame,
-              isTabletLayout && { left: -54, right: -Math.round(homeContentWidth * 0.28) + 30 },
-              isTabletLayout && { transform: [{ translateY: -70 }] },
-            ]}
-            imageStyle={styles.heroBgFullImageInner}
-            onError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
-          />
-          {LinearGradient ? (
-            <LinearGradient
-              colors={[
-                toRgba(heroTopBandColor, 0.34),
-                toRgba(heroTopBandColor, 0.18),
-                toRgba(heroTopBandColor, 0.08),
-                toRgba(heroTopBandColor, 0),
-              ]}
-              locations={[0, 0.42, 0.74, 1]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.heroNewTopFade}
-            />
-          ) : null}
-          {LinearGradient ? (
-            <LinearGradient
-              colors={
-                isTabletLayout
-                  ? [
-                      toRgba(heroBottomBandColor, 0.08),
-                      toRgba(heroBottomBandColor, 0.46),
-                      toRgba(heroBottomBandColor, 0.82),
-                      toRgba(heroBottomBandColor, 0.96),
-                      homeBaseBg,
-                      homeBaseBg,
-                    ]
-                  : [
-                      toRgba(heroBottomBandColor, 0),
-                      toRgba(heroBottomBandColor, 0.22),
-                      toRgba(heroBottomBandColor, 0.44),
-                      toRgba(heroBottomBandColor, 0.66),
-                      toRgba(heroBottomBandColor, 0.86),
-                      homeBaseBg,
-                      homeBaseBg,
-                    ]
-              }
-              locations={
-                isTabletLayout
-                  ? [0, 0.08, 0.16, 0.24, 0.34, 1]
-                  : [0, 0.12, 0.24, 0.36, 0.48, 0.6, 1]
-              }
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={[
-                styles.heroNewBottomFade,
-                isTabletLayout
-                  ? { bottom: -230, height: 390 }
-                  : { bottom: -96, height: 130 },
-              ]}
-            />
-          ) : null}
-          <View style={[styles.heroTextArea, isTabletLayout && styles.heroTextAreaTablet]}>
-            <Text style={[styles.heroQuestion, isTabletLayout && styles.heroQuestionTablet]}>
-              {homeHeroCopyOverrides.questionText || t('headline.home.heroQuestion')}
-            </Text>
-            <View style={styles.heroQuestionMarkerRow}>
-              <Text style={styles.heroQuestionLeafIcon}>↝</Text>
-              <View style={styles.heroQuestionLine} />
-            </View>
-          </View>
-        </View>
+        <HomeHeroRenderer
+          imageSource={headerImageSource}
+          defaultSource={adminHeroImageUrl ? undefined : LOCAL_HOME_HEADER_FALLBACK}
+          config={homeHeroRenderConfig}
+          visibleHeight={heroVisibleHeight}
+          contentWidth={homeContentWidth}
+          isTabletLayout={isTabletLayout}
+          topBandColor={heroTopBandColor}
+          bottomBandColor={heroBottomBandColor}
+          baseBackgroundColor={homeBaseBg}
+          questionText={homeHeroCopyOverrides.questionText || t('headline.home.heroQuestion')}
+          LinearGradientComponent={LinearGradient}
+          onImageError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
+        />
         {/* Sticky: Search Bar + Category Chips */}
         <View style={[styles.stickySearchChips, isTabletLayout && styles.stickySearchChipsTablet]}>
           {false ? (
@@ -4846,23 +4980,23 @@ export default function HomeScreen({
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.navItem}
-              onPress={() => handleTabPress('messages')}
+              onPress={() => handleTabPress('notifications')}
             >
               <Ionicons
-                name="chatbubble-ellipses-outline"
+                name="notifications-outline"
                 size={24}
                 style={[
                   styles.navIcon,
-                  activeTab === 'messages' && styles.navIconActive,
+                  activeTab === 'notifications' && styles.navIconActive,
                 ]}
               />
               <Text
                 style={[
                   styles.navLabel,
-                  activeTab === 'messages' && styles.navLabelActive,
+                  activeTab === 'notifications' && styles.navLabelActive,
                 ]}
               >
-                {t('headline.home.tabMessages')}
+                {t('headline.home.tabNotifications')}
               </Text>
             </TouchableOpacity>
             <View style={styles.navSpacer} />
@@ -4891,23 +5025,35 @@ export default function HomeScreen({
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.navItem}
-              onPress={() => handleTabPress('notifications')}
+              onPress={() => handleTabPress('profile')}
             >
-              <Ionicons
-                name="notifications-outline"
-                size={24}
+              <View
                 style={[
-                  styles.navIcon,
-                  activeTab === 'notifications' && styles.navIconActive,
+                  styles.navAvatar,
+                  activeTab === 'profile' && styles.navAvatarActive,
                 ]}
-              />
+              >
+                {profileImageUrl && !profileImageLoadFailed ? (
+                  <Image
+                    source={{ uri: profileImageUrl }}
+                    style={styles.navAvatarImage}
+                    onError={() => setProfileImageLoadFailed(true)}
+                  />
+                ) : cachedLocalImageUrl ? (
+                  <Image source={{ uri: cachedLocalImageUrl }} style={styles.navAvatarImage} />
+                ) : (
+                  <Text style={[styles.navAvatarText, activeTab === 'profile' && styles.navAvatarTextActive]}>
+                    {profileDisplayName.charAt(0).toUpperCase()}
+                  </Text>
+                )}
+              </View>
               <Text
                 style={[
                   styles.navLabel,
-                  activeTab === 'notifications' && styles.navLabelActive,
+                  activeTab === 'profile' && styles.navLabelActive,
                 ]}
               >
-                {t('headline.home.tabNotifications')}
+                {t('headline.home.tabProfile')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -6563,6 +6709,34 @@ const styles = StyleSheet.create({
   navLabel: { color: '#A89B8C', fontSize: 12, lineHeight: 14, fontWeight: '600' },
   navLabelFilled: { color: '#4A7C59' },
   navLabelActive: { color: '#4A7C59' },
+  navAvatar: {
+    width: 25,
+    height: 25,
+    borderRadius: 12.5,
+    borderWidth: 1,
+    borderColor: '#CFC4B6',
+    backgroundColor: '#F3ECE2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+    overflow: 'hidden',
+  },
+  navAvatarActive: {
+    borderColor: '#4A7C59',
+  },
+  navAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12.5,
+  },
+  navAvatarText: {
+    color: '#8F8274',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  navAvatarTextActive: {
+    color: '#4A7C59',
+  },
 
   /* --- Meal detail modal --- */
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },

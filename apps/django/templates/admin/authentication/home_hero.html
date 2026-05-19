@@ -165,6 +165,48 @@
     will-change: transform;
     pointer-events: none;
   }
+  .hero-stage-guide {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 50%;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .hero-stage-guide::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    border-top: 1.5px dashed rgba(127, 86, 217, 0.85);
+  }
+  .hero-stage-guide::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(127, 86, 217, 0.05) 0%, rgba(127, 86, 217, 0.16) 100%);
+  }
+  .hero-stage-guide-label {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(127, 86, 217, 0.92);
+    color: #fff;
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+  }
   .hero-controls {
     display: flex;
     flex-direction: row;
@@ -255,7 +297,7 @@
   }
   .hero-two-col {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 448px;
+    grid-template-columns: 330px minmax(0, 1fr);
     gap: 26px;
     border-top: none;
     padding: 0 24px 22px;
@@ -274,6 +316,38 @@
     padding: 22px 18px 18px;
     gap: 12px;
   }
+  .hero-device-list {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .hero-device-button {
+    width: 100%;
+    border: 1px solid rgba(226, 232, 240, 0.14);
+    border-radius: 10px;
+    background: #111714;
+    color: #d8d1c8;
+    padding: 10px 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .hero-device-button.is-active {
+    border-color: #7f56d9;
+    background: rgba(127, 86, 217, 0.18);
+    color: #fff;
+  }
+  .hero-device-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .hero-device-size {
+    display: block;
+    margin-top: 2px;
+    color: #a9a099;
+    font-size: 11px;
+    font-weight: 650;
+  }
   @media (max-width: 800px) {
     .hero-two-col { grid-template-columns: 1fr; }
     .hero-two-col-right { border-left: 1px solid rgba(127, 86, 217, 0.26); border-top: 1px solid rgba(127, 86, 217, 0.26); }
@@ -288,18 +362,27 @@
   }
   .hero-preview-header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 8px;
     margin-bottom: 12px;
   }
   .hero-preview-title {
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 800;
     color: #f3eee7;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
   }
   .hero-preview-hint {
     font-size: 11px;
+    font-weight: 600;
     color: #98a2b3;
+    background: rgba(127, 86, 217, 0.12);
+    border: 1px solid rgba(127, 86, 217, 0.32);
+    color: #c4b0f5;
+    padding: 3px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
   }
   .hero-phone-wrap {
     display: flex;
@@ -307,7 +390,9 @@
   }
   .hero-phone-frame {
     position: relative;
-    width: 390px;
+    --device-w: 430px;
+    --device-h: 932px;
+    width: min(var(--device-w), 100%);
     background: #05070a;
     border-radius: 42px;
     padding: 10px;
@@ -330,7 +415,7 @@
     background: #fffbf4;
     border-radius: 32px;
     overflow: hidden;
-    height: 844px;
+    height: var(--device-h);
   }
   .hero-phone-statusbar {
     position: absolute;
@@ -374,6 +459,49 @@
   }
   .hero-phone-hero-wrap.dragging {
     cursor: grabbing;
+  }
+  .hero-phone-hero-image {
+    position: absolute;
+    left: -24px;
+    top: -30px;
+    width: calc(100% + 48px);
+    height: 386px;
+    object-fit: cover;
+    object-position: center center;
+    transform-origin: center center;
+    will-change: transform;
+    pointer-events: none;
+  }
+  .hero-phone-safe-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    z-index: 4;
+    border: 1.5px dashed rgba(127, 86, 217, 0.82);
+    background: rgba(127, 86, 217, 0.08);
+  }
+  .hero-phone-safe-overlay.top {
+    top: 0;
+    height: 30px;
+  }
+  .hero-phone-safe-overlay.text {
+    top: 30px;
+    height: 104px;
+    border-color: rgba(53, 110, 255, 0.82);
+    background: rgba(53, 110, 255, 0.07);
+  }
+  .hero-phone-safe-label {
+    position: absolute;
+    right: 8px;
+    top: 6px;
+    color: #fff;
+    background: rgba(15, 23, 42, 0.72);
+    border-radius: 999px;
+    padding: 3px 7px;
+    font-size: 9px;
+    line-height: 1;
+    font-weight: 800;
   }
   .hero-phone-hero-wrap canvas {
     display: block;
@@ -592,143 +720,121 @@
     margin: 0 0 9px;
   }
   .hero-phone-section-title::before { content: "Senin için seçtik"; }
-  .hero-phone-reco-row {
-    display: flex;
-    gap: 12px;
+  .hero-phone-food-card {
     overflow: hidden;
-    margin-bottom: 18px;
-  }
-  .hero-phone-reco-card {
-    flex: 0 0 166px;
-    height: 70px;
     border-radius: 12px;
-    border: 1px solid #f4d5cb;
-    background: #fff;
+    background: #fffdf9;
+    border: 1px solid rgba(92,72,56,0.13);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    margin-bottom: 10px;
+  }
+  .hero-phone-food-photo {
+    position: relative;
+    height: 126px;
+    background: linear-gradient(135deg, #b96c44, #efe1c8);
+  }
+  .hero-phone-food-price {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 5px 9px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.95);
+    color: #2f221b;
+    font-size: 12px;
+    font-weight: 900;
+  }
+  .hero-phone-food-body {
+    padding: 8px 10px 9px;
+  }
+  .hero-phone-food-title-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px;
+    justify-content: space-between;
+    gap: 8px;
   }
-  .hero-phone-reco-thumb {
-    width: 52px;
-    height: 44px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #fff 0%, #8fb86e 45%, #d75d3d 100%);
-    box-shadow: inset 0 0 0 10px rgba(255,255,255,0.32);
-  }
-  .hero-phone-reco-lines {
-    flex: 1;
-    min-width: 0;
-  }
-  .hero-phone-reco-name {
+  .hero-phone-food-title {
     color: #3d3229;
     font-size: 13px;
     line-height: 16px;
     font-weight: 800;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
-  .hero-phone-reco-reason {
-    margin-top: 2px;
-    color: #9a5a42;
+  .hero-phone-food-cuisine {
+    color: #7d6d60;
     font-size: 10px;
-    line-height: 13px;
-    font-weight: 500;
+    font-weight: 700;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
-  .hero-phone-reco-title {
-    height: 12px;
-    width: 84px;
-    background: #5b514b;
-    border-radius: 99px;
-    margin-bottom: 8px;
+  .hero-phone-food-meta {
+    margin-top: 5px;
+    display: flex;
+    gap: 9px;
+    color: #6f6358;
+    font-size: 10px;
+    font-weight: 700;
   }
-  .hero-phone-reco-sub {
-    height: 9px;
-    width: 72px;
-    background: #b7b1aa;
-    border-radius: 99px;
-  }
-  .hero-phone-card {
-    background: #fff;
-    border-radius: 22px;
-    height: 214px;
-    border: 1px solid #ece9e3;
-    margin-bottom: 8px;
-    position: relative;
-    overflow: hidden;
-    padding: 0;
-    display: block;
-  }
-  .hero-phone-card-thumb {
-    width: 100%;
-    height: 152px;
-    border-radius: 0;
-    background: linear-gradient(135deg, #f6e2bc 0%, #d58b42 44%, #8f3a26 100%);
-  }
-  .hero-phone-card-lines {
-    position: absolute;
-    left: 18px;
-    right: 18px;
-    bottom: 18px;
-  }
-  .hero-phone-card-line {
-    height: 10px;
-    border-radius: 99px;
-    background: rgba(255,255,255,0.72);
-    margin-bottom: 8px;
-  }
-  .hero-phone-card-line.short {
-    width: 62%;
-    background: #eaffd5;
+  .hero-phone-food-seller {
+    margin-top: 7px;
+    color: #5a4b3f;
+    font-size: 10px;
+    font-weight: 800;
   }
   .hero-phone-bottom-nav {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    height: 64px;
+    height: 70px;
     background: rgba(255,255,255,0.96);
-    border-top: 1px solid #eee8df;
+    border-top: 1px solid #ece6da;
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     align-items: center;
-    padding: 6px 8px 8px;
+    padding: 7px 12px 8px;
     z-index: 6;
   }
   .hero-phone-tab {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
-    color: #a9a096;
+    gap: 4px;
+    color: #b9b0a3;
     font-size: 10px;
     line-height: 12px;
-    font-weight: 800;
+    font-weight: 700;
   }
-  .hero-phone-tab.active { color: #5b8a62; }
+  .hero-phone-tab.active { color: #6b4a38; }
   .hero-phone-tab-icon {
-    width: 22px;
-    height: 22px;
-    border: 2px solid currentColor;
-    border-radius: 7px;
+    width: 20px;
+    height: 20px;
+    border: 1.8px solid currentColor;
+    border-radius: 5px;
   }
-  .hero-phone-tab.center .hero-phone-tab-icon {
+  .hero-phone-center-tab {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .hero-phone-center-logo {
     width: 46px;
     height: 46px;
-    border-radius: 50%;
-    background: #5b8a62;
-    color: #fff;
-    border: 5px solid rgba(91,138,98,0.26);
-    box-shadow: 0 0 0 5px rgba(91,138,98,0.15);
+    border-radius: 23px;
+    background: #4a7c59;
+    border: 4px solid rgba(255,255,255,0.96);
+    box-shadow: 0 0 0 2px rgba(74,124,89,0.28), 0 5px 12px rgba(24,39,28,0.18);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    color: #fff;
+    font-size: 20px;
     font-weight: 900;
+  }
+  .hero-phone-profile-avatar {
+    width: 23px;
+    height: 23px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f1d4be 0%, #8d604f 100%);
+    border: 1px solid #cfc4b6;
   }
   .hero-phone-no-image {
     display: flex;
@@ -795,14 +901,55 @@
 
       <div class="hero-two-col">
         <div class="hero-two-col-left">
-          <div class="hero-stage" id="hero-stage">
-            <img id="hero-preview-image" src="{{ current_url|default:'' }}" alt="Hero önizleme" {% if not current_url %}style="display:none"{% endif %} />
+          <div class="hero-preview-header" style="width:100%;justify-content:space-between;display:flex;">
+            <span class="hero-preview-title">Cihazlar</span>
+            <span class="hero-preview-hint">responsive</span>
+          </div>
+          <div class="hero-device-list" aria-label="Cihaz önizlemeleri">
+            <button type="button" class="hero-device-button is-active" data-device="iphone_pro_max" data-width="430" data-height="932">
+              <span class="hero-device-name">iPhone 17 Pro Max</span>
+              <span class="hero-device-size">430 × 932</span>
+            </button>
+            <button type="button" class="hero-device-button" data-device="iphone_se" data-width="375" data-height="667">
+              <span class="hero-device-name">iPhone SE</span>
+              <span class="hero-device-size">375 × 667</span>
+            </button>
+            <button type="button" class="hero-device-button" data-device="ipad" data-width="820" data-height="1180">
+              <span class="hero-device-name">iPad Air</span>
+              <span class="hero-device-size">820 × 1180</span>
+            </button>
+            <button type="button" class="hero-device-button" data-device="samsung" data-width="412" data-height="915">
+              <span class="hero-device-name">Samsung S23 Ultra</span>
+              <span class="hero-device-size">412 × 915</span>
+            </button>
           </div>
           <div class="hero-controls">
             <div class="hero-control-label">Zoom</div>
             <input id="hero-zoom" class="hero-range" type="range" min="0.50" max="3.00" step="0.001" value="1.000" />
+          </div>
+          <div class="hero-controls" style="margin-top:10px;">
+            <div class="hero-control-label">X</div>
+            <input id="hero-offset-x" class="hero-range" type="range" min="-240" max="240" step="1" value="0" />
+          </div>
+          <div class="hero-controls" style="margin-top:10px;">
+            <div class="hero-control-label">Y</div>
+            <input id="hero-offset-y" class="hero-range" type="range" min="-240" max="240" step="1" value="0" />
+          </div>
+          <div class="hero-controls" style="margin-top:10px;">
+            <div class="hero-control-label">Focal X</div>
+            <input id="hero-focal-x" class="hero-range" type="range" min="0" max="1" step="0.01" value="0.50" />
+          </div>
+          <div class="hero-controls" style="margin-top:10px;">
+            <div class="hero-control-label">Focal Y</div>
+            <input id="hero-focal-y" class="hero-range" type="range" min="0" max="1" step="0.01" value="0.50" />
+          </div>
+          <div class="hero-controls" style="margin-top:10px;">
+            <div class="hero-control-label">Fade</div>
+            <input id="hero-gradient-opacity" class="hero-range" type="range" min="0" max="1" step="0.01" value="1" />
+          </div>
+          <div class="hero-controls" style="margin-top:10px;">
             <div class="hero-color-wrap" title="Hero alt yüzey rengi">
-              <div class="hero-control-label" style="margin-bottom:0;">Alt Renk</div>
+              <div class="hero-control-label" style="margin-bottom:0;">Overlay</div>
               <input id="hero-surface-color" class="hero-color-input" type="color" value="#fffbf4" />
               <div class="hero-color-swatches">
                 <button type="button" class="hero-color-swatch" data-color="#fffbf4" style="background:#fffbf4"></button>
@@ -812,14 +959,17 @@
                 <button type="button" class="hero-color-swatch" data-color="#e8dfd3" style="background:#e8dfd3"></button>
               </div>
             </div>
-            <button type="button" id="hero-reset" class="hero-btn-secondary" style="white-space:nowrap;">Ekranı Doldur</button>
-            <span class="hero-help" style="margin-top:0;">Sürükle · Tekerlek ile zoom yap · Sağdaki telefon gerçek önizleme</span>
           </div>
+          <div class="hero-controls" style="margin-top:10px;">
+            <button type="button" id="hero-reset" class="hero-btn-secondary" style="white-space:nowrap;">Ekranı Doldur</button>
+          </div>
+          <span class="hero-help">Görseli direkt telefon ekranında sürükle. Tekerlek ile zoom yap.</span>
         </div>
 
         <div class="hero-two-col-right">
-          <div class="hero-preview-header" style="width:100%;">
+          <div class="hero-preview-header" style="width:100%;justify-content:space-between;display:flex;">
             <span class="hero-preview-title">Canlı Telefon Kadrajı</span>
+            <span class="hero-preview-hint">yayınlanacak görünüm</span>
           </div>
           <div class="hero-phone-frame">
             <div class="hero-phone-screen">
@@ -832,11 +982,13 @@
                 </div>
               </div>
               <div class="hero-phone-hero-wrap">
-                <canvas id="hero-mobile-canvas" width="390" height="300"></canvas>
+                <img id="hero-preview-image" class="hero-phone-hero-image" src="{{ current_url|default:'' }}" alt="Hero önizleme" {% if not current_url %}style="display:none"{% endif %} />
                 <div class="hero-phone-hero-fade"></div>
-                <div class="hero-phone-avatar-row">
-                  <div class="hero-phone-avatar"></div>
-                  <div class="hero-phone-avatar-text">Günaydın, Demo ✶</div>
+                <div class="hero-phone-safe-overlay top" aria-hidden="true">
+                  <span class="hero-phone-safe-label">Top safe area</span>
+                </div>
+                <div class="hero-phone-safe-overlay text" aria-hidden="true">
+                  <span class="hero-phone-safe-label">Text safe area</span>
                 </div>
                 <div class="hero-phone-hero-copy">
                   <div class="hero-phone-hero-title" id="hero-phone-question-text">{{ current_hero_question_text|default:'Bugün ne yemek istersin?' }}</div>
@@ -867,29 +1019,26 @@
                   <div class="hero-phone-chip">Ana Yemekler</div>
                 </div>
                 <div class="hero-phone-section-title"></div>
-                <div class="hero-phone-reco-row">
-                  <div class="hero-phone-reco-card">
-                    <div class="hero-phone-reco-thumb"></div>
-                    <div class="hero-phone-reco-lines">
-                      <div class="hero-phone-reco-name">Makarna</div>
-                      <div class="hero-phone-reco-reason">Daha önce sevdiğin...</div>
-                    </div>
+                <div class="hero-phone-food-card">
+                  <div class="hero-phone-food-photo">
+                    <div class="hero-phone-food-price">₺45</div>
                   </div>
-                  <div class="hero-phone-reco-card">
-                    <div class="hero-phone-reco-thumb" style="background:linear-gradient(135deg,#fff 0%,#d76a39 50%,#a33224 100%);"></div>
-                    <div class="hero-phone-reco-lines">
-                      <div class="hero-phone-reco-name">Fırında kuzu</div>
-                      <div class="hero-phone-reco-reason">Daha önce sevdiğin...</div>
+                  <div class="hero-phone-food-body">
+                    <div class="hero-phone-food-title-row">
+                      <div class="hero-phone-food-title">Kuru fasulye pilav</div>
+                      <div class="hero-phone-food-cuisine">Bolu Mutfağı</div>
                     </div>
+                    <div class="hero-phone-food-meta">
+                      <span>50 porsiyon</span>
+                      <span>15 dk</span>
+                      <span>2 km</span>
+                    </div>
+                    <div class="hero-phone-food-seller">@demo.satici</div>
                   </div>
                 </div>
-                <div class="hero-phone-cards">
-                  <div class="hero-phone-card">
-                    <div class="hero-phone-card-thumb" style="background:linear-gradient(180deg,rgba(255,255,255,0) 34%,rgba(0,0,0,0.6) 100%),linear-gradient(135deg,#f5faf0 0%,#75a854 33%,#e45842 68%,#3f281f 100%);"></div>
-                    <div class="hero-phone-card-lines">
-                      <div class="hero-phone-card-line short"></div>
-                      <div class="hero-phone-card-line"></div>
-                    </div>
+                <div class="hero-phone-food-card">
+                  <div class="hero-phone-food-photo" style="height:112px;background:linear-gradient(135deg,#f7efe2,#b9d070);">
+                    <div class="hero-phone-food-price">₺25</div>
                   </div>
                 </div>
               </div>
@@ -899,19 +1048,19 @@
                   <div>Ana Sayfa</div>
                 </div>
                 <div class="hero-phone-tab">
-                  <div class="hero-phone-tab-icon" style="border-radius:50%;"></div>
-                  <div>Mesajlar</div>
+                  <div class="hero-phone-tab-icon" style="border-radius:50% 50% 7px 7px;"></div>
+                  <div>Bildirim</div>
                 </div>
-                <div class="hero-phone-tab center">
-                  <div class="hero-phone-tab-icon">C</div>
+                <div class="hero-phone-center-tab">
+                  <div class="hero-phone-center-logo">C</div>
                 </div>
                 <div class="hero-phone-tab">
                   <div class="hero-phone-tab-icon" style="transform:rotate(45deg);"></div>
                   <div>Siparişler</div>
                 </div>
                 <div class="hero-phone-tab">
-                  <div class="hero-phone-tab-icon" style="border-radius:50% 50% 8px 8px;"></div>
-                  <div>Bildirim</div>
+                  <div class="hero-phone-profile-avatar"></div>
+                  <div>Profil</div>
                 </div>
               </div>
             </div>
@@ -932,7 +1081,7 @@
   </form>
 </div>
 
-<script>
+<script type="text/plain" id="legacy-home-hero-script-disabled">
 (function () {
   var fileInput = document.getElementById('hero-file-input');
   var fileTrigger = document.getElementById('hero-file-trigger');
@@ -972,6 +1121,11 @@
   var state = { scale: 1, offsetX: 0, offsetY: 0 };
   var DEFAULT_SURFACE_COLOR = '#fffbf4';
   var surfaceColor = DEFAULT_SURFACE_COLOR;
+  var topFadeOpacity = 1;
+  var bottomFadeOpacity = 1;
+  var textSafeAreaTop = 62;
+  var safeAreaTop = 30;
+  var bottomSafeArea = 56;
   var initialEditRaw = '{{ current_edit_json|default:""|escapejs }}';
   var initialEdit = null;
 
@@ -1085,8 +1239,16 @@
       return;
     }
     if (typeof initialEdit.scale === 'number') state.scale = clamp(initialEdit.scale, minScale, maxScale);
+    if (typeof initialEdit.zoom === 'number') state.scale = clamp(initialEdit.zoom, minScale, maxScale);
     if (typeof initialEdit.offsetX === 'number') state.offsetX = initialEdit.offsetX;
     if (typeof initialEdit.offsetY === 'number') state.offsetY = initialEdit.offsetY;
+    if (typeof initialEdit.translateX === 'number') state.offsetX = initialEdit.translateX;
+    if (typeof initialEdit.translateY === 'number') state.offsetY = initialEdit.translateY;
+    if (typeof initialEdit.topFadeOpacity === 'number') topFadeOpacity = clamp(initialEdit.topFadeOpacity, 0, 1);
+    if (typeof initialEdit.bottomFadeOpacity === 'number') bottomFadeOpacity = clamp(initialEdit.bottomFadeOpacity, 0, 1);
+    if (typeof initialEdit.textSafeAreaTop === 'number') textSafeAreaTop = clamp(initialEdit.textSafeAreaTop, 20, 140);
+    if (typeof initialEdit.safeAreaTop === 'number') safeAreaTop = clamp(initialEdit.safeAreaTop, 0, 90);
+    if (typeof initialEdit.bottomSafeArea === 'number') bottomSafeArea = clamp(initialEdit.bottomSafeArea, 0, 160);
     applySurfaceColor(initialEdit.surfaceColor ? String(initialEdit.surfaceColor) : DEFAULT_SURFACE_COLOR);
     applyTransform();
   }
@@ -1321,21 +1483,22 @@
       alert('Once bir gorsel secmelisin.');
       return;
     }
-    if (hasImage()) {
-      var dataUrl = renderExportDataUrl();
-      if (!dataUrl) {
-        e.preventDefault();
-        alert('Gorsel islenemedi. Tekrar dene.');
-        return;
-      }
-      imageDataInput.value = dataUrl;
-      imageUrlInput.value = '';
-    }
+    imageDataInput.value = '';
+    if (fileInput.files && fileInput.files[0]) imageUrlInput.value = '';
     if (editJsonInput) {
       editJsonInput.value = JSON.stringify({
-        scale: Number(state.scale.toFixed(3)),
-        offsetX: Math.round(state.offsetX),
-        offsetY: Math.round(state.offsetY),
+        renderVersion: 2,
+        engine: 'coziyoo-home-hero-v1',
+        zoom: Number(state.scale.toFixed(3)),
+        translateX: Math.round(state.offsetX),
+        translateY: Math.round(state.offsetY),
+        focusX: 0.5,
+        focusY: 0.5,
+        topFadeOpacity: Number(topFadeOpacity.toFixed(2)),
+        bottomFadeOpacity: Number(bottomFadeOpacity.toFixed(2)),
+        safeAreaTop: Math.round(safeAreaTop),
+        textSafeAreaTop: Math.round(textSafeAreaTop),
+        bottomSafeArea: Math.round(bottomSafeArea),
         surfaceColor: surfaceColor,
       });
     }
@@ -1375,6 +1538,357 @@
     previewImage.style.display = 'none';
     applyInitialEdit();
   }
+})();
+</script>
+<script>
+(function () {
+  var form = document.getElementById('home-hero-form');
+  var fileInput = document.getElementById('hero-file-input');
+  var fileTrigger = document.getElementById('hero-file-trigger');
+  var fileLabel = document.getElementById('hero-file-label');
+  var imageDataInput = document.getElementById('hero-image-data');
+  var imageUrlInput = document.getElementById('hero-image-url');
+  var editJsonInput = document.querySelector('input[name="mobile_home_header_edit_json"]');
+  var heroImage = document.getElementById('hero-preview-image');
+  var heroWrap = document.querySelector('.hero-phone-hero-wrap');
+  var phoneFrame = document.querySelector('.hero-phone-frame');
+  var phoneScreen = document.querySelector('.hero-phone-screen');
+  var phoneUi = document.getElementById('hero-phone-ui');
+  var phoneFade = document.querySelector('.hero-phone-hero-fade');
+  var zoomInput = document.getElementById('hero-zoom');
+  var offsetXInput = document.getElementById('hero-offset-x');
+  var offsetYInput = document.getElementById('hero-offset-y');
+  var focalXInput = document.getElementById('hero-focal-x');
+  var focalYInput = document.getElementById('hero-focal-y');
+  var gradientInput = document.getElementById('hero-gradient-opacity');
+  var overlayInput = document.getElementById('hero-surface-color');
+  var resetBtn = document.getElementById('hero-reset');
+  var helpText = document.getElementById('hero-help-text');
+  var heroQuestionInput = document.getElementById('hero-question-text');
+  var heroSloganTitleInput = document.getElementById('hero-slogan-title');
+  var heroSloganSubtitleInput = document.getElementById('hero-slogan-subtitle');
+  var phoneQuestionText = document.getElementById('hero-phone-question-text');
+  var phoneSloganTitle = document.getElementById('hero-phone-slogan-title');
+  var phoneSloganSubtitle = document.getElementById('hero-phone-slogan-subtitle');
+  var deviceButtons = Array.prototype.slice.call(document.querySelectorAll('.hero-device-button'));
+  var initialEditRaw = '{{ current_edit_json|default:""|escapejs }}';
+  var objectUrl = '';
+  var dragging = false;
+  var dragStartX = 0;
+  var dragStartY = 0;
+  var startOffsetX = 0;
+  var startOffsetY = 0;
+  var state = {
+    imageUrl: imageUrlInput ? imageUrlInput.value : '',
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+    focalX: 0.5,
+    focalY: 0.5,
+    gradientOpacity: 1,
+    overlayColor: '#fffbf4',
+    devicePreviewMode: 'iphone_pro_max',
+  };
+  var devices = {
+    iphone_pro_max: { width: 430, height: 932 },
+    iphone_se: { width: 375, height: 667 },
+    ipad: { width: 820, height: 1180 },
+    samsung: { width: 412, height: 915 },
+  };
+
+  function clamp(v, min, max) {
+    return Math.min(max, Math.max(min, v));
+  }
+
+  function normalizeHexColor(value) {
+    var raw = String(value || '').trim().toLowerCase();
+    return /^#[0-9a-f]{6}$/.test(raw) ? raw : '#fffbf4';
+  }
+
+  function hexToRgb(hex) {
+    var clean = normalizeHexColor(hex).slice(1);
+    return {
+      r: parseInt(clean.slice(0, 2), 16),
+      g: parseInt(clean.slice(2, 4), 16),
+      b: parseInt(clean.slice(4, 6), 16),
+    };
+  }
+
+  function readInitialEdit() {
+    if (!initialEditRaw) return null;
+    try {
+      var parsed = JSON.parse(initialEditRaw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function readNumber(value, fallback, min, max) {
+    var next = Number(value);
+    return Number.isFinite(next) ? clamp(next, min, max) : fallback;
+  }
+
+  function normalizePreviewText(value, fallback) {
+    var text = String(value || '').replace(/\s+/g, ' ').trim();
+    return text || fallback;
+  }
+
+  function syncCopy() {
+    if (phoneQuestionText && heroQuestionInput) {
+      phoneQuestionText.textContent = normalizePreviewText(heroQuestionInput.value, 'Bugün ne yemek istersin?');
+    }
+    if (phoneSloganTitle && heroSloganTitleInput) {
+      phoneSloganTitle.textContent = normalizePreviewText(heroSloganTitleInput.value, 'Komşunun mutfağından, kapına.');
+    }
+    if (phoneSloganSubtitle && heroSloganSubtitleInput) {
+      phoneSloganSubtitle.textContent = normalizePreviewText(heroSloganSubtitleInput.value, 'Sıcacık ev yemekleri.');
+    }
+  }
+
+  function hasImage() {
+    return heroImage && heroImage.style.display !== 'none' && heroImage.src;
+  }
+
+  function applyDevice(mode) {
+    var device = devices[mode] || devices.iphone_pro_max;
+    state.devicePreviewMode = mode in devices ? mode : 'iphone_pro_max';
+    if (phoneFrame) {
+      phoneFrame.style.setProperty('--device-w', device.width + 'px');
+      phoneFrame.style.setProperty('--device-h', device.height + 'px');
+    }
+    deviceButtons.forEach(function (button) {
+      button.classList.toggle('is-active', button.getAttribute('data-device') === state.devicePreviewMode);
+    });
+  }
+
+  function applyColor() {
+    var rgb = hexToRgb(state.overlayColor);
+    if (overlayInput) overlayInput.value = state.overlayColor;
+    if (phoneScreen) phoneScreen.style.background = state.overlayColor;
+    if (phoneUi) phoneUi.style.background = state.overlayColor;
+    if (heroWrap) heroWrap.style.background = state.overlayColor;
+    if (phoneFade) {
+      phoneFade.style.background =
+        'linear-gradient(180deg, rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0) 0%, rgba(' +
+        rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.52 * state.gradientOpacity).toFixed(2) + ') 76%, ' +
+        state.overlayColor + ' 100%)';
+    }
+  }
+
+  function applyInputs() {
+    if (zoomInput) zoomInput.value = state.scale.toFixed(3);
+    if (offsetXInput) offsetXInput.value = String(Math.round(state.offsetX));
+    if (offsetYInput) offsetYInput.value = String(Math.round(state.offsetY));
+    if (focalXInput) focalXInput.value = state.focalX.toFixed(2);
+    if (focalYInput) focalYInput.value = state.focalY.toFixed(2);
+    if (gradientInput) gradientInput.value = state.gradientOpacity.toFixed(2);
+  }
+
+  function applyImageTransform() {
+    if (!heroImage) return;
+    heroImage.style.transform =
+      'translate(' + Math.round(state.offsetX) + 'px, ' + Math.round(state.offsetY) + 'px) scale(' + state.scale.toFixed(3) + ')';
+    heroImage.style.transformOrigin = (state.focalX * 100).toFixed(1) + '% ' + (state.focalY * 100).toFixed(1) + '%';
+  }
+
+  function applyState() {
+    applyDevice(state.devicePreviewMode);
+    applyInputs();
+    applyColor();
+    applyImageTransform();
+    syncCopy();
+  }
+
+  function setSelectedFile(file) {
+    if (!file) return;
+    if (!/^image\//.test(String(file.type || ''))) {
+      alert('Lütfen bir görsel dosyası seç.');
+      return;
+    }
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+    state.imageUrl = '';
+    if (imageUrlInput) imageUrlInput.value = '';
+    if (imageDataInput) imageDataInput.value = '';
+    if (heroImage) {
+      heroImage.onload = function () {
+        heroImage.style.display = 'block';
+        applyState();
+      };
+      heroImage.src = objectUrl;
+    }
+    if (fileLabel) fileLabel.textContent = file.name || 'Resim seçildi';
+    if (helpText) helpText.textContent = 'Resim seçildi. Direkt telefon ekranında konumlandır.';
+  }
+
+  function loadInitialState() {
+    var initial = readInitialEdit();
+    if (!initial) return;
+    state.imageUrl = String(initial.imageUrl || state.imageUrl || '');
+    state.scale = readNumber(initial.scale != null ? initial.scale : initial.zoom, state.scale, 0.5, 3);
+    state.offsetX = readNumber(initial.offsetX != null ? initial.offsetX : initial.translateX, state.offsetX, -500, 500);
+    state.offsetY = readNumber(initial.offsetY != null ? initial.offsetY : initial.translateY, state.offsetY, -500, 500);
+    state.focalX = readNumber(initial.focalX != null ? initial.focalX : initial.focusX, state.focalX, 0, 1);
+    state.focalY = readNumber(initial.focalY != null ? initial.focalY : initial.focusY, state.focalY, 0, 1);
+    state.gradientOpacity = readNumber(initial.gradientOpacity != null ? initial.gradientOpacity : initial.bottomFadeOpacity, state.gradientOpacity, 0, 1);
+    state.overlayColor = normalizeHexColor(initial.overlayColor || initial.surfaceColor || state.overlayColor);
+    if (typeof initial.devicePreviewMode === 'string' && devices[initial.devicePreviewMode]) {
+      state.devicePreviewMode = initial.devicePreviewMode;
+    }
+  }
+
+  if (fileTrigger) {
+    fileTrigger.addEventListener('click', function () {
+      if (!fileInput) return;
+      fileInput.value = '';
+      fileInput.click();
+    });
+    fileTrigger.addEventListener('dragover', function (event) {
+      event.preventDefault();
+      fileTrigger.classList.add('is-dragover');
+    });
+    fileTrigger.addEventListener('dragleave', function () {
+      fileTrigger.classList.remove('is-dragover');
+    });
+    fileTrigger.addEventListener('drop', function (event) {
+      event.preventDefault();
+      fileTrigger.classList.remove('is-dragover');
+      var file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+      if (!file) return;
+      try {
+        var transfer = new DataTransfer();
+        transfer.items.add(file);
+        fileInput.files = transfer.files;
+      } catch (_) {}
+      setSelectedFile(file);
+    });
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener('change', function () {
+      setSelectedFile(fileInput.files && fileInput.files[0]);
+    });
+  }
+
+  deviceButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      applyDevice(button.getAttribute('data-device') || 'iphone_pro_max');
+    });
+  });
+
+  if (heroWrap) {
+    heroWrap.addEventListener('wheel', function (event) {
+      if (!hasImage()) return;
+      event.preventDefault();
+      state.scale = clamp(state.scale + (event.deltaY > 0 ? -0.05 : 0.05), 0.5, 3);
+      applyState();
+    }, { passive: false });
+    heroWrap.addEventListener('pointerdown', function (event) {
+      if (!hasImage()) return;
+      dragging = true;
+      dragStartX = event.clientX;
+      dragStartY = event.clientY;
+      startOffsetX = state.offsetX;
+      startOffsetY = state.offsetY;
+      heroWrap.classList.add('dragging');
+      heroWrap.setPointerCapture(event.pointerId);
+    });
+    heroWrap.addEventListener('pointermove', function (event) {
+      if (!dragging) return;
+      state.offsetX = clamp(startOffsetX + event.clientX - dragStartX, -500, 500);
+      state.offsetY = clamp(startOffsetY + event.clientY - dragStartY, -500, 500);
+      applyState();
+    });
+    function stopDrag(event) {
+      dragging = false;
+      heroWrap.classList.remove('dragging');
+      try { heroWrap.releasePointerCapture(event.pointerId); } catch (_) {}
+    }
+    heroWrap.addEventListener('pointerup', stopDrag);
+    heroWrap.addEventListener('pointercancel', stopDrag);
+  }
+
+  [
+    [zoomInput, 'scale', 0.5, 3],
+    [offsetXInput, 'offsetX', -500, 500],
+    [offsetYInput, 'offsetY', -500, 500],
+    [focalXInput, 'focalX', 0, 1],
+    [focalYInput, 'focalY', 0, 1],
+    [gradientInput, 'gradientOpacity', 0, 1],
+  ].forEach(function (entry) {
+    var input = entry[0];
+    if (!input) return;
+    input.addEventListener('input', function () {
+      state[entry[1]] = readNumber(input.value, state[entry[1]], entry[2], entry[3]);
+      applyState();
+    });
+  });
+
+  if (overlayInput) {
+    overlayInput.addEventListener('input', function () {
+      state.overlayColor = normalizeHexColor(overlayInput.value);
+      applyState();
+    });
+  }
+
+  document.querySelectorAll('.hero-color-swatch').forEach(function (button) {
+    button.addEventListener('click', function () {
+      state.overlayColor = normalizeHexColor(button.getAttribute('data-color'));
+      applyState();
+    });
+  });
+
+  [heroQuestionInput, heroSloganTitleInput, heroSloganSubtitleInput].forEach(function (input) {
+    if (!input) return;
+    input.addEventListener('input', syncCopy);
+  });
+
+  if (resetBtn) {
+    resetBtn.addEventListener('click', function () {
+      state.scale = 1;
+      state.offsetX = 0;
+      state.offsetY = 0;
+      state.focalX = 0.5;
+      state.focalY = 0.5;
+      state.gradientOpacity = 1;
+      applyState();
+      if (helpText) helpText.textContent = 'Hero ekranı dolduracak şekilde sıfırlandı.';
+    });
+  }
+
+  if (form) {
+    form.addEventListener('submit', function (event) {
+      var hasExisting = imageUrlInput && imageUrlInput.value;
+      if (!hasImage() && !hasExisting) {
+        event.preventDefault();
+        alert('Önce bir görsel seçmelisin.');
+        return;
+      }
+      if (imageDataInput) imageDataInput.value = '';
+      if (fileInput && fileInput.files && fileInput.files[0] && imageUrlInput) imageUrlInput.value = '';
+      if (editJsonInput) {
+        editJsonInput.value = JSON.stringify({
+          imageUrl: state.imageUrl || (imageUrlInput ? imageUrlInput.value : ''),
+          scale: Number(state.scale.toFixed(3)),
+          offsetX: Math.round(state.offsetX),
+          offsetY: Math.round(state.offsetY),
+          focalX: Number(state.focalX.toFixed(2)),
+          focalY: Number(state.focalY.toFixed(2)),
+          gradientOpacity: Number(state.gradientOpacity.toFixed(2)),
+          overlayColor: state.overlayColor,
+          devicePreviewMode: state.devicePreviewMode,
+        });
+      }
+      if (helpText) helpText.textContent = 'Yayınlanıyor...';
+    });
+  }
+
+  loadInitialState();
+  if (heroImage && heroImage.src && heroImage.src !== window.location.href) {
+    heroImage.style.display = 'block';
+  }
+  applyState();
 })();
 </script>
 {% endblock %}
