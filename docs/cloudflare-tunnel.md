@@ -16,6 +16,31 @@ Mobile app / browser
 
 Supabase is the database. Cloudflare is only the public HTTPS ingress. The mobile app should use `https://api.coziyoo.com` as its API URL.
 
+## No VPN
+
+This setup does not use VPN, WireGuard, Tailscale, ZeroTier, or Cloudflare private-network routing.
+
+The tunnel only publishes specific HTTPS hostnames:
+
+```text
+api.coziyoo.com
+admin.coziyoo.com
+```
+
+It does not route private IP ranges, expose the local network, or require a VPN client on the phone or laptop.
+
+Verification command:
+
+```bash
+cloudflared tunnel route ip show
+```
+
+Expected result:
+
+```text
+No routes were found for the given filter flags.
+```
+
 ## Domain and DNS
 
 The domain remains registered at Namecheap. Namecheap is still the registrar and renewals stay there.
@@ -33,6 +58,7 @@ Tunnel DNS route:
 
 ```text
 api.coziyoo.com -> coziyoo-api Cloudflare Tunnel
+admin.coziyoo.com -> coziyoo-api Cloudflare Tunnel
 ```
 
 ## Tunnel Details
@@ -64,6 +90,8 @@ credentials-file: /Users/ismetkarakus/.cloudflared/1b2583b4-78ec-40a3-85a9-7af14
 ingress:
   - hostname: api.coziyoo.com
     service: http://127.0.0.1:9000
+  - hostname: admin.coziyoo.com
+    service: http://127.0.0.1:9000
   - service: http_status:404
 ```
 
@@ -86,6 +114,12 @@ The live API should be reachable publicly:
 
 ```bash
 curl -fsS https://api.coziyoo.com/v1/health/
+```
+
+The live admin should redirect to Django admin login:
+
+```bash
+curl -I https://admin.coziyoo.com/admin/
 ```
 
 Expected response:

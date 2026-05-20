@@ -2,6 +2,7 @@
 set -euo pipefail
 
 LIVE_URL="${LIVE_URL:-https://api.coziyoo.com/v1/health/}"
+ADMIN_URL="${ADMIN_URL:-https://admin.coziyoo.com/admin/}"
 LOCAL_URL="${LOCAL_URL:-http://127.0.0.1:9000/v1/health/}"
 AGENT_LABEL="${AGENT_LABEL:-com.coziyoo.cloudflared}"
 
@@ -22,3 +23,11 @@ echo
 echo "==> Live API health"
 curl -fsS --max-time 20 "${LIVE_URL}"
 echo
+
+echo
+echo "==> Cloudflare private network routes"
+cloudflared tunnel route ip show || true
+
+echo
+echo "==> Live admin reachability"
+curl -fsSI --max-time 20 "${ADMIN_URL}" | sed -n '1,12p'
