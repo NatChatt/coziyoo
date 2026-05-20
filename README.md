@@ -34,6 +34,8 @@ npm run ios      # or npm run android
 ## Production Deployment
 
 See [installation/README.md](installation/README.md) for VPS deployment instructions.
+The current live API is exposed through Cloudflare Tunnel; see
+[docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md).
 
 ```bash
 # On VPS - First time setup
@@ -63,9 +65,14 @@ After installation, the admin panel is available at your configured domain with:
 
 ### External Access
 
-Nginx Proxy Manager routes external traffic:
-- `api.coziyoo.com` → `http://127.0.0.1:9000`
-- `admin.coziyoo.com` → `http://127.0.0.1:9000`
+Current live API route:
+- `api.coziyoo.com` -> Cloudflare Tunnel `coziyoo-api` -> `http://127.0.0.1:9000`
+
+Health check:
+
+```bash
+bash scripts/deploy/check-live-api.sh
+```
 
 ## Environment Configuration
 

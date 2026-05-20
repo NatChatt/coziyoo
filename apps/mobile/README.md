@@ -22,6 +22,6 @@ npm run android
 
 Only one runtime variable is required:
 
-- `EXPO_PUBLIC_API_URL` (example: `http://localhost:3000`)
+- `EXPO_PUBLIC_API_URL` (current live API: `https://api.coziyoo.com`)
 
 STT/TTS/LLM server details are loaded from API profile settings, not mobile env.

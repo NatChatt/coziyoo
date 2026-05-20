@@ -36,6 +36,7 @@ vite.svg
 # IDE
 .vscode
 .idea
+.claude/worktrees/
 *.swp
 *.swo
 *~
