@@ -6,9 +6,9 @@ on:
       - main
     paths:
       - 'apps/django/**'
-      - 'scripts/deploy/update.sh'
-      - 'scripts/lib/common.sh'
+      - 'scripts/deploy/local-django-dev-deploy.sh'
       - '.github/workflows/deploy-django.yml'
+  workflow_dispatch:
 
 concurrency:
   group: deploy-django-main
@@ -16,92 +16,16 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy Django to servers
-    runs-on: ubuntu-latest
+    name: Deploy Django on home runner
+    runs-on:
+      - self-hosted
+      - macOS
+      - ARM64
+      - coziyoo-home
     timeout-minutes: 10
-    env:
-      DEPLOY_TARGETS: ${{ secrets.DEPLOY_TARGETS }}
-      DEPLOY_WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
 
     steps:
-      - name: Validate secrets
+      - name: Deploy local Django server
         run: |
           set -euo pipefail
-          [[ -n "${DEPLOY_TARGETS}" ]] || { echo "Missing: DEPLOY_TARGETS" >&2; exit 1; }
-          [[ -n "${DEPLOY_WEBHOOK_SECRET}" ]] || { echo "Missing: DEPLOY_WEBHOOK_SECRET" >&2; exit 1; }
-
-      - name: Trigger deploy via webhook
-        run: |
-          set -euo pipefail
-          while IFS='|' read -r NAME HOST USER PORT REPO_PATH; do
-            NAME="${NAME//[[:space:]]/}"
-            HOST="${HOST//[[:space:]]/}"
-            [[ -z "${NAME}${HOST}" ]] && continue
-            [[ "${NAME}" =~ ^# ]] && continue
-
-            HOST="${HOST:-${NAME}}"
-            WEBHOOK_URL="https://api.${HOST}/webhook/deploy/"
-
-            SIGNATURE="sha256=$(echo -n '{}' | openssl dgst -sha256 -hmac "${DEPLOY_WEBHOOK_SECRET}" | awk '{print $NF}')"
-
-            echo "Triggering deploy → ${NAME} (${WEBHOOK_URL})"
-
-            for attempt in 1 2 3; do
-              > /tmp/response.txt
-              HTTP_CODE=$(curl -s -o /tmp/response.txt -w '%{http_code}' \
-                --max-time 90 \
-                -X POST \
-                -H "Content-Type: application/json" \
-                -H "X-Webhook-Signature: ${SIGNATURE}" \
-                -d '{}' \
-                "${WEBHOOK_URL}" || echo "000")
-
-              BODY=$(cat /tmp/response.txt 2>/dev/null || true)
-              echo "Attempt ${attempt}/3 — Response: ${HTTP_CODE} — ${BODY}"
-
-              if [[ "${HTTP_CODE}" -eq 200 ]]; then
-                echo "Deploy triggered for ${NAME}"
-                break
-              fi
-
-              if [[ "${attempt}" -lt 3 ]]; then
-                echo "Webhook failed (HTTP ${HTTP_CODE}), retrying in 15s..."
-                sleep 15
-              else
-                echo "ERROR: Webhook failed for ${NAME} after 3 attempts" >&2
-                exit 1
-              fi
-            done
-          done <<< "${DEPLOY_TARGETS}"
-
-      - name: Wait and verify health
-        run: |
-          set -euo pipefail
-          echo "Waiting 60s for deploy to complete..."
-          sleep 60
-
-          while IFS='|' read -r NAME HOST USER PORT REPO_PATH; do
-            NAME="${NAME//[[:space:]]/}"
-            HOST="${HOST//[[:space:]]/}"
-            [[ -z "${NAME}${HOST}" ]] && continue
-            [[ "${NAME}" =~ ^# ]] && continue
-            HOST="${HOST:-${NAME}}"
-
-            echo "Health checking ${NAME}..."
-            for attempt in 1 2 3 4 5; do
-              HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
-                --max-time 10 \
-                "https://api.${HOST}/v1/health/")
-              if [[ "${HTTP_CODE}" -eq 200 ]]; then
-                echo "Health check passed for ${NAME}"
-                break
-              fi
-              if [[ "${attempt}" -lt 5 ]]; then
-                echo "Health check attempt ${attempt}/5 failed (HTTP ${HTTP_CODE}), retrying in 15s..."
-                sleep 15
-              else
-                echo "ERROR: Health check failed for ${NAME} after 5 attempts" >&2
-                exit 1
-              fi
-            done
-          done <<< "${DEPLOY_TARGETS}"
+          bash /Users/ismetkarakus/Work/coziyoo-v2/scripts/deploy/local-django-dev-deploy.sh
