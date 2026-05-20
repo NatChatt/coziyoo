@@ -19,13 +19,13 @@ jobs:
     name: Deploy Django on home runner
     runs-on:
       - self-hosted
-      - macOS
-      - ARM64
+      - Linux
+      - X64
       - coziyoo-home
     timeout-minutes: 10
 
     steps:
-      - name: Deploy local Django server
+      - name: Deploy home Django server
         run: |
           set -euo pipefail
-          bash /Users/ismetkarakus/Work/coziyoo-v2/scripts/deploy/local-django-dev-deploy.sh
+          bash /home/server/coziyoo/scripts/deploy/local-django-dev-deploy.sh
