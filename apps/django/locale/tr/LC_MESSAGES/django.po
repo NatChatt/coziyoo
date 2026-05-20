@@ -554,3 +554,278 @@ msgstr "Finans"
 
 msgid "Notifications"
 msgstr "Bildirimler"
+
+# ── Unfold / shared admin chrome ───────────────────────────────────────────
+
+msgid "Home"
+msgstr "Ana sayfa"
+
+msgid "Permissions"
+msgstr "Yetkiler"
+
+msgid "Theme"
+msgstr "Tema"
+
+msgid "Logout"
+msgstr "Çıkış yap"
+
+msgid "Search users, orders, foods, complaints… (/)"
+msgstr "Kullanıcı, sipariş, yemek, şikayet ara… (/)"
+
+msgid "Press / to open search"
+msgstr "Aramayı açmak için / tuşuna bas"
+
+# ── Permissions page ───────────────────────────────────────────────────────
+
+msgid "Permissions Matrix"
+msgstr "Yetki Matrisi"
+
+msgid "Click to toggle permissions for Admin and User roles."
+msgstr "Admin ve Kullanıcı rolleri için yetkileri açıp kapatmak üzere tıkla."
+
+msgid "Feature"
+msgstr "Özellik"
+
+msgid "Allowed"
+msgstr "İzinli"
+
+msgid "Denied"
+msgstr "Reddedildi"
+
+msgid "Allowed — click to deny"
+msgstr "İzinli — reddetmek için tıkla"
+
+msgid "Denied — click to allow"
+msgstr "Reddedildi — izin vermek için tıkla"
+
+msgid "Total Admins"
+msgstr "Toplam Admin"
+
+msgid "Super Admins"
+msgstr "Süper Adminler"
+
+msgid "Admins"
+msgstr "Adminler"
+
+# ── Dashboard ──────────────────────────────────────────────────────────────
+
+msgid "Loading dashboard…"
+msgstr "Panel yükleniyor…"
+
+msgid "Control center"
+msgstr "Kontrol merkezi"
+
+msgid "Homepage dashboard"
+msgstr "Ana sayfa kontrol paneli"
+
+msgid "Last update"
+msgstr "Son güncelleme"
+
+msgid "Quick actions"
+msgstr "Hızlı işlemler"
+
+msgid "Realtime pulse"
+msgstr "Gerçek zamanlı nabız"
+
+msgid "Orders and revenue flow"
+msgstr "Siparişler ve gelir akışı"
+
+msgid "Orders trend"
+msgstr "Sipariş trendi"
+
+msgid "Revenue trend"
+msgstr "Gelir trendi"
+
+msgid "Live activity"
+msgstr "Canlı etkinlik"
+
+msgid "Important feed"
+msgstr "Önemli yayın"
+
+msgid "Recent complaints"
+msgstr "Son şikayetler"
+
+msgid "Revenue today"
+msgstr "Bugünkü gelir"
+
+msgid "Orders today"
+msgstr "Bugünkü siparişler"
+
+msgid "Active orders"
+msgstr "Aktif siparişler"
+
+msgid "Open complaints"
+msgstr "Açık şikayetler"
+
+msgid "Pending sellers"
+msgstr "Bekleyen satıcılar"
+
+msgid "Pending docs"
+msgstr "Bekleyen belgeler"
+
+msgid "Orders moving now"
+msgstr "Siparişler şu anda işleme alınıyor."
+
+msgid "Critical complaints"
+msgstr "Kritik şikayetler"
+
+msgid "Failed payments (24h)"
+msgstr "Başarısız ödemeler (24 saat)"
+
+msgid "Stale pending docs"
+msgstr "Süresi geçmiş beklemedeki belgeler"
+
+msgid "Overdue active orders"
+msgstr "Vadesi geçmiş aktif siparişler"
+
+msgid "Low rating reviews (7d)"
+msgstr "Düşük puanlı yorumlar (7 gün)"
+
+msgid "just now"
+msgstr "az önce"
+
+# ── Food admin pages ───────────────────────────────────────────────────────
+
+msgid "Yemek"
+msgstr "Yemek"
+
+msgid "Kategori"
+msgstr "Kategori"
+
+msgid "Fiyat"
+msgstr "Fiyat"
+
+msgid "Puan"
+msgstr "Puan"
+
+msgid "Filtrele"
+msgstr "Filtrele"
+
+msgid "Yemek Detay"
+msgstr "Yemek Detayı"
+
+msgid "Stok"
+msgstr "Stok"
+
+msgid "Üretilen"
+msgstr "Üretilen"
+
+msgid "Mevcut"
+msgstr "Mevcut"
+
+msgid "Tarihler"
+msgstr "Tarihler"
+
+msgid "Üretim"
+msgstr "Üretim"
+
+msgid "Satış Başlangıç"
+msgstr "Satış Başlangıç"
+
+msgid "Satış Bitiş"
+msgstr "Satış Bitiş"
+
+msgid "Son Kullanma"
+msgstr "Son Kullanma"
+
+msgid "En İyi Önce"
+msgstr "En İyi Önce"
+
+msgid "Değişiklikler"
+msgstr "Değişiklikler"
+
+msgid "Eklendi"
+msgstr "Eklendi"
+
+msgid "Çıkarıldı"
+msgstr "Çıkarıldı"
+
+msgid "Malzemeler"
+msgstr "Malzemeler"
+
+msgid "Tarif"
+msgstr "Tarif"
+
+msgid "Alerjenler"
+msgstr "Alerjenler"
+
+msgid "Kapat"
+msgstr "Kapat"
+
+msgid "Satıcı Detayına Dön"
+msgstr "Satıcı Detayına Dön"
+
+msgid "Toplam Lot"
+msgstr "Toplam Lot"
+
+msgid "Rating"
+msgstr "Puan"
+
+msgid "Temel Bilgiler"
+msgstr "Temel Bilgiler"
+
+msgid "Mutfak"
+msgstr "Mutfak"
+
+msgid "Hazırlama Süresi"
+msgstr "Hazırlama Süresi"
+
+msgid "Porsiyon"
+msgstr "Porsiyon"
+
+msgid "Favori"
+msgstr "Favori"
+
+msgid "Teslimat"
+msgstr "Teslimat"
+
+msgid "Getir açık"
+msgstr "Getir açık"
+
+msgid "Sadece gel al"
+msgstr "Sadece gel al"
+
+msgid "Oluşturulma"
+msgstr "Oluşturulma"
+
+msgid "Açıklama"
+msgstr "Açıklama"
+
+msgid "Kısa Açıklama"
+msgstr "Kısa Açıklama"
+
+msgid "Getir aktif"
+msgstr "Getir aktif"
+
+msgid "Getir kapalı"
+msgstr "Getir kapalı"
+
+msgid "Menzil"
+msgstr "Menzil"
+
+msgid "Teslimat Yazısı"
+msgstr "Teslimat Yazısı"
+
+msgid "Lotlar"
+msgstr "Lotlar"
+
+msgid "Lot No"
+msgstr "Lot No"
+
+msgid "Satış Penceresi"
+msgstr "Satış Penceresi"
+
+msgid "SKT"
+msgstr "SKT"
+
+msgid "Bu yemek için lot kaydı bulunamadı."
+msgstr "Bu yemek için lot kaydı bulunamadı."
+
+msgid "Aktif"
+msgstr "Aktif"
+
+msgid "Pasif"
+msgstr "Pasif"
+
+msgid "Yemek bulunamadı."
+msgstr "Yemek bulunamadı."

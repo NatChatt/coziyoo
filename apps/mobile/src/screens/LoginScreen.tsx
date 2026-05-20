@@ -36,6 +36,8 @@ type AuthResponse = {
   error?: { code?: string; message?: string; retryAfterSeconds?: number };
 };
 
+const AUTH_REQUEST_TIMEOUT_MS = 12000;
+
 export default function LoginScreen({ onLogin }: Props) {
   const [step, setStep] = useState<AuthStep>('signIn');
   const [email, setEmail] = useState('');
@@ -104,6 +106,27 @@ export default function LoginScreen({ onLogin }: Props) {
     return body?.error?.message ?? `${t('error.login.generic')} (${status})`;
   }
 
+  async function fetchAuthEndpoint(path: string, body: Record<string, unknown>): Promise<Response> {
+    const { apiUrl } = await loadSettings();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AUTH_REQUEST_TIMEOUT_MS);
+    try {
+      return await fetch(`${apiUrl}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  function resolveRequestError(err: unknown): string {
+    if (err instanceof Error && err.name === 'AbortError') return t('error.login.network');
+    return err instanceof Error ? err.message : t('error.login.network');
+  }
+
   async function finishLogin(session: AuthSession) {
     await saveAuthSession(session);
     onLogin(session);
@@ -124,12 +147,7 @@ export default function LoginScreen({ onLogin }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const { apiUrl } = await loadSettings();
-      const response = await fetch(`${apiUrl}/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
-      });
+      const response = await fetchAuthEndpoint('/v1/auth/login', { email: trimmedEmail, password: trimmedPassword });
       const json = await readJsonSafe<AuthResponse>(response);
       if (!response.ok || json.error) {
         setError(resolveLoginError(json, response.status));
@@ -142,7 +160,7 @@ export default function LoginScreen({ onLogin }: Props) {
       }
       await finishLogin(session);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error.login.network'));
+      setError(resolveRequestError(err));
     } finally {
       setLoading(false);
     }
@@ -180,18 +198,13 @@ export default function LoginScreen({ onLogin }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const { apiUrl } = await loadSettings();
       const usernameSeed = trimmedEmail.split('@')[0].replace(/[^a-z0-9_]/gi, '_').toLowerCase().slice(0, 24);
-      const response = await fetch(`${apiUrl}/v1/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: trimmedEmail,
-          password: trimmedPassword,
-          username: `${usernameSeed}_${Date.now().toString().slice(-4)}`,
-          displayName: trimmedName,
-          userType: 'buyer',
-        }),
+      const response = await fetchAuthEndpoint('/v1/auth/register', {
+        email: trimmedEmail,
+        password: trimmedPassword,
+        username: `${usernameSeed}_${Date.now().toString().slice(-4)}`,
+        displayName: trimmedName,
+        userType: 'buyer',
       });
       const json = await readJsonSafe<AuthResponse>(response);
       if (!response.ok || json.error) {
@@ -206,7 +219,7 @@ export default function LoginScreen({ onLogin }: Props) {
       setPendingSession(session);
       setStep('phone');
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error.login.network'));
+      setError(resolveRequestError(err));
     } finally {
       setLoading(false);
     }
@@ -221,12 +234,7 @@ export default function LoginScreen({ onLogin }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const { apiUrl } = await loadSettings();
-      const response = await fetch(`${apiUrl}/v1/auth/forgot-password/request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmed }),
-      });
+      const response = await fetchAuthEndpoint('/v1/auth/forgot-password/request', { email: trimmed });
       const json = await readJsonSafe<AuthResponse>(response);
       if (!response.ok) {
         const code = json?.error?.code;
@@ -239,7 +247,7 @@ export default function LoginScreen({ onLogin }: Props) {
       }
       setStep('resetSent');
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error.login.network'));
+      setError(resolveRequestError(err));
     } finally {
       setLoading(false);
     }
@@ -261,15 +269,10 @@ export default function LoginScreen({ onLogin }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const { apiUrl } = await loadSettings();
-      const response = await fetch(`${apiUrl}/v1/auth/forgot-password/confirm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          code: resetCode,
-          newPassword,
-        }),
+      const response = await fetchAuthEndpoint('/v1/auth/forgot-password/confirm', {
+        email: email.trim().toLowerCase(),
+        code: resetCode,
+        newPassword,
       });
       const json = await readJsonSafe<AuthResponse>(response);
       if (!response.ok || json.error) {
@@ -280,7 +283,7 @@ export default function LoginScreen({ onLogin }: Props) {
       Alert.alert(t('headline.common.success'), t('status.login.passwordUpdated'));
       setStep('signIn');
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error.login.network'));
+      setError(resolveRequestError(err));
     } finally {
       setLoading(false);
     }

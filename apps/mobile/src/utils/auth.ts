@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { readJsonSafe } from './http';
 
 const STORAGE_KEY = 'coziyoo_auth';
+const AUTH_REFRESH_TIMEOUT_MS = 8000;
 
 export type AuthSession = {
   accessToken: string;
@@ -48,11 +49,15 @@ export async function refreshAuthSession(
   };
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AUTH_REFRESH_TIMEOUT_MS);
     const response = await fetch(`${apiUrl}/v1/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: session.refreshToken }),
-    });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: session.refreshToken }),
+        signal: controller.signal,
+      })
+      .finally(() => clearTimeout(timeoutId));
     if (!response.ok) {
       // Refresh tokens rotate on every successful refresh. If another in-flight request
       // already refreshed and persisted a new session, recover from storage instead of failing.

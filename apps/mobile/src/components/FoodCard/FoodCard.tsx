@@ -37,6 +37,38 @@ import {
 import { foodCardStyles as styles } from './styles';
 
 const FOOD_CARD_RENDER_URI_CACHE = new Map<string, string>();
+const QUICK_START_FOOD_IMAGE_SOURCE = require('../../../assets/images/kuru-fasulye-pilav.jpg');
+const YUNAN_SALATASI_IMAGE_SOURCE = require('../../../assets/images/yunan-salatasi.jpg');
+const ICLI_KOFTE_IMAGE_SOURCE = require('../../../assets/images/icli-kofte.jpg');
+const MAKARNA_IMAGE_SOURCE = require('../../../assets/images/makarna.jpg');
+const FIRINDA_KUZU_IMAGE_SOURCE = require('../../../assets/images/firinda-kuzu.jpg');
+
+function normalizeTitle(value: string | null | undefined): string {
+  return String(value ?? '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function resolveDefaultFoodImageSource(meal: MealCard) {
+  const normalized = normalizeTitle(meal.title);
+  if (normalized.includes('kuru fasulye') && normalized.includes('pilav')) return QUICK_START_FOOD_IMAGE_SOURCE;
+  if (normalized.includes('yunan') && normalized.includes('salatasi')) return YUNAN_SALATASI_IMAGE_SOURCE;
+  if (normalized.includes('icli') && normalized.includes('kofte')) return ICLI_KOFTE_IMAGE_SOURCE;
+  if (normalized.includes('makarna')) return MAKARNA_IMAGE_SOURCE;
+  if (normalized.includes('firinda') && normalized.includes('kuzu')) return FIRINDA_KUZU_IMAGE_SOURCE;
+  return undefined;
+}
+
+function resolveMealImageUrls(meal: MealCard): string[] {
+  return [...(meal.imageUrls ?? []), meal.imageUrl ?? '']
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean)
+    .slice(0, 5);
+}
 
 type FoodInfoChipProps = {
   iconName: React.ComponentProps<typeof Ionicons>['name'];
@@ -97,19 +129,17 @@ export function FoodCard({
   const tabletSellerHandleStyle = isTabletLayout ? styles.foodFooterSellerHandleTablet : null;
   const tabletSellerTaglineStyle = isTabletLayout ? styles.foodFooterSellerTaglineTablet : null;
   const colors = deriveCardColors(meal.backgroundColor);
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imageUrls, setImageUrls] = useState<string[]>(() => resolveMealImageUrls(meal));
   const [imageIndex, setImageIndex] = useState(0);
   const [imageFrameWidth, setImageFrameWidth] = useState(defaultCardImageWidth);
   const [sellerThumbFailed, setSellerThumbFailed] = useState(false);
   const [renderableImageUri, setRenderableImageUri] = useState<string | null>(null);
   const primaryImageUrl = imageUrls[0];
   const activeImageUrl = imageUrls[imageIndex] ?? primaryImageUrl;
+  const defaultFoodImageSource = resolveDefaultFoodImageSource(meal);
 
   useEffect(() => {
-    const next = [...(meal.imageUrls ?? []), meal.imageUrl ?? '']
-      .map((value) => String(value ?? '').trim())
-      .filter(Boolean)
-      .slice(0, 5);
+    const next = resolveMealImageUrls(meal);
     setImageUrls(next);
     setImageIndex(0);
   }, [meal.imageUrl, meal.imageUrls]);
@@ -120,7 +150,6 @@ export function FoodCard({
 
   useEffect(() => {
     if (!activeImageUrl) {
-      setRenderableImageUri(null);
       return;
     }
 
@@ -136,7 +165,7 @@ export function FoodCard({
     }
 
     let cancelled = false;
-    setRenderableImageUri(null);
+    setRenderableImageUri((current) => current || activeImageUrl);
 
     const materializeInlineImage = async () => {
       try {
@@ -184,7 +213,7 @@ export function FoodCard({
         setRenderableImageUri(activeImageUrl);
       } catch {
         if (!cancelled) {
-          setRenderableImageUri(null);
+          setRenderableImageUri((current) => current || activeImageUrl);
         }
       }
     };
@@ -289,11 +318,12 @@ export function FoodCard({
                   <View key={`${uri}-${idx}`} style={[styles.foodImageSlide, { width: slideWidth }]}>
                     <Image
                       source={{ uri: sourceUri }}
+                      defaultSource={defaultFoodImageSource}
                       style={styles.foodImage}
                       resizeMode="cover"
                       onError={() => {
                         if (idx === imageIndex && isInlineBase64ImageUri(uri)) {
-                          setRenderableImageUri(null);
+                          setRenderableImageUri((current) => current || uri);
                         }
                       }}
                     />

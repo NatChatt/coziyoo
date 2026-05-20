@@ -8,6 +8,7 @@ type RequestOptions = {
 };
 
 type ApiResult<T> = { ok: true; data: T } | { ok: false; status: number; code?: string; message?: string };
+const API_REQUEST_TIMEOUT_MS = 12000;
 
 function resolveRefreshBaseUrl(requestUrl: string, fallbackApiUrl: string): string {
   try {
@@ -36,13 +37,24 @@ export async function apiRequest<T = unknown>(
     headers['x-actor-role'] = options.actorRole;
   }
 
+  const request = async (): Promise<Response> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
+    try {
+      return await fetch(url, {
+        method,
+        headers,
+        body: options?.body ? JSON.stringify(options.body) : undefined,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
   let res: Response;
   try {
-    res = await fetch(url, {
-      method,
-      headers,
-      body: options?.body ? JSON.stringify(options.body) : undefined,
-    });
+    res = await request();
   } catch {
     return { ok: false, status: 0, message: 'Bağlantı hatası' };
   }
@@ -56,11 +68,7 @@ export async function apiRequest<T = unknown>(
       // Retry with new token
       headers['Authorization'] = `Bearer ${refreshed.accessToken}`;
       try {
-        res = await fetch(url, {
-          method,
-          headers,
-          body: options?.body ? JSON.stringify(options.body) : undefined,
-        });
+        res = await request();
       } catch {
         return { ok: false, status: 0, message: 'Bağlantı hatası' };
       }

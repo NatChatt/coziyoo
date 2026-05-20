@@ -63,9 +63,15 @@ function resolveDevMachineApiUrl(): string | null {
 function normalizeApiUrlForMode(rawUrl: string): string {
   const trimmed = rawUrl.trim().replace(/\/$/, "");
   const fallback = (process.env.EXPO_PUBLIC_API_URL || RELEASE_FALLBACK_API_URL).trim().replace(/\/$/, "");
+  const hasEnvApiUrl = Boolean(process.env.EXPO_PUBLIC_API_URL?.trim());
+  const releaseFallback = hasEnvApiUrl && fallback ? fallback : RELEASE_FALLBACK_API_URL;
   const devMachineApi = resolveDevMachineApiUrl();
-  if (!trimmed) return fallback;
+  if (!__DEV__ && hasEnvApiUrl && fallback) return fallback;
+  if (!trimmed) return __DEV__ ? fallback : releaseFallback;
   if (__DEV__) {
+    if (fallback && fallback !== RELEASE_FALLBACK_API_URL) {
+      return fallback;
+    }
     // In dev, physical devices cannot reach localhost values saved in settings.
     if (isLocalhostLike(trimmed) && devMachineApi) {
       return devMachineApi;
@@ -78,9 +84,9 @@ function normalizeApiUrlForMode(rawUrl: string): string {
   const lower = trimmed.toLowerCase();
   if (
     isLocalhostLike(lower) ||
-    lower.includes("192.168.")
+    (lower.includes("192.168.") && lower !== releaseFallback.toLowerCase())
   ) {
-    return fallback || RELEASE_FALLBACK_API_URL;
+    return releaseFallback;
   }
   return trimmed;
 }

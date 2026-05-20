@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
-  ActivityIndicator,
   StyleSheet,
   Platform,
   Alert,
@@ -48,7 +47,6 @@ import { loadAuthSession, clearAuthSession, refreshAuthSession, saveAuthSession,
 import { loadSettings, subscribeSettings } from './src/utils/settings';
 import { prefetchCatalogs } from './src/utils/prefetchCatalogs';
 import { t } from './src/copy/brandCopy';
-import { theme } from './src/theme/colors';
 
 type NotificationSubscription = { remove: () => void };
 
@@ -90,6 +88,20 @@ if (Notifications) {
 }
 
 const NOTIFICATIONS_ENABLED = false;
+const BOOTSTRAP_AUTH_TIMEOUT_MS = 8000;
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 async function registerPushToken(auth: AuthSession, apiUrl: string): Promise<string | null> {
   if (!NOTIFICATIONS_ENABLED || !Notifications) return null;
@@ -262,36 +274,32 @@ export default function App() {
         return;
       }
 
+      if (!cancelled) {
+        applyAuthSession(stored);
+        setScreen('home');
+      }
+
       try {
         const { apiUrl } = await loadSettings();
-        let activeSession: AuthSession | null = stored;
-
-        const meResponse = await fetch(`${apiUrl}/v1/auth/me`, {
+        const meResponse = await fetchWithTimeout(`${apiUrl}/v1/auth/me`, {
           headers: {
             Authorization: `Bearer ${stored.accessToken}`,
           },
-        });
+        }, BOOTSTRAP_AUTH_TIMEOUT_MS);
 
-        if (meResponse.status === 401) {
-          activeSession = await refreshAuthSession(apiUrl, stored);
-        }
-
-        if (!activeSession) {
-          await clearAuthSession();
-          if (!cancelled) {
-            setAuth(null);
-            setScreen('login');
-          }
+        if (meResponse.status !== 401) return;
+        const activeSession = await refreshAuthSession(apiUrl, stored);
+        if (activeSession) {
+          if (!cancelled) applyAuthSession(activeSession);
           return;
         }
-
+        await clearAuthSession();
         if (cancelled) return;
-        applyAuthSession(activeSession);
-        setScreen('home');
+        setAuth(null);
+        setScreen('login');
       } catch {
-        if (cancelled) return;
-        applyAuthSession(stored);
-        setScreen('home');
+        // Network problems during startup must not kick the user back to login.
+        // HomeScreen can keep showing cached/local food cards while live data retries.
       }
     }
 
@@ -440,9 +448,7 @@ export default function App() {
 
   if (screen === 'loading') {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={theme.primary} size="large" />
-      </View>
+      <View style={styles.loadingBlank} />
     );
   }
 
@@ -986,11 +992,9 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  loading: {
+  loadingBlank: {
     flex: 1,
-    backgroundColor: theme.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#FFFBF4',
   },
   sheetOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -79,32 +79,18 @@ DATABASES = {
 }
 
 # --- Cache ---
-REDIS_URL = config("REDIS_URL", default="")
 METRICS_ALLOWED_IPS = config(
     "METRICS_ALLOWED_IPS",
     default="127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
     cast=Csv(),
 )
 
-if REDIS_URL:
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": REDIS_URL,
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "IGNORE_EXCEPTIONS": True,
-            },
-            "KEY_PREFIX": config("CACHE_KEY_PREFIX", default="coziyoo"),
-        }
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "coziyoo-local-cache",
     }
-else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "coziyoo-local-cache",
-        }
-    }
+}
 
 # --- Password hashing: Argon2 first (compatible with existing hashes) ---
 PASSWORD_HASHERS = [

@@ -118,9 +118,6 @@ ensure_ops_runtime_env() {
   local env_file="${1}"
   [[ -f "${env_file}" ]] || return 0
 
-  local redis_url="redis://:${REDIS_PASSWORD:-CHANGE_ME_REDIS_PASSWORD_12345}@127.0.0.1:${REDIS_PORT:-6379}/1"
-  grep -q '^REDIS_URL=' "${env_file}" || printf '\nREDIS_URL=%s\n' "${redis_url}" >> "${env_file}"
-  grep -q '^CACHE_KEY_PREFIX=' "${env_file}" || printf 'CACHE_KEY_PREFIX=%s\n' "${CACHE_KEY_PREFIX:-coziyoo}" >> "${env_file}"
   grep -q '^METRICS_ALLOWED_IPS=' "${env_file}" || printf 'METRICS_ALLOWED_IPS=%s\n' "${METRICS_ALLOWED_IPS:-127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}" >> "${env_file}"
 }
 
@@ -132,11 +129,9 @@ deploy_ops_stack() {
   local compose_file="${ops_dir}/docker-compose.yml"
   [[ -f "${compose_file}" ]] || { log "Ops compose file not found at ${compose_file}, skipping"; return 0; }
 
-  log "Starting Redis, Prometheus, and Grafana"
+  log "Starting Prometheus and Grafana"
   (
     cd "${ops_dir}"
-    export REDIS_PORT="${REDIS_PORT:-6379}"
-    export REDIS_PASSWORD="${REDIS_PASSWORD:-CHANGE_ME_REDIS_PASSWORD_12345}"
     export PROMETHEUS_PORT="${PROMETHEUS_PORT:-9090}"
     export GRAFANA_PORT="${GRAFANA_PORT:-3001}"
     export GRAFANA_ADMIN_USER="${GRAFANA_ADMIN_USER:-admin}"

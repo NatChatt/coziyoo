@@ -12,4 +12,3 @@ dj-database-url>=2.1
 gunicorn
 whitenoise[brotli]
 django-prometheus>=2.3
-django-redis>=5.4

@@ -34,6 +34,22 @@
   #content .stack-bordered > * + * {
     margin-top: 1rem !important;
   }
+
+  .material-symbols-outlined {
+    direction: ltr;
+    display: inline-block;
+    font-family: 'Material Symbols Outlined' !important;
+    font-feature-settings: 'liga';
+    font-style: normal;
+    font-weight: normal;
+    letter-spacing: normal !important;
+    line-height: 1;
+    text-transform: none !important;
+    white-space: nowrap;
+    word-wrap: normal;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+  }
 </style>
 {% endblock %}
 
@@ -184,6 +200,33 @@
             </div>
         </template>
     </div>
+
+    <script>
+      (function () {
+        function protectMaterialSymbols(root) {
+          (root || document).querySelectorAll('.material-symbols-outlined').forEach(function (el) {
+            el.classList.add('notranslate');
+            el.setAttribute('translate', 'no');
+          });
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            protectMaterialSymbols(document);
+          });
+        } else {
+          protectMaterialSymbols(document);
+        }
+
+        new MutationObserver(function (mutations) {
+          mutations.forEach(function (mutation) {
+            mutation.addedNodes.forEach(function (node) {
+              if (node.nodeType === 1) protectMaterialSymbols(node);
+            });
+          });
+        }).observe(document.documentElement, { childList: true, subtree: true });
+      })();
+    </script>
 
     <div id="page" class="flex flex-col max-w-full min-h-screen {% element_classes 'page' %}" style="transition: filter 0.2s ease;">
         {# nav-sidebar block is the Unfold hook; we render nav_topbar.html (top navbar) here instead of a sidebar #}

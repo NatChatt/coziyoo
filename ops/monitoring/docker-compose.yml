@@ -1,16 +1,4 @@
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: coziyoo-redis
-    restart: unless-stopped
-    environment:
-      REDIS_PASSWORD: "${REDIS_PASSWORD:-CHANGE_ME_REDIS_PASSWORD_12345}"
-    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
-    ports:
-      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis-data:/data
-
   prometheus:
     image: prom/prometheus:v2.55.1
     container_name: coziyoo-prometheus
@@ -44,6 +32,5 @@ services:
       - prometheus
 
 volumes:
-  redis-data:
   prometheus-data:
   grafana-data:
