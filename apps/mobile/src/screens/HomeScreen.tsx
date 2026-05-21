@@ -88,7 +88,7 @@ import { loadSettings, saveSettings, subscribeSettings, type AppSettings } from 
 import { subscribeBuyerFeedRealtime, subscribeBuyerOrdersRealtime } from '../utils/realtime';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { loadCachedProfileImageUrl, saveCachedProfileImageUrl } from '../utils/profileImage';
-import { cacheHomeHeroImageUrl, loadCachedHomeHeroImageUrl } from '../utils/homeHeroImage';
+import { cacheHomeHeroImageUrl } from '../utils/homeHeroImage';
 import { apiRequest } from '../utils/api';
 import { readJsonSafe } from '../utils/http';
 import { theme } from '../theme/colors';
@@ -2173,19 +2173,6 @@ export default function HomeScreen({
       setDeliveryType('delivery');
     }
   }, [cartItems.length, cartSupportedDeliveryOptions.delivery, cartSupportedDeliveryOptions.pickup, deliveryType]);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadCachedHomeHeroImageUrl()
-      .then((cached) => {
-        if (cancelled || !cached) return;
-        setHeaderImageSource({ uri: cached });
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
