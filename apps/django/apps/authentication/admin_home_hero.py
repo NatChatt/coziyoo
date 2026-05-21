@@ -7,6 +7,7 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.csrf import csrf_exempt
 from django.db import connection
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
@@ -272,6 +273,7 @@ def hero_image_proxy_view(request: HttpRequest) -> HttpResponse:
         raise Http404("S3 fetch failed")
 
 
+@csrf_exempt
 @staff_member_required
 def home_hero_view(request: HttpRequest) -> HttpResponse:
     latest = AdminSalesCommissionSettings.objects.order_by("-created_at").first()
