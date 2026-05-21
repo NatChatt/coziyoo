@@ -8,6 +8,7 @@ import hashlib
 import json
 import re
 
+from django.conf import settings
 from django.db import connection
 from django.db import transaction
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseRedirect
@@ -89,7 +90,11 @@ def _resolve_mobile_home_header_image_url(request: HttpRequest | None = None):
         # receives a stable HTTP image URL instead of expiring S3 URLs or inline data.
         path = reverse('foods-home-hero-image')
         if request is not None:
-            return request.build_absolute_uri(path)
+            host = request.get_host().split(",")[0].strip()
+            if host:
+                return f"https://{host}{path}"
+            api_domain = getattr(settings, "API_DOMAIN", "") or "api.coziyoo.com"
+            return f"https://{api_domain}{path}"
         return path
     if value.startswith(("http://", "https://")):
         return value
