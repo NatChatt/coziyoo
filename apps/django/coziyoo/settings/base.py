@@ -7,6 +7,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-insecure-change-me-in-production")
 
+CSRF_TRUSTED_ORIGINS = sorted(set(
+    config("CSRF_TRUSTED_ORIGINS", default="", cast=Csv())
+    + ["https://admin.coziyoo.com", "https://api.coziyoo.com"]
+))
+
 INSTALLED_APPS = [
     "django_prometheus",
     "unfold",
