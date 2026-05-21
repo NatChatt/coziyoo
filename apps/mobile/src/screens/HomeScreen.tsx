@@ -1108,6 +1108,13 @@ function resolveHomeHeaderImageUrl(payload: unknown): string | null {
   return null;
 }
 
+function withHomeHeroCacheKey(url: string, cacheKey: string | null): string {
+  const normalized = url.trim();
+  const key = String(cacheKey || '').trim();
+  if (!normalized || !key || /[?&]v=/.test(normalized)) return normalized;
+  return `${normalized}${normalized.includes('?') ? '&' : '?'}v=${encodeURIComponent(key)}`;
+}
+
 function resolveHomeHeroSurfaceColor(payload: unknown): string | null {
   if (!payload || typeof payload !== 'object') return null;
   const root = payload as Record<string, unknown>;
@@ -2189,10 +2196,13 @@ export default function HomeScreen({
       return;
     }
 
-    const heroUrl = adminHeroImageUrl || Image.resolveAssetSource(LOCAL_HOME_HEADER_FALLBACK).uri;
+    const versionedAdminHeroImageUrl = adminHeroImageUrl
+      ? withHomeHeroCacheKey(adminHeroImageUrl, adminHeroImageCacheKey)
+      : null;
+    const heroUrl = versionedAdminHeroImageUrl || Image.resolveAssetSource(LOCAL_HOME_HEADER_FALLBACK).uri;
     if (adminHeroImageUrl) {
-      setHeaderImageSource((current) => current ?? { uri: adminHeroImageUrl });
-      cacheHomeHeroImageUrl(adminHeroImageUrl, adminHeroImageCacheKey)
+      setHeaderImageSource({ uri: versionedAdminHeroImageUrl || adminHeroImageUrl });
+      cacheHomeHeroImageUrl(versionedAdminHeroImageUrl || adminHeroImageUrl, adminHeroImageCacheKey)
         .then((cached) => {
           if (cancelled || !cached) return;
           setHeaderImageSource({ uri: cached });

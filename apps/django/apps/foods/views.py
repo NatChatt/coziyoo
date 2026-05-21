@@ -4,6 +4,7 @@ All endpoints require a valid JWT with realm == 'app'.
 """
 import base64
 import binascii
+import hashlib
 import json
 import re
 
@@ -99,7 +100,7 @@ def _resolve_mobile_home_header_image_cache_key():
     value, _raw = _load_latest_mobile_home_header_raw()
     if not value:
         return None
-    return str(abs(hash(value)) % 1000000000)
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
 
 
 _HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
