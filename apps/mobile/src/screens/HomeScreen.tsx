@@ -3673,6 +3673,21 @@ export default function HomeScreen({
         />
         {/* Sticky: Search Bar + Category Chips */}
         <View style={[styles.stickySearchChips, isTabletLayout && styles.stickySearchChipsTablet]}>
+          {LinearGradient ? (
+            <LinearGradient
+              colors={[
+                hexToRgba(heroBottomBandColor, 0),
+                hexToRgba(heroBottomBandColor, 0.22 * homeHeroRenderConfig.gradientOpacity),
+                hexToRgba(heroBottomBandColor, 0.56 * homeHeroRenderConfig.gradientOpacity),
+                hexToRgba(homeBaseBg, 0.92),
+                homeBaseBg,
+              ]}
+              locations={[0, 0.2, 0.46, 0.76, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={[styles.stickyCategoryFade, isTabletLayout && styles.stickyCategoryFadeTablet]}
+            />
+          ) : null}
           {false ? (
           <View style={[styles.homeSloganBanner, isTabletLayout && styles.homeSloganBannerTablet]}>
             <View style={styles.homeSloganBannerTextWrap}>
@@ -5547,6 +5562,18 @@ const styles = StyleSheet.create({
     right: 0,
     height: 112,
   },
+  stickyCategoryFade: {
+    position: 'absolute',
+    top: 76,
+    left: 0,
+    right: 0,
+    height: 190,
+    zIndex: 0,
+  },
+  stickyCategoryFadeTablet: {
+    top: 92,
+    height: 240,
+  },
   homeSloganBanner: {
     marginHorizontal: 12,
     marginTop: -34,
@@ -5658,6 +5685,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     paddingTop: 2,
     paddingBottom: 6,
+    zIndex: 2,
   },
   chipScroller: {
     marginHorizontal: 0,

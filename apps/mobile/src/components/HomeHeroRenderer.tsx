@@ -155,37 +155,6 @@ export function HomeHeroRenderer({
           style={styles.topFade}
         />
       ) : null}
-      {LinearGradientComponent ? (
-        <LinearGradientComponent
-          colors={
-            isTabletLayout
-              ? [
-                  toRgba(bottomBandColor, 0.08),
-                  toRgba(bottomBandColor, 0.46 * config.gradientOpacity),
-                  toRgba(bottomBandColor, 0.82 * config.gradientOpacity),
-                  toRgba(bottomBandColor, 0.96 * config.gradientOpacity),
-                  baseBackgroundColor,
-                  baseBackgroundColor,
-                ]
-              : [
-                  toRgba(bottomBandColor, 0),
-                  toRgba(bottomBandColor, 0.22 * config.gradientOpacity),
-                  toRgba(bottomBandColor, 0.44 * config.gradientOpacity),
-                  toRgba(bottomBandColor, 0.66 * config.gradientOpacity),
-                  toRgba(bottomBandColor, 0.86 * config.gradientOpacity),
-                  baseBackgroundColor,
-                  baseBackgroundColor,
-                ]
-          }
-          locations={isTabletLayout ? [0, 0.08, 0.16, 0.24, 0.34, 1] : [0, 0.12, 0.24, 0.36, 0.48, 0.6, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={[
-            styles.bottomFade,
-            isTabletLayout ? { bottom: -230, height: 390 } : { bottom: -96, height: 130 },
-          ]}
-        />
-      ) : null}
       <View style={[styles.textArea, { paddingTop: config.textSafeAreaTop }, isTabletLayout && styles.textAreaTablet]}>
         <Text style={[styles.question, isTabletLayout && styles.questionTablet]}>{questionText}</Text>
         <View style={styles.markerRow}>
