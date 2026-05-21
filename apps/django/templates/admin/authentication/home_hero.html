@@ -3,7 +3,7 @@
 {% block content %}
 <style>
   .hero-simple-wrap {
-    max-width: 1440px;
+    max-width: 1680px;
     margin: 0 auto;
     padding: 24px 18px 32px;
   }
@@ -28,20 +28,20 @@
   }
   .hero-simple-panel {
     border: 1px solid rgba(226, 232, 240, 0.16);
-    border-radius: 18px;
-    background: #101513;
+    border-radius: 22px;
+    background: linear-gradient(180deg, #101419 0%, #0d1116 100%);
     padding: 0;
     overflow: hidden;
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
   }
   .hero-panel-body {
-    padding: 22px 24px;
+    padding: 18px 24px;
   }
-  .hero-upload-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    align-items: stretch;
+  .hero-upload-row { display: block; }
+  .hero-upload-row > div > .hero-field-label,
+  .hero-upload-row > div > .hero-help,
+  .hero-upload-row > div > .hero-dropzone {
+    display: none;
   }
   .hero-copy-grid {
     display: grid;
@@ -131,6 +131,48 @@
     display: block;
     color: #a9a099;
   }
+  .hero-left-title {
+    color: #f3eee7;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.45px;
+    text-transform: uppercase;
+    margin: 0 0 14px;
+  }
+  .hero-thumb-card { margin-bottom: 16px; }
+  .hero-thumb-label {
+    color: #cfc7bd;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .hero-thumb {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 7px;
+    background: #232831;
+    border: 1px solid rgba(226, 232, 240, 0.14);
+  }
+  .hero-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .hero-change-btn {
+    width: 100%;
+    height: 36px;
+    margin-top: 8px;
+    border: 1px solid rgba(226, 232, 240, 0.12);
+    border-radius: 7px;
+    background: #242934;
+    color: #f1ece4;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+  }
   .hero-editor-row {
     margin-top: 0;
     display: flex;
@@ -140,12 +182,12 @@
   .hero-stage {
     position: relative;
     width: 100%;
-    max-width: 920px;
+    max-width: none;
     height: auto;
-    aspect-ratio: 1792 / 1024;
+    aspect-ratio: 16 / 9;
     margin: 0 auto;
     border: 1px solid rgba(255, 255, 255, 0.10);
-    border-radius: 14px;
+    border-radius: 7px;
     overflow: hidden;
     background: #f8f1e8;
     cursor: grab;
@@ -160,7 +202,7 @@
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     transform-origin: center center;
     will-change: transform;
     pointer-events: none;
@@ -169,8 +211,9 @@
     position: absolute;
     left: 0;
     right: 0;
-    top: 50%;
-    height: 50%;
+    top: auto;
+    bottom: 0;
+    height: 18%;
     pointer-events: none;
     z-index: 4;
   }
@@ -191,7 +234,7 @@
   }
   .hero-stage-guide-label {
     position: absolute;
-    top: 6px;
+    top: -13px;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(127, 86, 217, 0.92);
@@ -213,11 +256,11 @@
     align-items: center;
     justify-content: flex-start;
     gap: 14px;
-    padding: 14px 16px;
-    margin-top: 18px;
+    padding: 10px 12px;
+    margin-top: 0;
     border: 1px solid rgba(226, 232, 240, 0.12);
-    border-radius: 12px;
-    background: #171c1a;
+    border-radius: 10px;
+    background: #171c22;
   }
   .hero-color-wrap {
     display: flex;
@@ -254,7 +297,7 @@
   }
   .hero-range {
     flex: 1;
-    min-width: 180px;
+    min-width: 0;
     max-width: 480px;
   }
   .hero-actions {
@@ -297,42 +340,47 @@
   }
   .hero-two-col {
     display: grid;
-    grid-template-columns: 320px minmax(520px, 1fr) 460px;
-    gap: 20px;
+    grid-template-columns: 240px minmax(620px, 1fr) 560px;
+    gap: 16px;
     border-top: none;
-    padding: 0 24px 22px;
+    padding: 0 16px 18px;
   }
   .hero-two-col-left {
     display: flex;
     flex-direction: column;
+    border-right: 1px solid rgba(226, 232, 240, 0.08);
+    padding: 16px 10px 16px 0;
   }
   .hero-two-col-center {
     border: 1px solid rgba(226, 232, 240, 0.10);
-    border-radius: 16px;
+    border-radius: 8px;
     background: #14181d;
-    padding: 18px;
+    padding: 14px;
     min-width: 0;
   }
   .hero-two-col-right {
-    border: 1px solid rgba(127, 86, 217, 0.26);
-    border-radius: 16px;
-    background: #171c1a;
+    border-left: 1px solid rgba(226, 232, 240, 0.08);
+    border-top: 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-radius: 0;
+    background: #0f1319;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 22px 18px 18px;
+    padding: 16px 0 18px 16px;
     gap: 12px;
   }
   .hero-device-list {
     display: grid;
-    gap: 8px;
-    margin-bottom: 14px;
+    gap: 10px;
+    margin-bottom: 16px;
   }
   .hero-device-button {
     width: 100%;
     border: 1px solid rgba(226, 232, 240, 0.14);
     border-radius: 10px;
-    background: #111714;
+    background: #141922;
     color: #d8d1c8;
     padding: 10px 12px;
     text-align: left;
@@ -354,6 +402,38 @@
     color: #a9a099;
     font-size: 11px;
     font-weight: 650;
+  }
+  .hero-device-list.compact {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+  .hero-presets {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .hero-preset {
+    border: 1px solid rgba(226, 232, 240, 0.14);
+    border-radius: 7px;
+    background: #222833;
+    color: #f1ece4;
+    min-height: 48px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .hero-preset.is-active {
+    border-color: #7f56d9;
+    box-shadow: 0 0 0 1px rgba(127, 86, 217, 0.42);
+  }
+  .hero-phone-and-devices {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 160px;
+    gap: 14px;
+    align-items: start;
   }
   @media (max-width: 800px) {
     .hero-two-col { grid-template-columns: 1fr; }
@@ -399,9 +479,9 @@
     position: relative;
     --device-w: 430px;
     --device-h: 932px;
-    width: min(var(--device-w), 100%);
+    width: min(390px, 100%);
     background: #05070a;
-    border-radius: 42px;
+    border-radius: 52px;
     padding: 10px;
     box-shadow: 0 0 0 1px #30343b, 0 0 0 4px #111827, 0 18px 34px rgba(0,0,0,0.32);
   }
@@ -410,19 +490,19 @@
     position: absolute;
     top: 10px;
     left: 50%;
-    width: 92px;
-    height: 23px;
+    width: 118px;
+    height: 31px;
     transform: translateX(-50%);
     background: #05070a;
-    border-radius: 0 0 16px 16px;
+    border-radius: 0 0 18px 18px;
     z-index: 8;
   }
   .hero-phone-screen {
     position: relative;
     background: #fffbf4;
-    border-radius: 32px;
+    border-radius: 42px;
     overflow: hidden;
-    height: var(--device-h);
+    height: min(620px, calc(var(--device-h) * 0.75));
   }
   .hero-phone-statusbar {
     position: absolute;
@@ -430,15 +510,15 @@
     left: 0;
     right: 0;
     z-index: 5;
-    height: 42px;
+    height: 52px;
     background: transparent;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 30px;
+    padding: 0 32px;
   }
   .hero-phone-statusbar-time {
-    font-size: 12px;
+    font-size: 14px;
     color: #111827;
     font-weight: 800;
     letter-spacing: 0;
@@ -476,7 +556,7 @@
     max-width: none !important;
     max-height: none !important;
     display: block;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center center;
     transform-origin: center center;
     will-change: transform;
@@ -500,6 +580,9 @@
     height: 104px;
     border-color: rgba(53, 110, 255, 0.82);
     background: rgba(53, 110, 255, 0.07);
+  }
+  .hero-phone-hero-wrap .hero-phone-safe-overlay {
+    display: none;
   }
   .hero-phone-safe-label {
     position: absolute;
@@ -558,15 +641,15 @@
     position: absolute;
     left: 22px;
     right: 16px;
-    top: 122px;
+    top: 96px;
     bottom: auto;
     color: #2f241d;
     pointer-events: none;
   }
   .hero-phone-hero-title {
     font-family: Georgia, serif;
-    font-size: 24px;
-    line-height: 30px;
+    font-size: 17px;
+    line-height: 21px;
     font-weight: 700;
     letter-spacing: 0;
     white-space: pre-line;
@@ -589,14 +672,13 @@
     background: #a4714e;
   }
   .hero-phone-ui {
-    padding: 0 18px 74px;
+    padding: 0 14px 74px;
     background: #fffbf4;
+    position: relative;
+    z-index: 3;
   }
   .hero-phone-slogan {
-    position: relative;
-    margin: -42px 4px 10px;
-    z-index: 3;
-    color: #2f221b;
+    display: none;
   }
   .hero-phone-slogan-icon {
     width: 18px;
@@ -633,7 +715,7 @@
     border: 1px solid #ede8e0;
     border-radius: 18px;
     height: 40px;
-    margin-bottom: 9px;
+    margin: -20px 0 9px;
     display: flex;
     align-items: center;
     padding: 0 13px;
@@ -705,7 +787,7 @@
     background: #ffffff;
     border: 1px solid #ede8e0;
     flex: 0 0 auto;
-    min-width: 82px;
+    min-width: 70px;
     width: auto;
     padding: 0 10px;
     display: inline-flex;
@@ -722,6 +804,7 @@
     font-weight: 700;
   }
   .hero-phone-section-title {
+    display: none;
     text-align: left;
     color: #3d3229;
     font-size: 13px;
@@ -879,7 +962,7 @@
             <div class="hero-field-label">Telefon Home Hero Resmi</div>
             <div class="hero-help" style="margin-top:-4px;margin-bottom:8px;">Önerilen ölçü: <strong>1792 × 1024 px</strong>. Kare veya dikey resim seçilirse sistem otomatik olarak ekranı dolduracak şekilde zoomlar.</div>
             <input id="hero-file-input" name="mobile_home_header_file" type="file" accept="image/*" style="display:none" />
-            <button type="button" id="hero-file-trigger" class="hero-dropzone">
+            <button type="button" id="hero-file-trigger-hidden" class="hero-dropzone">
               <span class="hero-dropzone-icon" aria-hidden="true">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                   <path d="M4 7.5C4 5.57 5.57 4 7.5 4h9C18.43 4 20 5.57 20 7.5v9c0 1.93-1.57 3.5-3.5 3.5h-9C5.57 20 4 18.43 4 16.5v-9Z" stroke="currentColor" stroke-width="2"/>
@@ -888,7 +971,7 @@
                 </svg>
               </span>
               <span class="hero-dropzone-copy">
-                <span class="hero-dropzone-main" id="hero-file-label">Dosya seçmek için tıkla</span>
+                <span class="hero-dropzone-main">Dosya seçmek için tıkla</span>
                 <span class="hero-dropzone-sub">veya dosyayı buraya sürükle</span>
               </span>
             </button>
@@ -912,28 +995,23 @@
 
       <div class="hero-two-col">
         <div class="hero-two-col-left">
-          <div class="hero-preview-header" style="width:100%;justify-content:space-between;display:flex;">
-            <span class="hero-preview-title">Cihazlar</span>
-            <span class="hero-preview-hint">responsive</span>
+          <div class="hero-left-title">Görsel Ayarları</div>
+          <div class="hero-thumb-card">
+            <div class="hero-thumb-label">Görsel</div>
+            <div class="hero-thumb">
+              <img id="hero-left-image-thumb" src="{{ current_url|default:'' }}" alt="Seçili hero görseli" {% if not current_url %}style="display:none"{% endif %} />
+            </div>
+            <button type="button" id="hero-file-trigger" class="hero-change-btn">Değiştir</button>
           </div>
-          <div class="hero-device-list" aria-label="Cihaz önizlemeleri">
-            <button type="button" class="hero-device-button is-active" data-device="iphone_pro_max" data-width="430" data-height="932">
-              <span class="hero-device-name">iPhone 17 Pro Max</span>
-              <span class="hero-device-size">430 × 932</span>
-            </button>
-            <button type="button" class="hero-device-button" data-device="iphone_se" data-width="375" data-height="667">
-              <span class="hero-device-name">iPhone SE</span>
-              <span class="hero-device-size">375 × 667</span>
-            </button>
-            <button type="button" class="hero-device-button" data-device="ipad" data-width="820" data-height="1180">
-              <span class="hero-device-name">iPad Air</span>
-              <span class="hero-device-size">820 × 1180</span>
-            </button>
-            <button type="button" class="hero-device-button" data-device="samsung" data-width="412" data-height="915">
-              <span class="hero-device-name">Samsung S23 Ultra</span>
-              <span class="hero-device-size">412 × 915</span>
-            </button>
+
+          <div class="hero-thumb-card">
+            <div class="hero-thumb-label">Odak Noktası</div>
+            <div class="hero-thumb">
+              <img id="hero-left-focus-thumb" src="{{ current_url|default:'' }}" alt="Odak noktası önizleme" {% if not current_url %}style="display:none"{% endif %} />
+            </div>
+            <div class="hero-help" style="margin-top:7px;">Odak noktasını görsel üzerinde sürükleyerek ayarla</div>
           </div>
+
           <div class="hero-controls">
             <div class="hero-control-label">Zoom</div>
             <input id="hero-zoom" class="hero-range" type="range" min="0.50" max="3.00" step="0.001" value="1.000" />
@@ -994,15 +1072,24 @@
               <span class="hero-stage-guide-label">Alt Güvenli Alan</span>
             </div>
           </div>
-          <div class="hero-help" style="text-align:center;">1792 × 1024 oranında düzenle. Sürükle, tekerlek ile zoom yap.</div>
+          <div class="hero-help" style="text-align:center;">1920 × 1080 px · Sürükle, tekerlek ile zoom yap, odak noktasını ayarla</div>
+          <div class="hero-presets">
+            <button type="button" class="hero-preset is-active" data-preset="default">Varsayılan</button>
+            <button type="button" class="hero-preset" data-preset="left">Odak Solda</button>
+            <button type="button" class="hero-preset" data-preset="center">Odak Ortada</button>
+            <button type="button" class="hero-preset" data-preset="right">Odak Sağda</button>
+            <button type="button" class="hero-preset" data-preset="food">Yemek Odaklı</button>
+            <button type="button" class="hero-preset" data-preset="minimal">Minimal</button>
+          </div>
         </div>
 
         <div class="hero-two-col-right">
           <div class="hero-preview-header" style="width:100%;justify-content:space-between;display:flex;">
-            <span class="hero-preview-title">Canlı Telefon Kadrajı</span>
-            <span class="hero-preview-hint">yayınlanacak görünüm</span>
+            <span class="hero-preview-title">Canlı Cihaz Önizlemeleri</span>
+            <span class="hero-preview-hint">birebir görünüm</span>
           </div>
-          <div class="hero-phone-frame">
+          <div class="hero-phone-and-devices">
+            <div class="hero-phone-frame">
             <div class="hero-phone-screen">
               <div class="hero-phone-statusbar">
                 <span class="hero-phone-statusbar-time">9:41</span>
@@ -1094,6 +1181,25 @@
                   <div>Profil</div>
                 </div>
               </div>
+            </div>
+          </div>
+            <div class="hero-device-list compact" aria-label="Cihaz önizlemeleri">
+              <button type="button" class="hero-device-button is-active" data-device="iphone_pro_max" data-width="430" data-height="932">
+                <span class="hero-device-name">iPhone 17 Pro Max</span>
+                <span class="hero-device-size">430 × 932</span>
+              </button>
+              <button type="button" class="hero-device-button" data-device="iphone_se" data-width="375" data-height="667">
+                <span class="hero-device-name">iPhone SE</span>
+                <span class="hero-device-size">375 × 667</span>
+              </button>
+              <button type="button" class="hero-device-button" data-device="ipad" data-width="820" data-height="1180">
+                <span class="hero-device-name">iPad Air</span>
+                <span class="hero-device-size">820 × 1180</span>
+              </button>
+              <button type="button" class="hero-device-button" data-device="samsung" data-width="412" data-height="915">
+                <span class="hero-device-name">Samsung S23 Ultra</span>
+                <span class="hero-device-size">412 × 915</span>
+              </button>
             </div>
           </div>
           <div class="hero-help" style="margin-top:0;text-align:center;font-size:10px;line-height:1.5;">
@@ -1582,6 +1688,8 @@
   var editJsonInput = document.querySelector('input[name="mobile_home_header_edit_json"]');
   var heroImage = document.getElementById('hero-preview-image');
   var editorImage = document.getElementById('hero-editor-image');
+  var leftImageThumb = document.getElementById('hero-left-image-thumb');
+  var leftFocusThumb = document.getElementById('hero-left-focus-thumb');
   var heroWrap = document.querySelector('.hero-phone-hero-wrap');
   var editorStage = document.getElementById('hero-stage');
   var phoneFrame = document.querySelector('.hero-phone-frame');
@@ -1604,6 +1712,7 @@
   var phoneSloganTitle = document.getElementById('hero-phone-slogan-title');
   var phoneSloganSubtitle = document.getElementById('hero-phone-slogan-subtitle');
   var deviceButtons = Array.prototype.slice.call(document.querySelectorAll('.hero-device-button'));
+  var presetButtons = Array.prototype.slice.call(document.querySelectorAll('.hero-preset'));
   var initialEditRaw = '{{ current_edit_json|default:""|escapejs }}';
   var objectUrl = '';
   var dragging = false;
@@ -1699,16 +1808,17 @@
   }
 
   function applyColor() {
-    var rgb = hexToRgb(state.overlayColor);
+    var previewSurface = '#fffbf4';
+    var rgb = hexToRgb(previewSurface);
     if (overlayInput) overlayInput.value = state.overlayColor;
-    if (phoneScreen) phoneScreen.style.background = state.overlayColor;
-    if (phoneUi) phoneUi.style.background = state.overlayColor;
-    if (heroWrap) heroWrap.style.background = state.overlayColor;
+    if (phoneScreen) phoneScreen.style.background = previewSurface;
+    if (phoneUi) phoneUi.style.background = previewSurface;
+    if (heroWrap) heroWrap.style.background = previewSurface;
     if (phoneFade) {
       phoneFade.style.background =
         'linear-gradient(180deg, rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0) 0%, rgba(' +
         rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.52 * state.gradientOpacity).toFixed(2) + ') 76%, ' +
-        state.overlayColor + ' 100%)';
+        previewSurface + ' 100%)';
     }
   }
 
@@ -1724,7 +1834,7 @@
   function applyImageTransform() {
     var transform = 'translate(' + Math.round(state.offsetX) + 'px, ' + Math.round(state.offsetY) + 'px) scale(' + state.scale.toFixed(3) + ')';
     var origin = (state.focalX * 100).toFixed(1) + '% ' + (state.focalY * 100).toFixed(1) + '%';
-    [heroImage, editorImage].forEach(function (image) {
+    [heroImage, editorImage, leftImageThumb, leftFocusThumb].forEach(function (image) {
       if (!image) return;
       image.style.transform = transform;
       image.style.transformOrigin = origin;
@@ -1767,6 +1877,14 @@
     if (editorImage) {
       editorImage.onload = heroImage ? null : handleLoaded;
       editorImage.src = objectUrl;
+    }
+    if (leftImageThumb) {
+      leftImageThumb.style.display = 'block';
+      leftImageThumb.src = objectUrl;
+    }
+    if (leftFocusThumb) {
+      leftFocusThumb.style.display = 'block';
+      leftFocusThumb.src = objectUrl;
     }
     if (fileLabel) fileLabel.textContent = file.name || 'Resim seçildi';
     if (helpText) helpText.textContent = 'Resim seçildi. Direkt telefon ekranında konumlandır.';
@@ -1824,6 +1942,26 @@
   deviceButtons.forEach(function (button) {
     button.addEventListener('click', function () {
       applyDevice(button.getAttribute('data-device') || 'iphone_pro_max');
+    });
+  });
+
+  var presets = {
+    default: { scale: 1.12, offsetX: -8, offsetY: -12, focalX: 0.5, focalY: 0.5, gradientOpacity: 0.6 },
+    left: { scale: 1.12, offsetX: -54, offsetY: -12, focalX: 0.38, focalY: 0.5, gradientOpacity: 0.6 },
+    center: { scale: 1.12, offsetX: -8, offsetY: -12, focalX: 0.5, focalY: 0.5, gradientOpacity: 0.6 },
+    right: { scale: 1.12, offsetX: 48, offsetY: -12, focalX: 0.62, focalY: 0.5, gradientOpacity: 0.6 },
+    food: { scale: 1.22, offsetX: -10, offsetY: -32, focalX: 0.55, focalY: 0.62, gradientOpacity: 0.74 },
+    minimal: { scale: 0.98, offsetX: 0, offsetY: 0, focalX: 0.5, focalY: 0.46, gradientOpacity: 0.48 },
+  };
+  presetButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      var name = button.getAttribute('data-preset') || 'default';
+      var preset = presets[name] || presets.default;
+      Object.keys(preset).forEach(function (key) { state[key] = preset[key]; });
+      presetButtons.forEach(function (item) {
+        item.classList.toggle('is-active', item === button);
+      });
+      applyState();
     });
   });
 
@@ -1941,6 +2079,12 @@
   }
   if (editorImage && editorImage.src && editorImage.src !== window.location.href) {
     editorImage.style.display = 'block';
+  }
+  if (leftImageThumb && leftImageThumb.src && leftImageThumb.src !== window.location.href) {
+    leftImageThumb.style.display = 'block';
+  }
+  if (leftFocusThumb && leftFocusThumb.src && leftFocusThumb.src !== window.location.href) {
+    leftFocusThumb.style.display = 'block';
   }
   applyState();
 })();

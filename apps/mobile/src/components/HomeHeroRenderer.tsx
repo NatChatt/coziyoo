@@ -132,7 +132,8 @@ export function HomeHeroRenderer({
           defaultSource={defaultSource}
           style={[
             styles.heroImage,
-            styles.heroImageContained,
+            styles.heroImageExtended,
+            imageFrame,
             isTabletLayout && { left: -54, right: -Math.round(contentWidth * 0.28) + 30 },
             isTabletLayout && { transform: [{ translateY: -70 }] },
           ]}
@@ -181,7 +182,7 @@ export function HomeHeroRenderer({
           end={{ x: 0.5, y: 1 }}
           style={[
             styles.bottomFade,
-            isTabletLayout ? { bottom: -230, height: 390 } : { bottom: -96, height: 130 },
+            isTabletLayout ? { bottom: -230, height: 390 } : { bottom: -150, height: 220 },
           ]}
         />
       ) : null}
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   heroImageInner: {
-    resizeMode: 'contain',
+    resizeMode: 'cover',
   },
   topFade: {
     position: 'absolute',

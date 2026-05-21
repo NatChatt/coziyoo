@@ -5678,6 +5678,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     paddingTop: 2,
     paddingBottom: 6,
+    backgroundColor: 'transparent',
   },
   chipScroller: {
     marginHorizontal: 0,
