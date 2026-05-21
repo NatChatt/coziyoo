@@ -2,6 +2,10 @@ from django.http import JsonResponse
 from django.urls import path
 from django.db import connection
 from django.core.cache import cache
+from django.conf import settings
+
+
+DEPLOY_FINGERPRINT = "admin-csrf-debug-20260521-44ed33c7"
 
 
 def health_check(request):
@@ -19,7 +23,17 @@ def health_check(request):
     except Exception as e:
         cache_status = f"error: {e}"
 
-    return JsonResponse({"status": "ok", "db": db_status, "cache": cache_status})
+    return JsonResponse(
+        {
+            "status": "ok",
+            "db": db_status,
+            "cache": cache_status,
+            "deploy_fingerprint": DEPLOY_FINGERPRINT,
+            "debug": settings.DEBUG,
+            "settings_module": getattr(settings, "SETTINGS_MODULE", ""),
+            "csrf_trusted_origins": list(getattr(settings, "CSRF_TRUSTED_ORIGINS", [])),
+        }
+    )
 
 
 urlpatterns = [
