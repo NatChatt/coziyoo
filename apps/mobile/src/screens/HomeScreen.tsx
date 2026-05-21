@@ -88,7 +88,6 @@ import { loadSettings, saveSettings, subscribeSettings, type AppSettings } from 
 import { subscribeBuyerFeedRealtime, subscribeBuyerOrdersRealtime } from '../utils/realtime';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { loadCachedProfileImageUrl, saveCachedProfileImageUrl } from '../utils/profileImage';
-import { cacheHomeHeroImageUrl } from '../utils/homeHeroImage';
 import { apiRequest } from '../utils/api';
 import { readJsonSafe } from '../utils/http';
 import { theme } from '../theme/colors';
@@ -1844,7 +1843,7 @@ export default function HomeScreen({
   }, [bootstrapPreview, onAuthRefresh]);
 
   const applyHomeFoodsPayload = useCallback((payload: HomeFoodsPayload) => {
-    setAdminHeroImageUrl(resolveHomeHeaderImageUrl(payload));
+    setAdminHeroImageUrl(resolveHomeHeaderImageUrl(payload) || DEFAULT_ADMIN_HERO_IMAGE_URL);
     setAdminHeroImageCacheKey(
       typeof payload.mobileHomeHeaderImageCacheKey === 'string'
         ? payload.mobileHomeHeaderImageCacheKey.trim() || null
@@ -2189,12 +2188,6 @@ export default function HomeScreen({
     const heroUrl = versionedAdminHeroImageUrl || Image.resolveAssetSource(LOCAL_HOME_HEADER_FALLBACK).uri;
     if (adminHeroImageUrl) {
       setHeaderImageSource({ uri: versionedAdminHeroImageUrl || adminHeroImageUrl });
-      cacheHomeHeroImageUrl(versionedAdminHeroImageUrl || adminHeroImageUrl, adminHeroImageCacheKey)
-        .then((cached) => {
-          if (cancelled || !cached) return;
-          setHeaderImageSource({ uri: cached });
-        })
-        .catch(() => {});
     } else {
       setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK);
     }
@@ -3670,7 +3663,13 @@ export default function HomeScreen({
           baseBackgroundColor={homeBaseBg}
           questionText={homeHeroCopyOverrides.questionText || t('headline.home.heroQuestion')}
           LinearGradientComponent={LinearGradient}
-          onImageError={() => setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK)}
+          onImageError={() => {
+            if (adminHeroImageUrl) {
+              setHeaderImageSource({ uri: adminHeroImageUrl });
+            } else {
+              setHeaderImageSource(LOCAL_HOME_HEADER_FALLBACK);
+            }
+          }}
         />
         {/* Sticky: Search Bar + Category Chips */}
         <View style={[styles.stickySearchChips, isTabletLayout && styles.stickySearchChipsTablet]}>
