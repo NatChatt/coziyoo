@@ -5,7 +5,7 @@ from django.core.cache import cache
 from django.conf import settings
 
 
-DEPLOY_FINGERPRINT = "admin-csrf-debug-20260521-44ed33c7"
+DEPLOY_FINGERPRINT = "admin-login-wrapper-20260521"
 
 
 def health_check(request):

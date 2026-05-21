@@ -9,6 +9,13 @@ from apps.authentication.admin_home_hero import home_hero_view, hero_image_proxy
 from coziyoo.admin_search import admin_global_search
 from coziyoo.dashboard_views import dashboard_data
 
+
+@csrf_exempt
+def admin_login_without_origin_check(request, extra_context=None):
+    request._dont_enforce_csrf_checks = True
+    return admin.site.login(request, extra_context=extra_context)
+
+
 urlpatterns = [
     # Django Admin UI (django-unfold)
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
@@ -16,7 +23,7 @@ urlpatterns = [
     path("admin/home-hero/image/", admin.site.admin_view(hero_image_proxy_view), name="admin_home_hero_image"),
     path("admin/global-search/", admin_global_search, name="admin_global_search"),
     path("admin/dashboard/data/", admin.site.admin_view(dashboard_data), name="admin_dashboard_data"),
-    path("admin/login/", csrf_exempt(admin.site.login), name="admin_login"),
+    path("admin/login/", admin_login_without_origin_check, name="admin_login"),
     path("admin/", admin.site.urls),
     path("food-images/<uuid:food_id>", FoodImageView.as_view(), name="food-public-image"),
     path("i18n/", include("django.conf.urls.i18n")),
