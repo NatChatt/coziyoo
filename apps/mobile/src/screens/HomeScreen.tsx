@@ -1843,7 +1843,7 @@ export default function HomeScreen({
   }, [bootstrapPreview, onAuthRefresh]);
 
   const applyHomeFoodsPayload = useCallback((payload: HomeFoodsPayload) => {
-    setAdminHeroImageUrl(resolveHomeHeaderImageUrl(payload) || DEFAULT_ADMIN_HERO_IMAGE_URL);
+    setAdminHeroImageUrl(DEFAULT_ADMIN_HERO_IMAGE_URL);
     setAdminHeroImageCacheKey(
       typeof payload.mobileHomeHeaderImageCacheKey === 'string'
         ? payload.mobileHomeHeaderImageCacheKey.trim() || null
