@@ -466,7 +466,10 @@
     top: -30px;
     width: calc(100% + 48px);
     height: 386px;
-    object-fit: cover;
+    max-width: none !important;
+    max-height: none !important;
+    display: block;
+    object-fit: contain;
     object-position: center center;
     transform-origin: center center;
     will-change: transform;
@@ -1713,6 +1716,11 @@
     if (imageDataInput) imageDataInput.value = '';
     if (heroImage) {
       heroImage.onload = function () {
+        state.scale = 1;
+        state.offsetX = 0;
+        state.offsetY = 0;
+        state.focalX = 0.5;
+        state.focalY = 0.5;
         heroImage.style.display = 'block';
         applyState();
       };
