@@ -7,6 +7,8 @@ import {
 
 const HOME_HERO_IMAGE_URL_KEY = '@coziyoo:home_hero_image_url';
 const HOME_HERO_IMAGE_FILE_KEY = '@coziyoo:home_hero_image_file';
+const HOME_HERO_IMAGE_CACHE_VERSION_KEY = '@coziyoo:home_hero_image_cache_version';
+const HOME_HERO_IMAGE_CACHE_VERSION = 'canonical-v2';
 
 function hashHeroUrl(value: string): string {
   let hash = 5381;
@@ -18,6 +20,8 @@ function hashHeroUrl(value: string): string {
 
 export async function loadCachedHomeHeroImageUrl(): Promise<string | null> {
   try {
+    const version = await AsyncStorage.getItem(HOME_HERO_IMAGE_CACHE_VERSION_KEY);
+    if (version !== HOME_HERO_IMAGE_CACHE_VERSION) return null;
     const fileUri = (await AsyncStorage.getItem(HOME_HERO_IMAGE_FILE_KEY))?.trim();
     if (fileUri && fileSystemGetInfoAsync) {
       const info = await fileSystemGetInfoAsync(fileUri);
@@ -57,6 +61,7 @@ export async function cacheHomeHeroImageUrl(url: string, cacheKey?: string | nul
     if (!info.exists) {
       await fileSystemDownloadAsync(normalized, fileUri);
     }
+    await AsyncStorage.setItem(HOME_HERO_IMAGE_CACHE_VERSION_KEY, HOME_HERO_IMAGE_CACHE_VERSION);
     await AsyncStorage.setItem(HOME_HERO_IMAGE_FILE_KEY, fileUri);
     return fileUri;
   } catch {
