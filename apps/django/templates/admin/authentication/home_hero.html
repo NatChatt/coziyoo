@@ -297,14 +297,21 @@
   }
   .hero-two-col {
     display: grid;
-    grid-template-columns: 330px minmax(0, 1fr);
-    gap: 26px;
+    grid-template-columns: 320px minmax(520px, 1fr) 460px;
+    gap: 20px;
     border-top: none;
     padding: 0 24px 22px;
   }
   .hero-two-col-left {
     display: flex;
     flex-direction: column;
+  }
+  .hero-two-col-center {
+    border: 1px solid rgba(226, 232, 240, 0.10);
+    border-radius: 16px;
+    background: #14181d;
+    padding: 18px;
+    min-width: 0;
   }
   .hero-two-col-right {
     border: 1px solid rgba(127, 86, 217, 0.26);
@@ -969,6 +976,26 @@
           <span class="hero-help">Görseli direkt telefon ekranında sürükle. Tekerlek ile zoom yap.</span>
         </div>
 
+        <div class="hero-two-col-center">
+          <div class="hero-preview-header" style="width:100%;justify-content:space-between;display:flex;">
+            <span class="hero-preview-title">Düzenleme Alanı</span>
+            <span class="hero-preview-hint">gerçek cihaz kadrajı</span>
+          </div>
+          <div class="hero-stage" id="hero-stage">
+            <img id="hero-editor-image" src="{{ current_url|default:'' }}" alt="Hero düzenleme alanı" {% if not current_url %}style="display:none"{% endif %} />
+            <div class="hero-phone-safe-overlay top" aria-hidden="true">
+              <span class="hero-phone-safe-label">Üst Güvenli Alan</span>
+            </div>
+            <div class="hero-phone-safe-overlay text" aria-hidden="true">
+              <span class="hero-phone-safe-label">Metin Güvenli Alan</span>
+            </div>
+            <div class="hero-stage-guide" aria-hidden="true">
+              <span class="hero-stage-guide-label">Alt Güvenli Alan</span>
+            </div>
+          </div>
+          <div class="hero-help" style="text-align:center;">1792 × 1024 oranında düzenle. Sürükle, tekerlek ile zoom yap.</div>
+        </div>
+
         <div class="hero-two-col-right">
           <div class="hero-preview-header" style="width:100%;justify-content:space-between;display:flex;">
             <span class="hero-preview-title">Canlı Telefon Kadrajı</span>
@@ -1553,7 +1580,9 @@
   var imageUrlInput = document.getElementById('hero-image-url');
   var editJsonInput = document.querySelector('input[name="mobile_home_header_edit_json"]');
   var heroImage = document.getElementById('hero-preview-image');
+  var editorImage = document.getElementById('hero-editor-image');
   var heroWrap = document.querySelector('.hero-phone-hero-wrap');
+  var editorStage = document.getElementById('hero-stage');
   var phoneFrame = document.querySelector('.hero-phone-frame');
   var phoneScreen = document.querySelector('.hero-phone-screen');
   var phoneUi = document.getElementById('hero-phone-ui');
@@ -1650,7 +1679,10 @@
   }
 
   function hasImage() {
-    return heroImage && heroImage.style.display !== 'none' && heroImage.src;
+    return (
+      (heroImage && heroImage.style.display !== 'none' && heroImage.src) ||
+      (editorImage && editorImage.style.display !== 'none' && editorImage.src)
+    );
   }
 
   function applyDevice(mode) {
@@ -1689,10 +1721,13 @@
   }
 
   function applyImageTransform() {
-    if (!heroImage) return;
-    heroImage.style.transform =
-      'translate(' + Math.round(state.offsetX) + 'px, ' + Math.round(state.offsetY) + 'px) scale(' + state.scale.toFixed(3) + ')';
-    heroImage.style.transformOrigin = (state.focalX * 100).toFixed(1) + '% ' + (state.focalY * 100).toFixed(1) + '%';
+    var transform = 'translate(' + Math.round(state.offsetX) + 'px, ' + Math.round(state.offsetY) + 'px) scale(' + state.scale.toFixed(3) + ')';
+    var origin = (state.focalX * 100).toFixed(1) + '% ' + (state.focalY * 100).toFixed(1) + '%';
+    [heroImage, editorImage].forEach(function (image) {
+      if (!image) return;
+      image.style.transform = transform;
+      image.style.transformOrigin = origin;
+    });
   }
 
   function applyState() {
@@ -1714,17 +1749,23 @@
     state.imageUrl = '';
     if (imageUrlInput) imageUrlInput.value = '';
     if (imageDataInput) imageDataInput.value = '';
-    if (heroImage) {
-      heroImage.onload = function () {
+    var handleLoaded = function () {
         state.scale = 1;
         state.offsetX = 0;
         state.offsetY = 0;
         state.focalX = 0.5;
         state.focalY = 0.5;
-        heroImage.style.display = 'block';
+        if (heroImage) heroImage.style.display = 'block';
+        if (editorImage) editorImage.style.display = 'block';
         applyState();
-      };
+    };
+    if (heroImage) {
+      heroImage.onload = handleLoaded;
       heroImage.src = objectUrl;
+    }
+    if (editorImage) {
+      editorImage.onload = heroImage ? null : handleLoaded;
+      editorImage.src = objectUrl;
     }
     if (fileLabel) fileLabel.textContent = file.name || 'Resim seçildi';
     if (helpText) helpText.textContent = 'Resim seçildi. Direkt telefon ekranında konumlandır.';
@@ -1785,24 +1826,25 @@
     });
   });
 
-  if (heroWrap) {
-    heroWrap.addEventListener('wheel', function (event) {
+  [heroWrap, editorStage].forEach(function (dragSurface) {
+    if (!dragSurface) return;
+    dragSurface.addEventListener('wheel', function (event) {
       if (!hasImage()) return;
       event.preventDefault();
       state.scale = clamp(state.scale + (event.deltaY > 0 ? -0.05 : 0.05), 0.5, 3);
       applyState();
     }, { passive: false });
-    heroWrap.addEventListener('pointerdown', function (event) {
+    dragSurface.addEventListener('pointerdown', function (event) {
       if (!hasImage()) return;
       dragging = true;
       dragStartX = event.clientX;
       dragStartY = event.clientY;
       startOffsetX = state.offsetX;
       startOffsetY = state.offsetY;
-      heroWrap.classList.add('dragging');
-      heroWrap.setPointerCapture(event.pointerId);
+      dragSurface.classList.add('dragging');
+      dragSurface.setPointerCapture(event.pointerId);
     });
-    heroWrap.addEventListener('pointermove', function (event) {
+    dragSurface.addEventListener('pointermove', function (event) {
       if (!dragging) return;
       state.offsetX = clamp(startOffsetX + event.clientX - dragStartX, -500, 500);
       state.offsetY = clamp(startOffsetY + event.clientY - dragStartY, -500, 500);
@@ -1810,12 +1852,12 @@
     });
     function stopDrag(event) {
       dragging = false;
-      heroWrap.classList.remove('dragging');
-      try { heroWrap.releasePointerCapture(event.pointerId); } catch (_) {}
+      dragSurface.classList.remove('dragging');
+      try { dragSurface.releasePointerCapture(event.pointerId); } catch (_) {}
     }
-    heroWrap.addEventListener('pointerup', stopDrag);
-    heroWrap.addEventListener('pointercancel', stopDrag);
-  }
+    dragSurface.addEventListener('pointerup', stopDrag);
+    dragSurface.addEventListener('pointercancel', stopDrag);
+  });
 
   [
     [zoomInput, 'scale', 0.5, 3],
@@ -1895,6 +1937,9 @@
   loadInitialState();
   if (heroImage && heroImage.src && heroImage.src !== window.location.href) {
     heroImage.style.display = 'block';
+  }
+  if (editorImage && editorImage.src && editorImage.src !== window.location.href) {
+    editorImage.style.display = 'block';
   }
   applyState();
 })();
