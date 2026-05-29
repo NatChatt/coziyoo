@@ -614,10 +614,39 @@
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 0;
-    height: 150px;
-    background: linear-gradient(180deg, rgba(255,251,244,0) 0%, rgba(255,251,244,0) 34%, rgba(255,251,244,0.52) 76%, #fffbf4 100%);
+    bottom: -150px;
+    height: 220px;
+    z-index: 5;
+    background: linear-gradient(180deg, rgba(255,251,244,0) 0%, rgba(255,251,244,0.22) 12%, rgba(255,251,244,0.44) 24%, rgba(255,251,244,0.66) 36%, rgba(255,251,244,0.86) 48%, #fffbf4 60%, #fffbf4 100%);
     pointer-events: none;
+  }
+  .hero-phone-fade-guide {
+    position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    z-index: 7;
+    border-top: 1px dashed rgba(127, 86, 217, 0.78);
+  }
+  .hero-phone-fade-guide.start {
+    bottom: 70px;
+  }
+  .hero-phone-fade-guide.solid {
+    bottom: -62px;
+    border-top-color: rgba(67, 56, 202, 0.78);
+  }
+  .hero-phone-fade-guide span {
+    position: absolute;
+    right: 8px;
+    top: -19px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #fff;
+    font-size: 9px;
+    line-height: 1;
+    font-weight: 800;
+    white-space: nowrap;
   }
   .hero-phone-avatar-row {
     position: absolute;
@@ -682,7 +711,7 @@
     padding: 0 14px 74px;
     background: #fffbf4;
     position: relative;
-    z-index: 3;
+    z-index: 4;
   }
   .hero-phone-slogan {
     display: none;
@@ -1112,6 +1141,8 @@
               <div class="hero-phone-hero-wrap">
                 <img id="hero-preview-image" class="hero-phone-hero-image" src="{{ current_url|default:'' }}" alt="Hero önizleme" {% if not current_url %}style="display:none"{% endif %} />
                 <div class="hero-phone-hero-fade"></div>
+                <div class="hero-phone-fade-guide start" aria-hidden="true"><span>Fade Başlar</span></div>
+                <div class="hero-phone-fade-guide solid" aria-hidden="true"><span>Tam Açılır</span></div>
                 <div class="hero-phone-safe-overlay top" aria-hidden="true">
                   <span class="hero-phone-safe-label">Top safe area</span>
                 </div>
@@ -1823,10 +1854,14 @@
     if (phoneUi) phoneUi.style.background = previewSurface;
     if (heroWrap) heroWrap.style.background = previewSurface;
     if (phoneFade) {
+      var fade = state.gradientOpacity;
       phoneFade.style.background =
-        'linear-gradient(180deg, rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0) 0%, rgba(' +
-        rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.52 * state.gradientOpacity).toFixed(2) + ') 76%, ' +
-        previewSurface + ' 100%)';
+        'linear-gradient(180deg, rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0) 0%, ' +
+        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.22 * fade).toFixed(2) + ') 12%, ' +
+        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.44 * fade).toFixed(2) + ') 24%, ' +
+        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.66 * fade).toFixed(2) + ') 36%, ' +
+        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.86 * fade).toFixed(2) + ') 48%, ' +
+        previewSurface + ' 60%, ' + previewSurface + ' 100%)';
     }
   }
 
