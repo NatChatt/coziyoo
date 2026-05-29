@@ -38,11 +38,6 @@
     padding: 18px 24px;
   }
   .hero-upload-row { display: block; }
-  .hero-upload-row > div > .hero-field-label,
-  .hero-upload-row > div > .hero-help,
-  .hero-upload-row > div > .hero-dropzone {
-    display: none;
-  }
   .hero-copy-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
@@ -172,6 +167,9 @@
     font-size: 13px;
     font-weight: 800;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .hero-editor-row {
     margin-top: 0;
@@ -202,7 +200,7 @@
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     transform-origin: center center;
     will-change: transform;
     pointer-events: none;
@@ -556,7 +554,7 @@
     max-width: none !important;
     max-height: none !important;
     display: block;
-    object-fit: cover;
+    object-fit: contain;
     object-position: center center;
     transform-origin: center center;
     will-change: transform;
@@ -960,7 +958,7 @@
         <div class="hero-upload-row">
           <div>
             <div class="hero-field-label">Telefon Home Hero Resmi</div>
-            <div class="hero-help" style="margin-top:-4px;margin-bottom:8px;">Önerilen ölçü: <strong>1792 × 1024 px</strong>. Kare veya dikey resim seçilirse sistem otomatik olarak ekranı dolduracak şekilde zoomlar.</div>
+            <div class="hero-help" style="margin-top:-4px;margin-bottom:8px;">Önerilen ölçü: <strong>1792 × 1024 px</strong>. Görsel önce kırpılmadan sığdırılır; zoom ve sürükleme ile kadrajı sen ayarlarsın.</div>
             <input id="hero-file-input" name="mobile_home_header_file" type="file" accept="image/*" style="display:none" />
             <button type="button" id="hero-file-trigger-hidden" class="hero-dropzone">
               <span class="hero-dropzone-icon" aria-hidden="true">
@@ -1001,7 +999,7 @@
             <div class="hero-thumb">
               <img id="hero-left-image-thumb" src="{{ current_url|default:'' }}" alt="Seçili hero görseli" {% if not current_url %}style="display:none"{% endif %} />
             </div>
-            <button type="button" id="hero-file-trigger" class="hero-change-btn">Değiştir</button>
+            <label for="hero-file-input" id="hero-file-trigger" class="hero-change-btn" role="button" tabindex="0">Görsel Ekle / Değiştir</label>
           </div>
 
           <div class="hero-thumb-card">
@@ -1014,7 +1012,7 @@
 
           <div class="hero-controls">
             <div class="hero-control-label">Zoom</div>
-            <input id="hero-zoom" class="hero-range" type="range" min="0.50" max="3.00" step="0.001" value="1.000" />
+            <input id="hero-zoom" class="hero-range" type="range" min="0.25" max="3.00" step="0.001" value="1.000" />
           </div>
           <div class="hero-controls" style="margin-top:10px;">
             <div class="hero-control-label">X</div>
@@ -1050,7 +1048,7 @@
             </div>
           </div>
           <div class="hero-controls" style="margin-top:10px;">
-            <button type="button" id="hero-reset" class="hero-btn-secondary" style="white-space:nowrap;">Ekranı Doldur</button>
+            <button type="button" id="hero-reset" class="hero-btn-secondary" style="white-space:nowrap;">Sığdır</button>
           </div>
           <span class="hero-help">Görseli direkt telefon ekranında sürükle. Tekerlek ile zoom yap.</span>
         </div>
@@ -1682,6 +1680,7 @@
   var form = document.getElementById('home-hero-form');
   var fileInput = document.getElementById('hero-file-input');
   var fileTrigger = document.getElementById('hero-file-trigger');
+  var fileDropzone = document.getElementById('hero-file-trigger-hidden');
   var fileLabel = document.getElementById('hero-file-label');
   var imageDataInput = document.getElementById('hero-image-data');
   var imageUrlInput = document.getElementById('hero-image-url');
@@ -1893,10 +1892,17 @@
   function loadInitialState() {
     var initial = readInitialEdit();
     if (!initial) return;
+    var isManualV2 = initial.fitMode === 'manual_v2';
     state.imageUrl = String(initial.imageUrl || state.imageUrl || '');
-    state.scale = readNumber(initial.scale != null ? initial.scale : initial.zoom, state.scale, 0.5, 3);
-    state.offsetX = readNumber(initial.offsetX != null ? initial.offsetX : initial.translateX, state.offsetX, -500, 500);
-    state.offsetY = readNumber(initial.offsetY != null ? initial.offsetY : initial.translateY, state.offsetY, -500, 500);
+    if (isManualV2) {
+      state.scale = readNumber(initial.scale != null ? initial.scale : initial.zoom, state.scale, 0.25, 3);
+      state.offsetX = readNumber(initial.offsetX != null ? initial.offsetX : initial.translateX, state.offsetX, -500, 500);
+      state.offsetY = readNumber(initial.offsetY != null ? initial.offsetY : initial.translateY, state.offsetY, -500, 500);
+    } else {
+      state.scale = Math.min(readNumber(initial.scale != null ? initial.scale : initial.zoom, state.scale, 0.25, 3), 1);
+      state.offsetX = 0;
+      state.offsetY = 0;
+    }
     state.focalX = readNumber(initial.focalX != null ? initial.focalX : initial.focusX, state.focalX, 0, 1);
     state.focalY = readNumber(initial.focalY != null ? initial.focalY : initial.focusY, state.focalY, 0, 1);
     state.gradientOpacity = readNumber(initial.gradientOpacity != null ? initial.gradientOpacity : initial.bottomFadeOpacity, state.gradientOpacity, 0, 1);
@@ -1906,22 +1912,33 @@
     }
   }
 
-  if (fileTrigger) {
-    fileTrigger.addEventListener('click', function () {
+  [fileTrigger, fileDropzone].forEach(function (trigger) {
+    if (!trigger) return;
+    trigger.addEventListener('click', function () {
       if (!fileInput) return;
       fileInput.value = '';
       fileInput.click();
     });
-    fileTrigger.addEventListener('dragover', function (event) {
+    trigger.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
       event.preventDefault();
-      fileTrigger.classList.add('is-dragover');
+      if (!fileInput) return;
+      fileInput.value = '';
+      fileInput.click();
     });
-    fileTrigger.addEventListener('dragleave', function () {
-      fileTrigger.classList.remove('is-dragover');
-    });
-    fileTrigger.addEventListener('drop', function (event) {
+  });
+
+  if (fileDropzone) {
+    fileDropzone.addEventListener('dragover', function (event) {
       event.preventDefault();
-      fileTrigger.classList.remove('is-dragover');
+      fileDropzone.classList.add('is-dragover');
+    });
+    fileDropzone.addEventListener('dragleave', function () {
+      fileDropzone.classList.remove('is-dragover');
+    });
+    fileDropzone.addEventListener('drop', function (event) {
+      event.preventDefault();
+      fileDropzone.classList.remove('is-dragover');
       var file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
       if (!file) return;
       try {
@@ -1946,11 +1963,11 @@
   });
 
   var presets = {
-    default: { scale: 1.12, offsetX: -8, offsetY: -12, focalX: 0.5, focalY: 0.5, gradientOpacity: 0.6 },
-    left: { scale: 1.12, offsetX: -54, offsetY: -12, focalX: 0.38, focalY: 0.5, gradientOpacity: 0.6 },
-    center: { scale: 1.12, offsetX: -8, offsetY: -12, focalX: 0.5, focalY: 0.5, gradientOpacity: 0.6 },
-    right: { scale: 1.12, offsetX: 48, offsetY: -12, focalX: 0.62, focalY: 0.5, gradientOpacity: 0.6 },
-    food: { scale: 1.22, offsetX: -10, offsetY: -32, focalX: 0.55, focalY: 0.62, gradientOpacity: 0.74 },
+    default: { scale: 1, offsetX: 0, offsetY: 0, focalX: 0.5, focalY: 0.5, gradientOpacity: 0.6 },
+    left: { scale: 1, offsetX: -34, offsetY: 0, focalX: 0.38, focalY: 0.5, gradientOpacity: 0.6 },
+    center: { scale: 1, offsetX: 0, offsetY: 0, focalX: 0.5, focalY: 0.5, gradientOpacity: 0.6 },
+    right: { scale: 1, offsetX: 34, offsetY: 0, focalX: 0.62, focalY: 0.5, gradientOpacity: 0.6 },
+    food: { scale: 1.04, offsetX: 0, offsetY: -12, focalX: 0.55, focalY: 0.62, gradientOpacity: 0.74 },
     minimal: { scale: 0.98, offsetX: 0, offsetY: 0, focalX: 0.5, focalY: 0.46, gradientOpacity: 0.48 },
   };
   presetButtons.forEach(function (button) {
@@ -1970,7 +1987,7 @@
     dragSurface.addEventListener('wheel', function (event) {
       if (!hasImage()) return;
       event.preventDefault();
-      state.scale = clamp(state.scale + (event.deltaY > 0 ? -0.05 : 0.05), 0.5, 3);
+      state.scale = clamp(state.scale + (event.deltaY > 0 ? -0.05 : 0.05), 0.25, 3);
       applyState();
     }, { passive: false });
     dragSurface.addEventListener('pointerdown', function (event) {
@@ -1999,7 +2016,7 @@
   });
 
   [
-    [zoomInput, 'scale', 0.5, 3],
+    [zoomInput, 'scale', 0.25, 3],
     [offsetXInput, 'offsetX', -500, 500],
     [offsetYInput, 'offsetY', -500, 500],
     [focalXInput, 'focalX', 0, 1],
@@ -2042,7 +2059,7 @@
       state.focalY = 0.5;
       state.gradientOpacity = 1;
       applyState();
-      if (helpText) helpText.textContent = 'Hero ekranı dolduracak şekilde sıfırlandı.';
+      if (helpText) helpText.textContent = 'Hero görseli kırpılmadan sığdırıldı.';
     });
   }
 
@@ -2058,6 +2075,7 @@
       if (fileInput && fileInput.files && fileInput.files[0] && imageUrlInput) imageUrlInput.value = '';
       if (editJsonInput) {
         editJsonInput.value = JSON.stringify({
+          fitMode: 'manual_v2',
           imageUrl: state.imageUrl || (imageUrlInput ? imageUrlInput.value : ''),
           scale: Number(state.scale.toFixed(3)),
           offsetX: Math.round(state.offsetX),

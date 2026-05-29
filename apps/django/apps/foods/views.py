@@ -167,6 +167,14 @@ def _resolve_mobile_home_hero_render_config() -> dict | None:
         return None
     if not isinstance(payload, dict):
         return None
+    if payload.get("fitMode") != "manual_v2":
+        try:
+            legacy_scale = float(payload.get("scale") or payload.get("zoom") or 1)
+        except (TypeError, ValueError):
+            legacy_scale = 1
+        payload["scale"] = min(legacy_scale, 1)
+        payload["offsetX"] = 0
+        payload["offsetY"] = 0
     return payload
 
 

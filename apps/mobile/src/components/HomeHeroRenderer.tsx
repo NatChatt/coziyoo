@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   heroImageInner: {
-    resizeMode: 'cover',
+    resizeMode: 'contain',
   },
   topFade: {
     position: 'absolute',
