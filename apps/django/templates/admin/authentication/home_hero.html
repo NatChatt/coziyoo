@@ -620,6 +620,22 @@
     background: linear-gradient(180deg, rgba(255,251,244,0) 0%, rgba(255,251,244,0.22) 12%, rgba(255,251,244,0.44) 24%, rgba(255,251,244,0.66) 36%, rgba(255,251,244,0.86) 48%, #fffbf4 60%, #fffbf4 100%);
     pointer-events: none;
   }
+  .hero-phone-edge-fade {
+    position: absolute;
+    top: 246px;
+    width: 42px;
+    height: 70px;
+    z-index: 6;
+    pointer-events: none;
+  }
+  .hero-phone-edge-fade.left {
+    left: 0;
+    background: linear-gradient(90deg, #fffbf4 0%, rgba(255,251,244,0) 100%);
+  }
+  .hero-phone-edge-fade.right {
+    right: 0;
+    background: linear-gradient(90deg, rgba(255,251,244,0) 0%, #fffbf4 100%);
+  }
   .hero-phone-fade-guide {
     position: absolute;
     left: 0;
@@ -1141,6 +1157,8 @@
               <div class="hero-phone-hero-wrap">
                 <img id="hero-preview-image" class="hero-phone-hero-image" src="{{ current_url|default:'' }}" alt="Hero önizleme" {% if not current_url %}style="display:none"{% endif %} />
                 <div class="hero-phone-hero-fade"></div>
+                <div class="hero-phone-edge-fade left"></div>
+                <div class="hero-phone-edge-fade right"></div>
                 <div class="hero-phone-fade-guide start" aria-hidden="true"><span>Fade Başlar</span></div>
                 <div class="hero-phone-fade-guide solid" aria-hidden="true"><span>Tam Açılır</span></div>
                 <div class="hero-phone-safe-overlay top" aria-hidden="true">
@@ -1735,6 +1753,7 @@
   var phoneScreen = document.querySelector('.hero-phone-screen');
   var phoneUi = document.getElementById('hero-phone-ui');
   var phoneFade = document.querySelector('.hero-phone-hero-fade');
+  var phoneEdgeFades = Array.prototype.slice.call(document.querySelectorAll('.hero-phone-edge-fade'));
   var zoomInput = document.getElementById('hero-zoom');
   var offsetXInput = document.getElementById('hero-offset-x');
   var offsetYInput = document.getElementById('hero-offset-y');
@@ -1863,6 +1882,15 @@
         'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.86 * fade).toFixed(2) + ') 48%, ' +
         previewSurface + ' 60%, ' + previewSurface + ' 100%)';
     }
+    phoneEdgeFades.forEach(function (fadeEl) {
+      if (fadeEl.classList.contains('left')) {
+        fadeEl.style.background =
+          'linear-gradient(90deg, ' + previewSurface + ' 0%, rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0) 100%)';
+      } else {
+        fadeEl.style.background =
+          'linear-gradient(90deg, rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0) 0%, ' + previewSurface + ' 100%)';
+      }
+    });
   }
 
   function applyInputs() {

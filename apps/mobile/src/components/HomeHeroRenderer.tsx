@@ -186,6 +186,24 @@ export function HomeHeroRenderer({
           ]}
         />
       ) : null}
+      {LinearGradientComponent ? (
+        <>
+          <LinearGradientComponent
+            colors={[baseBackgroundColor, toRgba(baseBackgroundColor, 0)]}
+            locations={[0, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={[styles.edgeFade, styles.edgeFadeLeft]}
+          />
+          <LinearGradientComponent
+            colors={[toRgba(baseBackgroundColor, 0), baseBackgroundColor]}
+            locations={[0, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={[styles.edgeFade, styles.edgeFadeRight]}
+          />
+        </>
+      ) : null}
       <View style={[styles.textArea, { paddingTop: config.textSafeAreaTop }, isTabletLayout && styles.textAreaTablet]}>
         <Text style={[styles.question, isTabletLayout && styles.questionTablet]}>{questionText}</Text>
         <View style={styles.markerRow}>
@@ -240,6 +258,19 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: -96,
     height: 206,
+  },
+  edgeFade: {
+    position: 'absolute',
+    top: 246,
+    width: 42,
+    height: 70,
+    zIndex: 2,
+  },
+  edgeFadeLeft: {
+    left: 0,
+  },
+  edgeFadeRight: {
+    right: 0,
   },
   textArea: {
     zIndex: 3,
