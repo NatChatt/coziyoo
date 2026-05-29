@@ -5,13 +5,15 @@
 #   bash scripts/deploy/ensure-home-runner.sh
 #
 # Optional env:
-#   RUNNER_HOST=192.168.1.100
+#   RUNNER_HOST=100.64.32.43
+#   RUNNER_HOSTS="100.64.32.43 192.168.1.100"
 #   RUNNER_USER=server
 #   RUNNER_KEY=/path/to/key
 
 set -Eeuo pipefail
 
-RUNNER_HOST="${RUNNER_HOST:-192.168.1.100}"
+RUNNER_HOST="${RUNNER_HOST:-}"
+RUNNER_HOSTS="${RUNNER_HOSTS:-100.64.32.43 192.168.1.100}"
 RUNNER_USER="${RUNNER_USER:-server}"
 RUNNER_KEY="${RUNNER_KEY:-${HOME}/.ssh/id_ed25519_server_192_168_1_100}"
 RUNNER_DIR="${RUNNER_DIR:-/home/server/actions-runner/coziyoo-v2}"
@@ -28,8 +30,28 @@ log() {
   printf '==> %s\n' "$*"
 }
 
-log "Checking SSH access to ${RUNNER_USER}@${RUNNER_HOST}"
-ssh "${SSH_OPTS[@]}" "${RUNNER_USER}@${RUNNER_HOST}" "hostname; whoami"
+select_runner_host() {
+  local candidates
+  if [[ -n "${RUNNER_HOST}" ]]; then
+    candidates="${RUNNER_HOST}"
+  else
+    candidates="${RUNNER_HOSTS}"
+  fi
+
+  local host
+  for host in ${candidates}; do
+    log "Checking SSH access to ${RUNNER_USER}@${host}"
+    if ssh "${SSH_OPTS[@]}" "${RUNNER_USER}@${host}" "hostname; whoami"; then
+      RUNNER_HOST="${host}"
+      return 0
+    fi
+  done
+
+  printf 'No runner host reachable. Tried: %s\n' "${candidates}" >&2
+  return 1
+}
+
+select_runner_host
 
 log "Repairing runner process state"
 ssh "${SSH_OPTS[@]}" "${RUNNER_USER}@${RUNNER_HOST}" "RUNNER_DIR='${RUNNER_DIR}' SERVICE_NAME='${SERVICE_NAME}' bash -s" <<'REMOTE'
