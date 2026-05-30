@@ -39,10 +39,31 @@ TRANSITIONS = {
     "cancelled":   [],
 }
 TERMINAL = {"delivered", "completed", "cancelled"}
+_LOT_ACTIVE_STATUS_CACHE = None
 
 
 def can_transition(current: str, next_status: str) -> bool:
     return next_status in TRANSITIONS.get(current, [])
+
+
+def _resolve_lot_active_status():
+    global _LOT_ACTIVE_STATUS_CACHE
+    if _LOT_ACTIVE_STATUS_CACHE is not None:
+        return _LOT_ACTIVE_STATUS_CACHE
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+                SELECT pg_get_constraintdef(oid)
+                FROM pg_constraint
+                WHERE conrelid = 'production_lots'::regclass
+                  AND conname = 'production_lots_status_check'
+                LIMIT 1
+            """
+        )
+        row = cursor.fetchone()
+    definition = str(row[0] if row else "")
+    _LOT_ACTIVE_STATUS_CACHE = "active" if "'active'" in definition else "open"
+    return _LOT_ACTIVE_STATUS_CACHE
 
 
 # ---------------------------------------------------------------------------
@@ -59,26 +80,102 @@ def _check_app_auth(request):
 
 
 
-def _selected_addons_total(selected_addons):
+def _coerce_json_array(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, list) else []
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return []
+    return []
+
+
+def _addon_key(addon):
+    return (
+        str(addon.get("name") or "").strip().lower(),
+        str(addon.get("kind") or "extra").strip().lower(),
+    )
+
+
+def _normalize_selected_addons(selected_addons, *, allowed_free=None, allowed_paid=None):
     if not isinstance(selected_addons, dict):
-        return 0.0
+        return {"free": [], "paid": []}, 0.0, False
 
-    paid_addons = selected_addons.get("paid")
-    if not isinstance(paid_addons, list):
-        return 0.0
+    allowed_free_map = {
+        _addon_key(addon): addon
+        for addon in _coerce_json_array(allowed_free)
+        if isinstance(addon, dict) and str(addon.get("name") or "").strip()
+    }
+    allowed_paid_map = {
+        _addon_key(addon): addon
+        for addon in _coerce_json_array(allowed_paid)
+        if isinstance(addon, dict) and str(addon.get("name") or "").strip()
+    }
 
+    sanitized = {"free": [], "paid": []}
     total = 0.0
-    for addon in paid_addons:
+    invalid_selection = False
+
+    for addon in selected_addons.get("free") if isinstance(selected_addons.get("free"), list) else []:
         if not isinstance(addon, dict):
             continue
+        allowed = allowed_free_map.get(_addon_key(addon))
+        if not allowed:
+            invalid_selection = True
+            continue
+        sanitized["free"].append({"name": str(allowed.get("name")).strip(), "kind": str(allowed.get("kind") or "extra")})
+
+    for addon in selected_addons.get("paid") if isinstance(selected_addons.get("paid"), list) else []:
+        if not isinstance(addon, dict):
+            continue
+        allowed = allowed_paid_map.get(_addon_key(addon))
+        if not allowed:
+            invalid_selection = True
+            continue
         try:
-            price = float(addon.get("price") or 0)
+            price = float(allowed.get("price") or 0)
             quantity = int(addon.get("quantity") or 1)
         except (TypeError, ValueError):
             continue
         if quantity > 0 and price > 0:
+            quantity = min(quantity, 10)
+            sanitized["paid"].append(
+                {
+                    "name": str(allowed.get("name")).strip(),
+                    "kind": str(allowed.get("kind") or "extra"),
+                    "price": round(price, 2),
+                    "quantity": quantity,
+                }
+            )
             total += price * quantity
-    return total
+    return sanitized, total, invalid_selection
+
+
+def _restore_reserved_lot_quantities(cursor, order_id):
+    active_lot_status = _resolve_lot_active_status()
+    cursor.execute(
+        """
+        UPDATE production_lots pl
+        SET quantity_available = LEAST(pl.quantity_produced, pl.quantity_available + restored.quantity),
+            status = CASE
+                WHEN pl.status IN ('depleted', 'exhausted') AND pl.quantity_available + restored.quantity > 0 THEN %s
+                ELSE pl.status
+            END,
+            updated_at = now()
+        FROM (
+            SELECT lot_id, SUM(quantity)::int AS quantity
+            FROM order_items
+            WHERE order_id = %s AND lot_id IS NOT NULL
+            GROUP BY lot_id
+        ) restored
+        WHERE pl.id = restored.lot_id
+        """,
+        [active_lot_status, order_id],
+    )
 
 
 def _gated_delivery_address(address_json, *, caller_is_seller: bool, active_delivery_type: str):
@@ -281,18 +378,30 @@ class OrderListCreateView(APIView):
                 placeholders = ", ".join(["%s"] * len(lot_ids))
                 cursor.execute(
                     f"""
-                    SELECT l.id, l.food_id, f.price
+                    SELECT l.id, l.food_id, COALESCE(l.price_snapshot, f.price) AS unit_price,
+                           l.quantity_available, l.menu_items_snapshot_json, l.paid_addons_snapshot_json
                     FROM production_lots l
                     JOIN foods f ON f.id = l.food_id
                     WHERE l.id IN ({placeholders})
                       AND l.seller_id = %s
                       AND f.seller_id = %s
                       AND f.is_active = TRUE
+                      AND l.status IN ('open', 'active')
+                      AND l.quantity_available > 0
+                      AND (l.sale_starts_at IS NULL OR l.sale_starts_at <= NOW())
+                      AND (l.sale_ends_at IS NULL OR l.sale_ends_at > NOW())
                     """,
                     lot_ids + [seller_id, seller_id],
                 )
                 lot_details = {
-                    str(row[0]): {"foodId": str(row[1]), "unitPrice": float(row[2])}
+                    str(row[0]): {
+                        "lotId": str(row[0]),
+                        "foodId": str(row[1]),
+                        "unitPrice": float(row[2]),
+                        "quantityAvailable": int(row[3] or 0),
+                        "freeAddons": row[4],
+                        "paidAddons": row[5],
+                    }
                     for row in cursor.fetchall()
                 }
 
@@ -300,26 +409,62 @@ class OrderListCreateView(APIView):
                 if invalid_lots:
                     return error_response("VALIDATION_ERROR", f"Lot(s) not found or not active: {invalid_lots}", status.HTTP_400_BAD_REQUEST)
 
-            food_prices = {}
+            food_details = {}
             if food_ids:
                 placeholders = ", ".join(["%s"] * len(food_ids))
                 cursor.execute(
-                    f"SELECT id, price FROM foods WHERE id IN ({placeholders}) AND seller_id = %s AND is_active = TRUE",
+                    f"""
+                    SELECT f.id,
+                           l.id AS lot_id,
+                           COALESCE(l.price_snapshot, f.price) AS unit_price,
+                           l.quantity_available,
+                           l.menu_items_snapshot_json,
+                           l.paid_addons_snapshot_json
+                    FROM foods f
+                    LEFT JOIN LATERAL (
+                        SELECT pl.*
+                        FROM production_lots pl
+                        WHERE pl.food_id = f.id
+                          AND pl.seller_id = f.seller_id
+                          AND pl.status IN ('open', 'active')
+                          AND pl.quantity_available > 0
+                          AND (pl.sale_starts_at IS NULL OR pl.sale_starts_at <= NOW())
+                          AND (pl.sale_ends_at IS NULL OR pl.sale_ends_at > NOW())
+                        ORDER BY pl.quantity_available DESC, pl.created_at DESC
+                        LIMIT 1
+                    ) l ON TRUE
+                    WHERE f.id IN ({placeholders}) AND f.seller_id = %s AND f.is_active = TRUE
+                    """,
                     food_ids + [seller_id],
                 )
-                food_prices = {str(row[0]): float(row[1]) for row in cursor.fetchall()}
+                food_details = {
+                    str(row[0]): {
+                        "foodId": str(row[0]),
+                        "lotId": str(row[1]) if row[1] else None,
+                        "unitPrice": float(row[2] or 0),
+                        "quantityAvailable": int(row[3] or 0),
+                        "freeAddons": row[4],
+                        "paidAddons": row[5],
+                    }
+                    for row in cursor.fetchall()
+                }
 
-                invalid = [food_id for food_id in food_ids if food_id not in food_prices]
+                invalid = [food_id for food_id in food_ids if food_id not in food_details]
                 if invalid:
                     return error_response("VALIDATION_ERROR", f"Food(s) not found or not active: {invalid}", status.HTTP_400_BAD_REQUEST)
+                unavailable = [food_id for food_id in food_ids if not food_details.get(food_id, {}).get("lotId")]
+                if unavailable:
+                    return error_response("OUT_OF_STOCK", f"Food(s) currently unavailable: {unavailable}", status.HTTP_400_BAD_REQUEST)
 
         # 3. Validate quantities and inject prices from DB
         for item in normalized_items:
             if item["lotId"]:
-                item["foodId"] = lot_details[item["lotId"]]["foodId"]
-                item["unitPrice"] = lot_details[item["lotId"]]["unitPrice"]
+                source = lot_details[item["lotId"]]
+                item["foodId"] = source["foodId"]
             else:
-                item["unitPrice"] = food_prices.get(item["foodId"], 0.0)
+                source = food_details[item["foodId"]]
+                item["lotId"] = source["lotId"]
+            item["unitPrice"] = source["unitPrice"]
 
             try:
                 item["quantity"] = int(item["quantity"])
@@ -327,8 +472,28 @@ class OrderListCreateView(APIView):
                 return error_response("VALIDATION_ERROR", "Invalid quantity", status.HTTP_400_BAD_REQUEST)
             if item["quantity"] <= 0:
                 return error_response("VALIDATION_ERROR", "quantity must be > 0", status.HTTP_400_BAD_REQUEST)
-            addons_total = _selected_addons_total(item.get("selectedAddons"))
+            if item["quantity"] > int(source.get("quantityAvailable") or 0):
+                return error_response("OUT_OF_STOCK", "Requested quantity exceeds available stock", status.HTTP_400_BAD_REQUEST)
+            item["quantityAvailable"] = int(source.get("quantityAvailable") or 0)
+            selected_addons, addons_total, invalid_addons = _normalize_selected_addons(
+                item.get("selectedAddons"),
+                allowed_free=source.get("freeAddons"),
+                allowed_paid=source.get("paidAddons"),
+            )
+            if invalid_addons:
+                return error_response("INVALID_ADDON", "Selected add-on is no longer available", status.HTTP_400_BAD_REQUEST)
+            item["selectedAddons"] = selected_addons
             item["lineTotal"] = (item["quantity"] * item["unitPrice"]) + addons_total
+
+        requested_by_lot = {}
+        available_by_lot = {}
+        for item in normalized_items:
+            lot_id = item.get("lotId")
+            requested_by_lot[lot_id] = requested_by_lot.get(lot_id, 0) + item["quantity"]
+            available_by_lot[lot_id] = item["quantityAvailable"]
+        for lot_id, requested_quantity in requested_by_lot.items():
+            if requested_quantity > available_by_lot.get(lot_id, 0):
+                return error_response("OUT_OF_STOCK", "Requested quantity exceeds available stock", status.HTTP_400_BAD_REQUEST)
 
         total_price = sum(i["lineTotal"] for i in normalized_items)
 
@@ -366,6 +531,19 @@ class OrderListCreateView(APIView):
                             item["lineTotal"],
                             _json_dumps(item.get("selectedAddons")) if item.get("selectedAddons") is not None else None,
                         ],
+                    )
+                    cursor.execute(
+                        """
+                        UPDATE production_lots
+                        SET quantity_available = GREATEST(quantity_available - %s, 0),
+                            status = CASE
+                                WHEN GREATEST(quantity_available - %s, 0) = 0 THEN 'depleted'
+                                ELSE status
+                            END,
+                            updated_at = now()
+                        WHERE id = %s
+                        """,
+                        [item["quantity"], item["quantity"], item["lotId"]],
                     )
 
                 # 6. Insert order event
@@ -626,6 +804,8 @@ class OrderStatusView(APIView):
                     """,
                     [new_status, new_status, order_id_str],
                 )
+                if new_status in ("cancelled", "rejected"):
+                    _restore_reserved_lot_quantities(cursor, order_id_str)
                 cursor.execute(
                     """
                     INSERT INTO order_events (id, order_id, event_type, actor_user_id, from_status, to_status, payload_json)
@@ -740,6 +920,7 @@ class OrderCancelView(APIView):
 
                 if updated is None:
                     return error_response("INVALID_TRANSITION", "Order cannot be cancelled in its current state", status.HTTP_422_UNPROCESSABLE_ENTITY)
+                _restore_reserved_lot_quantities(cursor, order_id_str)
 
                 cursor.execute(
                     """
@@ -1309,6 +1490,8 @@ class SellerDecisionView(APIView):
                     """,
                     [str(uuid.uuid4()), order_id_str, user_id, current_status, new_status, _json_dumps(metadata)],
                 )
+                if new_status == "rejected":
+                    _restore_reserved_lot_quantities(cursor, order_id_str)
                 if note:
                     cursor.execute(
                         """

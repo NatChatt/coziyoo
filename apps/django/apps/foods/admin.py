@@ -174,7 +174,8 @@ class FoodsAdmin(ModelAdmin):
             {
                 "id": str(lot.id),
                 "lot_number": lot.lot_number,
-                "food_name": food.name,
+                "food_name": lot.food_name_snapshot or food.name,
+                "price": str(lot.price_snapshot if lot.price_snapshot is not None else food.price),
                 "status": lot.status,
                 "status_style": _LOT_STATUS_STYLE.get(lot.status, "background:#f1f5f9;color:#64748b"),
                 "qty_produced": lot.quantity_produced,
@@ -187,6 +188,8 @@ class FoodsAdmin(ModelAdmin):
                 "recipe_snapshot": lot.recipe_snapshot or "",
                 "ingredients": _normalize_text_list(lot.ingredients_snapshot_json) or _normalize_text_list(food.ingredients_json),
                 "allergens": _normalize_text_list(lot.allergens_snapshot_json) or _normalize_text_list(food.allergens_json),
+                "menu_items": lot.menu_items_snapshot_json if isinstance(lot.menu_items_snapshot_json, list) else [],
+                "paid_addons": lot.paid_addons_snapshot_json if isinstance(lot.paid_addons_snapshot_json, list) else [],
                 "notes": lot.notes or "",
                 "ingredients_diff": _ingredients_diff(
                     food.ingredients_json, lot.ingredients_snapshot_json
@@ -253,14 +256,20 @@ class ProductionLotsAdmin(ModelAdmin):
     readonly_fields = [
         "id", "seller", "food_id", "lot_number", "created_at", "updated_at",
         "sale_starts_at", "sale_ends_at", "recipe_snapshot",
-        "ingredients_snapshot_json", "allergens_snapshot_json", "sale_window",
+        "ingredients_snapshot_json", "allergens_snapshot_json", "food_name_snapshot",
+        "price_snapshot", "menu_items_snapshot_json", "paid_addons_snapshot_json",
+        "sale_window",
     ]
     ordering = ["-produced_at"]
     fieldsets = [
         ("Lot", {"fields": ["id", "seller", "food_id", "lot_number", "status"]}),
         ("Quantities", {"fields": ["quantity_produced", "quantity_available"]}),
         ("Timeline", {"fields": ["produced_at", "sale_starts_at", "sale_ends_at", "use_by", "best_before", "sale_window"]}),
-        ("Snapshot", {"fields": ["recipe_snapshot", "ingredients_snapshot_json", "allergens_snapshot_json"], "classes": ["collapse"]}),
+        ("Snapshot", {"fields": [
+            "food_name_snapshot", "price_snapshot", "recipe_snapshot",
+            "ingredients_snapshot_json", "allergens_snapshot_json",
+            "menu_items_snapshot_json", "paid_addons_snapshot_json",
+        ], "classes": ["collapse"]}),
         ("Meta", {"fields": ["notes", "created_at", "updated_at"]}),
     ]
 

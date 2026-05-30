@@ -1054,12 +1054,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         Alert.alert(t('headline.common.error'), t('error.seller.foods.initialSaleWindowInvalid'));
         return;
       }
-      if (workingMenuItems.length < 1) {
-        navigateToRequiredField("sideItems", { focusRef: sideItemsInputRef });
-        Alert.alert(t('headline.common.error'), t('error.seller.foods.addonsRequired'));
-        return;
-      }
-
       setSaving(true);
 
       const primaryImageUrl = imageUrls.map((x) => x.trim()).find(Boolean) || undefined;
@@ -1131,25 +1125,12 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         ?? (typeof responseData?.id === "string" ? responseData.id : null);
       const createdLotId = typeof responseData?.lotId === "string" ? responseData.lotId : null;
 
-      if (editingFood && editingLot?.id) {
-        const lotRes = await authedFetch(`/v1/seller/lots/${editingLot.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            saleStartsAt: initialSaleStartsAt.trim(),
-            saleEndsAt: initialSaleEndsAt.trim(),
-            quantityAvailable: parsedInitialStock,
-          }),
-        });
-        const lotJson = await parseResponseBodySafe(lotRes);
-        if (!lotRes.ok) throw new Error(resolveApiMessage(lotJson, t('error.seller.foods.save')));
-      }
-
       if (options?.publishAfterSave && foodId) {
         const saleStartsAt = initialSaleStartsAt.trim() || new Date().toISOString();
         const fallbackEnd = new Date(saleStartsAt);
         fallbackEnd.setUTCDate(fallbackEnd.getUTCDate() + 30);
         const saleEndsAt = initialSaleEndsAt.trim() || fallbackEnd.toISOString();
-        const producedAt = editingLot?.producedAt?.trim() || saleStartsAt;
+        const producedAt = saleStartsAt;
         const quantityProduced = parsedInitialStock;
         const statusRes = await authedFetch(`/v1/seller/foods/${foodId}/status`, {
           method: "PATCH",
@@ -1164,11 +1145,8 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         if (!editingFood && createdLotId) {
           hasVisibleLot = true;
         }
-        if (editingFood && editingLot?.id) {
-          hasVisibleLot = true;
-        }
-        const lotsRes = await authedFetch(`/v1/seller/lots?foodId=${foodId}`);
-        if (lotsRes.ok) {
+        const lotsRes = editingFood ? null : await authedFetch(`/v1/seller/lots?foodId=${foodId}`);
+        if (lotsRes?.ok) {
           const lotsJson = await parseResponseBodySafe(lotsRes);
           const lotsPayload = (lotsJson && typeof lotsJson === "object")
             ? (lotsJson as Record<string, unknown>)
@@ -1177,7 +1155,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
           const now = Date.now();
           const hasVisibleLotFromApi = lots.some((lot: any) => {
             const lotFoodId = String(lot?.food_id ?? lot?.foodId ?? "").trim();
-            const status = String(lot?.status ?? "").toLowerCase();
+            const status = String(lot?.status ?? lot?.lifecycle_status ?? lot?.lifecycleStatus ?? "").toLowerCase();
             const qty = Number(lot?.quantity_available ?? lot?.quantityAvailable ?? 0);
             const startsAt = Date.parse(String(lot?.sale_starts_at ?? lot?.saleStartsAt ?? ""));
             const endsAt = Date.parse(String(lot?.sale_ends_at ?? lot?.saleEndsAt ?? ""));

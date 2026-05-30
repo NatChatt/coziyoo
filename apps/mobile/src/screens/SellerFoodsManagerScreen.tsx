@@ -15,8 +15,6 @@ type Props = {
   auth: AuthSession;
   onBack: () => void;
   onOpenFoodsForm: (mode: "add" | "edit", foodId?: string, food?: SellerFood) => void;
-  onOpenLotCreate?: (foodId: string) => void;
-  onOpenLots?: (foodId: string) => void;
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
@@ -32,7 +30,7 @@ type SellerFood = {
 };
 
 
-export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm, onOpenLotCreate, onOpenLots, onAuthRefresh }: Props) {
+export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm, onAuthRefresh }: Props) {
   const initialCache = getSellerFoodsCache() as SellerFood[] | null;
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
@@ -155,7 +153,7 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
           ) : null
         }
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} activeOpacity={0.82} onPress={() => onOpenLots?.(item.id)}>
+          <TouchableOpacity style={styles.card} activeOpacity={0.82} onPress={() => onOpenFoodsForm("edit", item.id, item)}>
             <View style={styles.rowTop}>
               <Text style={styles.name}>{item.name}</Text>
               <Text style={[styles.badge, item.isActive ? styles.badgeActive : styles.badgePassive]}>
@@ -179,15 +177,6 @@ export default function SellerFoodsManagerScreen({ auth, onBack, onOpenFoodsForm
               >
                 <Text style={styles.editChipText}>{t('cta.seller.foodsManager.editFood')}</Text>
               </TouchableOpacity>
-              {onOpenLotCreate ? (
-                <TouchableOpacity
-                  style={styles.lotCreateBtn}
-                  activeOpacity={0.8}
-                  onPress={(e) => { e.stopPropagation?.(); onOpenLotCreate(item.id); }}
-                >
-                  <Text style={styles.lotCreateBtnText}>{t('cta.seller.foodsManager.createLot')}</Text>
-                </TouchableOpacity>
-              ) : null}
             </View>
           </TouchableOpacity>
         )}

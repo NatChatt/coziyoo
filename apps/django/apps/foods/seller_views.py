@@ -6,7 +6,7 @@ but role enforcement is left to the JWT payload (role == 'seller').
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db import DatabaseError, connection, transaction
 from rest_framework.views import APIView
@@ -30,6 +30,7 @@ from apps.common.geo import (
 logger = logging.getLogger(__name__)
 
 _LOT_ACTIVE_STATUS_CACHE = None
+_PUBLIC_COLUMN_CACHE = {}
 
 
 def _has_users_column(column_name):
@@ -47,6 +48,42 @@ def _has_users_column(column_name):
             [column_name],
         )
         return bool(cursor.fetchone()[0])
+
+
+def _has_public_column(table_name, column_name):
+    cache_key = (table_name, column_name)
+    if cache_key in _PUBLIC_COLUMN_CACHE:
+        return _PUBLIC_COLUMN_CACHE[cache_key]
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = %s
+                      AND column_name = %s
+                )
+            """,
+            [table_name, column_name],
+        )
+        exists = bool(cursor.fetchone()[0])
+    _PUBLIC_COLUMN_CACHE[cache_key] = exists
+    return exists
+
+
+def _coerce_json_array(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, list) else []
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return []
+    return []
 
 
 _JSON_ARRAY_FIELDS = [
@@ -106,6 +143,82 @@ def _resolve_lot_active_status():
 
 def _parse_iso(value):
     return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+
+def _make_lot_number(food_id, produced_dt):
+    return f"CZ-{str(food_id)[:8].upper()}-{produced_dt.strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+
+
+def _insert_production_lot(
+    cursor,
+    *,
+    seller_id,
+    food_id,
+    produced_at,
+    sale_starts_at,
+    sale_ends_at,
+    quantity_produced,
+    quantity_available,
+    lifecycle_status,
+    recipe_snapshot,
+    ingredients_snapshot,
+    allergens_snapshot,
+    notes=None,
+    use_by=None,
+    best_before=None,
+    food_name_snapshot=None,
+    price_snapshot=None,
+    menu_items_snapshot=None,
+    paid_addons_snapshot=None,
+):
+    produced_dt = produced_at if isinstance(produced_at, datetime) else _parse_iso(produced_at)
+    lot_id = str(uuid.uuid4())
+    lot_number = _make_lot_number(food_id, produced_dt)
+
+    columns = [
+        "id", "seller_id", "food_id", "lot_number", "produced_at", "sale_starts_at", "sale_ends_at",
+        "use_by", "best_before", "recipe_snapshot", "ingredients_snapshot_json", "allergens_snapshot_json",
+        "quantity_produced", "quantity_available", "status", "notes", "created_at", "updated_at",
+    ]
+    values = [
+        lot_id,
+        seller_id,
+        str(food_id),
+        lot_number,
+        produced_at.isoformat() if isinstance(produced_at, datetime) else produced_at,
+        sale_starts_at.isoformat() if isinstance(sale_starts_at, datetime) else sale_starts_at,
+        sale_ends_at.isoformat() if isinstance(sale_ends_at, datetime) else sale_ends_at,
+        use_by.isoformat() if isinstance(use_by, datetime) else use_by,
+        best_before.isoformat() if isinstance(best_before, datetime) else best_before,
+        recipe_snapshot,
+        json.dumps(_coerce_json_array(ingredients_snapshot)),
+        json.dumps(_coerce_json_array(allergens_snapshot)),
+        quantity_produced,
+        quantity_available,
+        lifecycle_status,
+        notes,
+    ]
+
+    optional_columns = {
+        "food_name_snapshot": food_name_snapshot,
+        "price_snapshot": price_snapshot,
+        "menu_items_snapshot_json": json.dumps(_coerce_json_array(menu_items_snapshot)),
+        "paid_addons_snapshot_json": json.dumps(_coerce_json_array(paid_addons_snapshot)),
+    }
+    for column, value in optional_columns.items():
+        if _has_public_column("production_lots", column):
+            columns.insert(-2, column)
+            values.append(value)
+
+    placeholders = ["%s"] * (len(columns) - 2) + ["now()", "now()"]
+    cursor.execute(
+        f"""
+            INSERT INTO production_lots ({", ".join(columns)})
+            VALUES ({", ".join(placeholders)})
+        """,
+        values,
+    )
+    return lot_id, lot_number
 
 
 class SellerProfileView(APIView):
@@ -319,11 +432,7 @@ class SellerFoodListView(APIView):
         initial_stock = data.get("initialStock")
         initial_sale_starts_at = data.get("initialSaleStartsAt")
         initial_sale_ends_at = data.get("initialSaleEndsAt")
-        should_create_initial_lot = (
-            initial_stock not in (None, "")
-            or initial_sale_starts_at not in (None, "")
-            or initial_sale_ends_at not in (None, "")
-        )
+        should_create_initial_lot = True
 
         if not name or price is None:
             return error_response("VALIDATION_ERROR", "name and price are required", status.HTTP_400_BAD_REQUEST)
@@ -348,19 +457,17 @@ class SellerFoodListView(APIView):
         sale_end_dt = None
         if should_create_initial_lot:
             try:
-                initial_stock = int(initial_stock)
+                initial_stock = int(initial_stock if initial_stock not in (None, "") else 1)
             except (TypeError, ValueError):
                 return error_response("VALIDATION_ERROR", "initialStock must be an integer", status.HTTP_400_BAD_REQUEST)
 
             if initial_stock < 1:
                 return error_response("VALIDATION_ERROR", "initialStock must be greater than 0", status.HTTP_400_BAD_REQUEST)
 
-            if not initial_sale_starts_at or not initial_sale_ends_at:
-                return error_response("VALIDATION_ERROR", "initialSaleStartsAt and initialSaleEndsAt are required", status.HTTP_400_BAD_REQUEST)
-
             try:
-                sale_start_dt = _parse_iso(initial_sale_starts_at)
-                sale_end_dt = _parse_iso(initial_sale_ends_at)
+                now_for_defaults = datetime.utcnow()
+                sale_start_dt = _parse_iso(initial_sale_starts_at) if initial_sale_starts_at else now_for_defaults
+                sale_end_dt = _parse_iso(initial_sale_ends_at) if initial_sale_ends_at else now_for_defaults + timedelta(days=30)
             except (TypeError, ValueError):
                 return error_response("VALIDATION_ERROR", "Invalid initial sale window", status.HTTP_400_BAD_REQUEST)
 
@@ -420,36 +527,24 @@ class SellerFoodListView(APIView):
                     row = cursor.fetchone()
                     food_id = str(row[0])
                     if should_create_initial_lot:
-                        lot_id = str(uuid.uuid4())
-                        lot_number = f"CZ-{food_id[:8].upper()}-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
-                        cursor.execute(
-                            """
-                                INSERT INTO production_lots
-                                    (
-                                        id, seller_id, food_id, lot_number, produced_at, sale_starts_at, sale_ends_at,
-                                        use_by, best_before, recipe_snapshot, ingredients_snapshot_json, allergens_snapshot_json,
-                                        quantity_produced, quantity_available, status, notes, created_at, updated_at
-                                    )
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now())
-                            """,
-                            [
-                                lot_id,
-                                request.user.id,
-                                food_id,
-                                lot_number,
-                                produced_at,
-                                sale_start_dt.isoformat(),
-                                sale_end_dt.isoformat(),
-                                None,
-                                None,
-                                recipe,
-                                json.dumps(ingredients),
-                                json.dumps(allergens),
-                                initial_stock,
-                                initial_stock,
-                                active_lot_status,
-                                "mobile_initial_stock",
-                            ],
+                        lot_id, lot_number = _insert_production_lot(
+                            cursor,
+                            seller_id=request.user.id,
+                            food_id=food_id,
+                            produced_at=produced_at,
+                            sale_starts_at=sale_start_dt,
+                            sale_ends_at=sale_end_dt,
+                            quantity_produced=initial_stock,
+                            quantity_available=initial_stock,
+                            lifecycle_status=active_lot_status,
+                            recipe_snapshot=recipe,
+                            ingredients_snapshot=ingredients,
+                            allergens_snapshot=allergens,
+                            notes="mobile_initial_stock",
+                            food_name_snapshot=name,
+                            price_snapshot=price,
+                            menu_items_snapshot=free_menu_items,
+                            paid_addons_snapshot=paid_menu_items,
                         )
                         cursor.execute(
                             """
@@ -807,7 +902,7 @@ class SellerLotListView(APIView):
         where_sql = " AND ".join(where_clauses)
         sql = """
             SELECT id, food_id, lot_number, quantity_produced, quantity_available,
-                   status AS lifecycle_status, produced_at, sale_starts_at, sale_ends_at,
+                   status, status AS lifecycle_status, produced_at, sale_starts_at, sale_ends_at,
                    use_by, best_before, notes, created_at, updated_at
             FROM production_lots
             WHERE """ + where_sql + """
@@ -885,6 +980,7 @@ class SellerLotListView(APIView):
             cursor.execute(
                 """
                     SELECT id, recipe, ingredients_json, allergens_json
+                           , name, price, menu_items_json, paid_addons_json
                     FROM foods
                     WHERE id = %s AND seller_id = %s
                 """,
@@ -920,37 +1016,27 @@ class SellerLotListView(APIView):
         final_allergens = allergens_snapshot_override if has_all_snapshot_overrides else food.get("allergens_json")
 
         active_lot_status = _resolve_lot_active_status()
-        lot_id = str(uuid.uuid4())
-        lot_number = f"CZ-{str(food_id)[:8].upper()}-{produced_dt.strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
         with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                    INSERT INTO production_lots
-                        (
-                            id, seller_id, food_id, lot_number, produced_at, sale_starts_at, sale_ends_at,
-                            use_by, best_before, recipe_snapshot, ingredients_snapshot_json, allergens_snapshot_json,
-                            quantity_produced, quantity_available, status, notes, created_at, updated_at
-                        )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now())
-                """,
-                [
-                    lot_id,
-                    request.user.id,
-                    str(food_id),
-                    lot_number,
-                    produced_at,
-                    sale_starts_at,
-                    sale_ends_at,
-                    use_by_dt.isoformat() if use_by_dt else None,
-                    best_before_dt.isoformat() if best_before_dt else None,
-                    final_recipe,
-                    json.dumps(final_ingredients),
-                    json.dumps(final_allergens),
-                    quantity_produced,
-                    quantity_available,
-                    active_lot_status,
-                    notes,
-                ],
+            lot_id, lot_number = _insert_production_lot(
+                cursor,
+                seller_id=request.user.id,
+                food_id=food_id,
+                produced_at=produced_at,
+                sale_starts_at=sale_starts_at,
+                sale_ends_at=sale_ends_at,
+                quantity_produced=quantity_produced,
+                quantity_available=quantity_available,
+                lifecycle_status=active_lot_status,
+                recipe_snapshot=final_recipe,
+                ingredients_snapshot=final_ingredients,
+                allergens_snapshot=final_allergens,
+                notes=notes,
+                use_by=use_by_dt,
+                best_before=best_before_dt,
+                food_name_snapshot=food.get("name"),
+                price_snapshot=food.get("price"),
+                menu_items_snapshot=food.get("menu_items_json"),
+                paid_addons_snapshot=food.get("paid_addons_json"),
             )
             cursor.execute(
                 """

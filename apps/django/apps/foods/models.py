@@ -147,6 +147,10 @@ class ProductionLots(models.Model):
     recipe_snapshot = models.TextField(blank=True, null=True)
     ingredients_snapshot_json = models.JSONField(blank=True, null=True)
     allergens_snapshot_json = models.JSONField(blank=True, null=True)
+    food_name_snapshot = models.CharField(max_length=255, blank=True, null=True)
+    price_snapshot = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    menu_items_snapshot_json = models.JSONField(blank=True, null=True)
+    paid_addons_snapshot_json = models.JSONField(blank=True, null=True)
 
     def __str__(self):
         return self.lot_number or str(self.id)
@@ -250,5 +254,4 @@ class StarterAgentSettings(models.Model):
     class Meta:
         managed = False
         db_table = 'starter_agent_settings'
-
 
