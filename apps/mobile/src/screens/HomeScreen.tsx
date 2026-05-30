@@ -1489,6 +1489,7 @@ export default function HomeScreen({
   const [activeCategory, setActiveCategory] = useState('Tümü');
   const [nearbyOnly, setNearbyOnly] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [meals, setMeals] = useState<MealCard[]>(() =>
     (QUICK_START_HOME_FOODS.data ?? []).map(apiToMealCard),
@@ -1821,6 +1822,11 @@ export default function HomeScreen({
   const sloganMarqueeLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const feedScrollRef = useRef<ScrollView>(null);
   const searchInputRef = useRef<TextInput>(null);
+  const feedScrollYRef = useRef(0);
+  const searchModeRef = useRef(false);
+  const searchQueryRef = useRef('');
+  const searchExpandedRef = useRef(true);
+  const searchOpenGuardUntilRef = useRef(0);
   const mealsLoadedOnceRef = useRef(true);
   const mealsFetchInFlightRef = useRef(false);
   const recommendedMealsLoadedOnceRef = useRef(false);
@@ -2776,11 +2782,43 @@ export default function HomeScreen({
 
   useEffect(() => {
     if (searchMode) {
+      setSearchExpanded(true);
       const t = setTimeout(() => searchInputRef.current?.focus(), 80);
       return () => clearTimeout(t);
     }
     return undefined;
   }, [searchMode]);
+
+  useEffect(() => {
+    searchExpandedRef.current = searchExpanded;
+  }, [searchExpanded]);
+
+  useEffect(() => {
+    searchModeRef.current = searchMode;
+  }, [searchMode]);
+
+  useEffect(() => {
+    searchQueryRef.current = searchQuery;
+  }, [searchQuery]);
+
+  function closeHomeSearch() {
+    setSearchQuery('');
+    searchQueryRef.current = '';
+    setSearchMode(false);
+    searchModeRef.current = false;
+    if (feedScrollYRef.current >= 92) {
+      setSearchExpanded(false);
+      searchExpandedRef.current = false;
+    }
+  }
+
+  function openHomeSearch() {
+    searchOpenGuardUntilRef.current = Date.now() + 650;
+    setSearchExpanded(true);
+    searchExpandedRef.current = true;
+    setSearchMode(true);
+    searchModeRef.current = true;
+  }
 
   function handleFabPress() {
     setActiveTab('messages');
@@ -3296,7 +3334,13 @@ export default function HomeScreen({
         const q = searchQuery.trim().toLocaleLowerCase('tr-TR');
         return (
           m.title.toLocaleLowerCase('tr-TR').includes(q) ||
-          m.seller.toLocaleLowerCase('tr-TR').includes(q)
+          m.seller.toLocaleLowerCase('tr-TR').includes(q) ||
+          (m.sellerUsername ?? '').toLocaleLowerCase('tr-TR').includes(q) ||
+          m.cuisine.toLocaleLowerCase('tr-TR').includes(q) ||
+          m.description.toLocaleLowerCase('tr-TR').includes(q) ||
+          m.category.toLocaleLowerCase('tr-TR').includes(q) ||
+          m.ingredients.some((item) => item.toLocaleLowerCase('tr-TR').includes(q)) ||
+          m.menuItems.some((item) => item.toLocaleLowerCase('tr-TR').includes(q))
         );
       })
     : baseVisibleMeals;
@@ -3629,7 +3673,9 @@ export default function HomeScreen({
   function renderHomeFeed() {
     const handleFeedScroll = (event: any) => {
       const y = Number(event?.nativeEvent?.contentOffset?.y ?? 0);
+      feedScrollYRef.current = y;
       const HERO_SWITCH_Y = 236;
+      const SEARCH_COLLAPSE_Y = 92;
       const nextTarget: 0 | 1 = y >= HERO_SWITCH_Y ? 1 : 0;
       if (nextTarget !== homeSurfaceTargetRef.current) {
         homeSurfaceTargetRef.current = nextTarget;
@@ -3650,6 +3696,22 @@ export default function HomeScreen({
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }).start();
+      }
+
+      if (
+        y >= SEARCH_COLLAPSE_Y
+        && searchModeRef.current
+        && !searchQueryRef.current.trim()
+        && Date.now() > searchOpenGuardUntilRef.current
+      ) {
+        searchModeRef.current = false;
+        setSearchMode(false);
+        searchInputRef.current?.blur();
+      }
+      const shouldShowExpandedSearch = y < SEARCH_COLLAPSE_Y || searchModeRef.current || Boolean(searchQueryRef.current.trim());
+      if (shouldShowExpandedSearch !== searchExpandedRef.current) {
+        searchExpandedRef.current = shouldShowExpandedSearch;
+        setSearchExpanded(shouldShowExpandedSearch);
       }
     };
 
@@ -3710,41 +3772,57 @@ export default function HomeScreen({
             </View>
           </View>
           ) : null}
-          <View style={styles.floatingSearchWrap}>
-            <TouchableOpacity
-              style={[styles.floatingSearchBar, searchMode && styles.floatingSearchBarActive]}
-              activeOpacity={0.95}
-              onPress={() => !searchMode && setSearchMode(true)}
-            >
-              <Ionicons name="search-outline" size={22} color="#6B4D3A" style={{ marginRight: 10 }} />
-              {searchMode ? (
-                <TextInput
-                  ref={searchInputRef}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder={t('helper.home.searchPlaceholder')}
-                  placeholderTextColor="#BDBDBD"
-                  style={styles.floatingSearchInput}
-                  returnKeyType="search"
-                  autoFocus
-                />
-              ) : (
-                <Text style={styles.floatingSearchPlaceholder}>{t('helper.home.searchPlaceholder')}</Text>
-              )}
-              {searchMode ? (
-                <TouchableOpacity
-                  style={styles.floatingSearchFilterBtn}
-                  activeOpacity={0.7}
-                  onPress={() => { setSearchMode(false); setSearchQuery(''); }}
-                >
-                  <Ionicons name="close-outline" size={20} color="#9C8273" />
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.floatingSearchFilterBtn}>
-                  <Ionicons name="options-outline" size={18} color="#9C8273" />
-                </View>
-              )}
-            </TouchableOpacity>
+          <View style={[styles.floatingSearchWrap, !searchExpanded && styles.floatingSearchWrapCollapsed]}>
+            {searchExpanded ? (
+              <TouchableOpacity
+                style={[styles.floatingSearchBar, searchMode && styles.floatingSearchBarActive]}
+                activeOpacity={0.95}
+                onPress={() => !searchMode && openHomeSearch()}
+              >
+                <Ionicons name="search-outline" size={22} color="#6B4D3A" style={{ marginRight: 10 }} />
+                {searchMode ? (
+                  <TextInput
+                    ref={searchInputRef}
+                    value={searchQuery}
+                    onChangeText={(value) => {
+                      searchQueryRef.current = value;
+                      setSearchQuery(value);
+                    }}
+                    placeholder={t('helper.home.searchPlaceholder')}
+                    placeholderTextColor="#BDBDBD"
+                    style={styles.floatingSearchInput}
+                    returnKeyType="search"
+                    autoFocus
+                  />
+                ) : (
+                  <Text style={styles.floatingSearchPlaceholder}>{t('helper.home.searchPlaceholder')}</Text>
+                )}
+                {searchMode ? (
+                  <TouchableOpacity
+                    style={styles.floatingSearchFilterBtn}
+                    activeOpacity={0.7}
+                    onPress={closeHomeSearch}
+                  >
+                    <Ionicons name="close-outline" size={20} color="#9C8273" />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.floatingSearchFilterBtn}>
+                    <Ionicons name="options-outline" size={18} color="#9C8273" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.floatingSearchIconButton}
+                activeOpacity={0.72}
+                hitSlop={{ top: 14, right: 18, bottom: 14, left: 18 }}
+                pressRetentionOffset={{ top: 18, right: 22, bottom: 18, left: 22 }}
+                onPressIn={openHomeSearch}
+                onPress={openHomeSearch}
+              >
+                <Ionicons name="search-outline" size={23} color="#6B4D3A" />
+              </TouchableOpacity>
+            )}
           </View>
           <Animated.View
             style={[
@@ -5560,13 +5638,6 @@ const styles = StyleSheet.create({
     paddingTop: 8 + 24,
     backgroundColor: 'transparent',
   },
-  stickySearchFade: {
-    position: 'absolute',
-    top: 30,
-    left: 0,
-    right: 0,
-    height: 112,
-  },
   homeSloganBanner: {
     marginHorizontal: 12,
     marginTop: -34,
@@ -5631,7 +5702,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 18,
     marginHorizontal: 8,
-    zIndex: 5,
+    zIndex: 2,
+  },
+  floatingSearchWrapCollapsed: {
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    zIndex: 12,
+    elevation: 12,
   },
   floatingSearchBar: {
     flexDirection: 'row',
@@ -5647,6 +5724,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0,
+  },
+  floatingSearchIconButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    marginLeft: 4,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderWidth: 1,
+    borderColor: '#E6DED3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   floatingSearchBarActive: {
     borderWidth: 1,
@@ -5679,6 +5772,7 @@ const styles = StyleSheet.create({
     paddingTop: 2,
     paddingBottom: 6,
     backgroundColor: 'transparent',
+    zIndex: 2,
   },
   chipScroller: {
     marginHorizontal: 0,

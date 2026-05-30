@@ -2,14 +2,14 @@ import { StyleSheet } from 'react-native';
 
 export const foodCardStyles = StyleSheet.create({
   foodCardWrap: {
-    marginBottom: 12,
-    marginHorizontal: 10,
+    marginBottom: 16,
+    marginHorizontal: 6,
     borderRadius: 12,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 5,
   },
   foodCardWrapTablet: {
     marginHorizontal: 0,
@@ -412,13 +412,16 @@ export const foodCardStyles = StyleSheet.create({
     lineHeight: 14,
   },
   foodFooterSellerTagline: {
-    marginTop: 0,
+    marginTop: 4,
     color: '#7D695A',
     fontSize: 10.5,
-    fontWeight: '600',
+    fontWeight: '500',
+    fontStyle: 'italic',
     lineHeight: 13,
+    opacity: 0.82,
   },
   foodFooterSellerTaglineTablet: {
+    marginTop: 3,
     fontSize: 9.5,
     lineHeight: 12,
   },

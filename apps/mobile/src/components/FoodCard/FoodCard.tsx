@@ -429,7 +429,7 @@ export function FoodCard({
                       <Text style={[styles.foodFooterRatingInlineText, { color: colors.price }]}>{ratingBadgeText}</Text>
                     </View>
                   </View>
-                  <Text style={[styles.foodFooterSellerTagline, tabletSellerTaglineStyle, { color: colors.subtitle }]}>
+                  <Text numberOfLines={1} style={[styles.foodFooterSellerTagline, tabletSellerTaglineStyle, { color: colors.subtitle }]}>
                     {sellerTagline}
                   </Text>
                 </View>
