@@ -39,10 +39,10 @@
   }
   .hero-upload-row { display: block; }
   .hero-upload-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
+    flex-wrap: wrap;
     gap: 12px;
-    align-items: stretch;
+    align-items: center;
   }
   .hero-copy-grid {
     display: grid;
@@ -84,20 +84,20 @@
     margin-bottom: 8px;
   }
   .hero-dropzone {
-    width: 100%;
-    min-height: 92px;
-    border: 1.5px dashed rgba(127, 86, 217, 0.42);
-    border-radius: 14px;
-    background: #141a17;
-    color: #cfc7bd;
+    width: auto;
+    min-height: 46px;
+    border: 1px solid rgba(226, 232, 240, 0.16);
+    border-radius: 8px;
+    background: #171c1a;
+    color: #f1ece4;
     font-size: 14px;
-    padding: 16px;
+    padding: 10px 16px;
     cursor: pointer;
     text-align: center;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 18px;
+    gap: 8px;
     transition: border-color 160ms ease, background 160ms ease;
   }
   .hero-dropzone:hover,
@@ -106,10 +106,10 @@
     background: #1d211f;
   }
   .hero-dropzone-icon {
-    width: 38px;
-    height: 38px;
-    border: 2px solid #7f56d9;
-    border-radius: 9px;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 0;
     color: #7f56d9;
     display: inline-flex;
     align-items: center;
@@ -121,7 +121,7 @@
   }
   .hero-dropzone-copy {
     text-align: left;
-    line-height: 1.45;
+    line-height: 1.2;
   }
   .hero-dropzone-main {
     display: block;
@@ -129,7 +129,7 @@
     color: #f1ece4;
   }
   .hero-dropzone-sub {
-    display: block;
+    display: none;
     color: #a9a099;
   }
   .hero-left-title {
@@ -486,7 +486,11 @@
     position: relative;
     --device-w: 430px;
     --device-h: 932px;
-    width: min(390px, 100%);
+    --hero-render-w: 430px;
+    --hero-horizontal-bleed: 24px;
+    --hero-image-top: -30px;
+    --hero-image-height: 386px;
+    width: min(var(--device-w), 100%);
     background: #05070a;
     border-radius: 52px;
     padding: 10px;
@@ -556,10 +560,10 @@
   }
   .hero-phone-hero-image {
     position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 300px;
+    left: calc(((100% - var(--hero-render-w)) / 2) - var(--hero-horizontal-bleed));
+    top: var(--hero-image-top);
+    width: calc(var(--hero-render-w) + (var(--hero-horizontal-bleed) * 2));
+    height: var(--hero-image-height);
     max-width: none !important;
     max-height: none !important;
     display: block;
@@ -619,50 +623,6 @@
     z-index: 5;
     background: linear-gradient(180deg, rgba(255,251,244,0) 0%, rgba(255,251,244,0.22) 12%, rgba(255,251,244,0.44) 24%, rgba(255,251,244,0.66) 36%, rgba(255,251,244,0.86) 48%, #fffbf4 60%, #fffbf4 100%);
     pointer-events: none;
-  }
-  .hero-phone-edge-fade {
-    position: absolute;
-    top: 246px;
-    width: 42px;
-    height: 70px;
-    z-index: 6;
-    pointer-events: none;
-  }
-  .hero-phone-edge-fade.left {
-    left: 0;
-    background: linear-gradient(90deg, #fffbf4 0%, rgba(255,251,244,0) 100%);
-  }
-  .hero-phone-edge-fade.right {
-    right: 0;
-    background: linear-gradient(90deg, rgba(255,251,244,0) 0%, #fffbf4 100%);
-  }
-  .hero-phone-fade-guide {
-    position: absolute;
-    left: 0;
-    right: 0;
-    pointer-events: none;
-    z-index: 7;
-    border-top: 1px dashed rgba(127, 86, 217, 0.78);
-  }
-  .hero-phone-fade-guide.start {
-    bottom: 70px;
-  }
-  .hero-phone-fade-guide.solid {
-    bottom: -62px;
-    border-top-color: rgba(67, 56, 202, 0.78);
-  }
-  .hero-phone-fade-guide span {
-    position: absolute;
-    right: 8px;
-    top: -19px;
-    padding: 3px 7px;
-    border-radius: 999px;
-    background: rgba(15, 23, 42, 0.72);
-    color: #fff;
-    font-size: 9px;
-    line-height: 1;
-    font-weight: 800;
-    white-space: nowrap;
   }
   .hero-phone-avatar-row {
     position: absolute;
@@ -989,6 +949,95 @@
     color: #98a2b3;
     height: 100%;
   }
+  .hero-upload-actions .hero-dropzone,
+  .hero-upload-actions .hero-btn-primary {
+    min-height: 46px;
+    flex: 0 0 auto;
+  }
+  .hero-copy-grid,
+  .hero-two-col-left,
+  .hero-phone-hero-copy {
+    display: none !important;
+  }
+  .hero-two-col {
+    grid-template-columns: minmax(520px, 1fr) minmax(360px, 0.72fr);
+  }
+  .hero-stage {
+    position: relative;
+  }
+  .hero-text-layer-host {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    pointer-events: none;
+  }
+  .hero-text-layer {
+    position: absolute;
+    max-width: 78%;
+    padding: 2px 4px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: move;
+    pointer-events: auto;
+    user-select: none;
+    white-space: pre-wrap;
+    transform-origin: left top;
+  }
+  .hero-text-layer.is-active {
+    border-color: transparent;
+    background: transparent;
+  }
+  .hero-layer-editor {
+    margin-top: 14px;
+    border: 1px solid rgba(127, 86, 217, 0.18);
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.28);
+    padding: 12px;
+  }
+  .hero-layer-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .hero-layer-form {
+    display: grid;
+    grid-template-columns: minmax(180px, 1.2fr) repeat(5, minmax(88px, 0.7fr));
+    gap: 10px;
+    align-items: end;
+  }
+  .hero-layer-form label {
+    display: grid;
+    gap: 5px;
+    color: #d0d5dd;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .hero-layer-form input,
+  .hero-layer-form select {
+    height: 38px;
+    border: 1px solid #263241;
+    border-radius: 8px;
+    background: #101820;
+    color: #f8fafc;
+    padding: 0 10px;
+    font-weight: 700;
+  }
+  .hero-layer-form input[type="color"] {
+    padding: 3px;
+  }
+  .hero-phone-hero-wrap {
+    position: relative;
+  }
+  .hero-phone-text-layer {
+    position: absolute;
+    z-index: 7;
+    max-width: 78%;
+    white-space: pre-wrap;
+    transform-origin: left top;
+    pointer-events: none;
+  }
 </style>
 
 <div class="hero-simple-wrap">
@@ -1117,6 +1166,7 @@
           </div>
           <div class="hero-stage" id="hero-stage">
             <img id="hero-editor-image" src="{{ current_url|default:'' }}" alt="Hero düzenleme alanı" {% if not current_url %}style="display:none"{% endif %} />
+            <div id="hero-editor-text-layer-host" class="hero-text-layer-host"></div>
             <div class="hero-phone-safe-overlay top" aria-hidden="true">
               <span class="hero-phone-safe-label">Üst Güvenli Alan</span>
             </div>
@@ -1128,6 +1178,42 @@
             </div>
           </div>
           <div class="hero-help" style="text-align:center;">1920 × 1080 px · Sürükle, tekerlek ile zoom yap, odak noktasını ayarla</div>
+          <div class="hero-layer-editor">
+            <div class="hero-layer-toolbar">
+              <button type="button" id="hero-add-text-layer" class="hero-btn-secondary">+ Yazı Ekle</button>
+              <button type="button" id="hero-delete-text-layer" class="hero-btn-secondary">Seçili Yazıyı Sil</button>
+              <span class="hero-help">Yazıyı görselin üstünde sürükle. Konum oran olarak kaydedilir.</span>
+            </div>
+            <div class="hero-layer-form">
+              <label>Yazı
+                <input id="hero-layer-text" type="text" maxlength="120" placeholder="Yazı yaz" />
+              </label>
+              <label>Font
+                <select id="hero-layer-font">
+                  <option value="Georgia">Georgia</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Helvetica">Helvetica</option>
+                  <option value="Times New Roman">Times</option>
+                </select>
+              </label>
+              <label>Boyut
+                <input id="hero-layer-size" type="number" min="8" max="72" step="1" value="24" />
+              </label>
+              <label>Renk
+                <input id="hero-layer-color" type="color" value="#23170f" />
+              </label>
+              <label>Kalınlık
+                <select id="hero-layer-weight">
+                  <option value="400">Normal</option>
+                  <option value="700">Kalın</option>
+                  <option value="900">Çok Kalın</option>
+                </select>
+              </label>
+              <label>Açı
+                <input id="hero-layer-rotation" type="number" min="-180" max="180" step="1" value="0" />
+              </label>
+            </div>
+          </div>
           <div class="hero-presets">
             <button type="button" class="hero-preset is-active" data-preset="default">Varsayılan</button>
             <button type="button" class="hero-preset" data-preset="left">Odak Solda</button>
@@ -1157,10 +1243,7 @@
               <div class="hero-phone-hero-wrap">
                 <img id="hero-preview-image" class="hero-phone-hero-image" src="{{ current_url|default:'' }}" alt="Hero önizleme" {% if not current_url %}style="display:none"{% endif %} />
                 <div class="hero-phone-hero-fade"></div>
-                <div class="hero-phone-edge-fade left"></div>
-                <div class="hero-phone-edge-fade right"></div>
-                <div class="hero-phone-fade-guide start" aria-hidden="true"><span>Fade Başlar</span></div>
-                <div class="hero-phone-fade-guide solid" aria-hidden="true"><span>Tam Açılır</span></div>
+                <div id="hero-phone-text-layer-host" class="hero-text-layer-host"></div>
                 <div class="hero-phone-safe-overlay top" aria-hidden="true">
                   <span class="hero-phone-safe-label">Top safe area</span>
                 </div>
@@ -1753,7 +1836,6 @@
   var phoneScreen = document.querySelector('.hero-phone-screen');
   var phoneUi = document.getElementById('hero-phone-ui');
   var phoneFade = document.querySelector('.hero-phone-hero-fade');
-  var phoneEdgeFades = Array.prototype.slice.call(document.querySelectorAll('.hero-phone-edge-fade'));
   var zoomInput = document.getElementById('hero-zoom');
   var offsetXInput = document.getElementById('hero-offset-x');
   var offsetYInput = document.getElementById('hero-offset-y');
@@ -1769,6 +1851,16 @@
   var phoneQuestionText = document.getElementById('hero-phone-question-text');
   var phoneSloganTitle = document.getElementById('hero-phone-slogan-title');
   var phoneSloganSubtitle = document.getElementById('hero-phone-slogan-subtitle');
+  var editorTextHost = document.getElementById('hero-editor-text-layer-host');
+  var phoneTextHost = document.getElementById('hero-phone-text-layer-host');
+  var addTextLayerBtn = document.getElementById('hero-add-text-layer');
+  var deleteTextLayerBtn = document.getElementById('hero-delete-text-layer');
+  var layerTextInput = document.getElementById('hero-layer-text');
+  var layerFontInput = document.getElementById('hero-layer-font');
+  var layerSizeInput = document.getElementById('hero-layer-size');
+  var layerColorInput = document.getElementById('hero-layer-color');
+  var layerWeightInput = document.getElementById('hero-layer-weight');
+  var layerRotationInput = document.getElementById('hero-layer-rotation');
   var deviceButtons = Array.prototype.slice.call(document.querySelectorAll('.hero-device-button'));
   var presetButtons = Array.prototype.slice.call(document.querySelectorAll('.hero-preset'));
   var initialEditRaw = '{{ current_edit_json|default:""|escapejs }}';
@@ -1783,6 +1875,12 @@
     scale: 1,
     offsetX: 0,
     offsetY: 0,
+    offsetXRatio: 0,
+    offsetYRatio: 0,
+    hasRelativeOffsets: false,
+    hydrateRelativeOffsets: false,
+    textLayers: [],
+    activeTextLayerId: null,
     focalX: 0.5,
     focalY: 0.5,
     gradientOpacity: 1,
@@ -1795,6 +1893,8 @@
     ipad: { width: 820, height: 1180 },
     samsung: { width: 412, height: 915 },
   };
+  var currentRenderWidth = 430;
+  var currentRenderHeight = 386;
 
   function clamp(v, min, max) {
     return Math.min(max, Math.max(min, v));
@@ -1829,6 +1929,126 @@
     return Number.isFinite(next) ? clamp(next, min, max) : fallback;
   }
 
+  function createTextLayer(text) {
+    return {
+      id: 'text-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+      text: text || '',
+      x: 0.12,
+      y: 0.22,
+      fontFamily: 'Georgia',
+      fontSize: 26,
+      fontWeight: '700',
+      color: '#23170f',
+      opacity: 1,
+      rotation: 0,
+      align: 'left',
+    };
+  }
+
+  function getActiveTextLayer() {
+    return state.textLayers.find(function (layer) { return layer.id === state.activeTextLayerId; }) || null;
+  }
+
+  function clampLayer(layer) {
+    layer.x = clamp(readNumber(layer.x, 0.12, 0, 1), 0, 1);
+    layer.y = clamp(readNumber(layer.y, 0.22, 0, 1), 0, 1);
+    layer.fontSize = readNumber(layer.fontSize, 24, 8, 72);
+    layer.opacity = readNumber(layer.opacity, 1, 0, 1);
+    layer.rotation = readNumber(layer.rotation, 0, -180, 180);
+    layer.text = String(layer.text || '').slice(0, 120);
+    layer.fontFamily = String(layer.fontFamily || 'Georgia');
+    layer.fontWeight = ['400', '500', '600', '700', '800', '900', 'normal', 'bold'].indexOf(String(layer.fontWeight)) >= 0 ? String(layer.fontWeight) : '700';
+    layer.color = /^#[0-9a-fA-F]{6}$/.test(String(layer.color || '')) ? String(layer.color).toLowerCase() : '#23170f';
+    layer.align = ['left', 'center', 'right'].indexOf(String(layer.align)) >= 0 ? String(layer.align) : 'left';
+    return layer;
+  }
+
+  function syncLayerInputs() {
+    var layer = getActiveTextLayer();
+    var disabled = !layer;
+    [layerTextInput, layerFontInput, layerSizeInput, layerColorInput, layerWeightInput, layerRotationInput, deleteTextLayerBtn].forEach(function (input) {
+      if (input) input.disabled = disabled;
+    });
+    if (!layer) {
+      if (layerTextInput) layerTextInput.value = '';
+      return;
+    }
+    if (layerTextInput) layerTextInput.value = layer.text;
+    if (layerFontInput) layerFontInput.value = layer.fontFamily;
+    if (layerSizeInput) layerSizeInput.value = String(layer.fontSize);
+    if (layerColorInput) layerColorInput.value = layer.color;
+    if (layerWeightInput) layerWeightInput.value = layer.fontWeight;
+    if (layerRotationInput) layerRotationInput.value = String(layer.rotation);
+  }
+
+  function renderTextLayers() {
+    [editorTextHost, phoneTextHost].forEach(function (host) {
+      if (!host) return;
+      host.innerHTML = '';
+      state.textLayers.forEach(function (rawLayer) {
+        var layer = clampLayer(rawLayer);
+        if (!layer.text.trim()) return;
+        var el = document.createElement('div');
+        el.className = 'hero-text-layer' + (layer.id === state.activeTextLayerId ? ' is-active' : '');
+        if (host === phoneTextHost) el.className += ' hero-phone-text-layer';
+        el.textContent = layer.text;
+        el.style.left = (layer.x * 100).toFixed(3) + '%';
+        el.style.top = (layer.y * 100).toFixed(3) + '%';
+        el.style.fontFamily = layer.fontFamily;
+        el.style.fontSize = layer.fontSize + 'px';
+        el.style.fontWeight = layer.fontWeight;
+        el.style.setProperty('color', layer.color, 'important');
+        el.style.opacity = layer.opacity;
+        el.style.textAlign = layer.align;
+        el.style.transform = 'rotate(' + layer.rotation + 'deg)';
+        el.setAttribute('data-layer-id', layer.id);
+        if (host === editorTextHost) attachTextLayerDrag(el, layer);
+        host.appendChild(el);
+      });
+    });
+    syncLayerInputs();
+  }
+
+  function attachTextLayerDrag(el, layer) {
+    el.addEventListener('pointerdown', function (event) {
+      event.stopPropagation();
+      state.activeTextLayerId = layer.id;
+      var rect = editorTextHost.getBoundingClientRect();
+      var startX = event.clientX;
+      var startY = event.clientY;
+      var startLayerX = layer.x;
+      var startLayerY = layer.y;
+      el.setPointerCapture(event.pointerId);
+      renderTextLayers();
+      function move(moveEvent) {
+        var dx = (moveEvent.clientX - startX) / rect.width;
+        var dy = (moveEvent.clientY - startY) / rect.height;
+        layer.x = clamp(startLayerX + dx, 0, 1);
+        layer.y = clamp(startLayerY + dy, 0, 1);
+        renderTextLayers();
+      }
+      function done(doneEvent) {
+        try { el.releasePointerCapture(doneEvent.pointerId); } catch (_) {}
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', done);
+      }
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', done);
+    });
+  }
+
+  function syncRatiosFromOffsets() {
+    state.offsetXRatio = currentRenderWidth ? state.offsetX / currentRenderWidth : 0;
+    state.offsetYRatio = 300 ? state.offsetY / 300 : 0;
+    state.hasRelativeOffsets = true;
+  }
+
+  function syncOffsetsFromRatios() {
+    if (!state.hasRelativeOffsets) return;
+    state.offsetX = clamp(state.offsetXRatio * currentRenderWidth, -500, 500);
+    state.offsetY = clamp(state.offsetYRatio * 300, -500, 500);
+  }
+
   function normalizePreviewText(value, fallback) {
     var text = String(value || '').replace(/\s+/g, ' ').trim();
     return text || fallback;
@@ -1855,10 +2075,34 @@
 
   function applyDevice(mode) {
     var device = devices[mode] || devices.iphone_pro_max;
+    var visibleHeight = 300;
+    var horizontalBleed = 24;
+    var renderWidth = Math.min(device.width, 430);
+    var topBleedBase = 30;
+    var bottomBleedBase = 56;
+    var baseExtendedWidth = 390 + horizontalBleed * 2;
+    var baseExtendedHeight = visibleHeight + topBleedBase + bottomBleedBase;
+    var baseExtendedAspect = baseExtendedWidth / baseExtendedHeight;
+    var extendedWidth = renderWidth + horizontalBleed * 2;
+    var targetHeight = Math.max(
+      visibleHeight + topBleedBase + bottomBleedBase,
+      extendedWidth / baseExtendedAspect
+    );
+    var bleedScale = targetHeight / baseExtendedHeight;
+    var topBleed = Math.round(topBleedBase * bleedScale);
     state.devicePreviewMode = mode in devices ? mode : 'iphone_pro_max';
     if (phoneFrame) {
       phoneFrame.style.setProperty('--device-w', device.width + 'px');
       phoneFrame.style.setProperty('--device-h', device.height + 'px');
+      phoneFrame.style.setProperty('--hero-render-w', renderWidth + 'px');
+      phoneFrame.style.setProperty('--hero-image-top', '-' + topBleed + 'px');
+      phoneFrame.style.setProperty('--hero-image-height', targetHeight.toFixed(1) + 'px');
+    }
+    currentRenderWidth = renderWidth;
+    currentRenderHeight = targetHeight;
+    if (state.hydrateRelativeOffsets) {
+      syncOffsetsFromRatios();
+      state.hydrateRelativeOffsets = false;
     }
     deviceButtons.forEach(function (button) {
       button.classList.toggle('is-active', button.getAttribute('data-device') === state.devicePreviewMode);
@@ -1873,24 +2117,14 @@
     if (phoneUi) phoneUi.style.background = previewSurface;
     if (heroWrap) heroWrap.style.background = previewSurface;
     if (phoneFade) {
-      var fade = state.gradientOpacity;
       phoneFade.style.background =
         'linear-gradient(180deg, rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0) 0%, ' +
-        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.22 * fade).toFixed(2) + ') 12%, ' +
-        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.44 * fade).toFixed(2) + ') 24%, ' +
-        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.66 * fade).toFixed(2) + ') 36%, ' +
-        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.86 * fade).toFixed(2) + ') 48%, ' +
+        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.22 * state.gradientOpacity).toFixed(2) + ') 12%, ' +
+        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.44 * state.gradientOpacity).toFixed(2) + ') 24%, ' +
+        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.66 * state.gradientOpacity).toFixed(2) + ') 36%, ' +
+        'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.86 * state.gradientOpacity).toFixed(2) + ') 48%, ' +
         previewSurface + ' 60%, ' + previewSurface + ' 100%)';
     }
-    phoneEdgeFades.forEach(function (fadeEl) {
-      if (fadeEl.classList.contains('left')) {
-        fadeEl.style.background =
-          'linear-gradient(90deg, ' + previewSurface + ' 0%, rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0) 100%)';
-      } else {
-        fadeEl.style.background =
-          'linear-gradient(90deg, rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0) 0%, ' + previewSurface + ' 100%)';
-      }
-    });
   }
 
   function applyInputs() {
@@ -1918,6 +2152,7 @@
     applyColor();
     applyImageTransform();
     syncCopy();
+    renderTextLayers();
   }
 
   function setSelectedFile(file) {
@@ -1937,6 +2172,7 @@
         state.offsetY = 0;
         state.focalX = 0.5;
         state.focalY = 0.5;
+        syncRatiosFromOffsets();
         if (heroImage) heroImage.style.display = 'block';
         if (editorImage) editorImage.style.display = 'block';
         applyState();
@@ -1970,6 +2206,14 @@
       state.scale = readNumber(initial.scale != null ? initial.scale : initial.zoom, state.scale, 0.25, 3);
       state.offsetX = readNumber(initial.offsetX != null ? initial.offsetX : initial.translateX, state.offsetX, -500, 500);
       state.offsetY = readNumber(initial.offsetY != null ? initial.offsetY : initial.translateY, state.offsetY, -500, 500);
+      if (initial.offsetXRatio != null || initial.offsetYRatio != null) {
+        state.offsetXRatio = readNumber(initial.offsetXRatio, 0, -2, 2);
+        state.offsetYRatio = readNumber(initial.offsetYRatio, 0, -2, 2);
+        state.hasRelativeOffsets = true;
+        state.hydrateRelativeOffsets = true;
+      } else {
+        syncRatiosFromOffsets();
+      }
     } else {
       state.scale = Math.min(readNumber(initial.scale != null ? initial.scale : initial.zoom, state.scale, 0.25, 3), 1);
       state.offsetX = 0;
@@ -1979,6 +2223,15 @@
     state.focalY = readNumber(initial.focalY != null ? initial.focalY : initial.focusY, state.focalY, 0, 1);
     state.gradientOpacity = readNumber(initial.gradientOpacity != null ? initial.gradientOpacity : initial.bottomFadeOpacity, state.gradientOpacity, 0, 1);
     state.overlayColor = normalizeHexColor(initial.overlayColor || initial.surfaceColor || state.overlayColor);
+    if (Array.isArray(initial.textLayers)) {
+      state.textLayers = initial.textLayers
+        .filter(function (layer) { return layer && typeof layer === 'object'; })
+        .map(function (layer) { return clampLayer(Object.assign({}, layer)); });
+      state.activeTextLayerId = state.textLayers[0] ? state.textLayers[0].id : null;
+    } else if (phoneQuestionText && phoneQuestionText.textContent) {
+      state.textLayers = [createTextLayer(phoneQuestionText.textContent)];
+      state.activeTextLayerId = state.textLayers[0].id;
+    }
     if (typeof initial.devicePreviewMode === 'string' && devices[initial.devicePreviewMode]) {
       state.devicePreviewMode = initial.devicePreviewMode;
     }
@@ -2030,8 +2283,57 @@
 
   deviceButtons.forEach(function (button) {
     button.addEventListener('click', function () {
+      syncRatiosFromOffsets();
       applyDevice(button.getAttribute('data-device') || 'iphone_pro_max');
+      syncOffsetsFromRatios();
+      applyState();
     });
+  });
+
+  if (addTextLayerBtn) {
+    addTextLayerBtn.addEventListener('click', function () {
+      var layer = createTextLayer('');
+      state.textLayers.push(layer);
+      state.activeTextLayerId = layer.id;
+      applyState();
+    });
+  }
+
+  if (deleteTextLayerBtn) {
+    deleteTextLayerBtn.addEventListener('click', function () {
+      if (!state.activeTextLayerId) return;
+      state.textLayers = state.textLayers.filter(function (layer) { return layer.id !== state.activeTextLayerId; });
+      state.activeTextLayerId = state.textLayers[0] ? state.textLayers[0].id : null;
+      applyState();
+    });
+  }
+
+  [
+    [layerTextInput, 'text'],
+    [layerFontInput, 'fontFamily'],
+    [layerSizeInput, 'fontSize'],
+    [layerColorInput, 'color'],
+    [layerWeightInput, 'fontWeight'],
+    [layerRotationInput, 'rotation'],
+  ].forEach(function (entry) {
+    var input = entry[0];
+    if (!input) return;
+    var updateLayerFromInput = function () {
+      var layer = getActiveTextLayer();
+      if (!layer) return;
+      if (entry[1] === 'fontSize') {
+        layer.fontSize = readNumber(input.value, layer.fontSize, 8, 72);
+      } else if (entry[1] === 'rotation') {
+        layer.rotation = readNumber(input.value, layer.rotation, -180, 180);
+      } else if (entry[1] === 'color') {
+        layer.color = normalizeHexColor(input.value);
+      } else {
+        layer[entry[1]] = input.value;
+      }
+      applyState();
+    };
+    input.addEventListener('input', updateLayerFromInput);
+    input.addEventListener('change', updateLayerFromInput);
   });
 
   var presets = {
@@ -2047,6 +2349,7 @@
       var name = button.getAttribute('data-preset') || 'default';
       var preset = presets[name] || presets.default;
       Object.keys(preset).forEach(function (key) { state[key] = preset[key]; });
+      syncRatiosFromOffsets();
       presetButtons.forEach(function (item) {
         item.classList.toggle('is-active', item === button);
       });
@@ -2060,6 +2363,7 @@
       if (!hasImage()) return;
       event.preventDefault();
       state.scale = clamp(state.scale + (event.deltaY > 0 ? -0.05 : 0.05), 0.25, 3);
+      syncRatiosFromOffsets();
       applyState();
     }, { passive: false });
     dragSurface.addEventListener('pointerdown', function (event) {
@@ -2076,6 +2380,7 @@
       if (!dragging) return;
       state.offsetX = clamp(startOffsetX + event.clientX - dragStartX, -500, 500);
       state.offsetY = clamp(startOffsetY + event.clientY - dragStartY, -500, 500);
+      syncRatiosFromOffsets();
       applyState();
     });
     function stopDrag(event) {
@@ -2099,6 +2404,7 @@
     if (!input) return;
     input.addEventListener('input', function () {
       state[entry[1]] = readNumber(input.value, state[entry[1]], entry[2], entry[3]);
+      if (entry[1] === 'offsetX' || entry[1] === 'offsetY') syncRatiosFromOffsets();
       applyState();
     });
   });
@@ -2130,6 +2436,7 @@
       state.focalX = 0.5;
       state.focalY = 0.5;
       state.gradientOpacity = 1;
+      syncRatiosFromOffsets();
       applyState();
       if (helpText) helpText.textContent = 'Hero görseli kırpılmadan sığdırıldı.';
     });
@@ -2146,17 +2453,38 @@
       if (imageDataInput) imageDataInput.value = '';
       if (fileInput && fileInput.files && fileInput.files[0] && imageUrlInput) imageUrlInput.value = '';
       if (editJsonInput) {
+        syncRatiosFromOffsets();
         editJsonInput.value = JSON.stringify({
           fitMode: 'manual_v2',
           imageUrl: state.imageUrl || (imageUrlInput ? imageUrlInput.value : ''),
           scale: Number(state.scale.toFixed(3)),
           offsetX: Math.round(state.offsetX),
           offsetY: Math.round(state.offsetY),
+          offsetXRatio: Number(state.offsetXRatio.toFixed(6)),
+          offsetYRatio: Number(state.offsetYRatio.toFixed(6)),
           focalX: Number(state.focalX.toFixed(2)),
           focalY: Number(state.focalY.toFixed(2)),
           gradientOpacity: Number(state.gradientOpacity.toFixed(2)),
           overlayColor: state.overlayColor,
           devicePreviewMode: state.devicePreviewMode,
+          textLayers: state.textLayers.filter(function (layer) {
+            return String(layer.text || '').trim();
+          }).map(function (layer) {
+            layer = clampLayer(layer);
+            return {
+              id: layer.id,
+              text: layer.text,
+              x: Number(layer.x.toFixed(6)),
+              y: Number(layer.y.toFixed(6)),
+              fontFamily: layer.fontFamily,
+              fontSize: Number(layer.fontSize),
+              fontWeight: layer.fontWeight,
+              color: layer.color,
+              opacity: Number(layer.opacity),
+              rotation: Number(layer.rotation),
+              align: layer.align,
+            };
+          }),
         });
       }
       if (helpText) helpText.textContent = 'Yayınlanıyor...';

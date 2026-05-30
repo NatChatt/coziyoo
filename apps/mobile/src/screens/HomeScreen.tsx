@@ -65,7 +65,7 @@ import {
   sampleImageTopBandColor,
 } from '../utils/imageSampling';
 import { FoodCard } from '../components/FoodCard/FoodCard';
-import { HomeHeroRenderer, type HomeHeroRenderConfig } from '../components/HomeHeroRenderer';
+import { HomeHeroRenderer, type HomeHeroRenderConfig, type HomeHeroTextLayer } from '../components/HomeHeroRenderer';
 import { ProfileMenuItem } from '../components/ProfileMenuItem';
 import { QuantityStepper } from '../components/QuantityStepper';
 import type { MealCard } from '../types/meal';
@@ -1150,11 +1150,45 @@ function numberFromUnknown(value: unknown, fallback: number, min: number, max: n
   return Math.min(max, Math.max(min, next));
 }
 
+function resolveHomeHeroTextLayers(value: unknown): HomeHeroTextLayer[] {
+  if (!Array.isArray(value)) return [];
+  const layers: HomeHeroTextLayer[] = [];
+  value.forEach((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return;
+    const layer = item as Record<string, unknown>;
+    const text = typeof layer.text === 'string' ? layer.text.trim() : '';
+    if (!text) return;
+    const color = typeof layer.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(layer.color.trim())
+      ? layer.color.trim()
+      : '#23170F';
+    const rawWeight = typeof layer.fontWeight === 'string' ? layer.fontWeight : '700';
+    const fontWeight = ['400', '500', '600', '700', '800', '900', 'normal', 'bold'].includes(rawWeight) ? rawWeight as HomeHeroTextLayer['fontWeight'] : '700';
+    const rawAlign = typeof layer.align === 'string' ? layer.align : 'left';
+    const align = ['left', 'center', 'right'].includes(rawAlign) ? rawAlign as HomeHeroTextLayer['align'] : 'left';
+    layers.push({
+      id: typeof layer.id === 'string' && layer.id.trim() ? layer.id.trim() : `layer-${index}`,
+      text,
+      x: numberFromUnknown(layer.x, 0.12, 0, 1),
+      y: numberFromUnknown(layer.y, 0.22, 0, 1),
+      fontFamily: typeof layer.fontFamily === 'string' && layer.fontFamily.trim() ? layer.fontFamily.trim() : null,
+      fontSize: numberFromUnknown(layer.fontSize, 24, 8, 72),
+      fontWeight,
+      color,
+      opacity: numberFromUnknown(layer.opacity, 1, 0, 1),
+      rotation: numberFromUnknown(layer.rotation, 0, -180, 180),
+      align,
+    });
+  });
+  return layers;
+}
+
 function resolveHomeHeroRenderConfig(payload: unknown): HomeHeroRenderConfig {
   const defaults: HomeHeroRenderConfig = {
     scale: 1,
     offsetX: 0,
     offsetY: 0,
+    offsetXRatio: null,
+    offsetYRatio: null,
     focalX: 0.5,
     focalY: 0.5,
     gradientOpacity: 1,
@@ -1164,6 +1198,7 @@ function resolveHomeHeroRenderConfig(payload: unknown): HomeHeroRenderConfig {
     safeAreaTop: HOME_HERO_TOP_BLEED,
     textSafeAreaTop: 62,
     bottomSafeArea: HOME_HERO_BOTTOM_BLEED,
+    textLayers: [],
   };
   if (!payload || typeof payload !== 'object') return defaults;
   const root = payload as Record<string, unknown>;
@@ -1186,6 +1221,8 @@ function resolveHomeHeroRenderConfig(payload: unknown): HomeHeroRenderConfig {
     scale: numberFromUnknown(config.scale ?? config.zoom, defaults.scale, 0.5, 3),
     offsetX: numberFromUnknown(config.offsetX ?? config.translateX, defaults.offsetX, -500, 500),
     offsetY: numberFromUnknown(config.offsetY ?? config.translateY, defaults.offsetY, -500, 500),
+    offsetXRatio: config.offsetXRatio == null ? null : numberFromUnknown(config.offsetXRatio, 0, -2, 2),
+    offsetYRatio: config.offsetYRatio == null ? null : numberFromUnknown(config.offsetYRatio, 0, -2, 2),
     focalX: numberFromUnknown(config.focalX ?? config.focusX, defaults.focalX, 0, 1),
     focalY: numberFromUnknown(config.focalY ?? config.focusY, defaults.focalY, 0, 1),
     gradientOpacity: numberFromUnknown(config.gradientOpacity ?? config.bottomFadeOpacity, defaults.gradientOpacity, 0, 1),
@@ -1195,6 +1232,7 @@ function resolveHomeHeroRenderConfig(payload: unknown): HomeHeroRenderConfig {
     safeAreaTop: numberFromUnknown(config.safeAreaTop, defaults.safeAreaTop, 0, 90),
     textSafeAreaTop: numberFromUnknown(config.textSafeAreaTop, defaults.textSafeAreaTop, 20, 140),
     bottomSafeArea: numberFromUnknown(config.bottomSafeArea, defaults.bottomSafeArea, 0, 160),
+    textLayers: resolveHomeHeroTextLayers(config.textLayers),
   };
 }
 
@@ -1682,6 +1720,7 @@ export default function HomeScreen({
   const [sloganTextWidth, setSloganTextWidth] = useState(0);
   const [foodSectionOffsetY, setFoodSectionOffsetY] = useState(0);
   const chipsCollapseAnim = useRef(new Animated.Value(0)).current;
+  const [chipsCollapsed, setChipsCollapsed] = useState(false);
   const chipsCollapsedRef = useRef(false);
   const [recommendedMeals, setRecommendedMeals] = useState<RecommendationMeal[]>([]);
   const [recommendedMealsLoading, setRecommendedMealsLoading] = useState(false);
@@ -3690,6 +3729,7 @@ export default function HomeScreen({
       const shouldCollapse = y >= HERO_SWITCH_Y;
       if (shouldCollapse !== chipsCollapsedRef.current) {
         chipsCollapsedRef.current = shouldCollapse;
+        setChipsCollapsed(shouldCollapse);
         Animated.timing(chipsCollapseAnim, {
           toValue: shouldCollapse ? 1 : 0,
           duration: 260,
@@ -3824,47 +3864,51 @@ export default function HomeScreen({
               </TouchableOpacity>
             )}
           </View>
-          <Animated.View
-            style={[
-              styles.chipBand,
-              {
-                backgroundColor: 'transparent',
-                opacity: chipsCollapseAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [1, 0],
-                }),
-                transform: [
-                  {
-                    translateY: chipsCollapseAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, -12],
-                    }),
-                  },
-                ],
-              },
-            ]}
-            pointerEvents={chipsCollapsedRef.current ? 'none' : 'auto'}
+          <View
+            style={[styles.chipBandFrame, chipsCollapsed && styles.chipBandFrameCollapsed]}
+            pointerEvents={chipsCollapsed ? 'none' : 'auto'}
           >
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipRow}
-              style={styles.chipScroller}
+            <Animated.View
+              style={[
+                styles.chipBand,
+                {
+                  backgroundColor: 'transparent',
+                  opacity: chipsCollapseAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 0],
+                  }),
+                  transform: [
+                    {
+                      translateY: chipsCollapseAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, -12],
+                      }),
+                    },
+                  ],
+                },
+              ]}
             >
-              {CATEGORIES.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  style={[styles.chip, activeCategory === cat && styles.chipActive]}
-                  activeOpacity={0.85}
-                  onPress={() => setActiveCategory(cat)}
-                >
-                  <Text style={[styles.chipText, activeCategory === cat && styles.chipTextActive]}>
-                    {CATEGORY_KEYS[cat] ? t(CATEGORY_KEYS[cat]) : cat}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </Animated.View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipRow}
+                style={styles.chipScroller}
+              >
+                {CATEGORIES.map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.chip, activeCategory === cat && styles.chipActive]}
+                    activeOpacity={0.85}
+                    onPress={() => setActiveCategory(cat)}
+                  >
+                    <Text style={[styles.chipText, activeCategory === cat && styles.chipTextActive]}>
+                      {CATEGORY_KEYS[cat] ? t(CATEGORY_KEYS[cat]) : cat}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </Animated.View>
+          </View>
         </View>
         <View onLayout={(e) => setFoodSectionOffsetY(e.nativeEvent.layout.y)} />
         {mealsLoading ? (
@@ -5766,9 +5810,18 @@ const styles = StyleSheet.create({
   },
 
   /* --- Category Chips --- */
+  chipBandFrame: {
+    height: 56,
+    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  chipBandFrameCollapsed: {
+    height: 0,
+    marginBottom: 0,
+  },
   chipBand: {
     marginTop: 0,
-    marginBottom: 14,
+    marginBottom: 0,
     paddingTop: 2,
     paddingBottom: 6,
     backgroundColor: 'transparent',

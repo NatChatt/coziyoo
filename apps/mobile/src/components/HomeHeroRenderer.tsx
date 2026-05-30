@@ -16,6 +16,8 @@ export type HomeHeroRenderConfig = {
   scale: number;
   offsetX: number;
   offsetY: number;
+  offsetXRatio?: number | null;
+  offsetYRatio?: number | null;
   focalX: number;
   focalY: number;
   gradientOpacity: number;
@@ -25,6 +27,21 @@ export type HomeHeroRenderConfig = {
   safeAreaTop: number;
   textSafeAreaTop: number;
   bottomSafeArea: number;
+  textLayers?: HomeHeroTextLayer[];
+};
+
+export type HomeHeroTextLayer = {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontFamily?: string | null;
+  fontSize: number;
+  fontWeight?: '400' | '500' | '600' | '700' | '800' | '900' | 'normal' | 'bold' | null;
+  color: string;
+  opacity?: number | null;
+  rotation?: number | null;
+  align?: 'left' | 'center' | 'right' | null;
 };
 
 type LinearGradientComponent = React.ComponentType<{
@@ -99,19 +116,34 @@ export function HomeHeroRenderer({
     };
   }, [config.bottomSafeArea, config.safeAreaTop, contentWidth, isTabletLayout, visibleHeight]);
 
+  const effectiveOffsetX = useMemo(() => {
+    if (typeof config.offsetXRatio === 'number' && Number.isFinite(config.offsetXRatio) && !isTabletLayout) {
+      return config.offsetXRatio * contentWidth;
+    }
+    return config.offsetX;
+  }, [config.offsetX, config.offsetXRatio, contentWidth, isTabletLayout]);
+
+  const effectiveOffsetY = useMemo(() => {
+    if (typeof config.offsetYRatio === 'number' && Number.isFinite(config.offsetYRatio) && !isTabletLayout) {
+      return config.offsetYRatio * visibleHeight;
+    }
+    return config.offsetY;
+  }, [config.offsetY, config.offsetYRatio, isTabletLayout, visibleHeight]);
+
   const imageStyle = useMemo(
     () => [
       styles.heroImageInner,
       {
         transform: [
-          { translateX: config.offsetX },
-          { translateY: config.offsetY },
+          { translateX: effectiveOffsetX },
+          { translateY: effectiveOffsetY },
           { scale: config.scale },
         ],
       },
     ],
-    [config.offsetX, config.offsetY, config.scale],
+    [effectiveOffsetX, effectiveOffsetY, config.scale],
   );
+  const textLayers = Array.isArray(config.textLayers) ? config.textLayers.filter((layer) => layer.text.trim()) : [];
 
   return (
     <View
@@ -160,57 +192,63 @@ export function HomeHeroRenderer({
           colors={
             isTabletLayout
               ? [
-                  toRgba(bottomBandColor, 0.08),
-                  toRgba(bottomBandColor, 0.46 * config.gradientOpacity),
-                  toRgba(bottomBandColor, 0.82 * config.gradientOpacity),
-                  toRgba(bottomBandColor, 0.96 * config.gradientOpacity),
+                  toRgba(baseBackgroundColor, 0.08),
+                  toRgba(baseBackgroundColor, 0.46 * config.gradientOpacity),
+                  toRgba(baseBackgroundColor, 0.82 * config.gradientOpacity),
+                  toRgba(baseBackgroundColor, 0.96 * config.gradientOpacity),
                   baseBackgroundColor,
                   baseBackgroundColor,
                 ]
               : [
-                  toRgba(bottomBandColor, 0),
-                  toRgba(bottomBandColor, 0.22 * config.gradientOpacity),
-                  toRgba(bottomBandColor, 0.44 * config.gradientOpacity),
-                  toRgba(bottomBandColor, 0.66 * config.gradientOpacity),
-                  toRgba(bottomBandColor, 0.86 * config.gradientOpacity),
-                  baseBackgroundColor,
+                  toRgba(baseBackgroundColor, 0),
+                  toRgba(baseBackgroundColor, 0.18 * config.gradientOpacity),
+                  toRgba(baseBackgroundColor, 0.5 * config.gradientOpacity),
+                  toRgba(baseBackgroundColor, 0.82 * config.gradientOpacity),
                   baseBackgroundColor,
                 ]
           }
-          locations={isTabletLayout ? [0, 0.08, 0.16, 0.24, 0.34, 1] : [0, 0.12, 0.24, 0.36, 0.48, 0.6, 1]}
+          locations={isTabletLayout ? [0, 0.08, 0.16, 0.24, 0.34, 1] : [0, 0.22, 0.52, 0.78, 1]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
           style={[
             styles.bottomFade,
-            isTabletLayout ? { bottom: -230, height: 390 } : { bottom: -150, height: 220 },
+            isTabletLayout ? { bottom: -230, height: 390 } : { bottom: 0, height: 96 },
           ]}
         />
       ) : null}
-      {LinearGradientComponent ? (
-        <>
-          <LinearGradientComponent
-            colors={[baseBackgroundColor, toRgba(baseBackgroundColor, 0)]}
-            locations={[0, 1]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={[styles.edgeFade, styles.edgeFadeLeft]}
-          />
-          <LinearGradientComponent
-            colors={[toRgba(baseBackgroundColor, 0), baseBackgroundColor]}
-            locations={[0, 1]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={[styles.edgeFade, styles.edgeFadeRight]}
-          />
-        </>
-      ) : null}
-      <View style={[styles.textArea, { paddingTop: config.textSafeAreaTop }, isTabletLayout && styles.textAreaTablet]}>
-        <Text style={[styles.question, isTabletLayout && styles.questionTablet]}>{questionText}</Text>
-        <View style={styles.markerRow}>
-          <Text style={styles.markerIcon}>↝</Text>
-          <View style={styles.markerLine} />
+      {textLayers.length > 0 ? (
+        <View pointerEvents="none" style={styles.textLayerHost}>
+          {textLayers.map((layer) => (
+            <Text
+              key={layer.id}
+              style={[
+                styles.customTextLayer,
+                {
+                  left: `${Math.max(0, Math.min(1, layer.x)) * 100}%`,
+                  top: `${Math.max(0, Math.min(1, layer.y)) * 100}%`,
+                  color: layer.color || '#23170F',
+                  fontSize: Math.max(8, Math.min(72, layer.fontSize || 24)),
+                  fontWeight: layer.fontWeight || '700',
+                  opacity: layer.opacity == null ? 1 : Math.max(0, Math.min(1, layer.opacity)),
+                  textAlign: layer.align || 'left',
+                  transform: [{ rotate: `${layer.rotation || 0}deg` }],
+                },
+                layer.fontFamily ? { fontFamily: layer.fontFamily } : null,
+              ]}
+            >
+              {layer.text}
+            </Text>
+          ))}
         </View>
-      </View>
+      ) : (
+        <View style={[styles.textArea, { paddingTop: config.textSafeAreaTop }, isTabletLayout && styles.textAreaTablet]}>
+          <Text style={[styles.question, isTabletLayout && styles.questionTablet]}>{questionText}</Text>
+          <View style={styles.markerRow}>
+            <Text style={styles.markerIcon}>↝</Text>
+            <View style={styles.markerLine} />
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -225,7 +263,7 @@ const styles = StyleSheet.create({
     marginRight: 0,
     marginTop: 0,
     backgroundColor: 'transparent',
-    overflow: 'visible',
+    overflow: 'hidden',
   },
   heroImage: {
     ...StyleSheet.absoluteFillObject,
@@ -259,25 +297,21 @@ const styles = StyleSheet.create({
     bottom: -96,
     height: 206,
   },
-  edgeFade: {
-    position: 'absolute',
-    top: 246,
-    width: 42,
-    height: 70,
-    zIndex: 2,
-  },
-  edgeFadeLeft: {
-    left: 0,
-  },
-  edgeFadeRight: {
-    right: 0,
-  },
   textArea: {
     zIndex: 3,
     width: '64%',
     paddingTop: 62,
     paddingBottom: 12,
     paddingLeft: 0,
+  },
+  textLayerHost: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 4,
+  },
+  customTextLayer: {
+    position: 'absolute',
+    maxWidth: '78%',
+    lineHeight: undefined,
   },
   textAreaTablet: {
     paddingTop: 96,
