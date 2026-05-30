@@ -201,18 +201,20 @@ export function HomeHeroRenderer({
                 ]
               : [
                   toRgba(baseBackgroundColor, 0),
-                  toRgba(baseBackgroundColor, 0.18 * config.gradientOpacity),
-                  toRgba(baseBackgroundColor, 0.5 * config.gradientOpacity),
+                  toRgba(baseBackgroundColor, 0.24 * config.gradientOpacity),
+                  toRgba(baseBackgroundColor, 0.56 * config.gradientOpacity),
                   toRgba(baseBackgroundColor, 0.82 * config.gradientOpacity),
+                  toRgba(baseBackgroundColor, 0.96 * config.gradientOpacity),
+                  baseBackgroundColor,
                   baseBackgroundColor,
                 ]
           }
-          locations={isTabletLayout ? [0, 0.08, 0.16, 0.24, 0.34, 1] : [0, 0.22, 0.52, 0.78, 1]}
+          locations={isTabletLayout ? [0, 0.08, 0.16, 0.24, 0.34, 1] : [0, 0.18, 0.36, 0.58, 0.78, 1]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
           style={[
             styles.bottomFade,
-            isTabletLayout ? { bottom: -230, height: 390 } : { bottom: 0, height: 96 },
+            isTabletLayout ? { bottom: -230, height: 390 } : { bottom: -84, height: 184 },
           ]}
         />
       ) : null}
