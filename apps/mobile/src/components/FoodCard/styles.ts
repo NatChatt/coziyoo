@@ -409,6 +409,7 @@ export const foodCardStyles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     justifyContent: 'center',
+    marginLeft: 4,
     paddingTop: 0,
     transform: [{ translateY: -2 }],
   },
