@@ -11,6 +11,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import { formatCopy, t } from "../copy/brandCopy";
 import { getCurrentLanguage } from "../utils/settings";
 import { parseApiDate } from "../utils/parseUtils";
+import { getSessionScreenCache, setSessionScreenCache } from "../utils/sessionScreenCache";
 
 type Props = {
   auth: AuthSession;
@@ -41,6 +42,13 @@ type SellerBankAccount = {
   iban: string;
   accountHolderName: string;
   cardNumber?: string | null;
+};
+
+type SellerFinanceCache = {
+  summary: SellerFinanceSummary;
+  balance: SellerBalance;
+  payouts: SellerPayout[];
+  bankAccount: SellerBankAccount | null;
 };
 
 type WalletTab = "overview" | "transactions" | "withdraw";
@@ -135,16 +143,18 @@ function toNumber(value: unknown, fallback = 0): number {
 }
 
 export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Props) {
+  const cacheOwnerKey = auth.userId;
+  const initialCache = getSessionScreenCache<SellerFinanceCache>("sellerFinance", cacheOwnerKey);
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => initialCache === null);
   const [activeTab, setActiveTab] = useState<WalletTab>("overview");
-  const [summary, setSummary] = useState<SellerFinanceSummary | null>(null);
-  const [balance, setBalance] = useState<SellerBalance | null>(null);
-  const [payouts, setPayouts] = useState<SellerPayout[]>([]);
-  const [iban, setIban] = useState("");
-  const [holder, setHolder] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
+  const [summary, setSummary] = useState<SellerFinanceSummary | null>(() => initialCache?.summary ?? null);
+  const [balance, setBalance] = useState<SellerBalance | null>(() => initialCache?.balance ?? null);
+  const [payouts, setPayouts] = useState<SellerPayout[]>(() => initialCache?.payouts ?? []);
+  const [iban, setIban] = useState(() => initialCache?.bankAccount?.iban ?? "");
+  const [holder, setHolder] = useState(() => initialCache?.bankAccount?.accountHolderName ?? "");
+  const [cardNumber, setCardNumber] = useState(() => initialCache?.bankAccount?.cardNumber ?? "");
   const [withdrawAmount, setWithdrawAmount] = useState("0,00");
 
   useEffect(() => {
@@ -174,8 +184,9 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
     });
   }
 
-  async function loadData() {
-    setLoading(true);
+  async function loadData(options?: { silent?: boolean }) {
+    const hasCache = getSessionScreenCache<SellerFinanceCache>("sellerFinance", cacheOwnerKey) !== null;
+    if (!options?.silent && !hasCache) setLoading(true);
     try {
       const settings = await loadSettings();
       const baseUrl = settings.apiUrl;
@@ -201,11 +212,12 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
       if (!summaryData) {
         throw new Error(summaryError ?? t('error.seller.finance.summaryLoad'));
       }
-      setSummary({
+      const nextSummary = {
         totalSellingAmount: toNumber(summaryData.totalSellingAmount ?? summaryData.totalEarned),
         totalCommission: toNumber(summaryData.totalCommission ?? summaryData.totalPaidOut),
         totalNetEarnings: toNumber(summaryData.totalNetEarnings ?? summaryData.currentBalance),
-      });
+      };
+      setSummary(nextSummary);
 
       const balancePaths = [
         `/v1/sellers/${sellerId}/finance/balance`,
@@ -221,11 +233,12 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
         }
         if (res.status === 404) continue;
       }
-      setBalance({
+      const nextBalance = {
         availableBalance: toNumber(balanceData?.availableBalance ?? summaryData.currentBalance),
         pendingPayoutAmount: toNumber(balanceData?.pendingPayoutAmount),
         currency: String(balanceData?.currency ?? "TRY"),
-      });
+      };
+      setBalance(nextBalance);
 
       const payoutsPaths = [
         `/v1/sellers/${sellerId}/finance/payouts?page=1&pageSize=20`,
@@ -241,7 +254,8 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
         }
         if (res.status === 404) continue;
       }
-      setPayouts(Array.isArray(payoutsData) ? (payoutsData as SellerPayout[]) : []);
+      const nextPayouts = Array.isArray(payoutsData) ? (payoutsData as SellerPayout[]) : [];
+      setPayouts(nextPayouts);
 
       const bankGetPaths = [
         `/v1/sellers/${sellerId}/bank-account`,
@@ -266,18 +280,27 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
         bankErrorMessage = String(bankJson?.error?.message ?? t('error.seller.finance.bankLoad'));
       }
       if (bankErrorMessage) throw new Error(bankErrorMessage);
-      setIban(typeof bankData?.iban === "string" ? bankData.iban : "");
-      setHolder(typeof bankData?.accountHolderName === "string" ? bankData.accountHolderName : "");
-      setCardNumber(typeof bankData?.cardNumber === "string" ? bankData.cardNumber : "");
+      const nextBankAccount = bankData;
+      setIban(typeof nextBankAccount?.iban === "string" ? nextBankAccount.iban : "");
+      setHolder(typeof nextBankAccount?.accountHolderName === "string" ? nextBankAccount.accountHolderName : "");
+      setCardNumber(typeof nextBankAccount?.cardNumber === "string" ? nextBankAccount.cardNumber : "");
+      setSessionScreenCache<SellerFinanceCache>("sellerFinance", cacheOwnerKey, {
+        summary: nextSummary,
+        balance: nextBalance,
+        payouts: nextPayouts,
+        bankAccount: nextBankAccount,
+      });
     } catch (e) {
-      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.finance.load'));
+      if (!hasCache) {
+        Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.finance.load'));
+      }
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    void loadData();
+    void loadData({ silent: initialCache !== null });
   }, []);
 
   async function saveBankAccount() {
@@ -320,7 +343,7 @@ export default function SellerFinanceScreen({ auth, onBack, onAuthRefresh }: Pro
       }
       if (!saved) throw new Error(lastError);
       Alert.alert(t('headline.common.success'), t('status.seller.finance.bankSaved'));
-      void loadData();
+      void loadData({ silent: true });
     } catch (e) {
       Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.finance.bankSave'));
     }

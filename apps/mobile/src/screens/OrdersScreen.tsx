@@ -21,6 +21,7 @@ import { theme } from '../theme/colors';
 import { formatPrice, orderNo } from '../components/OrderCard';
 import { apiRequest } from '../utils/api';
 import { type AuthSession } from '../utils/auth';
+import { getSessionScreenCache, setSessionScreenCache } from '../utils/sessionScreenCache';
 
 type ApiOrder = {
   id: string;
@@ -158,15 +159,18 @@ export default function OrdersScreen({
   onOpenOrderDetail,
   onAuthRefresh,
 }: Props) {
-  const [orders, setOrders] = useState<BuyerOrderSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheOwnerKey = auth.userId;
+  const initialOrdersCache = getSessionScreenCache<BuyerOrderSummary[]>('buyerOrders', cacheOwnerKey);
+  const [orders, setOrders] = useState<BuyerOrderSummary[]>(() => initialOrdersCache ?? []);
+  const [loading, setLoading] = useState(() => initialOrdersCache === null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const fetchOrders = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    setError(null);
+    const hasCache = getSessionScreenCache<BuyerOrderSummary[]>('buyerOrders', cacheOwnerKey) !== null;
+    if (!isRefresh && !hasCache) setLoading(true);
+    if (!hasCache) setError(null);
 
     let result = await apiRequest<ApiOrder[]>(
       '/v1/orders/?pageSize=100&sortDir=desc&role=buyer',
@@ -199,20 +203,21 @@ export default function OrdersScreen({
           updatedAt: order.updatedAt,
           deliveryType: order.deliveryType,
         }));
+        setSessionScreenCache('buyerOrders', cacheOwnerKey, mapped);
         setOrders(mapped);
       } catch {
-        setError(t('error.orders.load'));
+        if (!hasCache) setError(t('error.orders.load'));
       }
     } else {
-      setError(result.message ?? t('error.orders.load'));
+      if (!hasCache) setError(result.message ?? t('error.orders.load'));
     }
 
     setLoading(false);
     setRefreshing(false);
-  }, [auth, onAuthRefresh]);
+  }, [auth, cacheOwnerKey, onAuthRefresh]);
 
   useEffect(() => {
-    fetchOrders();
+    fetchOrders(initialOrdersCache !== null);
   }, [fetchOrders]);
 
   const handleRefresh = () => {

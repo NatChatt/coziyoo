@@ -8,6 +8,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
 import { t } from '../copy/brandCopy';
+import { getSessionScreenCache, setSessionScreenCache } from '../utils/sessionScreenCache';
 
 type ChatSummary = {
   id: string;
@@ -28,12 +29,15 @@ type Props = {
 };
 
 export default function ChatListScreen({ auth, onBack, onOpenChat, actorRole = 'buyer', onAuthRefresh }: Props) {
-  const [chats, setChats] = useState<ChatSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheOwnerKey = `${auth.userId}:${actorRole}`;
+  const initialChatsCache = getSessionScreenCache<ChatSummary[]>('chatList', cacheOwnerKey);
+  const [chats, setChats] = useState<ChatSummary[]>(() => initialChatsCache ?? []);
+  const [loading, setLoading] = useState(() => initialChatsCache === null);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchChats = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+    const hasCache = getSessionScreenCache<ChatSummary[]>('chatList', cacheOwnerKey) !== null;
+    if (!isRefresh && !hasCache) setLoading(true);
     const result = await apiRequest<ChatSummary[]>(
       '/v1/chats',
       auth,
@@ -41,13 +45,15 @@ export default function ChatListScreen({ auth, onBack, onOpenChat, actorRole = '
       onAuthRefresh,
     );
     if (result.ok) {
-      setChats(Array.isArray(result.data) ? result.data : []);
+      const nextChats = Array.isArray(result.data) ? result.data : [];
+      setSessionScreenCache('chatList', cacheOwnerKey, nextChats);
+      setChats(nextChats);
     }
     setLoading(false);
     setRefreshing(false);
-  }, [actorRole, auth.accessToken, auth.userId, onAuthRefresh]);
+  }, [actorRole, auth.accessToken, auth.userId, cacheOwnerKey, onAuthRefresh]);
 
-  useEffect(() => { fetchChats(); }, [fetchChats]);
+  useEffect(() => { fetchChats(initialChatsCache !== null); }, [fetchChats]);
 
   function formatTime(iso: string | null): string {
     if (!iso) return '';

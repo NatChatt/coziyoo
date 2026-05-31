@@ -88,7 +88,7 @@ import { loadSettings, saveSettings, subscribeSettings, type AppSettings } from 
 import { subscribeBuyerFeedRealtime, subscribeBuyerOrdersRealtime } from '../utils/realtime';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { loadCachedProfileImageUrl, saveCachedProfileImageUrl } from '../utils/profileImage';
-import { cacheHomeHeroImageUrl, loadCachedHomeHeroImageUrl } from '../utils/homeHeroImage';
+import { cacheHomeHeroImageUrl, getCachedHomeHeroImageUrlSync, loadCachedHomeHeroImageUrl } from '../utils/homeHeroImage';
 import { apiRequest } from '../utils/api';
 import { readJsonSafe } from '../utils/http';
 import { theme } from '../theme/colors';
@@ -1687,7 +1687,12 @@ export default function HomeScreen({
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocationLabel, setSelectedLocationLabel] = useState(() => `Kadıköy • 2.5 km ${t('helper.home.locationRadius')}`);
   const [headerImageSource, setHeaderImageSource] = useState<ImageSourcePropType | null>(
-    DEFAULT_ADMIN_HERO_IMAGE_URL ? { uri: DEFAULT_ADMIN_HERO_IMAGE_URL } : null,
+    () => {
+      const cachedHero = getCachedHomeHeroImageUrlSync();
+      if (cachedHero) return { uri: cachedHero };
+      if (DEFAULT_ADMIN_HERO_IMAGE_URL) return { uri: DEFAULT_ADMIN_HERO_IMAGE_URL };
+      return LOCAL_HOME_HEADER_FALLBACK;
+    },
   );
   const [adminHeroImageUrl, setAdminHeroImageUrl] = useState<string | null>(
     DEFAULT_ADMIN_HERO_IMAGE_URL || null,
@@ -3307,6 +3312,15 @@ export default function HomeScreen({
     setSelectedMeal(meal);
   }
 
+  function openSellerFromMeal(meal: MealCard) {
+    setSellerActiveTab('foods');
+    setSelectedSeller({
+      id: meal.sellerId,
+      name: meal.seller,
+      image: meal.sellerImage ?? null,
+    });
+  }
+
   function openMealDetailFromSeller(meal: MealCard) {
     closeSellerModalWithCallback(() => {
       if (selectedMeal?.id === meal.id) {
@@ -3933,6 +3947,7 @@ export default function HomeScreen({
                 isFavorite={Boolean(favoriteIds[meal.id])}
                 favoritePending={Boolean(favoritePendingIds[meal.id])}
                 onPress={() => openMealDetail(meal)}
+                onSellerPress={() => openSellerFromMeal(meal)}
                 onFavoritePress={() => {
                   void toggleFavorite(meal.id);
                 }}
@@ -3948,6 +3963,7 @@ export default function HomeScreen({
               isFavorite={Boolean(favoriteIds[meal.id])}
               favoritePending={Boolean(favoritePendingIds[meal.id])}
               onPress={() => openMealDetail(meal)}
+              onSellerPress={() => openSellerFromMeal(meal)}
               onFavoritePress={() => {
                 void toggleFavorite(meal.id);
               }}

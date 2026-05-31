@@ -336,7 +336,11 @@ export default function SellerProfileDetailScreen({
       const uploadJson = uploadPayload.json as { data?: { profileImageUrl?: string } };
       const nextUrl = String(uploadJson?.data?.profileImageUrl ?? "").trim();
       if (nextUrl) {
-        setProfile((prev) => (prev ? { ...prev, profileImageUrl: nextUrl } : prev));
+        setProfile((prev) => {
+          const nextProfile = prev ? { ...prev, profileImageUrl: nextUrl } : { profileImageUrl: nextUrl };
+          setSellerProfileCache(nextProfile as SellerProfile);
+          return nextProfile;
+        });
       }
     } catch (e) {
       Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.profileEdit.imageUpload'));

@@ -6,7 +6,7 @@ import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { getSellerFoodsCache, setSellerFoodsCache } from "../utils/sellerFoodsCache";
 import { getSellerOrdersCache, setSellerOrdersCache, getSellerDisplayNameCache, setSellerDisplayNameCache, updateSellerOrderCacheItem } from "../utils/sellerOrdersCache";
-import { getSellerMeCache } from "../utils/sellerProfileCache";
+import { getSellerMeCache, getSellerProfileCache, getSellerRatingCache, setSellerProfileCache, setSellerRatingCache } from "../utils/sellerProfileCache";
 import { normalizeSellerLotSnapshot, summarizeSellerLotsByFood } from "../utils/sellerLotSummary";
 import { subscribeSellerOrdersRealtime } from "../utils/realtime";
 import { getStatusInfo } from "../components/StatusBadge";
@@ -344,7 +344,7 @@ export default function SellerHomeScreen({
     if (!Array.isArray(cached)) return [];
     return cached as SellerOrder[];
   });
-  const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
+  const [rating, setRating] = useState<{ avg: number; count: number } | null>(() => getSellerRatingCache());
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [activeFoods, setActiveFoods] = useState<ActiveFood[]>(() => {
@@ -367,7 +367,7 @@ export default function SellerHomeScreen({
   const [newOrderUntilById, setNewOrderUntilById] = useState<Record<string, number>>({});
   const [clockMs, setClockMs] = useState(() => Date.now());
   const [sellerCountryCode, setSellerCountryCode] = useState<string>(() => normalizeCountryCode(getSellerMeCache()?.countryCode ?? ""));
-  const [sellerProfileImageUrl, setSellerProfileImageUrl] = useState<string | null>(null);
+  const [sellerProfileImageUrl, setSellerProfileImageUrl] = useState<string | null>(() => getSellerProfileCache()?.profileImageUrl ?? null);
   const [sellerProfileImageLoadFailed, setSellerProfileImageLoadFailed] = useState(false);
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [pinCode, setPinCode] = useState("");
@@ -545,14 +545,18 @@ export default function SellerHomeScreen({
         const name = profileJson?.data?.displayName?.trim() || "Usta";
         setDisplayName(name);
         setSellerDisplayNameCache(name);
-        setSellerProfileImageUrl(profileJson?.data?.profileImageUrl ?? null);
+        const profileData = profileJson?.data ?? null;
+        setSellerProfileCache(profileData);
+        setSellerProfileImageUrl(profileData?.profileImageUrl ?? null);
         setSellerProfileImageLoadFailed(false);
       }
 
       const reviewsJson = await reviewsRes.json().catch(() => ({}));
       if (reviewsRes.ok && reviewsJson?.data?.summary) {
         const { averageRating, totalReviews } = reviewsJson.data.summary;
-        setRating({ avg: Number(averageRating ?? 0), count: Number(totalReviews ?? 0) });
+        const nextRating = { avg: Number(averageRating ?? 0), count: Number(totalReviews ?? 0) };
+        setRating(nextRating);
+        setSellerRatingCache(nextRating);
       }
 
       if (meRes.ok) {

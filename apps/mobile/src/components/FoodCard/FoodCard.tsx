@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Image,
   ScrollView,
@@ -100,6 +100,7 @@ type FoodCardProps = {
   isFavorite: boolean;
   favoritePending: boolean;
   onPress: () => void;
+  onSellerPress?: () => void;
   onFavoritePress: () => void;
   style?: StyleProp<ViewStyle>;
 };
@@ -109,6 +110,7 @@ export function FoodCard({
   isFavorite,
   favoritePending,
   onPress,
+  onSellerPress,
   onFavoritePress,
   style,
 }: FoodCardProps) {
@@ -134,6 +136,7 @@ export function FoodCard({
   const [imageFrameWidth, setImageFrameWidth] = useState(defaultCardImageWidth);
   const [sellerThumbFailed, setSellerThumbFailed] = useState(false);
   const [renderableImageUri, setRenderableImageUri] = useState<string | null>(null);
+  const imageTouchStartRef = useRef<{ x: number; y: number; at: number } | null>(null);
   const primaryImageUrl = imageUrls[0];
   const activeImageUrl = imageUrls[imageIndex] ?? primaryImageUrl;
   const defaultFoodImageSource = resolveDefaultFoodImageSource(meal);
@@ -287,6 +290,30 @@ export function FoodCard({
     return raw.charAt(0).toLocaleUpperCase('tr-TR');
   })();
 
+  function handleImageTouchStart(event: { nativeEvent: { pageX: number; pageY: number } }) {
+    imageTouchStartRef.current = {
+      x: event.nativeEvent.pageX,
+      y: event.nativeEvent.pageY,
+      at: Date.now(),
+    };
+  }
+
+  function handleImageTouchEnd(event: { nativeEvent: { pageX: number; pageY: number } }) {
+    const start = imageTouchStartRef.current;
+    imageTouchStartRef.current = null;
+    if (!start) return;
+    const dx = Math.abs(event.nativeEvent.pageX - start.x);
+    const dy = Math.abs(event.nativeEvent.pageY - start.y);
+    const elapsed = Date.now() - start.at;
+    if (dx <= 8 && dy <= 8 && elapsed < 650) {
+      onPress();
+    }
+  }
+
+  function handleImageTouchCancel() {
+    imageTouchStartRef.current = null;
+  }
+
   return (
     <View style={[styles.foodCardWrap, isTabletLayout && styles.foodCardWrapTablet, style]}>
       <View style={[styles.foodCard, { backgroundColor: colors.bg, borderColor: colors.border }]}>
@@ -305,6 +332,9 @@ export function FoodCard({
               showsHorizontalScrollIndicator={false}
               style={styles.foodImageCarousel}
               contentContainerStyle={styles.foodImageCarouselContent}
+              onTouchStart={handleImageTouchStart}
+              onTouchEnd={handleImageTouchEnd}
+              onTouchCancel={handleImageTouchCancel}
               onMomentumScrollEnd={(event) => {
                 const width = Math.max(1, event.nativeEvent.layoutMeasurement.width);
                 const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
@@ -332,7 +362,12 @@ export function FoodCard({
               })}
             </ScrollView>
           ) : (
-            <View style={styles.foodImageFallback} />
+            <View
+              style={styles.foodImageFallback}
+              onTouchStart={handleImageTouchStart}
+              onTouchEnd={handleImageTouchEnd}
+              onTouchCancel={handleImageTouchCancel}
+            />
           )}
           {imageUrls.length > 1 ? (
             <View pointerEvents="none" style={styles.foodPhotoDotsRow}>
@@ -401,7 +436,15 @@ export function FoodCard({
               ) : null)}
             </View>
             <View style={[styles.foodFooterRow, { borderTopColor: hexToRgba(colors.border, 0.4) }]}>
-              <View style={styles.foodFooterSeller}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  if (onSellerPress) onSellerPress();
+                }}
+                disabled={!onSellerPress}
+                style={styles.foodFooterSeller}
+              >
                 <View style={styles.foodSellerThumbWrap}>
                   <View style={styles.foodSellerThumb}>
                     {meal.sellerImage && !sellerThumbFailed ? (
@@ -421,9 +464,14 @@ export function FoodCard({
                 </View>
                 <View style={styles.foodFooterSellerText}>
                   <View style={styles.foodFooterHandleRow}>
-                    <Text numberOfLines={1} style={[styles.foodFooterSellerHandle, tabletSellerHandleStyle, { color: colors.price, flex: 1 }]}>
-                      {sellerHandle}
-                    </Text>
+                    <View style={styles.foodFooterSellerLink}>
+                      <Text numberOfLines={1} style={[styles.foodFooterSellerHandle, tabletSellerHandleStyle, { color: colors.price, flexShrink: 1 }]}>
+                        {sellerHandle}
+                      </Text>
+                      {onSellerPress ? (
+                        <Ionicons name="chevron-forward" size={13} color={colors.price} />
+                      ) : null}
+                    </View>
                     <View style={styles.foodFooterRatingInline}>
                       <Ionicons name="star" size={11} color="#F0C04A" />
                       <Text style={[styles.foodFooterRatingInlineText, { color: colors.price }]}>{ratingBadgeText}</Text>
@@ -433,7 +481,7 @@ export function FoodCard({
                     {sellerTagline}
                   </Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
         </TouchableOpacity>

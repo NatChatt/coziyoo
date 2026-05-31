@@ -9,6 +9,7 @@ import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import EmptyState from '../components/EmptyState';
 import { formatCopy, t } from '../copy/brandCopy';
+import { getSessionScreenCache, setSessionScreenCache } from '../utils/sessionScreenCache';
 
 type NotificationItem = {
   id: string;
@@ -49,14 +50,17 @@ type Props = {
 };
 
 export default function NotificationsScreen({ auth, onBack, onOpenOrderDetail, onOpenTicketDetail, onAuthRefresh }: Props) {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheOwnerKey = auth.userId;
+  const initialNotificationsCache = getSessionScreenCache<NotificationItem[]>('notifications', cacheOwnerKey);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => initialNotificationsCache ?? []);
+  const [loading, setLoading] = useState(() => initialNotificationsCache === null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchNotifications = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    setError(null);
+    const hasCache = getSessionScreenCache<NotificationItem[]>('notifications', cacheOwnerKey) !== null;
+    if (!isRefresh && !hasCache) setLoading(true);
+    if (!hasCache) setError(null);
     const result = await apiRequest<NotificationItem[] | { items?: NotificationItem[] }>(
       '/v1/notifications',
       auth,
@@ -67,17 +71,18 @@ export default function NotificationsScreen({ auth, onBack, onOpenOrderDetail, o
       const items = Array.isArray(result.data)
         ? result.data
         : (Array.isArray((result.data as { items?: NotificationItem[] })?.items) ? (result.data as { items?: NotificationItem[] }).items! : []);
+      setSessionScreenCache('notifications', cacheOwnerKey, items);
       setNotifications(items);
     } else {
-      if (result.status !== 404) {
+      if (result.status !== 404 && !hasCache) {
         setError(result.message ?? t('error.notifications.load'));
       }
     }
     setLoading(false);
     setRefreshing(false);
-  }, [auth.accessToken, auth.userId, onAuthRefresh]);
+  }, [auth.accessToken, auth.userId, cacheOwnerKey, onAuthRefresh]);
 
-  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
+  useEffect(() => { fetchNotifications(initialNotificationsCache !== null); }, [fetchNotifications]);
 
   function formatTime(iso: string): string {
     const d = new Date(iso);
@@ -113,7 +118,11 @@ export default function NotificationsScreen({ auth, onBack, onOpenOrderDetail, o
         { method: 'PATCH' },
         onAuthRefresh,
       );
-      setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n)));
+      setNotifications((prev) => {
+        const next = prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n));
+        setSessionScreenCache('notifications', cacheOwnerKey, next);
+        return next;
+      });
     }
 
     const orderId = extractOrderId(item.data);

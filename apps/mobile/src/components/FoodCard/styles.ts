@@ -193,6 +193,13 @@ export const foodCardStyles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
+  foodFooterSellerLink: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
   foodFooterRatingInline: {
     flexDirection: 'row',
     alignItems: 'center',

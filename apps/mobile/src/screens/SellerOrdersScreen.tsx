@@ -5,6 +5,7 @@ import { refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
 import { loadSettings } from "../utils/settings";
 import { getSellerMeCache } from "../utils/sellerProfileCache";
+import { getSellerOrdersCache, setSellerOrdersCache } from "../utils/sellerOrdersCache";
 import { subscribeSellerOrdersRealtime } from "../utils/realtime";
 import { theme } from "../theme/colors";
 import ScreenHeader from "../components/ScreenHeader";
@@ -130,10 +131,15 @@ function getOrderDeliveryLabel(order: SellerOrder): string {
 }
 
 export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRefresh }: Props) {
+  const initialOrdersCache = getSellerOrdersCache();
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
-  const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState<SellerOrder[]>([]);
+  const [loading, setLoading] = useState(() => !Array.isArray(initialOrdersCache));
+  const [orders, setOrders] = useState<SellerOrder[]>(() => (
+    Array.isArray(initialOrdersCache)
+      ? initialOrdersCache.map((row) => normalizeSellerOrder(row))
+      : []
+  ));
   const [errorText, setErrorText] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [fromDate, setFromDate] = useState("");
@@ -169,7 +175,8 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
 
   const loadOrders = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
-    if (!silent) {
+    const hasCache = getSellerOrdersCache() !== null;
+    if (!silent && !hasCache) {
       setLoading(true);
       setErrorText(null);
     }
@@ -203,11 +210,12 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
         if (cc) setSellerCountryCode(cc);
       }
 
+      setSellerOrdersCache(sellerOrders as unknown as Record<string, unknown>[]);
       setOrders(sellerOrders);
     } catch (e) {
       const message = e instanceof Error ? e.message : t('error.seller.orders.load');
       setErrorText(message);
-      if (!silent) {
+      if (!silent && !hasCache) {
         Alert.alert(t('headline.common.error'), message);
       }
     } finally {
@@ -218,7 +226,7 @@ export default function SellerOrdersScreen({ auth, onBack, onOpenOrder, onAuthRe
   }, [apiUrl, currentAuth, currentAuth.userId, onAuthRefresh]);
 
   useEffect(() => {
-    void loadOrders();
+    void loadOrders({ silent: Array.isArray(initialOrdersCache) });
   }, [loadOrders]);
 
   useEffect(() => {

@@ -8,6 +8,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
 import { t } from '../copy/brandCopy';
+import { getSessionScreenCache, setSessionScreenCache } from '../utils/sessionScreenCache';
 
 type FavoriteFood = {
   id: string;
@@ -26,12 +27,15 @@ type Props = {
 };
 
 export default function FavoritesScreen({ auth, onBack, onOpenFood, onAuthRefresh }: Props) {
-  const [favorites, setFavorites] = useState<FavoriteFood[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheOwnerKey = auth.userId;
+  const initialFavoritesCache = getSessionScreenCache<FavoriteFood[]>('favorites', cacheOwnerKey);
+  const [favorites, setFavorites] = useState<FavoriteFood[]>(() => initialFavoritesCache ?? []);
+  const [loading, setLoading] = useState(() => initialFavoritesCache === null);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchFavorites = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+    const hasCache = getSessionScreenCache<FavoriteFood[]>('favorites', cacheOwnerKey) !== null;
+    if (!isRefresh && !hasCache) setLoading(true);
     const result = await apiRequest<FavoriteFood[]>(
       '/v1/favorites',
       auth,
@@ -39,13 +43,15 @@ export default function FavoritesScreen({ auth, onBack, onOpenFood, onAuthRefres
       onAuthRefresh,
     );
     if (result.ok) {
-      setFavorites(Array.isArray(result.data) ? result.data : []);
+      const nextFavorites = Array.isArray(result.data) ? result.data : [];
+      setSessionScreenCache('favorites', cacheOwnerKey, nextFavorites);
+      setFavorites(nextFavorites);
     }
     setLoading(false);
     setRefreshing(false);
-  }, [auth.accessToken, auth.userId, onAuthRefresh]);
+  }, [auth.accessToken, auth.userId, cacheOwnerKey, onAuthRefresh]);
 
-  useEffect(() => { fetchFavorites(); }, [fetchFavorites]);
+  useEffect(() => { fetchFavorites(initialFavoritesCache !== null); }, [fetchFavorites]);
 
   async function handleRemove(foodId: string) {
     const result = await apiRequest(
@@ -55,7 +61,11 @@ export default function FavoritesScreen({ auth, onBack, onOpenFood, onAuthRefres
       onAuthRefresh,
     );
     if (result.ok) {
-      setFavorites((prev) => prev.filter((f) => f.id !== foodId));
+      setFavorites((prev) => {
+        const next = prev.filter((f) => f.id !== foodId);
+        setSessionScreenCache('favorites', cacheOwnerKey, next);
+        return next;
+      });
     }
   }
 

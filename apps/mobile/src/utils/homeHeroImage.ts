@@ -9,6 +9,7 @@ const HOME_HERO_IMAGE_URL_KEY = '@coziyoo:home_hero_image_url';
 const HOME_HERO_IMAGE_FILE_KEY = '@coziyoo:home_hero_image_file';
 const HOME_HERO_IMAGE_CACHE_VERSION_KEY = '@coziyoo:home_hero_image_cache_version';
 const HOME_HERO_IMAGE_CACHE_VERSION = 'canonical-v2';
+let memoryHomeHeroImageUrl: string | null = null;
 
 function hashHeroUrl(value: string): string {
   let hash = 5381;
@@ -19,21 +20,30 @@ function hashHeroUrl(value: string): string {
 }
 
 export async function loadCachedHomeHeroImageUrl(): Promise<string | null> {
+  if (memoryHomeHeroImageUrl) return memoryHomeHeroImageUrl;
   try {
     const version = await AsyncStorage.getItem(HOME_HERO_IMAGE_CACHE_VERSION_KEY);
     if (version !== HOME_HERO_IMAGE_CACHE_VERSION) return null;
     const fileUri = (await AsyncStorage.getItem(HOME_HERO_IMAGE_FILE_KEY))?.trim();
     if (fileUri && fileSystemGetInfoAsync) {
       const info = await fileSystemGetInfoAsync(fileUri);
-      if (info.exists) return fileUri;
+      if (info.exists) {
+        memoryHomeHeroImageUrl = fileUri;
+        return fileUri;
+      }
     }
     const value = await AsyncStorage.getItem(HOME_HERO_IMAGE_URL_KEY);
     if (!value) return null;
     const normalized = value.trim();
-    return normalized || null;
+    memoryHomeHeroImageUrl = normalized || null;
+    return memoryHomeHeroImageUrl;
   } catch {
     return null;
   }
+}
+
+export function getCachedHomeHeroImageUrlSync(): string | null {
+  return memoryHomeHeroImageUrl;
 }
 
 export async function saveCachedHomeHeroImageUrl(url: string): Promise<void> {
@@ -41,6 +51,7 @@ export async function saveCachedHomeHeroImageUrl(url: string): Promise<void> {
   if (!normalized) return;
   try {
     await AsyncStorage.setItem(HOME_HERO_IMAGE_URL_KEY, normalized);
+    memoryHomeHeroImageUrl = normalized;
   } catch {
     // ignore cache write errors
   }
@@ -63,8 +74,10 @@ export async function cacheHomeHeroImageUrl(url: string, cacheKey?: string | nul
     }
     await AsyncStorage.setItem(HOME_HERO_IMAGE_CACHE_VERSION_KEY, HOME_HERO_IMAGE_CACHE_VERSION);
     await AsyncStorage.setItem(HOME_HERO_IMAGE_FILE_KEY, fileUri);
+    memoryHomeHeroImageUrl = fileUri;
     return fileUri;
   } catch {
+    memoryHomeHeroImageUrl = normalized;
     return normalized;
   }
 }

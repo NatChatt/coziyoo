@@ -19,6 +19,7 @@ import { loadSettings } from '../utils/settings';
 import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { formatCopy, t } from '../copy/brandCopy';
 import ScreenHeader from '../components/ScreenHeader';
+import { getSessionScreenCache, setSessionScreenCache } from '../utils/sessionScreenCache';
 
 type UserProfile = {
   id: string;
@@ -52,19 +53,21 @@ async function readJsonSafe<T>(res: Response): Promise<T> {
 }
 
 export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRegistration }: Props) {
+  const cacheOwnerKey = auth.userId;
+  const initialProfileCache = isNewRegistration ? null : getSessionScreenCache<UserProfile>('userProfile', cacheOwnerKey);
   const [currentAuth, setCurrentAuth] = useState<AuthSession>(auth);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => initialProfileCache === null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const [displayName, setDisplayName] = useState('');
-  const [username, setUsername] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [dob, setDob] = useState('');
-  const [tcKimlikNo, setTcKimlikNo] = useState('');
-  const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState(() => initialProfileCache?.displayName ?? '');
+  const [username, setUsername] = useState(() => initialProfileCache?.username ?? '');
+  const [fullName, setFullName] = useState(() => initialProfileCache?.fullName ?? '');
+  const [phone, setPhone] = useState(() => initialProfileCache?.phone ?? '');
+  const [dob, setDob] = useState(() => normalizeDobValue(initialProfileCache?.dob));
+  const [tcKimlikNo, setTcKimlikNo] = useState(() => initialProfileCache?.nationalId ?? '');
+  const [email, setEmail] = useState(() => initialProfileCache?.email ?? '');
   const [editField, setEditField] = useState<'displayName' | 'username' | 'fullName' | 'phone' | 'dob' | 'email' | 'tcKimlikNo' | null>(null);
   const [editValue, setEditValue] = useState('');
   const fallbackEmail = currentAuth.email || auth.email || '';
@@ -117,7 +120,7 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
     if (isNewRegistration && auth.email) {
       setEmail(auth.email);
     }
-    fetchProfile();
+    fetchProfile({ silent: initialProfileCache !== null });
   }, []);
 
   async function authedFetch(url: string, options?: RequestInit) {
@@ -150,9 +153,10 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
     return response;
   }
 
-  async function fetchProfile() {
-    setLoading(true);
-    setError(null);
+  async function fetchProfile(options?: { silent?: boolean }) {
+    const hasCache = getSessionScreenCache<UserProfile>('userProfile', cacheOwnerKey) !== null;
+    if (!options?.silent && !hasCache) setLoading(true);
+    if (!hasCache) setError(null);
     try {
       const { apiUrl } = await loadSettings();
       const res = await authedFetch(`${apiUrl}/v1/auth/me`);
@@ -161,9 +165,10 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
         throw new Error(json.error?.message ?? formatCopy('error.profileEdit.statusCode', { status: res.status }));
       }
       const data = (json.data ?? null) as UserProfile | null;
+      if (data) setSessionScreenCache('userProfile', cacheOwnerKey, data);
       applyProfileState(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('helper.profileEdit.load'));
+      if (!hasCache) setError(e instanceof Error ? e.message : t('helper.profileEdit.load'));
     } finally {
       setLoading(false);
     }
@@ -221,6 +226,7 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
         throw new Error(json.error?.message ?? formatCopy('error.profileEdit.statusCode', { status: res.status }));
       }
       const data = (json.data ?? null) as UserProfile | null;
+      if (data) setSessionScreenCache('userProfile', cacheOwnerKey, data);
       applyProfileState(data);
       setSuccess(true);
       setTimeout(() => onBack(), isNewRegistration ? 800 : 700);

@@ -6,7 +6,7 @@ import type { AuthSession } from "../utils/auth";
 import { loadAuthSession, refreshAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
 import { getCurrentLanguage, loadSettings, subscribeSettings } from "../utils/settings";
-import { clearSellerFoodsCache } from "../utils/sellerFoodsCache";
+import { setSellerFoodsCache } from "../utils/sellerFoodsCache";
 import { type IngredientTemplate, addIngredientToLibrary, loadIngredientLibrary } from "../utils/ingredientsLibrary";
 import { type AddonTemplate, addCustomAddon, loadAddonLibrary } from "../utils/addonLibrary";
 import { theme } from "../theme/colors";
@@ -527,6 +527,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   const [requiredFieldHighlight, setRequiredFieldHighlight] = useState<SellerFoodsFieldKey | null>(null);
   const requiredFieldHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editLotRequestIdRef = useRef(0);
+  const initialEditLoadIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
@@ -696,7 +697,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
         userId: currentAuth.userId,
       });
       setFoods(rows);
-      clearSellerFoodsCache();
+      setSellerFoodsCache(rows as unknown as Record<string, unknown>[]);
       void loadCategories(baseUrl);
     } catch (e) {
       Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.foods.load'));
@@ -773,9 +774,24 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
   }, []);
 
   useEffect(() => {
+    if (!initialEditFoodId || !initialEditFood) return;
+    const seededFood = normalizeSellerFood(initialEditFood as unknown as Record<string, unknown>);
+    if (!seededFood.id || seededFood.id !== initialEditFoodId) return;
+    openEdit(seededFood, { loadLot: false });
+  }, [initialEditFoodId, initialEditFood]);
+
+  useEffect(() => {
     if (!pendingInitialEditId) return;
-    void loadFoodForEdit(pendingInitialEditId);
-  }, [pendingInitialEditId]);
+    if (initialEditLoadIdRef.current === pendingInitialEditId) return;
+    const foodId = pendingInitialEditId;
+    initialEditLoadIdRef.current = foodId;
+    void loadFoodForEdit(foodId, { silent: Boolean(editingFood && editingFood.id === foodId) })
+      .finally(() => {
+        if (initialEditLoadIdRef.current === foodId) {
+          initialEditLoadIdRef.current = null;
+        }
+      });
+  }, [pendingInitialEditId, editingFood?.id]);
 
   function resetForm() {
     editLotRequestIdRef.current += 1;
@@ -807,7 +823,7 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setPaidAddonPriceInput("");
   }
 
-  function openEdit(food: SellerFood) {
+  function openEdit(food: SellerFood, options?: { loadLot?: boolean }) {
     const requestId = editLotRequestIdRef.current + 1;
     editLotRequestIdRef.current = requestId;
     setRequiredFieldHighlight(null);
@@ -857,12 +873,14 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
     setPaidAddonNameInput("");
     setPaidAddonKindInput("extra");
     setPaidAddonPriceInput("");
-    void loadEditLot(food.id, requestId);
+    if (options?.loadLot !== false) {
+      void loadEditLot(food.id, requestId);
+    }
   }
 
-  async function loadFoodForEdit(foodId: string) {
+  async function loadFoodForEdit(foodId: string, options?: { silent?: boolean }) {
     try {
-      setLoading(true);
+      if (!options?.silent) setLoading(true);
       const settings = await loadSettings();
       const baseUrl = settings.apiUrl;
       setApiUrl(baseUrl);
@@ -1202,7 +1220,6 @@ export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, ini
       }
 
       await loadFoods();
-      clearSellerFoodsCache();
       if (options?.publishAfterSave) {
         Alert.alert(
           t('status.seller.foods.publishedTitle'),

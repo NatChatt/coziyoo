@@ -8,6 +8,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import ActionButton from '../components/ActionButton';
 import { formatCopy, t } from '../copy/brandCopy';
 import { getCurrentLanguage } from '../utils/settings';
+import { getSessionScreenCache, setSessionScreenCache } from '../utils/sessionScreenCache';
 
 type TicketMessage = {
   id: string;
@@ -67,17 +68,20 @@ function normalizeTicketDetail(data: TicketDetail): TicketDetail {
 }
 
 export default function TicketDetailScreen({ auth, actorRole, ticketId, onBack, onAuthRefresh }: Props) {
-  const [loading, setLoading] = useState(true);
+  const cacheOwnerKey = `${auth.userId}:${actorRole}:${ticketId}`;
+  const initialTicketCache = getSessionScreenCache<TicketDetail>('ticketDetail', cacheOwnerKey);
+  const [loading, setLoading] = useState(() => initialTicketCache === null);
   const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ticket, setTicket] = useState<TicketDetail | null>(null);
+  const [ticket, setTicket] = useState<TicketDetail | null>(() => initialTicketCache ?? null);
   const [message, setMessage] = useState('');
 
   async function loadData(showRefresh = false) {
+    const hasCache = getSessionScreenCache<TicketDetail>('ticketDetail', cacheOwnerKey) !== null;
     if (showRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
+    else if (!hasCache) setLoading(true);
+    if (!hasCache) setError(null);
     const result = await apiRequest<TicketDetail>(
       `/v1/tickets/${ticketId}`,
       auth,
@@ -85,16 +89,18 @@ export default function TicketDetailScreen({ auth, actorRole, ticketId, onBack, 
       onAuthRefresh,
     );
     if (result.ok) {
-      setTicket(normalizeTicketDetail(result.data));
+      const nextTicket = normalizeTicketDetail(result.data);
+      setSessionScreenCache('ticketDetail', cacheOwnerKey, nextTicket);
+      setTicket(nextTicket);
     } else {
-      setError(result.message ?? t('error.ticket.detailLoad'));
+      if (!hasCache) setError(result.message ?? t('error.ticket.detailLoad'));
     }
     if (showRefresh) setRefreshing(false);
     else setLoading(false);
   }
 
   useEffect(() => {
-    void loadData();
+    void loadData(initialTicketCache !== null);
   }, [ticketId]);
 
   async function handleSendMessage() {

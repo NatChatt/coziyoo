@@ -20,6 +20,7 @@ import { refreshAuthSession, type AuthSession } from '../utils/auth';
 import { readJsonSafe } from '../utils/http';
 import { formatCopy, t } from '../copy/brandCopy';
 import ScreenHeader from '../components/ScreenHeader';
+import { getSessionScreenCache, setSessionScreenCache } from '../utils/sessionScreenCache';
 
 type Address = {
   id: string;
@@ -37,9 +38,11 @@ type Props = {
 };
 
 export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
+  const cacheOwnerKey = auth.userId;
+  const initialAddressesCache = getSessionScreenCache<Address[]>('addresses', cacheOwnerKey);
   const [currentAuth, setCurrentAuth] = useState<AuthSession>(auth);
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [addresses, setAddresses] = useState<Address[]>(() => initialAddressesCache ?? []);
+  const [loading, setLoading] = useState(() => initialAddressesCache === null);
   const [error, setError] = useState<string | null>(null);
 
   // Form modal state
@@ -56,7 +59,7 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
   }, [auth.accessToken]);
 
   useEffect(() => {
-    fetchAddresses();
+    fetchAddresses({ silent: initialAddressesCache !== null });
   }, []);
 
   async function authedFetch(url: string, options?: RequestInit) {
@@ -89,9 +92,10 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
     return response;
   }
 
-  async function fetchAddresses() {
-    setLoading(true);
-    setError(null);
+  async function fetchAddresses(options?: { silent?: boolean }) {
+    const hasCache = getSessionScreenCache<Address[]>('addresses', cacheOwnerKey) !== null;
+    if (!options?.silent && !hasCache) setLoading(true);
+    if (!hasCache) setError(null);
     try {
       const { apiUrl } = await loadSettings();
       const res = await authedFetch(`${apiUrl}/v1/auth/me/addresses`);
@@ -99,9 +103,11 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
       if (!res.ok || json.error) {
         throw new Error(json.error?.message ?? formatCopy('error.common.statusCode', { status: res.status }));
       }
-      setAddresses(Array.isArray(json.data) ? json.data : []);
+      const nextAddresses = Array.isArray(json.data) ? json.data : [];
+      setSessionScreenCache('addresses', cacheOwnerKey, nextAddresses);
+      setAddresses(nextAddresses);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('error.address.load'));
+      if (!hasCache) setError(e instanceof Error ? e.message : t('error.address.load'));
     } finally {
       setLoading(false);
     }
@@ -170,7 +176,7 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
       }
 
       setFormVisible(false);
-      await fetchAddresses();
+      await fetchAddresses({ silent: true });
     } catch (e) {
       setFormError(e instanceof Error ? e.message : t('error.address.save'));
     } finally {
@@ -197,7 +203,7 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
                 const json = await readJsonSafe<{ error?: { message?: string } }>(res);
                 throw new Error(json.error?.message ?? t('error.address.delete'));
               }
-              await fetchAddresses();
+              await fetchAddresses({ silent: true });
             } catch (e) {
               Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.address.delete'));
             }
@@ -219,7 +225,7 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
       if (!res.ok || json.error) {
         throw new Error(json.error?.message ?? t('error.address.default'));
       }
-      await fetchAddresses();
+      await fetchAddresses({ silent: true });
     } catch (e) {
       Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.address.default'));
     }
@@ -248,7 +254,7 @@ export default function AddressScreen({ auth, onBack, onAuthRefresh }: Props) {
           <View style={styles.center}>
             <Ionicons name="alert-circle-outline" size={40} color={theme.error} />
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={fetchAddresses}>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => void fetchAddresses()}>
               <Text style={styles.retryText}>{t('cta.address.retry')}</Text>
             </TouchableOpacity>
           </View>

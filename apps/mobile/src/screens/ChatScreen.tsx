@@ -11,6 +11,7 @@ import { subscribeChatRealtime } from '../utils/realtime';
 import ScreenHeader from '../components/ScreenHeader';
 import LoadingState from '../components/LoadingState';
 import { t } from '../copy/brandCopy';
+import { getSessionScreenCache, setSessionScreenCache } from '../utils/sessionScreenCache';
 
 type Message = {
   id: string;
@@ -32,14 +33,17 @@ type Props = {
 };
 
 export default function ChatScreen({ auth, chatId, sellerName, actorRole = 'buyer', onBack, onAuthRefresh }: Props) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheOwnerKey = `${auth.userId}:${actorRole}:${chatId}`;
+  const initialMessagesCache = getSessionScreenCache<Message[]>('chatMessages', cacheOwnerKey);
+  const [messages, setMessages] = useState<Message[]>(() => initialMessagesCache ?? []);
+  const [loading, setLoading] = useState(() => initialMessagesCache === null);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const fetchMessages = useCallback(async () => {
-    setLoading(true);
+    const hasCache = getSessionScreenCache<Message[]>('chatMessages', cacheOwnerKey) !== null;
+    if (!hasCache) setLoading(true);
     const result = await apiRequest<Message[]>(
       `/v1/chats/${chatId}/messages`,
       auth,
@@ -47,10 +51,12 @@ export default function ChatScreen({ auth, chatId, sellerName, actorRole = 'buye
       onAuthRefresh,
     );
     if (result.ok) {
-      setMessages(Array.isArray(result.data) ? result.data : []);
+      const nextMessages = Array.isArray(result.data) ? result.data : [];
+      setSessionScreenCache('chatMessages', cacheOwnerKey, nextMessages);
+      setMessages(nextMessages);
     }
     setLoading(false);
-  }, [actorRole, chatId, auth.accessToken, auth.userId, onAuthRefresh]);
+  }, [actorRole, chatId, auth.accessToken, auth.userId, cacheOwnerKey, onAuthRefresh]);
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
