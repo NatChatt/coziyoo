@@ -344,8 +344,19 @@ export default function App() {
     return () => { responseListener.current?.remove(); };
   }, [auth]);
 
-  function handleLogin(session: AuthSession) {
+  function handleLogin(session: AuthSession, options?: { isNewRegistration?: boolean; initialRole?: 'buyer' | 'seller' }) {
     applyAuthSession(session);
+    if (options?.isNewRegistration && options.initialRole === 'buyer') {
+      setActorMode('buyer');
+      setIsNewRegistration(true);
+      setScreen('profileEdit');
+      return;
+    }
+    if (options?.isNewRegistration && options.initialRole === 'seller') {
+      setIsNewRegistration(false);
+      void enableSellerModeAndOpen(session, 'sellerProfileDetail');
+      return;
+    }
     setScreen('home');
   }
 
@@ -378,9 +389,9 @@ export default function App() {
     setScreen('home');
   }
 
-  async function enableSellerModeAndOpen() {
+  async function enableSellerModeAndOpen(baseSession?: AuthSession, destination: Screen = 'home') {
     try {
-      const session = auth;
+      const session = baseSession ?? auth;
       if (!session) {
         Alert.alert(t('headline.common.session'), t('error.home.sessionExpired'));
         return;
@@ -388,7 +399,7 @@ export default function App() {
 
       if (session.userType === 'seller' || session.userType === 'both') {
         setActorMode('seller');
-        setScreen('home');
+        setScreen(destination);
         return;
       }
 
@@ -435,9 +446,62 @@ export default function App() {
       await saveAuthSession(nextSession);
       setAuth(nextSession);
       setActorMode('seller');
-      setScreen('home');
+      setScreen(destination);
     } catch (error) {
       Alert.alert(t('headline.common.error'), error instanceof Error ? error.message : t('error.home.requestFailed'));
+    }
+  }
+
+  async function switchToBuyerMode() {
+    const session = auth;
+    if (!session) {
+      Alert.alert(t('headline.common.session'), t('error.home.sessionExpired'));
+      return;
+    }
+
+    try {
+      const { apiUrl } = await loadSettings();
+      let currentSession = session;
+      let response = await fetch(`${apiUrl}/v1/auth/me`, {
+        headers: { Authorization: `Bearer ${currentSession.accessToken}` },
+      });
+
+      if (response.status === 401) {
+        const refreshed = await refreshAuthSession(apiUrl, currentSession);
+        if (!refreshed) {
+          Alert.alert(t('headline.common.session'), t('error.home.sessionExpired'));
+          return;
+        }
+        currentSession = refreshed;
+        setAuth(refreshed);
+        response = await fetch(`${apiUrl}/v1/auth/me`, {
+          headers: { Authorization: `Bearer ${currentSession.accessToken}` },
+        });
+      }
+
+      const payload = await response.json().catch(() => ({} as {
+        data?: { displayName?: string | null; fullName?: string | null; phone?: string | null; dob?: string | null };
+      }));
+      const profile = payload.data;
+      const buyerProfileComplete = Boolean(
+        String(profile?.displayName ?? '').trim().length >= 3
+        && String(profile?.fullName ?? '').trim()
+        && String(profile?.phone ?? '').trim()
+        && String(profile?.dob ?? '').trim()
+      );
+
+      setActorMode('buyer');
+      if (!response.ok || !buyerProfileComplete) {
+        setIsNewRegistration(true);
+        setScreen('profileEdit');
+        return;
+      }
+      setIsNewRegistration(false);
+      goHome('home');
+    } catch {
+      setActorMode('buyer');
+      setIsNewRegistration(true);
+      setScreen('profileEdit');
     }
   }
 
@@ -880,7 +944,7 @@ export default function App() {
             setSellerOrderModalVisible(true);
           }}
           onAuthRefresh={setAuth}
-          onSwitchToBuyer={canSwitchRole ? () => setActorMode('buyer') : undefined}
+          onSwitchToBuyer={canSwitchRole ? () => { void switchToBuyerMode(); } : undefined}
         />
         {sellerOrderModalVisible && selectedOrderId ? (
           <KeyboardAvoidingView

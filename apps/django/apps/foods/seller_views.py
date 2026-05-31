@@ -239,6 +239,7 @@ class SellerProfileView(APIView):
                    delivery_terms, working_hours_json,
                    profile_image_url,
                    seller_profile_status,
+                   phone,
                    {home_card_image_sql}
             FROM users
             WHERE id = %s
@@ -262,6 +263,26 @@ class SellerProfileView(APIView):
                 [request.user.id],
             )
             default_address = _row_as_dict(cursor)
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                  COUNT(*) FILTER (WHERE cdl.is_required_default = TRUE)::int AS required_count,
+                  COUNT(*) FILTER (
+                    WHERE cdl.is_required_default = TRUE
+                      AND scd.status IN ('uploaded', 'approved', 'rejected', 'requested')
+                  )::int AS uploaded_required_count
+                FROM compliance_documents_list cdl
+                LEFT JOIN seller_compliance_documents scd
+                  ON scd.document_list_id = cdl.id
+                 AND scd.seller_id = %s
+                 AND scd.is_current = TRUE
+                WHERE cdl.is_active = TRUE
+                """,
+                [request.user.id],
+            )
+            compliance_row = cursor.fetchone() or (0, 0)
 
         raw_status = str(profile.get("seller_profile_status") or "").strip()
         api_status = "active" if raw_status == "approved" else "pending_review" if raw_status == "pending" else "incomplete"
@@ -298,14 +319,14 @@ class SellerProfileView(APIView):
                 "addressLine": default_address.get("address_line"),
             } if default_address else None,
             "requirements": {
-                "hasPhone": False,
+                "hasPhone": bool(str(profile.get("phone") or "").strip()),
                 "hasDefaultAddress": bool(default_address),
                 "hasKitchenTitle": bool(str(profile.get("kitchen_title") or "").strip()),
                 "hasKitchenDescription": bool(str(profile.get("kitchen_description") or "").strip()),
                 "hasDeliveryRadius": profile.get("delivery_radius_km") is not None,
                 "hasWorkingHours": bool(working_hours),
-                "complianceRequiredCount": 0,
-                "complianceUploadedRequiredCount": 0,
+                "complianceRequiredCount": int(compliance_row[0] or 0),
+                "complianceUploadedRequiredCount": int(compliance_row[1] or 0),
             },
         }
         return Response({"data": data})

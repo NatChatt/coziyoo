@@ -11,8 +11,13 @@ Mevcut tespit:
 - Satici olmak isteyen kullanici daha sonra uygulama icinden seller mode'a geciriliyor.
 
 Yapilacaklar:
-- [ ] Register ekranina "Alici olarak devam et" / "Satici olarak basvur" secimi eklenecek.
-- [ ] Satici secilirse ayri bir seller onboarding/basvuru akisi acilacak.
+- [x] Register her zaman buyer hesap olusturacak.
+- [x] Telefon dogrulamadan sonra "Alici olarak devam et" / "Satici olarak devam et" secim ekrani acilacak.
+- [x] Alici secilirse buyer profil tamamlama ekrani zorunlu acilacak.
+- [x] Satici secilirse kullanici `both` yapilip mevcut satici profil tamamlama akisina yonlendirilecek.
+- [x] Buyer profilindeki "Satici Ol" butonu settings yerine seller acma akisina baglanacak.
+- [x] `both` kullanicilar icin alici/satici mod gecisi eklenecek.
+- [x] Buyer profil eksikse alici moduna geciste profil tamamlama zorunlu olacak.
 - [ ] Satici icin minimum bilgiler netlestirilecek:
   - [ ] Mutfak adi
   - [ ] Sehir / ilce
@@ -217,7 +222,7 @@ Notlar:
 ## Oncelik Sirasi
 
 - [ ] Demo login ve demo register otomatik doldurmayi production'dan kaldir.
-- [ ] Buyer/seller rol secim ekrani ekle.
+- [x] Buyer/seller rol secim ekrani ekle.
 - [ ] Satici basvuru akisini gercek onboarding'e cevir.
 - [ ] OTP/telefon dogrulamayi gercek hale getir.
 - [ ] Sifre sifirlamayi tamamla.
@@ -235,4 +240,3 @@ Notlar:
 - [ ] Alici icin adres ekleme register sirasinda zorunlu mu olacak?
 - [ ] Satici belgeleri hangi sirada ve hangi zorunlulukla alinacak?
 - [ ] KVKK ve sozlesme metinlerinin final kaynagi ne olacak?
-

@@ -329,7 +329,10 @@ class RegisterView(APIView):
         email = request.data.get("email", "").lower().strip()
         password = request.data.get("password", "")
         display_name = request.data.get("displayName") or email.split("@")[0][:40]
-        user_type = request.data.get("userType", "buyer")
+        # Public registration always creates a buyer-capable account. Seller
+        # access is enabled after phone verification through the explicit
+        # onboarding choice.
+        user_type = "buyer"
         username_raw = request.data.get("username") or re.sub(r"[^a-z0-9_]", "_", email.split("@")[0].lower())[:30]
 
         if not email or not password or len(password) < 8:
@@ -411,9 +414,33 @@ class EnableSellerView(APIView):
                 [request.user.id],
             )
             row = cur.fetchone()
-        if not row:
-            return error_response("ALREADY_SELLER", "Already a seller", 409)
-        return Response({"data": {"success": True}})
+            if not row:
+                cur.execute(
+                    "SELECT id, email, display_name, user_type FROM users WHERE id = %s AND user_type IN ('seller', 'both')",
+                    [request.user.id],
+                )
+                existing = cur.fetchone()
+                if not existing:
+                    return error_response("NOT_FOUND", "User not found", 404)
+                user_id, user_email, display_name, user_type = existing
+            else:
+                cur.execute(
+                    "SELECT id, email, display_name, user_type FROM users WHERE id = %s",
+                    [request.user.id],
+                )
+                user_id, user_email, display_name, user_type = cur.fetchone()
+
+        access_token = sign_access_token(str(user_id), str(request.user.session_id), "app", user_type)
+        return Response({"data": {
+            "success": True,
+            "user": {
+                "id": str(user_id),
+                "email": user_email,
+                "displayName": display_name,
+                "userType": user_type,
+            },
+            "tokens": {"accessToken": access_token, "tokenType": "Bearer"},
+        }})
 
 
 class UserAddressListView(APIView):

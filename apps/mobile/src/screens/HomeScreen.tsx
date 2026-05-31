@@ -4366,24 +4366,40 @@ export default function HomeScreen({
             titleStyle={styles.profileActionTitle}
           />
 
-          <View style={styles.profileSellerCard}>
-            <View style={styles.profileSellerContent}>
-              <View style={styles.profileSellerEmojiWrap}>
-                <Text style={styles.profileSellerEmoji}>👨‍🍳</Text>
+          {currentAuth.userType === 'both' && onSwitchToSeller ? (
+            <ProfileMenuItem
+              iconName="swap-horizontal-outline"
+              iconColor="#3E845B"
+              iconBgColor="#EAF4ED"
+              title="Satıcı moduna geç"
+              onPress={onSwitchToSeller}
+              rowStyle={[styles.profileGroupCard, styles.profileActionRow]}
+              iconWrapStyle={styles.profileActionIconWrap}
+              mainStyle={styles.profileActionMain}
+              titleStyle={styles.profileActionTitle}
+            />
+          ) : null}
+
+          {currentAuth.userType === 'buyer' && onSwitchToSeller ? (
+            <View style={styles.profileSellerCard}>
+              <View style={styles.profileSellerContent}>
+                <View style={styles.profileSellerEmojiWrap}>
+                  <Text style={styles.profileSellerEmoji}>👨‍🍳</Text>
+                </View>
+                <View style={styles.profileSellerTextWrap}>
+                  <Text style={styles.profileSellerTitle}>{t('headline.home.profileSellerTitle')}</Text>
+                  <Text style={styles.profileSellerBody}>{t('helper.home.profileSellerBody')}</Text>
+                </View>
               </View>
-              <View style={styles.profileSellerTextWrap}>
-                <Text style={styles.profileSellerTitle}>{t('headline.home.profileSellerTitle')}</Text>
-                <Text style={styles.profileSellerBody}>{t('helper.home.profileSellerBody')}</Text>
-              </View>
+              <TouchableOpacity
+                style={styles.profileSellerButton}
+                onPress={onSwitchToSeller}
+                activeOpacity={0.88}
+              >
+                <Text style={styles.profileSellerButtonText}>{t('cta.home.becomeSeller')}</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.profileSellerButton}
-              onPress={onOpenSettings}
-              activeOpacity={0.88}
-            >
-              <Text style={styles.profileSellerButtonText}>{t('cta.home.becomeSeller')}</Text>
-            </TouchableOpacity>
-          </View>
+          ) : null}
 
           <TouchableOpacity
             style={styles.profileLogoutButton}

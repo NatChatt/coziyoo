@@ -22,11 +22,11 @@ import { theme } from '../theme/colors';
 import { t } from '../copy/brandCopy';
 
 type Props = {
-  onLogin: (session: AuthSession) => void;
+  onLogin: (session: AuthSession, options?: { isNewRegistration?: boolean; initialRole?: 'buyer' | 'seller' }) => void;
   onGoToRegister?: () => void;
 };
 
-type AuthStep = 'signIn' | 'signUp' | 'forgot' | 'resetSent' | 'newPassword' | 'phone' | 'otp';
+type AuthStep = 'signIn' | 'signUp' | 'forgot' | 'resetSent' | 'newPassword' | 'phone' | 'otp' | 'roleChoice';
 
 type AuthResponse = {
   data?: {
@@ -60,6 +60,7 @@ export default function LoginScreen({ onLogin }: Props) {
     if (step === 'resetSent') return t('headline.auth.passwordReset');
     if (step === 'newPassword') return t('headline.auth.newPassword');
     if (step === 'phone' || step === 'otp') return t('headline.auth.verifyPhone');
+    if (step === 'roleChoice') return 'Nasıl devam etmek istersin?';
     return t('headline.auth.signIn');
   }, [step]);
 
@@ -127,9 +128,27 @@ export default function LoginScreen({ onLogin }: Props) {
     return err instanceof Error ? err.message : t('error.login.network');
   }
 
-  async function finishLogin(session: AuthSession) {
+  async function finishLogin(session: AuthSession, options?: { isNewRegistration?: boolean; initialRole?: 'buyer' | 'seller' }) {
     await saveAuthSession(session);
-    onLogin(session);
+    onLogin(session, options);
+  }
+
+  async function saveVerifiedPhone(session: AuthSession) {
+    const normalizedPhone = phone.trim();
+    if (!normalizedPhone || normalizedPhone === '+90') return;
+    try {
+      const { apiUrl } = await loadSettings();
+      await fetch(`${apiUrl}/v1/auth/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+        body: JSON.stringify({ phone: normalizedPhone }),
+      });
+    } catch {
+      // Phone persistence is retried from profile completion if this request fails.
+    }
   }
 
   async function loginWithCredentials(rawEmail: string, rawPassword: string) {
@@ -295,10 +314,24 @@ export default function LoginScreen({ onLogin }: Props) {
       return;
     }
     if (pendingSession) {
-      await finishLogin(pendingSession);
+      setLoading(true);
+      try {
+        await saveVerifiedPhone(pendingSession);
+        setStep('roleChoice');
+      } finally {
+        setLoading(false);
+      }
       return;
     }
     setStep('signIn');
+  }
+
+  async function handleRegistrationRoleChoice(initialRole: 'buyer' | 'seller') {
+    if (!pendingSession) {
+      setStep('signIn');
+      return;
+    }
+    await finishLogin(pendingSession, { isNewRegistration: true, initialRole });
   }
 
   function renderContent() {
@@ -388,6 +421,36 @@ export default function LoginScreen({ onLogin }: Props) {
       );
     }
 
+    if (step === 'roleChoice') {
+      return (
+        <>
+          <Text style={styles.screenDesc}>Devam etmek istediğin yolu seç.</Text>
+          <View style={styles.roleChoiceStack}>
+            <TouchableOpacity style={styles.roleChoiceButton} onPress={() => void handleRegistrationRoleChoice('buyer')} activeOpacity={0.88}>
+              <View style={styles.roleChoiceIcon}>
+                <Ionicons name="person-outline" size={22} color="#819376" />
+              </View>
+              <View style={styles.roleChoiceTextWrap}>
+                <Text style={styles.roleChoiceTitle}>Alıcı olarak devam et</Text>
+                <Text style={styles.roleChoiceBody}>Profilini tamamla ve yemek keşfetmeye başla.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#819376" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.roleChoiceButton} onPress={() => void handleRegistrationRoleChoice('seller')} activeOpacity={0.88}>
+              <View style={styles.roleChoiceIcon}>
+                <Ionicons name="storefront-outline" size={22} color="#819376" />
+              </View>
+              <View style={styles.roleChoiceTextWrap}>
+                <Text style={styles.roleChoiceTitle}>Satıcı olarak devam et</Text>
+                <Text style={styles.roleChoiceBody}>Satıcı profilini doldurup mutfağını hazırla.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#819376" />
+            </TouchableOpacity>
+          </View>
+        </>
+      );
+    }
+
     return (
       <>
         <AuthInput icon="mail-outline" label={t('helper.login.emailLabel')} value={email} onChangeText={(v) => { setEmail(v); clearError(); }} placeholder={t('helper.login.emailPlaceholder')} keyboardType="email-address" />
@@ -411,7 +474,7 @@ export default function LoginScreen({ onLogin }: Props) {
             activeOpacity={0.8}
             onPress={() => {
               if (step === 'signIn') return;
-              setStep(step === 'newPassword' ? 'resetSent' : 'signIn');
+              setStep(step === 'newPassword' ? 'resetSent' : step === 'roleChoice' ? 'otp' : 'signIn');
               setError(null);
             }}
           >
@@ -618,6 +681,30 @@ const styles = StyleSheet.create({
   },
   otpCellFilled: { backgroundColor: '#DDE7D8' },
   otpText: { color: '#3D3229', fontSize: 18, fontWeight: '800' },
+  roleChoiceStack: { gap: 12 },
+  roleChoiceButton: {
+    minHeight: 82,
+    borderWidth: 1,
+    borderColor: '#E1EADB',
+    borderRadius: 24,
+    backgroundColor: '#FFFDF9',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  roleChoiceIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F0F7EC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleChoiceTextWrap: { flex: 1, minWidth: 0 },
+  roleChoiceTitle: { color: '#3D3229', fontSize: 15, fontWeight: '800' },
+  roleChoiceBody: { color: '#7D6B5B', fontSize: 12, lineHeight: 17, marginTop: 3 },
   hiddenOtpInput: { height: 0, width: 0, opacity: 0 },
   resendText: { color: '#7D6B5B', fontSize: 12, textAlign: 'center', marginBottom: 4 },
   quickPanel: { marginTop: 22, gap: 8 },

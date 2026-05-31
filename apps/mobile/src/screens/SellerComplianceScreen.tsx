@@ -32,10 +32,15 @@ type CompliancePayload = {
       code?: string;
       status?: string;
       is_required?: boolean;
+      isRequired?: boolean;
       rejection_reason?: string | null;
+      rejectionReason?: string | null;
       uploaded_at?: string | null;
+      uploadedAt?: string | null;
+      file_url?: string | null;
+      fileUrl?: string | null;
     }>;
-    optionalUploads?: Array<{ id: string; custom_title?: string | null; status?: string }>;
+    optionalUploads?: Array<{ id: string; custom_title?: string | null; customTitle?: string | null; name?: string | null; status?: string }>;
   };
   error?: { message?: string };
 };
@@ -95,7 +100,7 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
   }, []);
 
   const requiredDocs = useMemo(
-    () => (payload?.documents ?? []).filter((doc) => Boolean(doc.is_required)),
+    () => (payload?.documents ?? []).filter((doc) => Boolean(doc.is_required ?? doc.isRequired)),
     [payload?.documents],
   );
 
@@ -170,15 +175,17 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
               ) : null}
               {requiredDocs.map((doc) => {
                 const isUploading = uploadingDocCode === (doc.code ?? "");
+                const uploadedAt = doc.uploaded_at ?? doc.uploadedAt ?? null;
+                const rejectionReason = doc.rejection_reason ?? doc.rejectionReason ?? null;
                 return (
                   <View key={doc.id} style={styles.docRow}>
                     <View style={styles.docMeta}>
                       <Text style={styles.docTitle}>{doc.name || doc.code || doc.id}</Text>
                       <Text style={styles.docStatus}>{formatCopy('status.seller.compliance.state', { status: doc.status || '-' })}</Text>
-                      {doc.uploaded_at ? <Text style={styles.docHint}>{formatCopy('status.seller.compliance.lastUpload', {
-                        date: new Date(doc.uploaded_at).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR'),
+                      {uploadedAt ? <Text style={styles.docHint}>{formatCopy('status.seller.compliance.lastUpload', {
+                        date: new Date(uploadedAt).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR'),
                       })}</Text> : null}
-                      {doc.rejection_reason ? <Text style={styles.docReject}>{formatCopy('status.seller.compliance.rejectReason', { reason: doc.rejection_reason })}</Text> : null}
+                      {rejectionReason ? <Text style={styles.docReject}>{formatCopy('status.seller.compliance.rejectReason', { reason: rejectionReason })}</Text> : null}
                     </View>
                     <TouchableOpacity
                       style={[styles.uploadBtn, isUploading ? styles.uploadBtnDisabled : null]}
@@ -198,7 +205,7 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
               ) : null}
               {(payload.optionalUploads ?? []).map((upload) => (
                 <Text key={upload.id} style={styles.meta}>
-                  {upload.custom_title || upload.id} · {upload.status || "-"}
+                  {upload.custom_title || upload.customTitle || upload.name || upload.id} · {upload.status || "-"}
                 </Text>
               ))}
             </View>
