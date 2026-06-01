@@ -627,8 +627,8 @@
                  x-transition:enter="transition ease-out duration-150"
                  x-transition:enter-start="opacity-0 scale-95 translate-y-2"
                  x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                 class="relative flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-base-200 bg-white shadow-2xl dark:border-base-700 dark:bg-base-900"
-                 style="width: min(1120px, calc(100vw - 2.5rem)); max-height: calc(100vh - 2.5rem); max-height: calc(100dvh - 2.5rem);">
+                 class="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-base-200 bg-white shadow-2xl dark:border-base-700 dark:bg-base-900"
+                 style="width: min(920px, calc(100vw - 2.5rem)); height: min(90vh, 920px); height: min(90dvh, 920px); max-height: calc(100vh - 2.5rem); max-height: calc(100dvh - 2.5rem);">
 
               {# Header #}
               <div class="flex items-center justify-between px-5 py-3.5 border-b border-base-200 dark:border-base-700 shrink-0">
@@ -667,8 +667,8 @@
 	              </div>
 
 	              {# Document viewer — uses the same modal body pattern for images and PDFs #}
-	              <div class="relative min-h-0 overflow-hidden bg-base-100 dark:bg-base-950"
-	                   style="height: min(72vh, 760px); min-height: min(520px, calc(100vh - 14rem));">
+	              <div class="relative min-h-0 flex-1 overflow-hidden bg-base-100 dark:bg-base-950"
+	                   style="min-height: 0;">
 	                <template x-if="$store.compliancePreview.isPdf">
 	                  <iframe :src="$store.compliancePreview.viewerUrl"
 	                          class="absolute inset-0 block h-full w-full border-0"
