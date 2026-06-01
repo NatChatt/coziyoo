@@ -9,9 +9,17 @@ Coziyoo v2 — ev yemeklerini komşulara bağlayan bir sipariş marketplace'i.
 | `apps/django` | Django + DRF + Python | 9000 | REST API + Admin paneli (monolith) |
 | `apps/mobile` | Expo + React Native | Expo | Buyer/seller mobil uygulama |
 
-Production ingress (Nginx Proxy Manager, Docker üzerinde):
-- `api.coziyoo.com` → `127.0.0.1:9000`
-- `admin.coziyoo.com` → `127.0.0.1:9000`
+Production/dev ingress (aktif durum):
+- `api.coziyoo.com` ve `admin.coziyoo.com` Cloudflare Tunnel üzerinden bu Mac'teki `127.0.0.1:9000` adresine gider.
+- Tunnel config: `/Users/ismetkarakus/.cloudflared/config.yml`
+- Port `9000`: local Django LaunchAgent `com.coziyoo.django-dev`
+- Django komutu: `manage.py runserver 0.0.0.0:9000 --noreload`
+- Settings: `coziyoo.settings.development`
+- Admin/template degisikliginden sonra sadece GitHub Actions/VPS deploy yeterli degildir; local Django LaunchAgent restart edilmelidir:
+
+```bash
+bash scripts/deploy/restart-local-tunnel-django.sh
+```
 
 ---
 

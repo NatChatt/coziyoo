@@ -66,3 +66,20 @@ Unless explicitly requested by the user, do not modify:
 - Tum API endpointleri `application/json` donmeli.
 - Hata durumlarinda da JSON donmeli (`{ error: { code, message } }`).
 - Mobile/Admin istemcileri JSON disi response'u hata kabul eder ve fallback mesaj gosterir.
+
+## 10) Cloudflare Tunnel / Local Admin Runtime (User Rule - Persistent)
+- `admin.coziyoo.com` and `api.coziyoo.com` are currently served through Cloudflare Tunnel, not the old VPS/NPM path.
+- Tunnel config lives at `/Users/ismetkarakus/.cloudflared/config.yml`.
+- Current ingress:
+  - `api.coziyoo.com` -> `http://127.0.0.1:9000`
+  - `admin.coziyoo.com` -> `http://127.0.0.1:9000`
+- Port `9000` is local Django on this Mac, managed by LaunchAgent:
+  - plist: `/Users/ismetkarakus/Library/LaunchAgents/com.coziyoo.django-dev.plist`
+  - label: `com.coziyoo.django-dev`
+  - command: `manage.py runserver 0.0.0.0:9000 --noreload`
+  - settings: `coziyoo.settings.development`
+- Because Django runs with `--noreload`, template/code changes may not appear on `admin.coziyoo.com` until the local LaunchAgent is restarted.
+- Do not assume GitHub Actions/VPS deploy is enough for admin UI changes while this tunnel setup is active.
+- After Django admin/template changes, run:
+  - `bash scripts/deploy/restart-local-tunnel-django.sh`
+- Verify live HTML through Cloudflare if the user says "I still don't see it"; compare for the expected class/string in the rendered page.
