@@ -145,6 +145,106 @@ def _resolve_admin_actor(request):
     return {"id": row[0], "creator_name": row[1]}
 
 
+def _table_exists(table_name):
+    with connection.cursor() as cur:
+        cur.execute("SELECT to_regclass(%s)", [table_name])
+        return cur.fetchone()[0] is not None
+
+
+def _mask_email(value):
+    raw = (value or "").strip()
+    if "@" not in raw:
+        return "—" if not raw else raw[:1] + "…" + raw[-1:]
+    local, domain = raw.split("@", 1)
+    if not local:
+        return "…" + "@" + domain
+    return f"{local[:1]}{'*' * min(max(len(local) - 1, 3), 12)}@{domain}"
+
+
+def _mask_phone(value):
+    raw = (value or "").strip()
+    if not raw:
+        return "—"
+    digits = [c for c in raw if c.isdigit()]
+    if len(digits) < 4:
+        return "••••"
+    if raw.startswith("+90") or raw.startswith("0090"):
+        return "+90 5** *** ** " + "".join(digits[-2:])
+    return "••• ••• " + "".join(digits[-2:])
+
+
+def _mask_identity(value):
+    raw = (value or "").strip()
+    if not raw:
+        return "—"
+    return "•••• " + raw[-4:] if len(raw) > 4 else "••••"
+
+
+def _request_admin_role(request):
+    if request is None:
+        return "user"
+    role = getattr(request.user, "role", None)
+    if role:
+        return str(role)
+    if hasattr(request.user, "groups"):
+        return _get_user_role(request.user)
+    return "user"
+
+
+def _role_has_permission(role, permission_key):
+    if role == "super_admin":
+        return True
+    return RolePermissions.objects.filter(
+        role=role,
+        permission_key=permission_key,
+        is_allowed=True,
+    ).exists()
+
+
+def _request_has_permission(request, permission_key):
+    return _role_has_permission(_request_admin_role(request), permission_key)
+
+
+def _privacy_context(request):
+    return {
+        "can_view_email": _request_has_permission(request, "view_user_email"),
+        "can_view_phone": _request_has_permission(request, "view_user_phone"),
+        "can_view_identity": _request_has_permission(request, "view_full_user_identity"),
+        "can_view_address": _request_has_permission(request, "view_user_address"),
+    }
+
+
+def _privacy_fieldsets(request):
+    hidden = set()
+    if not _request_has_permission(request, "view_user_email"):
+        hidden.add("email")
+    if not _request_has_permission(request, "view_user_phone"):
+        hidden.add("phone")
+    if not _request_has_permission(request, "view_full_user_identity"):
+        hidden.update({"national_id", "dob"})
+
+    fieldsets = []
+    for title, opts in _COMMON_FIELDSETS:
+        next_opts = dict(opts)
+        fields = next_opts.get("fields")
+        if fields:
+            next_opts["fields"] = [field for field in fields if field not in hidden]
+        fieldsets.append((title, next_opts))
+    return fieldsets
+
+
+def _visible_email(request, value):
+    return value if _request_has_permission(request, "view_user_email") else _mask_email(value)
+
+
+def _visible_phone(request, value):
+    return value if _request_has_permission(request, "view_user_phone") else _mask_phone(value)
+
+
+def _visible_identity(request, value):
+    return value if _request_has_permission(request, "view_full_user_identity") else _mask_identity(value)
+
+
 def _detail_tab_redirect(route_name, user_id, tab="notes"):
     return redirect(f"{reverse(route_name, args=[user_id])}?tab={tab}")
 
@@ -266,7 +366,7 @@ def _fetch_buyer_row_data(user_ids):
 @admin.register(BuyerUsers)
 class BuyerUsersAdmin(ModelAdmin):
     list_display = [
-        "display_name_link", "email", "user_type_badge", "is_active", "created_at",
+        "display_name_link", "short_user_id", "masked_email_display", "user_type_badge", "is_active", "created_at",
     ]
     list_display_links = None
     list_filter = ["is_active"]
@@ -279,12 +379,16 @@ class BuyerUsersAdmin(ModelAdmin):
     def has_add_permission(self, request):
         return False
 
+    def get_fieldsets(self, request, obj=None):
+        return _privacy_fieldsets(request)
+
     def get_queryset(self, request):
         return super().get_queryset(request).filter(
             is_active=True, user_type__in=["buyer", "both"]
         )
 
     def changelist_view(self, request, extra_context=None):
+        self._privacy_request = request
         types = ("buyer", "both")
         extra_context = extra_context or {}
 
@@ -335,7 +439,7 @@ class BuyerUsersAdmin(ModelAdmin):
                         buyer_rows.append({
                                 "id": uid_str,
                                 "display_name": u.display_name or u.email,
-                                "email": u.email,
+                                "email": _visible_email(request, u.email),
                                 "user_type": u.user_type,
                                 "user_type_tr": _get_type_map().get(u.user_type, u.user_type),
                                 "is_active": u.is_active,
@@ -465,12 +569,12 @@ class BuyerUsersAdmin(ModelAdmin):
             "active_delivery_type": active_delivery_type,
             "seller_decision_state": seller_decision_state,
             "buyer_name": buyer_name,
-            "buyer_email": buyer_email,
+            "buyer_email": _visible_email(request, buyer_email),
             "buyer_admin_url": reverse("admin:authentication_buyerusers_buyer_detail", args=[str(buyer_id)]) if buyer_id else None,
             "seller_name": seller_name,
-            "seller_email": seller_email,
+            "seller_email": _visible_email(request, seller_email),
             "seller_admin_url": reverse("admin:authentication_sellerusers_seller_detail", args=[str(seller_id)]) if seller_id else None,
-            "address": ", ".join(address_parts) if address_parts else None,
+            "address": ", ".join(address_parts) if address_parts and _request_has_permission(request, "view_user_address") else None,
             "delivery_note": delivery_note,
             "payment_provider": payment.get("provider"),
             "payment_status": _humanize_status(payment.get("status")),
@@ -631,15 +735,21 @@ class BuyerUsersAdmin(ModelAdmin):
         ]
 
         raw_data = {
-            "id": str(user.id), "email": user.email, "display_name": user.display_name,
-            "username": user.username, "phone": user.phone, "user_type": user.user_type,
+            "id": str(user.id), "email": _visible_email(request, user.email), "display_name": user.display_name,
+            "username": user.username, "phone": _visible_phone(request, user.phone), "user_type": user.user_type,
             "is_active": user.is_active, "created_at": str(user.created_at),
+        }
+        user_private = {
+            "email": _visible_email(request, user.email),
+            "phone": _visible_phone(request, user.phone),
         }
 
         context = {
             **self.admin_site.each_context(request),
             "title": _("Buyer Detail") + f" — {user.display_name}",
             "user": user,
+            "user_private": user_private,
+            "privacy": _privacy_context(request),
             "role_badge": _user_type_badge(user),
             "summary": summary,
             "tabs": tabs,
@@ -801,6 +911,14 @@ class BuyerUsersAdmin(ModelAdmin):
         url = reverse("admin:authentication_buyerusers_buyer_detail", args=[obj.id])
         return format_html('<a href="{}" class="text-primary-600 hover:underline font-medium">{}</a>', url, obj.display_name)
 
+    @display(description=_("User ID"), ordering="id")
+    def short_user_id(self, obj):
+        return str(obj.id)[:8] + "…"
+
+    @display(description=_("Email"), ordering="email")
+    def masked_email_display(self, obj):
+        return _visible_email(getattr(self, "_privacy_request", None), obj.email)
+
     @display(description=_("Type"), ordering="user_type")
     def user_type_badge(self, obj):
         return _user_type_badge(obj)
@@ -809,7 +927,7 @@ class BuyerUsersAdmin(ModelAdmin):
 @admin.register(SellerUsers)
 class SellerUsersAdmin(ModelAdmin):
     list_display = [
-        "display_name_link", "email", "user_type_badge", "seller_status_badge", "is_active", "created_at",
+        "display_name_link", "short_user_id", "masked_email_display", "compliance_summary_badge", "user_type_badge", "seller_status_badge", "is_active", "created_at",
     ]
     list_display_links = None
     list_filter = ["is_active", "seller_profile_status"]
@@ -822,12 +940,16 @@ class SellerUsersAdmin(ModelAdmin):
     def has_add_permission(self, request):
         return False
 
+    def get_fieldsets(self, request, obj=None):
+        return _privacy_fieldsets(request)
+
     def get_queryset(self, request):
         return super().get_queryset(request).filter(
             is_active=True, user_type__in=["seller", "both"]
         )
 
     def changelist_view(self, request, extra_context=None):
+        self._privacy_request = request
         types = ("seller", "both")
         extra_context = extra_context or {}
 
@@ -989,7 +1111,35 @@ class SellerUsersAdmin(ModelAdmin):
                     "uploaded_at": r[6],
                     "file_url": s3_utils.hydrate_file_url(r[7]) if r[7] else None,
                     "rejection_reason": r[8] or "",
+                    "previous_rejection_reason": "",
+                    "previous_rejected_at": None,
                 })
+
+            if compliance_docs and _table_exists("seller_compliance_document_reviews"):
+                doc_list_ids = [d["document_list_id"] for d in compliance_docs]
+                cur.execute(
+                    """
+                    SELECT DISTINCT ON (document_list_id)
+                           document_list_id::text,
+                           rejection_reason,
+                           reviewed_at
+                    FROM seller_compliance_document_reviews
+                    WHERE seller_id = %s
+                      AND action = 'rejected'
+                      AND document_list_id = ANY(%s::uuid[])
+                    ORDER BY document_list_id, reviewed_at DESC
+                    """,
+                    [uid, doc_list_ids],
+                )
+                previous_rejections = {
+                    row[0]: {"reason": row[1] or "", "reviewed_at": row[2]}
+                    for row in cur.fetchall()
+                }
+                for doc in compliance_docs:
+                    previous = previous_rejections.get(doc["document_list_id"])
+                    if previous:
+                        doc["previous_rejection_reason"] = previous["reason"]
+                        doc["previous_rejected_at"] = previous["reviewed_at"]
 
         # Parse JSON results
         orders = [{"id": str(r["id"]), "buyer_name": r["buyer_name"], "total_price": r["total_price"],
@@ -1065,20 +1215,27 @@ class SellerUsersAdmin(ModelAdmin):
             initial_tab = "general"
 
         raw_data = {
-            "id": str(user.id), "email": user.email, "display_name": user.display_name,
-            "full_name": user.full_name, "username": user.username, "phone": user.phone,
+            "id": str(user.id), "email": _visible_email(request, user.email), "display_name": user.display_name,
+            "full_name": user.full_name, "username": user.username, "phone": _visible_phone(request, user.phone),
             "user_type": user.user_type, "is_active": user.is_active,
             "seller_profile_status": user.seller_profile_status,
             "kitchen_title": user.kitchen_title, "kitchen_description": user.kitchen_description,
             "dob": str(user.dob) if user.dob else None,
-            "country_code": user.country_code, "national_id": user.national_id,
+            "country_code": user.country_code, "national_id": _visible_identity(request, user.national_id),
             "created_at": str(user.created_at),
+        }
+        user_private = {
+            "email": _visible_email(request, user.email),
+            "phone": _visible_phone(request, user.phone),
+            "national_id": _visible_identity(request, user.national_id),
         }
 
         context = {
             **self.admin_site.each_context(request),
             "title": _("Seller Detail") + f" — {user.display_name}",
             "user_obj": user,
+            "user_private": user_private,
+            "privacy": _privacy_context(request),
             "role_badge": _user_type_badge(user),
             "summary": summary,
             "earnings_summary": earnings_summary,
@@ -1153,11 +1310,12 @@ class SellerUsersAdmin(ModelAdmin):
                 """
                 INSERT INTO seller_compliance_documents
                     (seller_id, document_list_id, file_url, status, uploaded_at)
-                VALUES (%s, %s, %s, 'uploaded', now())
-                ON CONFLICT (seller_id, document_list_id)
-                DO UPDATE SET file_url=%s, status='uploaded', uploaded_at=now(), updated_at=now()
-                RETURNING id
-                """,
+	                VALUES (%s, %s, %s, 'uploaded', now())
+	                ON CONFLICT (seller_id, document_list_id)
+	                DO UPDATE SET file_url=%s, status='uploaded', uploaded_at=now(), updated_at=now(),
+	                              rejection_reason=NULL
+	                RETURNING id
+	                """,
                 [str(seller_id), document_list_id, file_url, file_url],
             )
             row = cur.fetchone()
@@ -1184,20 +1342,59 @@ class SellerUsersAdmin(ModelAdmin):
         if action == "rejected" and len(rejection_reason.strip()) < 3:
             return JsonResponse({"error": "Rejection reason must be at least 3 characters"}, status=400)
 
+        admin_actor = _resolve_admin_actor(request)
         with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT document_list_id, file_url
+                FROM seller_compliance_documents
+                WHERE id = %s AND seller_id = %s
+                """,
+                [doc_id, str(seller_id)],
+            )
+            doc_row = cur.fetchone()
+            if not doc_row:
+                return JsonResponse({"error": "Document not found"}, status=404)
+
             cur.execute(
                 """
                 UPDATE seller_compliance_documents
                 SET status = %s,
                     rejection_reason = %s,
+                    reviewed_by_admin_id = %s,
                     reviewed_at = now(),
                     updated_at = now()
                 WHERE id = %s AND seller_id = %s
                 RETURNING id, status
                 """,
-                [action, rejection_reason.strip() if action == "rejected" else None, doc_id, str(seller_id)],
+                [
+                    action,
+                    rejection_reason.strip() if action == "rejected" else None,
+                    admin_actor["id"] if admin_actor else None,
+                    doc_id,
+                    str(seller_id),
+                ],
             )
             row = cur.fetchone()
+
+            if _table_exists("seller_compliance_document_reviews"):
+                cur.execute(
+                    """
+                    INSERT INTO seller_compliance_document_reviews
+                        (document_id, seller_id, document_list_id, action, rejection_reason,
+                         reviewed_by_admin_id, file_url_snapshot)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        doc_id,
+                        str(seller_id),
+                        doc_row[0],
+                        action,
+                        rejection_reason.strip() if action == "rejected" else None,
+                        admin_actor["id"] if admin_actor else None,
+                        doc_row[1],
+                    ],
+                )
 
         if not row:
             return JsonResponse({"error": "Document not found"}, status=404)
@@ -1209,6 +1406,40 @@ class SellerUsersAdmin(ModelAdmin):
         from django.urls import reverse
         url = reverse("admin:authentication_sellerusers_seller_detail", args=[obj.id])
         return format_html('<a href="{}" class="text-primary-600 hover:underline font-medium">{}</a>', url, obj.display_name)
+
+    @display(description=_("User ID"), ordering="id")
+    def short_user_id(self, obj):
+        return str(obj.id)[:8] + "…"
+
+    @display(description=_("Email"), ordering="email")
+    def masked_email_display(self, obj):
+        return _visible_email(getattr(self, "_privacy_request", None), obj.email)
+
+    @display(description=_("Documents"))
+    def compliance_summary_badge(self, obj):
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    count(*) FILTER (WHERE cdl.is_required_default)::int AS required_total,
+                    count(*) FILTER (WHERE cdl.is_required_default AND scd.status = 'approved')::int AS approved_count,
+                    count(*) FILTER (WHERE cdl.is_required_default AND scd.status = 'uploaded')::int AS uploaded_count
+                FROM compliance_documents_list cdl
+                LEFT JOIN seller_compliance_documents scd
+                    ON scd.document_list_id = cdl.id AND scd.seller_id = %s
+                WHERE cdl.is_active = TRUE
+                """,
+                [obj.id],
+            )
+            required_total, approved_count, uploaded_count = cur.fetchone()
+        if uploaded_count:
+            return format_html(
+                '<span style="color:#d97706;font-weight:600">{} / {} {}</span>',
+                uploaded_count,
+                required_total,
+                _("review"),
+            )
+        return format_html('<span style="color:#6b7280">{} / {}</span>', approved_count, required_total)
 
     @display(description=_("Type"), ordering="user_type")
     def user_type_badge(self, obj):
@@ -1225,7 +1456,7 @@ class AllUsersAdmin(ModelAdmin):
     actions_on_bottom = False
     actions = ["make_active", "make_inactive"]
     list_display = [
-        "display_name_link", "email", "user_type_badge", "is_active",
+        "display_name_link", "short_user_id", "masked_email_display", "user_type_badge", "is_active",
         "seller_status_badge", "created_at",
     ]
     list_display_links = None
@@ -1233,6 +1464,10 @@ class AllUsersAdmin(ModelAdmin):
     search_fields = ["email", "display_name", "username", "phone"]
     ordering = ["-created_at"]
     list_per_page = 50
+
+    def changelist_view(self, request, extra_context=None):
+        self._privacy_request = request
+        return super().changelist_view(request, extra_context=extra_context)
 
     @display(description=_("Name"), ordering="display_name")
     def display_name_link(self, obj):
@@ -1244,6 +1479,14 @@ class AllUsersAdmin(ModelAdmin):
         else:
             return obj.display_name
         return format_html('<a href="{}" class="text-primary-600 hover:underline font-medium">{}</a>', url, obj.display_name)
+
+    @display(description=_("User ID"), ordering="id")
+    def short_user_id(self, obj):
+        return str(obj.id)[:8] + "…"
+
+    @display(description=_("Email"), ordering="email")
+    def masked_email_display(self, obj):
+        return _visible_email(getattr(self, "_privacy_request", None), obj.email)
 
     @display(description=_("Type"), ordering="user_type")
     def user_type_badge(self, obj):
@@ -1265,6 +1508,9 @@ class AllUsersAdmin(ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+    def get_fieldsets(self, request, obj=None):
+        return _privacy_fieldsets(request)
 
     def delete_model(self, request, obj):
         _cascade_delete_users(connection, [obj.id])
@@ -1359,6 +1605,11 @@ def _cascade_delete_users(conn, user_ids):
 # ── Helper: get user's role from groups ──────────────────────────────────────
 
 ROLE_GROUPS = ["Super Admin", "Admin", "User"]
+ROLE_CHOICES = [
+    ("super_admin", _("Super Admin")),
+    ("admin", _("Admin")),
+    ("user", _("User")),
+]
 
 def _get_user_role(user):
     """Return the role name based on group membership."""
@@ -1399,6 +1650,21 @@ def _set_user_role(user, role_name):
     user.save(update_fields=["is_superuser", "is_staff"])
 
 
+class CoziyooUserAdminForm(forms.ModelForm):
+    role = forms.ChoiceField(choices=ROLE_CHOICES, label=_("Role"))
+
+    class Meta:
+        model = User
+        fields = ["username", "email", "first_name", "last_name", "password", "is_active", "role"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields["role"].initial = _get_user_role(self.instance)
+        else:
+            self.fields["role"].initial = "admin"
+
+
 # ── Django User Admin (replaces AdminUsers) ──────────────────────────────────
 
 # Unregister default User and Group admin
@@ -1408,12 +1674,12 @@ admin.site.unregister(Group)
 
 @admin.register(User)
 class CoziyooUserAdmin(ModelAdmin):
+    form = CoziyooUserAdminForm
     change_list_template = "admin/authentication/users/change_list.html"
     list_display = ["username", "email", "first_name", "last_name", "display_role", "is_active", "last_login", "date_joined"]
     list_filter = ["is_active", "groups"]
     search_fields = ["username", "email", "first_name", "last_name"]
     ordering = ["-date_joined"]
-    filter_horizontal = ["groups"]
 
     def changelist_view(self, request, extra_context=None):
         all_staff = list(User.objects.filter(is_staff=True).order_by("username"))
@@ -1431,13 +1697,20 @@ class CoziyooUserAdmin(ModelAdmin):
         if obj is None:
             return [
                 (None, {"fields": ["username", "email", "first_name", "last_name", "password"]}),
-                (_("Role"), {"fields": ["groups"]}),
+                (_("Role"), {"fields": ["role"]}),
             ]
         return [
             (None, {"fields": ["username", "email", "first_name", "last_name"]}),
-            (_("Role"), {"fields": ["groups"]}),
+            (_("Role"), {"fields": ["role"]}),
             (_("Status"), {"fields": ["is_active", "last_login", "date_joined"]}),
         ]
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if "role" in form.base_fields and _request_admin_role(request) != "super_admin":
+            form.base_fields["role"].disabled = True
+            form.base_fields["role"].help_text = _("Only Super Admin can change roles.")
+        return form
 
     def get_readonly_fields(self, request, obj=None):
         if obj is None:
@@ -1462,6 +1735,10 @@ class CoziyooUserAdmin(ModelAdmin):
                 obj.set_password(password)
             obj.is_staff = True
         super().save_model(request, obj, form, change)
+        if _request_admin_role(request) == "super_admin":
+            _set_user_role(obj, form.cleaned_data.get("role", "admin"))
+        elif not change:
+            _set_user_role(obj, "admin")
 
     # Permission definitions: (section_label, [(permission_key, display_label), ...])
     PERMISSION_SECTIONS = [
@@ -1469,6 +1746,10 @@ class CoziyooUserAdmin(ModelAdmin):
             ("view_buyers", _("View buyers")),
             ("view_sellers", _("View sellers")),
             ("view_all_users", _("View all users")),
+            ("view_user_email", _("View user email")),
+            ("view_user_phone", _("View user phone")),
+            ("view_user_address", _("View user address")),
+            ("view_full_user_identity", _("View full user identity")),
             ("view_orders", _("View orders")),
             ("delete_users", _("Delete users")),
         ]),
@@ -1526,6 +1807,10 @@ class CoziyooUserAdmin(ModelAdmin):
         return {(r.role, r.permission_key): r.is_allowed for r in rows}
 
     def permissions_view(self, request):
+        if _request_admin_role(request) != "super_admin":
+            messages.error(request, _("Only Super Admin can manage permissions."))
+            return redirect("admin:index")
+
         all_staff = list(User.objects.filter(is_staff=True).order_by("username"))
         total_admins = len(all_staff)
         super_admin_count = sum(1 for u in all_staff if _get_user_role(u) == "super_admin")
@@ -1577,6 +1862,8 @@ class CoziyooUserAdmin(ModelAdmin):
         """AJAX endpoint to toggle a single permission."""
         if request.method != "POST":
             return JsonResponse({"error": "POST required"}, status=405)
+        if _request_admin_role(request) != "super_admin":
+            return JsonResponse({"error": "Forbidden"}, status=403)
 
         try:
             data = json.loads(request.body)
@@ -1617,6 +1904,9 @@ class CoziyooUserAdmin(ModelAdmin):
     def change_role_view(self, request):
         if request.method != "POST":
             return redirect("admin:authentication_permissions")
+        if _request_admin_role(request) != "super_admin":
+            messages.error(request, _("Only Super Admin can change admin roles."))
+            return redirect("admin:index")
 
         user_id = request.POST.get("admin_id")
         new_role = request.POST.get("new_role")

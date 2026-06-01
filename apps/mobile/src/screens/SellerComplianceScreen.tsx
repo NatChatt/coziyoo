@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import type { AuthSession } from "../utils/auth";
 import { refreshAuthSession } from "../utils/auth";
@@ -50,6 +52,7 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
   const [currentAuth, setCurrentAuth] = useState(auth);
   const [loading, setLoading] = useState(true);
   const [uploadingDocCode, setUploadingDocCode] = useState<string | null>(null);
+  const [uploadChoiceDocCode, setUploadChoiceDocCode] = useState<string | null>(null);
   const [payload, setPayload] = useState<CompliancePayload["data"] | null>(null);
 
   useEffect(() => {
@@ -104,42 +107,82 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
     [payload?.documents],
   );
 
-  async function pickAndUploadDocument(docCode: string) {
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(t('headline.common.permission'), t('error.seller.compliance.galleryPermission'));
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        allowsEditing: false,
-        base64: true,
-      });
-      if (result.canceled || !result.assets?.length) return;
-      const asset = result.assets[0];
-      const dataBase64 = asset.base64;
-      if (!dataBase64) {
-        Alert.alert(t('headline.common.error'), t('error.seller.compliance.assetMissing'));
-        return;
-      }
+  async function uploadDocumentBase64(docCode: string, dataBase64: string, contentType: string) {
+    setUploadingDocCode(docCode);
+    const res = await authedFetch("/v1/seller/compliance/documents", {
+      method: "POST",
+      body: JSON.stringify({
+        docType: docCode,
+        dataBase64,
+        contentType,
+      }),
+    });
+    const json = (await res.json()) as CompliancePayload;
+    if (!res.ok) {
+      throw new Error(json.error?.message ?? t('error.seller.compliance.upload'));
+    }
+    await loadData();
+    Alert.alert(t('headline.common.success'), t('status.seller.compliance.uploadedSuccess'));
+  }
 
-      setUploadingDocCode(docCode);
-      const res = await authedFetch("/v1/seller/compliance/documents", {
-        method: "POST",
-        body: JSON.stringify({
-          docType: docCode,
-          dataBase64,
-          contentType: asset.mimeType ?? "image/jpeg",
-        }),
-      });
-      const json = (await res.json()) as CompliancePayload;
-      if (!res.ok) {
-        throw new Error(json.error?.message ?? t('error.seller.compliance.upload'));
-      }
-      await loadData();
-      Alert.alert(t('headline.common.success'), t('status.seller.compliance.uploadedSuccess'));
+  async function pickPhotoDocument(docCode: string) {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(t('headline.common.permission'), t('error.seller.compliance.galleryPermission'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsEditing: false,
+      base64: true,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    const asset = result.assets[0];
+    const dataBase64 = asset.base64;
+    if (!dataBase64) {
+      Alert.alert(t('headline.common.error'), t('error.seller.compliance.assetMissing'));
+      return;
+    }
+    await uploadDocumentBase64(docCode, dataBase64, asset.mimeType ?? "image/jpeg");
+  }
+
+  async function pickPdfDocument(docCode: string) {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "application/pdf",
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    const asset = result.assets[0];
+    const dataBase64 = await FileSystem.readAsStringAsync(asset.uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    if (!dataBase64) {
+      Alert.alert(t('headline.common.error'), t('error.seller.compliance.assetMissing'));
+      return;
+    }
+    await uploadDocumentBase64(docCode, dataBase64, asset.mimeType ?? "application/pdf");
+  }
+
+  function pickAndUploadDocument(docCode: string) {
+    setUploadChoiceDocCode(docCode);
+  }
+
+  function closeUploadChoice() {
+    setUploadChoiceDocCode(null);
+  }
+
+  function chooseUploadSource(source: "photo" | "pdf") {
+    const docCode = uploadChoiceDocCode;
+    closeUploadChoice();
+    if (!docCode) return;
+    void runUploadChoice(() => source === "photo" ? pickPhotoDocument(docCode) : pickPdfDocument(docCode));
+  }
+
+  async function runUploadChoice(action: () => Promise<void>) {
+    try {
+      await action();
     } catch (e) {
       Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.compliance.upload'));
     } finally {
@@ -215,6 +258,28 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
           </>
         )}
       </ScrollView>
+      <Modal
+        visible={Boolean(uploadChoiceDocCode)}
+        transparent
+        animationType="fade"
+        onRequestClose={closeUploadChoice}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={closeUploadChoice}>
+          <Pressable style={styles.uploadChoiceModal} onPress={(event) => event.stopPropagation()}>
+            <Text style={styles.uploadChoiceTitle}>{t('cta.seller.compliance.uploadDocument')}</Text>
+            <Text style={styles.uploadChoiceBody}>{t('helper.seller.compliance.uploadChoice')}</Text>
+            <TouchableOpacity style={styles.uploadChoiceButton} onPress={() => chooseUploadSource("photo")}>
+              <Text style={styles.uploadChoiceButtonText}>{t('cta.seller.compliance.choosePhoto')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.uploadChoiceButton} onPress={() => chooseUploadSource("pdf")}>
+              <Text style={styles.uploadChoiceButtonText}>{t('cta.seller.compliance.choosePdf')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.uploadChoiceCancel} onPress={closeUploadChoice}>
+              <Text style={styles.uploadChoiceCancelText}>{t('cta.common.cancel')}</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -239,4 +304,35 @@ const styles = StyleSheet.create({
   uploadBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },
   refreshBtn: { backgroundColor: "#EFE9DF", borderRadius: 12, paddingVertical: 12, alignItems: "center" },
   refreshText: { color: "#5F5348", fontWeight: "700" },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(46, 36, 28, 0.42)",
+    padding: 16,
+  },
+  uploadChoiceModal: {
+    borderRadius: 18,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5DDCF",
+    padding: 16,
+    gap: 10,
+  },
+  uploadChoiceTitle: { color: "#2E241C", fontWeight: "800", fontSize: 17 },
+  uploadChoiceBody: { color: "#6C6055", lineHeight: 20 },
+  uploadChoiceButton: {
+    borderRadius: 12,
+    backgroundColor: theme.primary,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  uploadChoiceButtonText: { color: "#fff", fontWeight: "800" },
+  uploadChoiceCancel: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5DDCF",
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  uploadChoiceCancelText: { color: "#5F5348", fontWeight: "800" },
 });

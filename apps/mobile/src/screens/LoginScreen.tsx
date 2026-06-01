@@ -68,16 +68,22 @@ export default function LoginScreen({ onLogin }: Props) {
     setError(null);
   }
 
-  function demoBuyerEmail(): string {
-    return `alici_demo_${Date.now()}@coziyoo.test`;
+  function demoBuyerIdentity() {
+    const suffix = String(Date.now()).slice(-9);
+    return {
+      name: `Demo Alıcı ${suffix}`,
+      email: `alici_demo_${suffix}@coziyoo.test`,
+      phone: `+90 5${suffix.slice(0, 2)} ${suffix.slice(2, 5)} ${suffix.slice(5, 7)} ${suffix.slice(7, 9)}`,
+    };
   }
 
   function fillDemoBuyerSignUp() {
-    setName('Demo Alıcı');
-    setEmail(demoBuyerEmail());
+    const demo = demoBuyerIdentity();
+    setName(demo.name);
+    setEmail(demo.email);
     setPassword('12345678');
     setConfirmPassword('12345678');
-    setPhone('+90 555 010 2026');
+    setPhone(demo.phone);
     setOtp('98');
     setError(null);
   }

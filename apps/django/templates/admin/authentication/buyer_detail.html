@@ -69,8 +69,9 @@
       {% endif %}
       <div class="min-w-0">
         <h1 class="text-xl font-bold text-base-900 dark:text-white truncate">{{ user.display_name }}</h1>
-        <p class="text-base-500 dark:text-base-400 text-sm truncate">{{ user.email }}</p>
-        {% if user.phone %}<p class="text-base-500 dark:text-base-400 text-xs">{{ user.phone }}</p>{% endif %}
+        <p class="text-base-500 dark:text-base-400 text-sm truncate">{{ user_private.email }}</p>
+        <p class="text-base-400 dark:text-base-500 text-xs font-mono">{{ user.id|slice:":8" }}…</p>
+        {% if user_private.phone %}<p class="text-base-500 dark:text-base-400 text-xs">{{ user_private.phone }}</p>{% endif %}
       </div>
     </div>
 
