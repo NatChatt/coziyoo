@@ -619,7 +619,7 @@
                x-transition:leave-end="opacity-0"
                @keydown.escape.window="$store.compliancePreview.close()"
                @click.self="$store.compliancePreview.close()"
-               class="fixed inset-0 z-[99999] flex items-center justify-center overflow-y-auto bg-base-900/80 p-8 backdrop-blur-md dark:bg-base-950/85"
+               class="fixed inset-0 z-[99999] flex items-center justify-center overflow-y-auto bg-base-900/80 p-5 backdrop-blur-md dark:bg-base-950/85"
                style="position: fixed; inset: 0; width: 100vw; min-height: 100vh; min-height: 100dvh; z-index: 99999;">
 
             <div @click.stop
@@ -627,8 +627,8 @@
                  x-transition:enter="transition ease-out duration-150"
                  x-transition:enter-start="opacity-0 scale-95 translate-y-2"
                  x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                 class="relative flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-base-200 bg-white shadow-2xl dark:border-base-700 dark:bg-base-900"
-                 style="width: min(760px, calc(100vw - 4rem)); max-height: calc(100vh - 4rem); max-height: calc(100dvh - 4rem);">
+                 class="relative flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-base-200 bg-white shadow-2xl dark:border-base-700 dark:bg-base-900"
+                 style="width: min(1120px, calc(100vw - 2.5rem)); max-height: calc(100vh - 2.5rem); max-height: calc(100dvh - 2.5rem);">
 
               {# Header #}
               <div class="flex items-center justify-between px-5 py-3.5 border-b border-base-200 dark:border-base-700 shrink-0">
@@ -668,7 +668,7 @@
 
 	              {# Document viewer — uses the same modal body pattern for images and PDFs #}
 	              <div class="relative min-h-0 overflow-hidden bg-base-100 dark:bg-base-950"
-	                   style="height: min(52vh, 460px); min-height: 280px;">
+	                   style="height: min(72vh, 760px); min-height: min(520px, calc(100vh - 14rem));">
 	                <template x-if="$store.compliancePreview.isPdf">
 	                  <iframe :src="$store.compliancePreview.viewerUrl"
 	                          class="absolute inset-0 block h-full w-full border-0"
