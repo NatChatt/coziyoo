@@ -37,6 +37,7 @@ type AuthResponse = {
 };
 
 const AUTH_REQUEST_TIMEOUT_MS = 12000;
+const OTP_LENGTH = 6;
 
 export default function LoginScreen({ onLogin }: Props) {
   const [step, setStep] = useState<AuthStep>('signIn');
@@ -84,7 +85,7 @@ export default function LoginScreen({ onLogin }: Props) {
     setPassword('12345678');
     setConfirmPassword('12345678');
     setPhone(demo.phone);
-    setOtp('98');
+    setOtp('989898');
     setError(null);
   }
 
@@ -229,6 +230,8 @@ export default function LoginScreen({ onLogin }: Props) {
         password: trimmedPassword,
         username: `${usernameSeed}_${Date.now().toString().slice(-4)}`,
         displayName: trimmedName,
+        fullName: trimmedName,
+        phone: phone.trim(),
         userType: 'buyer',
       });
       const json = await readJsonSafe<AuthResponse>(response);
@@ -315,7 +318,7 @@ export default function LoginScreen({ onLogin }: Props) {
   }
 
   async function handleOtpVerify() {
-    if (otp.replace(/\D/g, '').length < 2) {
+    if (otp.replace(/\D/g, '').length < OTP_LENGTH) {
       setError(t('error.auth.otpRequired'));
       return;
     }
@@ -401,12 +404,12 @@ export default function LoginScreen({ onLogin }: Props) {
     }
 
     if (step === 'otp') {
-      const digits = otp.replace(/\D/g, '').slice(0, 5);
+      const digits = otp.replace(/\D/g, '').slice(0, OTP_LENGTH);
       return (
         <>
           <Text style={styles.screenDesc}>{t('helper.auth.otpBody')}</Text>
           <View style={styles.otpRow}>
-            {[0, 1, 2, 3, 4].map((idx) => (
+            {Array.from({ length: OTP_LENGTH }, (_, idx) => (
               <View key={idx} style={[styles.otpCell, digits[idx] ? styles.otpCellFilled : null]}>
                 <Text style={styles.otpText}>{digits[idx] ?? ''}</Text>
               </View>
@@ -414,12 +417,13 @@ export default function LoginScreen({ onLogin }: Props) {
           </View>
           <TextInput
             value={otp}
-            onChangeText={(v) => { setOtp(v.replace(/\D/g, '').slice(0, 5)); clearError(); }}
+            onChangeText={(v) => { setOtp(v.replace(/\D/g, '').slice(0, OTP_LENGTH)); clearError(); }}
             keyboardType="number-pad"
             style={styles.hiddenOtpInput}
+            maxLength={OTP_LENGTH}
             autoFocus
           />
-          <TouchableOpacity onPress={() => setOtp('98')} activeOpacity={0.75}>
+          <TouchableOpacity onPress={() => setOtp('989898')} activeOpacity={0.75}>
             <Text style={styles.resendText}>{t('helper.auth.otpResend')}</Text>
           </TouchableOpacity>
           <PrimaryButton label={t('cta.auth.verify')} loading={loading} onPress={handleOtpVerify} />
@@ -676,11 +680,11 @@ const styles = StyleSheet.create({
   },
   successRefresh: { position: 'absolute', right: -12, top: 14, backgroundColor: '#FFF7EC' },
   successTitle: { color: '#819376', fontSize: 22, lineHeight: 28, fontWeight: '800', textAlign: 'center' },
-  otpRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginVertical: 10 },
+  otpRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginVertical: 10 },
   otpCell: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#EDE8E0',
     alignItems: 'center',
     justifyContent: 'center',

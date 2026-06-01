@@ -24,7 +24,6 @@ import { getSessionScreenCache, setSessionScreenCache } from '../utils/sessionSc
 type UserProfile = {
   id: string;
   email: string;
-  displayName: string;
   username?: string | null;
   fullName: string | null;
   userType: string;
@@ -61,14 +60,13 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const [displayName, setDisplayName] = useState(() => initialProfileCache?.displayName ?? '');
   const [username, setUsername] = useState(() => initialProfileCache?.username ?? '');
   const [fullName, setFullName] = useState(() => initialProfileCache?.fullName ?? '');
   const [phone, setPhone] = useState(() => initialProfileCache?.phone ?? '');
   const [dob, setDob] = useState(() => normalizeDobValue(initialProfileCache?.dob));
   const [tcKimlikNo, setTcKimlikNo] = useState(() => initialProfileCache?.nationalId ?? '');
   const [email, setEmail] = useState(() => initialProfileCache?.email ?? '');
-  const [editField, setEditField] = useState<'displayName' | 'username' | 'fullName' | 'phone' | 'dob' | 'email' | 'tcKimlikNo' | null>(null);
+  const [editField, setEditField] = useState<'username' | 'fullName' | 'phone' | 'dob' | 'email' | 'tcKimlikNo' | null>(null);
   const [editValue, setEditValue] = useState('');
   const fallbackEmail = currentAuth.email || auth.email || '';
 
@@ -79,7 +77,6 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
 
   function applyProfileState(data?: UserProfile | null) {
     if (!data) return;
-    setDisplayName((prev) => nonEmptyOrCurrent(data.displayName, prev));
     setUsername((prev) => nonEmptyOrCurrent(data.username, prev));
     setFullName((prev) => nonEmptyOrCurrent(data.fullName, prev));
     setPhone((prev) => nonEmptyOrCurrent(data.phone, prev));
@@ -176,7 +173,6 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
 
   function isProfileComplete(): boolean {
     return !!(
-      displayName.trim() && displayName.trim().length >= 3 &&
       fullName.trim() &&
       phone.trim() &&
       dob.trim()
@@ -184,10 +180,6 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
   }
 
   async function handleSave() {
-    if (!displayName.trim() || displayName.trim().length < 3) {
-      Alert.alert(t('headline.common.error'), t('error.profileEdit.displayNameMin'));
-      return;
-    }
     if (isNewRegistration) {
       if (!fullName.trim()) { Alert.alert(t('headline.common.error'), t('error.profileEdit.fullNameRequired')); return; }
       if (!phone.trim()) { Alert.alert(t('headline.common.error'), t('error.profileEdit.phoneRequired')); return; }
@@ -200,7 +192,6 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
     try {
       const { apiUrl } = await loadSettings();
       const body: Record<string, string> = {};
-      if (displayName.trim()) body.displayName = displayName.trim();
       if (username.trim()) body.username = username.trim().replace(/^@+/, "");
       if (fullName.trim()) body.fullName = fullName.trim();
       if (phone.trim()) body.phone = phone.trim();
@@ -237,8 +228,7 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
     }
   }
 
-  function openFieldEditor(field: 'displayName' | 'username' | 'fullName' | 'phone' | 'dob' | 'email' | 'tcKimlikNo') {
-    if (field === 'displayName') setEditValue(displayName);
+  function openFieldEditor(field: 'username' | 'fullName' | 'phone' | 'dob' | 'email' | 'tcKimlikNo') {
     if (field === 'username') setEditValue(username);
     if (field === 'fullName') setEditValue(fullName);
     if (field === 'phone') setEditValue(phone);
@@ -251,7 +241,6 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
   function applyFieldEdit() {
     if (!editField) return;
     const next = editValue.trim();
-    if (editField === 'displayName') setDisplayName(next);
     if (editField === 'username') setUsername(next.replace(/^@+/, ""));
     if (editField === 'fullName') setFullName(next);
     if (editField === 'phone') setPhone(next);
@@ -268,7 +257,7 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
     if (editField === 'dob') return t('helper.profileEdit.dobPlaceholder');
     if (editField === 'email') return t('helper.profileEdit.emailHint');
     if (editField === 'tcKimlikNo') return t('helper.profileEdit.countryPlaceholder');
-    return t('helper.profileEdit.displayNamePlaceholder');
+    return "";
   }
 
   function formatDobInput(value: string): string {
@@ -329,23 +318,6 @@ export default function ProfileEditScreen({ auth, onBack, onAuthRefresh, isNewRe
                   </View>
                   <View style={styles.infoDivider} />
                   <Text style={styles.infoValue}>{username ? `@${username.replace(/^@+/, "")}` : '-'}</Text>
-                </View>
-
-                <View style={styles.infoCard}>
-                  <View style={styles.infoHead}>
-                    <View style={[styles.infoIconWrap, { backgroundColor: '#3F855C' }]}>
-                      <Ionicons name="person" size={18} color="#FFFFFF" />
-                    </View>
-                    <View style={styles.infoHeadText}>
-                      <Text style={styles.infoTitle}>{t('helper.profileEdit.displayNameLabel')}</Text>
-                      <Text style={styles.infoSubtitle}>{t('helper.profileEdit.displayNameHint')}</Text>
-                    </View>
-                    <TouchableOpacity style={styles.editChip} onPress={() => openFieldEditor('displayName')}>
-                      <Text style={styles.editChipText}>{t('cta.profileEdit.edit')}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.infoDivider} />
-                  <Text style={styles.infoValue}>{displayName || '-'}</Text>
                 </View>
 
                 <View style={styles.infoCard}>

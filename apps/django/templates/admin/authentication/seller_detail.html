@@ -805,10 +805,12 @@
       {% endif %}
     </div>
 
-    {# ── Raw Data Tab ── #}
-    <div x-show="tab === 'raw'" class="p-4 sm:p-6">
-      <pre class="bg-base-50 dark:bg-base-800 rounded-lg p-4 text-xs overflow-x-auto text-base-700 dark:text-base-300">{{ raw_json }}</pre>
-    </div>
+    {% if can_view_raw_data %}
+      {# ── Raw Data Tab ── #}
+      <div x-show="tab === 'raw'" class="p-4 sm:p-6">
+        <pre class="bg-base-50 dark:bg-base-800 rounded-lg p-4 text-xs overflow-x-auto text-base-700 dark:text-base-300">{{ raw_json }}</pre>
+      </div>
+    {% endif %}
 
   </div>
 

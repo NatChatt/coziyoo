@@ -2,6 +2,7 @@ import React, { memo, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import type { AuthSession } from "../utils/auth";
 import { loadAuthSession, refreshAuthSession, saveAuthSession } from "../utils/auth";
 import { actorRoleHeader } from "../utils/actorRole";
@@ -12,6 +13,16 @@ import { getSellerProfileCache, setSellerProfileCache, getSellerMeCache, setSell
 import { formatCopy, t } from "../copy/brandCopy";
 
 const MODAL_PLACEHOLDER_COLOR = "#A9A7A1";
+
+type IdentityDocDraft = {
+  uri: string;
+  dataBase64: string;
+  contentType: string;
+};
+
+const ID_CARD_ASPECT_RATIO = 1.586;
+const ID_CARD_UPLOAD_WIDTH = 1000;
+const ID_CARD_UPLOAD_TIMEOUT_MS = 45000;
 
 type Props = {
   auth: AuthSession;
@@ -33,7 +44,6 @@ export type SellerProfile = {
   username?: string | null;
   email?: string | null;
   profileImageUrl?: string | null;
-  homeCardImageUrl?: string | null;
   phone?: string | null;
   kitchenTitle?: string | null;
   kitchenDescription?: string | null;
@@ -94,35 +104,28 @@ export default function SellerProfileDetailScreen({
   const [loading, setLoading] = useState(() => getSellerProfileCache() === null);
   const [profile, setProfile] = useState<SellerProfile | null>(() => getSellerProfileCache());
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [homeCardImageUploading, setHomeCardImageUploading] = useState(false);
+  const [identityDocUploading, setIdentityDocUploading] = useState<"national_id_front" | "national_id_back" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [contactSaving, setContactSaving] = useState(false);
   const [deliverySaving, setDeliverySaving] = useState(false);
-  const [masterName, setMasterName] = useState(() => getSellerProfileCache()?.displayName?.trim() ?? "");
   const [fullName, setFullName] = useState(() => getSellerMeCache()?.fullName ?? "");
   const [contactEmail, setContactEmail] = useState(() => getSellerMeCache()?.email || getSellerProfileCache()?.email?.trim() || "");
-  const [contactPhone, setContactPhone] = useState(() => getSellerProfileCache()?.phone?.trim() ?? "");
+  const [contactPhone, setContactPhone] = useState(() => getSellerMeCache()?.phone || getSellerProfileCache()?.phone?.trim() || "");
   const [contactDob, setContactDob] = useState(() => getSellerMeCache()?.dob ?? "");
   const [cityDistrict, setCityDistrict] = useState(() => getSellerProfileCache()?.defaultAddress?.title?.trim() ?? "");
   const [addressLine, setAddressLine] = useState(() => getSellerProfileCache()?.defaultAddress?.addressLine?.trim() ?? "");
   const [contactCountryCode, setContactCountryCode] = useState(() => getSellerMeCache()?.countryCode ?? "");
   const [tcKimlikNo, setTcKimlikNo] = useState(() => getSellerMeCache()?.nationalId ?? "");
+  const [identityDocFront, setIdentityDocFront] = useState<IdentityDocDraft | null>(null);
+  const [identityDocBack, setIdentityDocBack] = useState<IdentityDocDraft | null>(null);
   const [deliveryEnabled, setDeliveryEnabled] = useState(() => Boolean(getSellerProfileCache()?.deliveryEnabled));
   const [deliveryTerms, setDeliveryTerms] = useState(() => getSellerProfileCache()?.deliveryTerms?.trim() ?? "");
   const [deliveryRadiusKmInput, setDeliveryRadiusKmInput] = useState(() => String(getSellerProfileCache()?.deliveryRadiusKm ?? 3));
   const [deliveryEnabledDraft, setDeliveryEnabledDraft] = useState(() => Boolean(getSellerProfileCache()?.deliveryEnabled));
   const [deliveryTermsDraft, setDeliveryTermsDraft] = useState(() => getSellerProfileCache()?.deliveryTerms?.trim() ?? "");
   const [deliveryRadiusKmDraft, setDeliveryRadiusKmDraft] = useState(() => String(getSellerProfileCache()?.deliveryRadiusKm ?? 3));
-  const [idCardFrontUri, setIdCardFrontUri] = useState<string | null>(null);
-  const [idCardBackUri, setIdCardBackUri] = useState<string | null>(null);
-  const [idCardFrontBase64, setIdCardFrontBase64] = useState<string | null>(null);
-  const [idCardFrontMime, setIdCardFrontMime] = useState<string>("image/jpeg");
-  const [idCardBackBase64, setIdCardBackBase64] = useState<string | null>(null);
-  const [idCardBackMime, setIdCardBackMime] = useState<string>("image/jpeg");
-  const [idCardUploading, setIdCardUploading] = useState(false);
-
   const [isKitchenModalOpen, setIsKitchenModalOpen] = useState(false);
   const [kitchenDescInput, setKitchenDescInput] = useState("");
   const [specialties, setSpecialties] = useState<string[]>([]);
@@ -193,45 +196,6 @@ export default function SellerProfileDetailScreen({
     });
   }
 
-  async function authedMultipartFetch(path: string, body: FormData, baseUrl = apiUrl): Promise<Response> {
-    const makeHeaders = (session: AuthSession): Record<string, string> => ({
-      Authorization: `Bearer ${session.accessToken}`,
-      ...actorRoleHeader(session, "seller"),
-    });
-
-    let res = await fetch(`${baseUrl}${path}`, {
-      method: "POST",
-      body,
-      headers: makeHeaders(currentAuth),
-    });
-    if (res.status !== 401) return res;
-
-    const persisted = await loadAuthSession();
-    if (persisted && persisted.userId === currentAuth.userId && persisted.accessToken !== currentAuth.accessToken) {
-      setCurrentAuth(persisted);
-      onAuthRefresh?.(persisted);
-      res = await fetch(`${baseUrl}${path}`, {
-        method: "POST",
-        body,
-        headers: makeHeaders(persisted),
-      });
-      if (res.status !== 401) return res;
-    }
-
-    const refreshed = await refreshAuthSession(
-      baseUrl,
-      persisted && persisted.userId === currentAuth.userId ? persisted : currentAuth,
-    );
-    if (!refreshed) return res;
-    setCurrentAuth(refreshed);
-    onAuthRefresh?.(refreshed);
-    return fetch(`${baseUrl}${path}`, {
-      method: "POST",
-      body,
-      headers: makeHeaders(refreshed),
-    });
-  }
-
   async function load() {
     if (getSellerProfileCache() === null) setLoading(true);
     setError(null);
@@ -248,7 +212,6 @@ export default function SellerProfileDetailScreen({
       const loaded: SellerProfile | null = profileJson.data ?? null;
       setSellerProfileCache(loaded);
       setProfile(loaded);
-      setMasterName(String(loaded?.displayName ?? "").trim());
       const profileEmail = String(loaded?.email ?? "").trim();
       setContactEmail(profileEmail || currentAuth.email?.trim() || auth.email?.trim() || "");
       setContactPhone(String(loaded?.phone ?? "").trim());
@@ -265,13 +228,15 @@ export default function SellerProfileDetailScreen({
       const mePayload = await readResponsePayload(meRes);
       const meJson = mePayload.json as { data?: Record<string, unknown> } | null;
       if (meRes.ok && meJson?.data) {
-        const fullNameVal = String(meJson.data.fullName ?? "").trim();
+        const fullNameVal = String(meJson.data.fullName ?? meJson.data.displayName ?? "").trim();
+        const mePhone = String(meJson.data.phone ?? "").trim();
         const dobVal = formatDobForDisplay(String(meJson.data.dob ?? ""));
         const countryCodeVal = String(meJson.data.countryCode ?? "").trim().toUpperCase();
         const nationalIdVal = String(meJson.data.nationalId ?? "").trim();
         const meEmail = String(meJson.data.email ?? "").trim();
-        setSellerMeCache({ fullName: fullNameVal, dob: dobVal, countryCode: countryCodeVal, nationalId: nationalIdVal, email: meEmail });
+        setSellerMeCache({ fullName: fullNameVal, phone: mePhone, dob: dobVal, countryCode: countryCodeVal, nationalId: nationalIdVal, email: meEmail });
         setFullName(fullNameVal);
+        if (mePhone) setContactPhone(mePhone);
         setContactDob(dobVal);
         setContactCountryCode(countryCodeVal);
         setTcKimlikNo(nationalIdVal);
@@ -349,69 +314,68 @@ export default function SellerProfileDetailScreen({
     }
   }
 
-  async function handleHomeCardImagePress() {
+  async function uploadIdentityDocument(docType: "national_id_front" | "national_id_back", draft: IdentityDocDraft) {
+    const baseUrl = apiUrl || (await loadSettings()).apiUrl;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), ID_CARD_UPLOAD_TIMEOUT_MS);
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(t('headline.common.permission'), t('error.common.galleryPermission'));
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: false,
-        quality: 0.9,
+      const res = await authedFetch("/v1/seller/compliance/documents", baseUrl, {
+        method: "POST",
+        signal: controller.signal,
+        body: JSON.stringify({
+          docType,
+          dataBase64: draft.dataBase64,
+          contentType: draft.contentType,
+        }),
       });
-      if (result.canceled || !result.assets?.[0]) return;
-
-      const asset = result.assets[0];
-      const uri = String(asset.uri ?? "").trim();
-      const mimeType = String(asset.mimeType ?? "image/jpeg").trim().toLowerCase();
-      if (!uri) {
-        Alert.alert(t('headline.common.error'), t('error.profileEdit.imageUpload'));
-        return;
+      const payload = await readResponsePayload(res);
+      if (!res.ok || payload.json === null) {
+        throw new Error(responseErrorMessage(res, payload, "Kimlik fotoğrafı kaydedilemedi"));
       }
-      if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType)) {
-        Alert.alert(t('headline.common.error'), t('error.profileEdit.imageType'));
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("source", "gallery");
-      formData.append("replace", "true");
-      formData.append("file", {
-        uri,
-        name: asset.fileName ?? `home-card.${mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg"}`,
-        type: mimeType,
-      } as unknown as Blob);
-
-      setHomeCardImageUploading(true);
-      const baseUrl = apiUrl || (await loadSettings()).apiUrl;
-      const uploadRes = await authedMultipartFetch("/v1/auth/me/home-card-image/upload", formData, baseUrl);
-      const uploadPayload = await readResponsePayload(uploadRes);
-      if (!uploadRes.ok || uploadPayload.json === null) {
-        throw new Error(responseErrorMessage(uploadRes, uploadPayload, t('error.seller.profileDetail.homeCardImageUpload')));
-      }
-      const uploadJson = uploadPayload.json as { data?: { homeCardImageUrl?: string } };
-      const nextUrl = String(uploadJson?.data?.homeCardImageUrl ?? "").trim();
-      if (nextUrl) {
-        const nextProfile = profile ? { ...profile, homeCardImageUrl: nextUrl } : { homeCardImageUrl: nextUrl };
-        setProfile(nextProfile);
-        setSellerProfileCache(nextProfile as SellerProfile);
-      }
-      Alert.alert(t('headline.common.success'), t('status.seller.profileDetail.homeCardImageUpdated'));
-    } catch (e) {
-      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.profileDetail.homeCardImageUpload'));
     } finally {
-      setHomeCardImageUploading(false);
+      clearTimeout(timeout);
     }
   }
 
-  async function pickIdCardImage(side: "front" | "back") {
-    const label = side === "front" ? t('helper.seller.profileDetail.idCardFront').toLowerCase() : t('helper.seller.profileDetail.idCardBack').toLowerCase();
+  async function scanIdentityCardAsset(asset: ImagePicker.ImagePickerAsset): Promise<IdentityDocDraft | null> {
+    const uri = String(asset.uri ?? "").trim();
+    if (!uri) return null;
 
+    const width = Number(asset.width || 0);
+    const height = Number(asset.height || 0);
+    const actions: ImageManipulator.Action[] = [];
+    if (width > 0 && height > 0) {
+      const currentRatio = width / height;
+      if (currentRatio > ID_CARD_ASPECT_RATIO) {
+        const cropWidth = Math.round(height * ID_CARD_ASPECT_RATIO);
+        actions.push({ crop: { originX: Math.max(0, Math.round((width - cropWidth) / 2)), originY: 0, width: cropWidth, height } });
+      } else {
+        const cropHeight = Math.round(width / ID_CARD_ASPECT_RATIO);
+        actions.push({ crop: { originX: 0, originY: Math.max(0, Math.round((height - cropHeight) / 2)), width, height: cropHeight } });
+      }
+    }
+    actions.push({ resize: { width: ID_CARD_UPLOAD_WIDTH } });
+
+    const scanned = await ImageManipulator.manipulateAsync(uri, actions, {
+      compress: 0.58,
+      format: ImageManipulator.SaveFormat.JPEG,
+      base64: true,
+    });
+    if (!scanned.base64) return null;
+    return {
+      uri: scanned.uri,
+      dataBase64: scanned.base64,
+      contentType: "image/jpeg",
+    };
+  }
+
+  async function pickIdentityDocument(docType: "national_id_front" | "national_id_back") {
+    if (contactSaving) return;
+    const sideLabel = docType === "national_id_front"
+      ? t('helper.seller.profileDetail.idCardFront').toLowerCase()
+      : t('helper.seller.profileDetail.idCardBack').toLowerCase();
     const source = await new Promise<"camera" | "gallery" | null>((resolve) => {
-      Alert.alert(t('headline.seller.profileDetail.idCardPhoto'), formatCopy('helper.seller.profileDetail.idCardSourcePrompt', { side: label }), [
+      Alert.alert(t('headline.seller.profileDetail.idCardPhoto'), formatCopy('helper.seller.profileDetail.idCardSourcePrompt', { side: sideLabel }), [
         { text: t('cta.common.camera'), onPress: () => resolve("camera") },
         { text: t('cta.common.gallery'), onPress: () => resolve("gallery") },
         { text: t('cta.common.cancel'), style: "cancel", onPress: () => resolve(null) },
@@ -422,8 +386,8 @@ export default function SellerProfileDetailScreen({
     try {
       let result: ImagePicker.ImagePickerResult;
       if (source === "camera") {
-        const camPerm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!camPerm.granted) {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
           Alert.alert(t('headline.common.permission'), t('error.common.cameraPermission'));
           return;
         }
@@ -435,8 +399,8 @@ export default function SellerProfileDetailScreen({
           base64: true,
         });
       } else {
-        const libPerm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!libPerm.granted) {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
           Alert.alert(t('headline.common.permission'), t('error.common.galleryPermission'));
           return;
         }
@@ -450,29 +414,19 @@ export default function SellerProfileDetailScreen({
       }
       if (result.canceled || !result.assets?.[0]) return;
 
-      const asset = result.assets[0];
-      const mime = asset.mimeType ?? "image/jpeg";
-      const b64 = asset.base64 ?? null;
-      if (!b64) {
-        Alert.alert(t('headline.common.error'), t('error.profileEdit.imageUpload'));
-        return;
-      }
-      if (!["image/jpeg", "image/png", "image/webp"].includes(mime)) {
-        Alert.alert(t('headline.common.error'), t('error.profileEdit.imageType'));
+      const scanned = await scanIdentityCardAsset(result.assets[0]);
+      if (!scanned) {
+        Alert.alert(t('headline.common.error'), t('error.seller.compliance.assetMissing'));
         return;
       }
 
-      if (side === "front") {
-        setIdCardFrontUri(asset.uri);
-        setIdCardFrontBase64(b64);
-        setIdCardFrontMime(mime);
+      if (docType === "national_id_front") {
+        setIdentityDocFront(scanned);
       } else {
-        setIdCardBackUri(asset.uri);
-        setIdCardBackBase64(b64);
-        setIdCardBackMime(mime);
+        setIdentityDocBack(scanned);
       }
     } catch (e) {
-      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.profileEdit.imageUpload'));
+      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : "Kimlik fotoğrafı seçilemedi");
     }
   }
 
@@ -641,7 +595,6 @@ export default function SellerProfileDetailScreen({
       const payload: Record<string, string> = {};
 
       if (contactEmail.trim()) payload.email = contactEmail.trim();
-      if (masterName.trim()) payload.displayName = masterName.trim();
       if (fullName.trim()) payload.fullName = fullName.trim();
       if (contactPhone.trim()) payload.phone = contactPhone.trim();
       if (contactCountryCode.trim()) payload.countryCode = contactCountryCode.trim().toUpperCase();
@@ -668,7 +621,7 @@ export default function SellerProfileDetailScreen({
         title !== currentAddressTitle || line !== currentAddressLine
       );
       const hasProfileUpdate = Object.keys(payload).length > 0;
-      const hasIdCardImages = Boolean(idCardFrontBase64 || idCardBackBase64);
+      const hasIdentityDocumentUpdate = Boolean(identityDocFront || identityDocBack);
       if (hasAddressInput) {
         if (!title || !line) {
           Alert.alert(t('headline.common.error'), t('error.seller.profileDetail.addressMissingParts'));
@@ -687,7 +640,7 @@ export default function SellerProfileDetailScreen({
           return;
         }
       }
-      if (!hasProfileUpdate && !hasAddressUpdate && !hasIdCardImages) {
+      if (!hasProfileUpdate && !hasAddressUpdate && !hasIdentityDocumentUpdate) {
         setIsEditModalOpen(false);
         setContactSaving(false);
         return;
@@ -713,8 +666,6 @@ export default function SellerProfileDetailScreen({
           await saveAuthSession(nextSession);
         }
       }
-
-      setIsEditModalOpen(false);
 
       if (hasAddressUpdate) {
         try {
@@ -754,49 +705,33 @@ export default function SellerProfileDetailScreen({
         }
       }
 
-      if (hasIdCardImages) {
-        setIdCardUploading(true);
-        try {
-          if (idCardFrontBase64) {
-            const frontRes = await authedFetch("/v1/seller/compliance/documents", baseUrl, {
-              method: "POST",
-              body: JSON.stringify({
-                docType: "national_id_front",
-                dataBase64: idCardFrontBase64,
-                contentType: idCardFrontMime,
-              }),
-            });
-            const frontPayload = await readResponsePayload(frontRes);
-            if (!frontRes.ok || frontPayload.json === null) throw new Error(responseErrorMessage(frontRes, frontPayload, t('error.seller.profileDetail.idFrontUpload')));
-          }
-          if (idCardBackBase64) {
-            const backRes = await authedFetch("/v1/seller/compliance/documents", baseUrl, {
-              method: "POST",
-              body: JSON.stringify({
-                docType: "national_id_back",
-                dataBase64: idCardBackBase64,
-                contentType: idCardBackMime,
-              }),
-            });
-            const backPayload = await readResponsePayload(backRes);
-            if (!backRes.ok || backPayload.json === null) throw new Error(responseErrorMessage(backRes, backPayload, t('error.seller.profileDetail.idBackUpload')));
-          }
-        } catch (idCardError) {
-          Alert.alert(t('headline.common.warning'), idCardError instanceof Error ? idCardError.message : t('warning.seller.profileDetail.idCardUpload'));
-        } finally {
-          setIdCardUploading(false);
-        }
+      if (identityDocFront) {
+        setIdentityDocUploading("national_id_front");
+        await uploadIdentityDocument("national_id_front", identityDocFront);
+      }
+      if (identityDocBack) {
+        setIdentityDocUploading("national_id_back");
+        await uploadIdentityDocument("national_id_back", identityDocBack);
+      }
+      if (hasIdentityDocumentUpdate) {
+        setIdentityDocFront(null);
+        setIdentityDocBack(null);
       }
 
-      await load();
+      setIsEditModalOpen(false);
+      void load();
       if (addressErrorMessage) {
         Alert.alert(t('headline.common.warning'), formatCopy('warning.seller.profileDetail.updatedAddressFailed', { message: addressErrorMessage }));
       } else {
         Alert.alert(t('headline.common.success'), t('status.seller.profileDetail.contactSaved'));
       }
     } catch (e) {
-      Alert.alert(t('headline.common.error'), e instanceof Error ? e.message : t('error.seller.profileDetail.infoSave'));
+      const message = e instanceof Error && e.name === "AbortError"
+        ? "Kimlik fotoğrafı yükleme süresi doldu. İnternet bağlantısını kontrol edip tekrar dene."
+        : e instanceof Error ? e.message : t('error.seller.profileDetail.infoSave');
+      Alert.alert(t('headline.common.error'), message);
     } finally {
+      setIdentityDocUploading(null);
       setContactSaving(false);
     }
   }
@@ -810,8 +745,6 @@ export default function SellerProfileDetailScreen({
   const complianceRequired = profile?.requirements?.complianceRequiredCount ?? 0;
   const complianceUploaded = profile?.requirements?.complianceUploadedRequiredCount ?? 0;
   const complianceRemaining = Math.max(0, complianceRequired - complianceUploaded);
-  const workingHours = useMemo(() => profile?.workingHours ?? [], [profile?.workingHours]);
-
   return (
     <View style={styles.container}>
       <ScreenHeader
@@ -838,31 +771,23 @@ export default function SellerProfileDetailScreen({
           removeClippedSubviews={Platform.OS === "android"}
         >
 
-          {/* Avatar + İsim + Durum */}
-          <View style={styles.heroCard}>
+          {/* Avatar + Profil Düzenleme */}
+          <TouchableOpacity style={styles.heroCard} activeOpacity={0.88} onPress={() => setIsEditModalOpen(true)}>
             <TouchableOpacity style={styles.avatar} activeOpacity={0.85} onPress={() => void handleAvatarPress()} disabled={avatarUploading}>
               {profile?.profileImageUrl ? (
                 <Image source={{ uri: profile.profileImageUrl }} style={styles.avatarImage} />
               ) : (
                 <Text style={styles.avatarText}>{initials}</Text>
               )}
-              <View style={styles.avatarEditBadge}>
-                {avatarUploading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Ionicons name="camera" size={12} color="#fff" />
-                )}
-              </View>
             </TouchableOpacity>
             <View style={styles.heroInfo}>
-              <Text style={styles.displayName}>{profile?.displayName ?? "—"}</Text>
-              {profile?.username ? <Text style={styles.kitchenTitle}>@{profile.username}</Text> : null}
-              {profile?.kitchenTitle ? <Text style={styles.kitchenTitle}>{profile.kitchenTitle}</Text> : null}
+              <Text style={styles.displayName}>{profile?.kitchenTitle || profile?.displayName || t('headline.seller.profileDetail.editProfile')}</Text>
+              <Text style={styles.kitchenTitle}>{t('headline.seller.profileDetail.editProfile')}</Text>
             </View>
             <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg, borderColor: statusCfg.border }]}>
               <Text style={[styles.statusText, { color: statusCfg.color }]}>{statusCfg.label}</Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* Belge Durumu */}
           <TouchableOpacity style={styles.complianceCard} activeOpacity={0.85} onPress={onOpenCompliance}>
@@ -870,78 +795,6 @@ export default function SellerProfileDetailScreen({
             <Text style={styles.complianceText}>{formatCopy('status.seller.profileDetail.completed', { done: complianceUploaded, total: complianceRequired })}</Text>
             <Text style={styles.complianceAction}>{t('cta.seller.profileDetail.openDocuments')} →</Text>
           </TouchableOpacity>
-
-          {/* Profili Düzenle */}
-          <View style={styles.card}>
-            <View style={styles.profileEditCardHeader}>
-              <Text style={styles.cardTitleNoCaps}>{t('headline.seller.profileDetail.editProfile')}</Text>
-              <TouchableOpacity
-                style={styles.profileEditIconBtn}
-                onPress={() => setIsEditModalOpen(true)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="pencil" size={18} color={theme.primary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={openDeliverySettingsModal}>
-            <View style={styles.profileEditCardHeader}>
-              <Text style={styles.cardTitle}>{t('headline.seller.profileDetail.deliverySettings')}</Text>
-              <View style={styles.profileEditIconBtn}>
-                <Ionicons name="pencil" size={16} color={theme.primary} />
-              </View>
-            </View>
-            <InfoRow label={t('label.seller.profileDetail.delivery')} value={deliveryEnabled ? t('status.seller.profile.deliveryOpen') : t('status.seller.profile.deliveryClosed')} />
-            <InfoRow label={t('label.seller.profileDetail.radius')} value={deliveryRadiusKmInput?.trim() ? `${deliveryRadiusKmInput} km` : "—"} />
-            <InfoRow label={t('label.seller.profileDetail.terms')} value={deliveryTerms || t('helper.seller.profile.notAdded')} />
-            <Text style={styles.addressLink}>{t('cta.seller.profileDetail.tapToEdit')}</Text>
-          </TouchableOpacity>
-
-          <View style={styles.card}>
-            <View style={styles.profileEditCardHeader}>
-              <Text style={styles.cardTitle}>{t('headline.seller.profileDetail.homeCardImage')}</Text>
-              <TouchableOpacity
-                style={styles.profileEditIconBtn}
-                onPress={() => void handleHomeCardImagePress()}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                disabled={homeCardImageUploading}
-              >
-                {homeCardImageUploading ? (
-                  <ActivityIndicator size="small" color={theme.primary} />
-                ) : (
-                  <Ionicons name="image-outline" size={18} color={theme.primary} />
-                )}
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.homeCardImageHint}>{t('helper.seller.profileDetail.homeCardImageHint')}</Text>
-            <TouchableOpacity
-              style={styles.homeCardImagePreview}
-              activeOpacity={0.86}
-              onPress={() => void handleHomeCardImagePress()}
-              disabled={homeCardImageUploading}
-            >
-              {profile?.homeCardImageUrl ? (
-                <Image source={{ uri: profile.homeCardImageUrl }} style={styles.homeCardImagePreviewImage} resizeMode="contain" />
-              ) : (
-                <View style={styles.homeCardImagePlaceholder}>
-                  <Ionicons name="person-outline" size={34} color="#8E7E70" />
-                  <Text style={styles.homeCardImagePlaceholderTitle}>{t('headline.seller.profileDetail.homeCardImageEmpty')}</Text>
-                  <Text style={styles.homeCardImagePlaceholderText}>{t('helper.seller.profileDetail.homeCardImageEmptyHint')}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.homeCardImageButton}
-              activeOpacity={0.88}
-              onPress={() => void handleHomeCardImagePress()}
-              disabled={homeCardImageUploading}
-            >
-              <Text style={styles.homeCardImageButtonText}>
-                {homeCardImageUploading ? t('status.common.loading') : profile?.homeCardImageUrl ? t('cta.seller.profileDetail.changeImage') : t('cta.seller.profileDetail.uploadImage')}
-              </Text>
-            </TouchableOpacity>
-          </View>
 
           {/* Mutfak Bilgileri */}
           <View style={styles.card}>
@@ -978,25 +831,6 @@ export default function SellerProfileDetailScreen({
             <Text style={styles.logoutBtnText}>{t('cta.seller.profileDetail.logout')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.editFullBtn} onPress={onEdit}>
-            <Text style={styles.editFullText}>{t('headline.seller.profileDetail.editProfile')}</Text>
-          </TouchableOpacity>
-
-          {/* Çalışma Saatleri */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t('headline.seller.profileDetail.workingHours')}</Text>
-            {workingHours.length > 0 ? (
-              workingHours.map((h, i) => (
-                <View key={i} style={styles.hourRow}>
-                  <Text style={styles.hourDay}>{h.day}</Text>
-                  <Text style={styles.hourRange}>{h.open} – {h.close}</Text>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.infoValue}>—</Text>
-            )}
-          </View>
-
         </ScrollView>
       )}
 
@@ -1013,43 +847,51 @@ export default function SellerProfileDetailScreen({
             onPress={() => setIsDeliveryModalOpen(false)}
           />
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{t('headline.seller.profileDetail.deliveryModalTitle')}</Text>
-            <Text style={styles.modalLabel}>{t('helper.seller.profile.deliverySettings')}</Text>
-            <TouchableOpacity
-              style={[styles.deliveryToggleCard, deliveryEnabledDraft && styles.deliveryToggleCardActive]}
-              activeOpacity={0.85}
-              onPress={() => setDeliveryEnabledDraft((prev) => !prev)}
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.deliveryModalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+              showsVerticalScrollIndicator
             >
-              <View style={styles.deliveryToggleCopy}>
-                <Text style={styles.deliveryToggleTitle}>{deliveryEnabledDraft ? t('status.seller.profile.deliveryOpen') : t('status.seller.profile.deliveryClosed')}</Text>
-                <Text style={styles.deliveryToggleSubtitle}>
-                  {deliveryEnabledDraft ? t('helper.seller.profile.deliveryOpenHint') : t('helper.seller.profile.deliveryClosedHint')}
-                </Text>
-              </View>
-              <View style={[styles.deliveryTogglePill, deliveryEnabledDraft && styles.deliveryTogglePillActive]}>
-                <View style={[styles.deliveryToggleKnob, deliveryEnabledDraft && styles.deliveryToggleKnobActive]} />
-              </View>
-            </TouchableOpacity>
+              <Text style={styles.modalTitle}>{t('headline.seller.profileDetail.deliveryModalTitle')}</Text>
+              <Text style={styles.modalLabel}>{t('helper.seller.profile.deliverySettings')}</Text>
+              <TouchableOpacity
+                style={[styles.deliveryToggleCard, deliveryEnabledDraft && styles.deliveryToggleCardActive]}
+                activeOpacity={0.85}
+                onPress={() => setDeliveryEnabledDraft((prev) => !prev)}
+              >
+                <View style={styles.deliveryToggleCopy}>
+                  <Text style={styles.deliveryToggleTitle}>{deliveryEnabledDraft ? t('status.seller.profile.deliveryOpen') : t('status.seller.profile.deliveryClosed')}</Text>
+                  <Text style={styles.deliveryToggleSubtitle}>
+                    {deliveryEnabledDraft ? t('helper.seller.profile.deliveryOpenHint') : t('helper.seller.profile.deliveryClosedHint')}
+                  </Text>
+                </View>
+                <View style={[styles.deliveryTogglePill, deliveryEnabledDraft && styles.deliveryTogglePillActive]}>
+                  <View style={[styles.deliveryToggleKnob, deliveryEnabledDraft && styles.deliveryToggleKnobActive]} />
+                </View>
+              </TouchableOpacity>
 
-            <Text style={styles.modalLabel}>{t('helper.seller.profile.deliveryRadius')}</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={deliveryRadiusKmDraft}
-              onChangeText={setDeliveryRadiusKmDraft}
-              keyboardType="numeric"
-              placeholder={t('helper.seller.profile.deliveryRadiusPlaceholder')}
-              placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
-            />
+              <Text style={styles.modalLabel}>{t('helper.seller.profile.deliveryRadius')}</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={deliveryRadiusKmDraft}
+                onChangeText={setDeliveryRadiusKmDraft}
+                keyboardType="numeric"
+                placeholder={t('helper.seller.profile.deliveryRadiusPlaceholder')}
+                placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
+              />
 
-            <Text style={styles.modalLabel}>{t('helper.seller.profile.deliveryTerms')}</Text>
-            <TextInput
-              style={[styles.modalInput, styles.modalAddressInput]}
-              value={deliveryTermsDraft}
-              onChangeText={setDeliveryTermsDraft}
-              placeholder={t('helper.seller.profile.deliveryTermsPlaceholder')}
-              placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
-              multiline
-            />
+              <Text style={styles.modalLabel}>{t('helper.seller.profile.deliveryTerms')}</Text>
+              <TextInput
+                style={[styles.modalInput, styles.modalAddressInput]}
+                value={deliveryTermsDraft}
+                onChangeText={setDeliveryTermsDraft}
+                placeholder={t('helper.seller.profile.deliveryTermsPlaceholder')}
+                placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
+                multiline
+              />
+            </ScrollView>
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setIsDeliveryModalOpen(false)} disabled={deliverySaving}>
@@ -1084,14 +926,26 @@ export default function SellerProfileDetailScreen({
             >
               <Text style={styles.modalTitle}>{t('headline.seller.profileDetail.contactInfo')}</Text>
 
-              <Text style={styles.modalLabel}>{t('helper.profileEdit.displayNameLabel')}</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={masterName}
-                onChangeText={setMasterName}
-                placeholder={t('helper.profileEdit.displayNamePlaceholder')}
-                placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
-              />
+              <TouchableOpacity style={styles.modalAvatarRow} activeOpacity={0.85} onPress={() => void handleAvatarPress()} disabled={avatarUploading}>
+                <View style={styles.modalAvatar}>
+                  {profile?.profileImageUrl ? (
+                    <Image source={{ uri: profile.profileImageUrl }} style={styles.modalAvatarImage} />
+                  ) : (
+                    <Text style={styles.modalAvatarText}>{initials}</Text>
+                  )}
+                  <View style={styles.avatarEditBadge}>
+                    {avatarUploading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="camera" size={12} color="#fff" />
+                    )}
+                  </View>
+                </View>
+                <View style={styles.modalAvatarCopy}>
+                  <Text style={styles.modalAvatarTitle}>{t('headline.seller.profileDetail.editProfile')}</Text>
+                  <Text style={styles.modalAvatarHint}>{t('helper.seller.profileDetail.avatarEditHint')}</Text>
+                </View>
+              </TouchableOpacity>
 
               <Text style={styles.modalLabel}>{t('helper.profileEdit.fullNameLabel')}</Text>
               <TextInput
@@ -1178,38 +1032,60 @@ export default function SellerProfileDetailScreen({
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
               />
 
-              <Text style={[styles.modalLabel, { marginTop: 16 }]}>{t('helper.seller.profileDetail.idCardLabel')}</Text>
-              <View style={styles.idCardRow}>
+              <Text style={styles.modalSectionHint}>
+                Kimlik fotoğrafları profil bilgisine kaydedilmez; belge olarak Compliance sekmesine düşer.
+              </Text>
+              <View style={styles.identityDocumentRow}>
                 <TouchableOpacity
-                  style={styles.idCardSlot}
-                  onPress={() => void pickIdCardImage("front")}
-                  activeOpacity={0.7}
+                  style={[styles.identityDocumentButton, identityDocFront && styles.identityDocumentButtonWithPreview]}
+                  onPress={() => void pickIdentityDocument("national_id_front")}
+                  disabled={contactSaving}
                 >
-                  {idCardFrontUri ? (
-                    <Image source={{ uri: idCardFrontUri }} style={styles.idCardPreview} />
+                  {identityDocFront ? (
+                    <>
+                      <Image source={{ uri: identityDocFront.uri }} style={styles.identityDocumentPreview} />
+                      <View style={styles.identityDocumentOverlay}>
+                        {identityDocUploading === "national_id_front" ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Ionicons name="camera-outline" size={18} color="#fff" />
+                        )}
+                        <Text style={styles.identityDocumentOverlayText}>Tekrar çek/seç</Text>
+                      </View>
+                    </>
                   ) : (
-                    <View style={styles.idCardPlaceholder}>
-                      <Ionicons name="camera-outline" size={24} color="#9A8C82" />
-                      <Text style={styles.idCardPlaceholderText}>{t('helper.seller.profileDetail.idCardFront')}</Text>
-                    </View>
+                    <>
+                      <Ionicons name="card-outline" size={18} color="#3F855C" />
+                      <Text style={styles.identityDocumentButtonText}>Kimlik ön yüz</Text>
+                    </>
                   )}
                 </TouchableOpacity>
-
                 <TouchableOpacity
-                  style={styles.idCardSlot}
-                  onPress={() => void pickIdCardImage("back")}
-                  activeOpacity={0.7}
+                  style={[styles.identityDocumentButton, identityDocBack && styles.identityDocumentButtonWithPreview]}
+                  onPress={() => void pickIdentityDocument("national_id_back")}
+                  disabled={contactSaving}
                 >
-                  {idCardBackUri ? (
-                    <Image source={{ uri: idCardBackUri }} style={styles.idCardPreview} />
+                  {identityDocBack ? (
+                    <>
+                      <Image source={{ uri: identityDocBack.uri }} style={styles.identityDocumentPreview} />
+                      <View style={styles.identityDocumentOverlay}>
+                        {identityDocUploading === "national_id_back" ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Ionicons name="camera-outline" size={18} color="#fff" />
+                        )}
+                        <Text style={styles.identityDocumentOverlayText}>Tekrar çek/seç</Text>
+                      </View>
+                    </>
                   ) : (
-                    <View style={styles.idCardPlaceholder}>
-                      <Ionicons name="camera-outline" size={24} color="#9A8C82" />
-                      <Text style={styles.idCardPlaceholderText}>{t('helper.seller.profileDetail.idCardBack')}</Text>
-                    </View>
+                    <>
+                      <Ionicons name="albums-outline" size={18} color="#3F855C" />
+                      <Text style={styles.identityDocumentButtonText}>Kimlik arka yüz</Text>
+                    </>
                   )}
                 </TouchableOpacity>
               </View>
+
             </ScrollView>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setIsEditModalOpen(false)} disabled={contactSaving}>
@@ -1318,9 +1194,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 78,
+    height: 78,
+    borderRadius: 39,
     backgroundColor: "#3F855C",
     alignItems: "center",
     justifyContent: "center",
@@ -1343,10 +1219,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#fff",
   },
-  avatarText: { color: "#fff", fontSize: 20, fontWeight: "800" },
+  avatarText: { color: "#fff", fontSize: 24, fontWeight: "800" },
   heroInfo: { flex: 1 },
   displayName: { fontSize: 17, fontWeight: "800", color: "#2E241C" },
   kitchenTitle: { marginTop: 2, fontSize: 13, color: "#6C6055" },
+  modalAvatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: "#E7E6E4",
+    borderWidth: 1,
+    borderColor: "#C7C7C7",
+    marginBottom: 8,
+  },
+  modalAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#2E6B44",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalAvatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 29,
+  },
+  modalAvatarText: { color: "#fff", fontSize: 20, fontWeight: "800" },
+  modalAvatarCopy: { flex: 1 },
+  modalAvatarTitle: { color: "#1F1F1F", fontSize: 15, fontWeight: "800" },
+  modalAvatarHint: { color: "#5C5B57", marginTop: 3, fontSize: 13, lineHeight: 18 },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -1354,51 +1259,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statusText: { fontSize: 12, fontWeight: "700" },
-  homeCardImageHint: { marginTop: 2, color: "#6C6055", fontSize: 13, lineHeight: 18 },
-  homeCardImagePreview: {
-    marginTop: 12,
-    height: 190,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E5DDCF",
-    backgroundColor: "#FBF8F4",
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  homeCardImagePreviewImage: {
-    width: "100%",
-    height: "100%",
-  },
-  homeCardImagePlaceholder: {
-    paddingHorizontal: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  homeCardImagePlaceholderTitle: {
-    marginTop: 10,
-    color: "#5F5348",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  homeCardImagePlaceholderText: {
-    marginTop: 6,
-    color: "#8E7E70",
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: "center",
-  },
-  homeCardImageButton: {
-    marginTop: 12,
-    borderRadius: 12,
-    backgroundColor: "#2E6B44",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-  },
-  homeCardImageButtonText: { color: "#fff", fontSize: 14, fontWeight: "800" },
-
-
   complianceCard: {
     backgroundColor: "#EFF6F1",
     borderColor: "#CFE2D5",
@@ -1424,11 +1284,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  cardTitleNoCaps: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#2E241C",
-  },
   profileEditIconBtn: {
     width: 30,
     height: 30,
@@ -1444,10 +1299,6 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: "row", justifyContent: "space-between" },
   infoLabel: { fontSize: 13, color: "#9A8C82", flex: 1 },
   infoValue: { fontSize: 13, color: "#2E241C", flex: 2, textAlign: "right" },
-
-  hourRow: { flexDirection: "row", justifyContent: "space-between" },
-  hourDay: { fontSize: 13, color: "#4E433A", fontWeight: "600" },
-  hourRange: { fontSize: 13, color: "#6C6055" },
 
   addressLink: { marginTop: 6, color: "#3F855C", fontWeight: "700", fontSize: 13 },
 
@@ -1480,6 +1331,9 @@ const styles = StyleSheet.create({
   },
   modalScrollContent: {
     paddingBottom: 24,
+  },
+  deliveryModalScrollContent: {
+    paddingBottom: 18,
   },
   modalTitle: {
     fontSize: 22,
@@ -1514,6 +1368,68 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     paddingTop: 10,
     paddingBottom: 10,
+  },
+  modalSectionHint: {
+    color: "#6F6A63",
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 8,
+  },
+  identityDocumentRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+  },
+  identityDocumentButton: {
+    flex: 1,
+    minWidth: 0,
+    height: 104,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#BFD6C6",
+    backgroundColor: "#F2FAF4",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+  },
+  identityDocumentButtonWithPreview: {
+    height: 104,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    overflow: "hidden",
+    borderColor: "#9DBBA6",
+  },
+  identityDocumentPreview: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  identityDocumentOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    minHeight: 34,
+    backgroundColor: "rgba(0,0,0,0.52)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 8,
+  },
+  identityDocumentOverlayText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  identityDocumentButtonText: {
+    color: "#2F6F4A",
+    fontSize: 13,
+    fontWeight: "700",
   },
   deliveryToggleCard: {
     backgroundColor: "#E7E6E4",
@@ -1563,37 +1479,6 @@ const styles = StyleSheet.create({
   },
   deliveryToggleKnobActive: {
     alignSelf: "flex-end",
-  },
-  idCardRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 8,
-  },
-  idCardSlot: {
-    flex: 1,
-    aspectRatio: 1.6,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "#C7C7C7",
-    borderStyle: "dashed",
-    backgroundColor: "#E7E6E4",
-    overflow: "hidden",
-  },
-  idCardPreview: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-  idCardPlaceholder: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-  },
-  idCardPlaceholderText: {
-    fontSize: 12,
-    color: "#9A8C82",
-    fontWeight: "600",
   },
   tagsRow: {
     flexDirection: "row",

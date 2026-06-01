@@ -174,6 +174,7 @@ type Screen =
 type TabKey = 'home' | 'messages' | 'cart' | 'notifications' | 'profile';
 type OrderDetailBackTarget = 'orders' | 'home';
 type TicketBackTarget = 'settings' | 'buyerProfile' | 'sellerProfileDetail';
+type SellerProfileBackTarget = 'sellerProfileDetail' | 'sellerFoods';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
@@ -240,6 +241,7 @@ export default function App() {
   const [sellerFoodsInitialEditId, setSellerFoodsInitialEditId] = useState<string | null>(null);
   const [sellerFoodsInitialEditFood, setSellerFoodsInitialEditFood] = useState<any | null>(null);
   const [sellerFoodsFromManager, setSellerFoodsFromManager] = useState(false);
+  const [sellerProfileBackTarget, setSellerProfileBackTarget] = useState<SellerProfileBackTarget>('sellerProfileDetail');
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -534,7 +536,7 @@ export default function App() {
       <SettingsScreen
         auth={auth}
         onBack={() => {
-          if (actorMode === 'seller') setScreen('sellerProfileDetail');
+          if (actorMode === 'seller') setScreen(sellerProfileBackTarget === 'sellerFoods' ? 'sellerProfile' : 'sellerProfileDetail');
           else goHome('profile');
         }}
         onOpenComplaintOrders={() => {
@@ -807,7 +809,10 @@ export default function App() {
       <SellerProfileDetailScreen
         auth={auth}
         onBack={() => setScreen('home')}
-        onEdit={() => setScreen('sellerProfile')}
+        onEdit={() => {
+          setSellerProfileBackTarget('sellerProfileDetail');
+          setScreen('sellerProfile');
+        }}
         onOpenOrderHistory={() => setScreen('sellerOrders')}
         onOpenCompliance={() => setScreen('sellerCompliance')}
         onOpenFinance={() => setScreen('sellerFinance')}
@@ -816,7 +821,10 @@ export default function App() {
           setTicketBackTarget('sellerProfileDetail');
           setScreen('ticketList');
         }}
-        onOpenSettings={() => setScreen('settings')}
+        onOpenSettings={() => {
+          setSellerProfileBackTarget('sellerProfileDetail');
+          setScreen('settings');
+        }}
         onLogout={handleLogout}
         onOpenAddresses={() => setScreen('addresses')}
         onAuthRefresh={setAuth}
@@ -828,7 +836,7 @@ export default function App() {
     return (
       <SellerProfileScreen
         auth={auth}
-        onBack={() => setScreen('sellerProfileDetail')}
+        onBack={() => setScreen(sellerProfileBackTarget)}
         onOpenAddresses={() => setScreen('addresses')}
         onAuthRefresh={setAuth}
       />
@@ -842,6 +850,10 @@ export default function App() {
         initialEditFoodId={sellerFoodsInitialEditId}
         initialEditFood={sellerFoodsInitialEditFood}
         onBack={() => setScreen(sellerFoodsFromManager ? 'sellerFoodsManager' : 'home')}
+        onOpenKitchenInfo={() => {
+          setSellerProfileBackTarget('sellerFoods');
+          setScreen('sellerProfile');
+        }}
         onAuthRefresh={setAuth}
       />
     );

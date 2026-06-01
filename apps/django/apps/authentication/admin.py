@@ -727,12 +727,19 @@ class BuyerUsersAdmin(ModelAdmin):
             "notes_count": notes_count + tags_count,
         }
 
+        can_view_raw_data = bool(getattr(request.user, "is_superuser", False))
         tabs = [
             ("general", _("General")), ("orders", _("Orders")),
             ("payments", _("Payments")), ("complaints", _("Complaints")),
             ("reviews", _("Reviews")), ("activity", _("Activity Log")),
-            ("notes", _("Notes & Tags")), ("raw", _("Raw Data")),
+            ("notes", _("Notes & Tags")),
         ]
+        if can_view_raw_data:
+            tabs.append(("raw", _("Raw Data")))
+        valid_tabs = {tab_id for tab_id, _ in tabs}
+        initial_tab = str(request.GET.get("tab", "general")).strip().lower()
+        if initial_tab not in valid_tabs:
+            initial_tab = "general"
 
         raw_data = {
             "id": str(user.id), "email": _visible_email(request, user.email), "display_name": user.display_name,
@@ -760,8 +767,9 @@ class BuyerUsersAdmin(ModelAdmin):
             "activity": activity,
             "notes": notes,
             "tags": tags,
-            "active_tab": request.GET.get("tab", "general"),
-            "raw_json": json.dumps(raw_data, indent=2, default=str),
+            "active_tab": initial_tab,
+            "can_view_raw_data": can_view_raw_data,
+            "raw_json": json.dumps(raw_data, indent=2, default=str) if can_view_raw_data else "",
             "tags_json": json.dumps([{"tag": t["tag"], "style": t["style"]} for t in tags]),
             "notes_json": json.dumps([{
                 "id": n["id"], "note": n["note"],
@@ -1203,12 +1211,15 @@ class SellerUsersAdmin(ModelAdmin):
             "approved": sum(1 for d in compliance_docs if d["is_required"] and d["status"] == "approved"),
         }
 
+        can_view_raw_data = bool(getattr(request.user, "is_superuser", False))
         tabs = [
             ("general", _("General")), ("foods", _("Foods")),
             ("orders", _("Orders & Earnings")), ("wallet", _("Wallet & Transactions")),
             ("compliance", _("Compliance")), ("reviews", _("Reviews")),
-            ("complaints", _("Complaints")), ("raw", _("Raw Data")),
+            ("complaints", _("Complaints")),
         ]
+        if can_view_raw_data:
+            tabs.append(("raw", _("Raw Data")))
         valid_tabs = {tab_id for tab_id, _ in tabs}
         initial_tab = str(request.GET.get("tab", "general")).strip().lower()
         if initial_tab not in valid_tabs:
@@ -1219,10 +1230,17 @@ class SellerUsersAdmin(ModelAdmin):
             "full_name": user.full_name, "username": user.username, "phone": _visible_phone(request, user.phone),
             "user_type": user.user_type, "is_active": user.is_active,
             "seller_profile_status": user.seller_profile_status,
+            "profile_image_url": user.profile_image_url,
             "kitchen_title": user.kitchen_title, "kitchen_description": user.kitchen_description,
+            "kitchen_specialties": user.kitchen_specialties,
+            "delivery_enabled": user.delivery_enabled,
+            "delivery_radius_km": str(user.delivery_radius_km) if user.delivery_radius_km is not None else None,
+            "delivery_terms": user.delivery_terms,
+            "working_hours_json": user.working_hours_json,
             "dob": str(user.dob) if user.dob else None,
             "country_code": user.country_code, "national_id": _visible_identity(request, user.national_id),
             "created_at": str(user.created_at),
+            "updated_at": str(user.updated_at),
         }
         user_private = {
             "email": _visible_email(request, user.email),
@@ -1250,7 +1268,8 @@ class SellerUsersAdmin(ModelAdmin):
             "compliance_docs": compliance_docs,
             "compliance_summary": compliance_summary,
             "address": address,
-            "raw_json": json.dumps(raw_data, indent=2, default=str),
+            "can_view_raw_data": can_view_raw_data,
+            "raw_json": json.dumps(raw_data, indent=2, default=str) if can_view_raw_data else "",
             "s3_configured": s3_utils.is_configured(),
             "opts": self.model._meta,
         }

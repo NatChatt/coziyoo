@@ -329,6 +329,8 @@ class RegisterView(APIView):
         email = request.data.get("email", "").lower().strip()
         password = request.data.get("password", "")
         display_name = request.data.get("displayName") or email.split("@")[0][:40]
+        full_name = (request.data.get("fullName") or display_name or "").strip()
+        phone = (request.data.get("phone") or "").strip()
         # Public registration always creates a buyer-capable account. Seller
         # access is enabled after phone verification through the explicit
         # onboarding choice.
@@ -350,9 +352,13 @@ class RegisterView(APIView):
                 username_raw = f"{username_raw}_{uuid.uuid4().hex[:4]}"
 
             cur.execute(
-                """INSERT INTO users (email, password_hash, display_name, display_name_normalized, username, username_normalized, user_type)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id, email, display_name, user_type""",
-                [email, password_hash, display_name, display_name.lower(), username_raw, username_raw.lower(), user_type],
+                """INSERT INTO users (
+                       email, password_hash, display_name, display_name_normalized,
+                       username, username_normalized, user_type, full_name, phone
+                   )
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                   RETURNING id, email, display_name, user_type""",
+                [email, password_hash, display_name, display_name.lower(), username_raw, username_raw.lower(), user_type, full_name or None, phone or None],
             )
             user = cur.fetchone()
 

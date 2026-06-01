@@ -165,6 +165,7 @@ type Props = {
   onBack: () => void;
   initialEditFoodId?: string | null;
   initialEditFood?: SellerFood | null;
+  onOpenKitchenInfo?: () => void;
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
@@ -456,7 +457,7 @@ function parseFreeAddonNames(value: string): string[] {
   return items;
 }
 
-export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, initialEditFood, onAuthRefresh }: Props) {
+export default function SellerFoodsScreen({ auth, onBack, initialEditFoodId, initialEditFood, onOpenKitchenInfo, onAuthRefresh }: Props) {
   const PLACEHOLDER_COLOR = "#8A7A6A";
   const scrollViewRef = useRef<ScrollView | null>(null);
   const fieldOffsetsRef = useRef<Partial<Record<SellerFoodsFieldKey, number>>>({});
@@ -1376,6 +1377,20 @@ function openAddonLibrary(pricing: AddonPricing, kind: AddonKind) {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           >
+          {onOpenKitchenInfo ? (
+            <TouchableOpacity style={styles.kitchenInfoCard} activeOpacity={0.86} onPress={onOpenKitchenInfo}>
+              <View style={styles.kitchenInfoIcon}>
+                <Ionicons name="storefront-outline" size={20} color="#2E6B44" />
+              </View>
+              <View style={styles.kitchenInfoCopy}>
+                <View style={styles.kitchenInfoTitleRow}>
+                  <Text style={styles.kitchenInfoTitle}>{t('headline.seller.foods.kitchenInfo')}</Text>
+                  <Ionicons name="chevron-forward" size={18} color="#8A7A6A" />
+                </View>
+                <Text style={styles.kitchenInfoText}>{t('helper.seller.foods.kitchenInfo')}</Text>
+              </View>
+            </TouchableOpacity>
+          ) : null}
           <Text style={styles.sectionTitle}>{t('headline.seller.foods.photos')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoStrip}>
             {imageUrls.map((url, index) => (
@@ -2084,6 +2099,29 @@ const styles = StyleSheet.create({
   },
   page: { flex: 1 },
   content: { padding: 14, paddingBottom: 42 },
+  kitchenInfoCard: {
+    backgroundColor: "#F6FBF7",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#CFE2D5",
+    padding: 12,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  kitchenInfoIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#E5F2E8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  kitchenInfoCopy: { flex: 1 },
+  kitchenInfoTitleRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  kitchenInfoTitle: { color: "#2E241C", fontWeight: "800", fontSize: 15 },
+  kitchenInfoText: { color: "#6C6055", marginTop: 3, lineHeight: 18, fontSize: 13 },
   sectionTitle: { color: "#2E241C", fontWeight: "700", marginBottom: 6, marginTop: 10 },
   sectionTitleError: { color: "#B42318" },
   input: {

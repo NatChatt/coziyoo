@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { AuthSession } from "../utils/auth";
 import { loadAuthSession, refreshAuthSession } from "../utils/auth";
@@ -33,6 +33,11 @@ type SellerProfilePayload = {
 };
 
 export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onAuthRefresh }: Props) {
+  const scrollRef = useRef<ScrollView>(null);
+  const deliveryTermsRef = useRef<TextInput>(null);
+  const workingHoursRef = useRef<TextInput>(null);
+  const focusedInputRef = useRef<TextInput | null>(null);
+  const scrollYRef = useRef(0);
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
   const [loading, setLoading] = useState(true);
@@ -51,6 +56,14 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
   useEffect(() => {
     setCurrentAuth((prev) => (prev.accessToken === auth.accessToken ? prev : auth));
   }, [auth.accessToken]);
+
+  useEffect(() => {
+    const eventName = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const sub = Keyboard.addListener(eventName, (event) => {
+      setTimeout(() => adjustFocusedInputAboveKeyboard(event.endCoordinates.screenY), 80);
+    });
+    return () => sub.remove();
+  }, []);
 
   async function readResponsePayload(res: Response): Promise<{ json: SellerProfilePayload | null; rawText: string }> {
     const rawText = await res.text();
@@ -186,10 +199,44 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
     }
   }
 
+  function adjustFocusedInputAboveKeyboard(keyboardTop: number) {
+    focusedInputRef.current?.measureInWindow((_x, y, _width, height) => {
+      const bottomGap = 14;
+      const overlap = y + height + bottomGap - keyboardTop;
+      if (overlap > 0) {
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, scrollYRef.current + overlap),
+          animated: true,
+        });
+      }
+    });
+  }
+
+  function focusKeyboardAwareInput(ref: React.RefObject<TextInput>) {
+    focusedInputRef.current = ref.current;
+    setTimeout(() => {
+      Keyboard.metrics?.()?.screenY && adjustFocusedInputAboveKeyboard(Keyboard.metrics()!.screenY);
+    }, 80);
+  }
+
   return (
     <View style={styles.container}>
       <ScreenHeader title={t('headline.seller.profileEdit.title')} onBack={onBack} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardAvoidingView
+        style={styles.keyboardArea}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        onScroll={(event) => {
+          scrollYRef.current = event.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
+      >
       {loading ? (
         <ActivityIndicator size="large" color={theme.primary} />
       ) : (
@@ -254,11 +301,13 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
 
           <Text style={styles.label}>{t('helper.seller.profile.deliveryTerms')}</Text>
           <TextInput
+            ref={deliveryTermsRef}
             style={[styles.input, styles.textArea]}
             value={deliveryTerms}
             onChangeText={setDeliveryTerms}
             placeholder={t('helper.seller.profile.deliveryTermsPlaceholder')}
             multiline
+            onFocus={() => focusKeyboardAwareInput(deliveryTermsRef)}
           />
 
           <Text style={styles.label}>{t('helper.seller.profile.workingHours')}</Text>
@@ -277,10 +326,12 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
             </View>
             {editingWorkingHours ? (
               <TextInput
+                ref={workingHoursRef}
                 style={styles.input}
                 value={workingHoursText}
                 onChangeText={setWorkingHoursText}
                 placeholder={t('helper.seller.profile.workingHoursPlaceholder')}
+                onFocus={() => focusKeyboardAwareInput(workingHoursRef)}
               />
             ) : null}
           </View>
@@ -288,19 +339,18 @@ export default function SellerProfileScreen({ auth, onBack, onOpenAddresses, onA
           <TouchableOpacity style={styles.saveBtn} disabled={saving} onPress={() => void saveProfile(false)}>
             <Text style={styles.saveText}>{saving ? `${t('cta.seller.profile.save')}...` : t('cta.seller.profile.save')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.submitBtn} disabled={saving} onPress={() => void saveProfile(true)}>
-            <Text style={styles.submitText}>{t('cta.seller.profile.submitReview')}</Text>
-          </TouchableOpacity>
         </>
       )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F4EF" },
-  content: { padding: 16, paddingBottom: 40 },
+  keyboardArea: { flex: 1 },
+  content: { padding: 16, paddingBottom: 28 },
   label: { marginTop: 10, marginBottom: 6, color: "#2E241C", fontWeight: "700" },
   addressCard: { backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#E4DBCD", padding: 12 },
   addressText: { color: "#4E433A" },
