@@ -968,7 +968,7 @@ class SellerUsersAdmin(ModelAdmin):
                     (SELECT count(DISTINCT scd.seller_id)::int
                      FROM seller_compliance_documents scd
                      JOIN users u ON u.id = scd.seller_id
-                     WHERE scd.status = 'uploaded'
+                     WHERE scd.status IN ('pending', 'uploaded')
                        AND u.user_type IN ('seller', 'both')
                        AND u.is_active = TRUE),
                     (SELECT count(*)::int FROM complaints c
@@ -1329,10 +1329,10 @@ class SellerUsersAdmin(ModelAdmin):
                 """
                 INSERT INTO seller_compliance_documents
                     (seller_id, document_list_id, file_url, status, uploaded_at)
-	                VALUES (%s, %s, %s, 'uploaded', now())
-	                ON CONFLICT (seller_id, document_list_id)
-	                DO UPDATE SET file_url=%s, status='uploaded', uploaded_at=now(), updated_at=now(),
-	                              rejection_reason=NULL
+                VALUES (%s, %s, %s, 'uploaded', now())
+                ON CONFLICT (seller_id, document_list_id)
+                DO UPDATE SET file_url=%s, status='uploaded', uploaded_at=now(), updated_at=now(),
+                              rejection_reason=NULL
 	                RETURNING id
 	                """,
                 [str(seller_id), document_list_id, file_url, file_url],
@@ -1442,7 +1442,7 @@ class SellerUsersAdmin(ModelAdmin):
                 SELECT
                     count(*) FILTER (WHERE cdl.is_required_default)::int AS required_total,
                     count(*) FILTER (WHERE cdl.is_required_default AND scd.status = 'approved')::int AS approved_count,
-                    count(*) FILTER (WHERE cdl.is_required_default AND scd.status = 'uploaded')::int AS uploaded_count
+                    count(*) FILTER (WHERE cdl.is_required_default AND scd.status IN ('pending', 'uploaded'))::int AS uploaded_count
                 FROM compliance_documents_list cdl
                 LEFT JOIN seller_compliance_documents scd
                     ON scd.document_list_id = cdl.id AND scd.seller_id = %s

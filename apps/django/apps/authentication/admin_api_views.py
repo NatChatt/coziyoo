@@ -254,7 +254,7 @@ class AdminDashboardReviewQueueView(AdminAPIView):
             cursor.execute(
                 """
                     SELECT count(*) FILTER (WHERE seller_profile_status = 'pending') AS pending_sellers,
-                           (SELECT count(*) FROM seller_compliance_documents WHERE status = 'pending') AS pending_documents,
+                           (SELECT count(*) FROM seller_compliance_documents WHERE status = 'uploaded') AS pending_documents,
                            (SELECT count(*) FROM complaints WHERE status IN ('open', 'in_review')) AS open_complaints
                     FROM users
                     WHERE user_type IN ('seller', 'both')

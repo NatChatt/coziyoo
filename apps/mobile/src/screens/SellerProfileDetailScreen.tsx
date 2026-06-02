@@ -1032,9 +1032,6 @@ export default function SellerProfileDetailScreen({
                 placeholderTextColor={MODAL_PLACEHOLDER_COLOR}
               />
 
-              <Text style={styles.modalSectionHint}>
-                Kimlik fotoğrafları profil bilgisine kaydedilmez; belge olarak Compliance sekmesine düşer.
-              </Text>
               <View style={styles.identityDocumentRow}>
                 <TouchableOpacity
                   style={[styles.identityDocumentButton, identityDocFront && styles.identityDocumentButtonWithPreview]}

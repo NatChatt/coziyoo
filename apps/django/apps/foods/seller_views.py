@@ -271,7 +271,7 @@ class SellerProfileView(APIView):
                   COUNT(*) FILTER (WHERE cdl.is_required_default = TRUE)::int AS required_count,
                   COUNT(*) FILTER (
                     WHERE cdl.is_required_default = TRUE
-                      AND scd.status IN ('uploaded', 'approved', 'rejected', 'requested')
+                      AND scd.status IN ('pending', 'uploaded', 'approved', 'rejected')
                   )::int AS uploaded_required_count
                 FROM compliance_documents_list cdl
                 LEFT JOIN seller_compliance_documents scd

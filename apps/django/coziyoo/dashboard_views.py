@@ -57,7 +57,7 @@ def dashboard_data(request):
         cur.execute("""
             SELECT count(*)
             FROM seller_compliance_documents
-            WHERE status = 'pending'
+            WHERE status = 'uploaded'
         """)
         pending_compliance = cur.fetchone()[0]
 
@@ -96,7 +96,7 @@ def dashboard_data(request):
         cur.execute("""
             SELECT count(*)
             FROM seller_compliance_documents
-            WHERE status = 'pending'
+            WHERE status = 'uploaded'
               AND created_at <= now() - interval '24 hours'
         """)
         stale_pending_docs = cur.fetchone()[0]

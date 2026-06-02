@@ -47,13 +47,18 @@ def _decode_base64_upload(data_base64, content_type):
     return content, normalized_type, None
 
 
+def _as_inline_data_url(content, content_type):
+    encoded = base64.b64encode(content).decode("ascii")
+    return f"data:{content_type};base64,{encoded}"
+
+
 def _status_counts(documents):
     required_docs = [doc for doc in documents if doc["is_required"]]
     return {
         "status": "in_progress",
         "required_count": len(required_docs),
         "approved_required_count": sum(1 for doc in required_docs if doc.get("status") == "approved"),
-        "uploaded_required_count": sum(1 for doc in required_docs if doc.get("status") in ("uploaded", "approved", "rejected", "requested")),
+        "uploaded_required_count": sum(1 for doc in required_docs if doc.get("status") in ("pending", "uploaded", "approved", "rejected")),
         "requested_required_count": sum(1 for doc in required_docs if doc.get("status") in (None, "", "requested")),
         "rejected_required_count": sum(1 for doc in required_docs if doc.get("status") == "rejected"),
     }
@@ -131,7 +136,12 @@ class SellerComplianceSubmitView(APIView):
 
         with connection.cursor() as cur:
             cur.execute(
-                "SELECT COUNT(*) FROM seller_compliance_documents WHERE seller_id=%s AND status='uploaded'",
+                """
+                SELECT COUNT(*)
+                FROM seller_compliance_documents
+                WHERE seller_id=%s
+                  AND status IN ('pending', 'uploaded', 'approved')
+                """,
                 [request.user.id],
             )
             count = cur.fetchone()[0]
@@ -211,14 +221,11 @@ class SellerDocumentListView(APIView):
                 try:
                     file_url = s3_utils.put_bytes(bucket, key, content, content_type)
                 except (RuntimeError, BotoCoreError, ClientError, OSError):
-                    return error_response(
-                        "STORAGE_UPLOAD_FAILED",
-                        "Belge depolama servisine ulasilamadi. Lutfen daha sonra tekrar deneyin.",
-                        503,
-                    )
+                    # Keep the compliance review flow alive when the object store is temporarily unavailable.
+                    # The DB column is text and the admin preview can render data URLs directly.
+                    file_url = _as_inline_data_url(content, content_type)
             else:
-                encoded = base64.b64encode(content).decode("ascii")
-                file_url = f"data:{content_type};base64,{encoded}"
+                file_url = _as_inline_data_url(content, content_type)
 
         if not document_list_id or not file_url:
             return error_response("VALIDATION_ERROR", "documentListId/fileUrl or docType/dataBase64 are required", 400)

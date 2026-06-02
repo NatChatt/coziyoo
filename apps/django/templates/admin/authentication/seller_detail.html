@@ -550,7 +550,7 @@
                   });
                   if (!r3.ok) { const e = await r3.json(); throw new Error(e.error || 'Confirm failed'); }
                   const res = await r3.json();
-                  this.docId = res.id; this.status = 'uploaded';
+                  this.docId = res.id; this.status = res.status || 'uploaded';
                   this.previewUrl = res.preview_url || null; this.mimeType = file.type || ''; this.rejectionReason = '';
                 } catch (e) { this.error = e.message; } finally { this.uploading = false; }
               }
