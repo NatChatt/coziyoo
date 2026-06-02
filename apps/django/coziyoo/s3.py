@@ -11,7 +11,7 @@ from functools import lru_cache
 
 import boto3
 from botocore.config import Config
-from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError, ClientError
 from django.conf import settings
 
 
@@ -39,6 +39,9 @@ def _get_client():
         aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY,
         config=Config(
             signature_version="s3v4",
+            connect_timeout=getattr(settings, "S3_CONNECT_TIMEOUT_SECONDS", 5),
+            read_timeout=getattr(settings, "S3_READ_TIMEOUT_SECONDS", 20),
+            retries={"max_attempts": getattr(settings, "S3_MAX_RETRY_ATTEMPTS", 2)},
             s3={"addressing_style": "path" if getattr(settings, "S3_FORCE_PATH_STYLE", True) else "auto"},
         ),
     )
@@ -136,7 +139,7 @@ def delete_object(storage_pointer: str | None) -> bool:
         client = get_client()
         client.delete_object(Bucket=parsed["bucket"], Key=parsed["key"])
         return True
-    except (RuntimeError, ClientError):
+    except (RuntimeError, BotoCoreError, ClientError, OSError):
         return False
 
 

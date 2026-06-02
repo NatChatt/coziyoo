@@ -1,6 +1,7 @@
 import base64
 import binascii
 
+from botocore.exceptions import BotoCoreError, ClientError
 from django.conf import settings
 from django.db import connection
 from rest_framework.views import APIView
@@ -207,7 +208,14 @@ class SellerDocumentListView(APIView):
                 bucket = settings.S3_BUCKET_SELLER_DOCS
                 ext = _ALLOWED_UPLOAD_TYPES[content_type]
                 key = s3_utils.build_seller_document_key(str(request.user.id), str(doc_type or document_list_id), f"document.{ext}")
-                file_url = s3_utils.put_bytes(bucket, key, content, content_type)
+                try:
+                    file_url = s3_utils.put_bytes(bucket, key, content, content_type)
+                except (RuntimeError, BotoCoreError, ClientError, OSError):
+                    return error_response(
+                        "STORAGE_UPLOAD_FAILED",
+                        "Belge depolama servisine ulasilamadi. Lutfen daha sonra tekrar deneyin.",
+                        503,
+                    )
             else:
                 encoded = base64.b64encode(content).decode("ascii")
                 file_url = f"data:{content_type};base64,{encoded}"

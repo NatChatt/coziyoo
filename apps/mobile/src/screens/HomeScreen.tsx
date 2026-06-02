@@ -392,8 +392,6 @@ type UiCategory =
   | 'İçecekler';
 
 type SellerProfile = {
-  startedYear: number;
-  experienceYears: number;
   bio: string;
 };
 
@@ -410,14 +408,6 @@ type SellerReview = {
   foodName: string;
   buyerName: string;
   createdAt: string;
-};
-
-type SellerCompletedSalesResponse = {
-  data?: {
-    sellerId?: string;
-    totalCompletedMeals?: number;
-  };
-  error?: { message?: string };
 };
 
 type CartItem = {
@@ -1297,40 +1287,12 @@ function resolveHomeHeroCopyOverrides(payload: unknown): HomeHeroCopyOverrides {
   };
 }
 
-function hashString(input: string): number {
-  let hash = 0;
-  for (let i = 0; i < input.length; i += 1) {
-    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
-  }
-  return hash;
-}
-
 function buildSellerProfile(
-  sellerId: string,
-  sellerName: string,
-  sellerMeals: MealCard[],
+  sellerBio?: string | null,
 ): SellerProfile {
-  const nowYear = new Date().getFullYear();
-  const seed = hashString(`${sellerId}:${sellerName}`);
-  const experienceYears = 4 + (seed % 13); // 4-16 yıl
-  const startedYear = nowYear - experienceYears;
-  const topCategories = Array.from(
-    new Set(
-      sellerMeals
-        .map((meal) => meal.category)
-        .filter((category) => category && category !== 'Tümü'),
-    ),
-  )
-    .slice(0, 2)
-    .join(t('status.home.sellerBioSpecialityJoiner'));
-  const speciality = topCategories || t('status.home.sellerBioDefaultSpeciality');
+  const aboutText = String(sellerBio ?? "").trim();
   return {
-    startedYear,
-    experienceYears,
-    bio: t('status.home.sellerBioTemplate')
-      .replace('{name}', sellerName)
-      .replace('{year}', String(startedYear))
-      .replace('{speciality}', speciality),
+    bio: aboutText || t('helper.home.sellerBioEmpty'),
   };
 }
 
@@ -1550,6 +1512,7 @@ export default function HomeScreen({
     id: string;
     name: string;
     image?: string | null;
+    tagline?: string | null;
   } | null>(null);
   const [sellerModalTouchGuardUntil, setSellerModalTouchGuardUntil] = useState(0);
   const sellerModalSlideX = useRef(new Animated.Value(Dimensions.get('window').width)).current;
@@ -1557,8 +1520,6 @@ export default function HomeScreen({
   const [sellerReviewsLoading, setSellerReviewsLoading] = useState(false);
   const [sellerReviewsError, setSellerReviewsError] = useState<string | null>(null);
   const [sellerActiveTab, setSellerActiveTab] = useState<'foods' | 'reviews'>('foods');
-  const [sellerCompletedMealsSold, setSellerCompletedMealsSold] = useState<number | null>(null);
-  const [sellerCompletedMealsLoading, setSellerCompletedMealsLoading] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [activeOrderIds, setActiveOrderIds] = useState<string[]>([]);
@@ -3318,6 +3279,7 @@ export default function HomeScreen({
       id: meal.sellerId,
       name: meal.seller,
       image: meal.sellerImage ?? null,
+      tagline: meal.sellerTagline ?? null,
     });
   }
 
@@ -3409,7 +3371,7 @@ export default function HomeScreen({
       ).toFixed(1)
     : '0.0';
   const sellerProfile = selectedSeller
-    ? buildSellerProfile(selectedSeller.id, selectedSeller.name, sellerMeals)
+    ? buildSellerProfile(selectedSeller.tagline ?? sellerMeals.find((meal) => meal.sellerTagline?.trim())?.sellerTagline ?? null)
     : null;
 
   useEffect(() => {
@@ -3417,8 +3379,6 @@ export default function HomeScreen({
       setSellerReviews([]);
       setSellerReviewsLoading(false);
       setSellerReviewsError(null);
-      setSellerCompletedMealsSold(null);
-      setSellerCompletedMealsLoading(false);
       return;
     }
     let cancelled = false;
@@ -3446,41 +3406,6 @@ export default function HomeScreen({
       .finally(() => {
         if (cancelled) return;
         setSellerReviewsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedSeller?.id, apiUrl]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!selectedSeller) {
-      setSellerCompletedMealsSold(null);
-      setSellerCompletedMealsLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setSellerCompletedMealsLoading(true);
-    fetch(`${apiUrl}/v1/foods/sellers/${selectedSeller.id}/completed-sales`, {
-      headers: { Authorization: `Bearer ${currentAuthRef.current.accessToken}` },
-    })
-      .then(async (response) => {
-        const json = await readJsonSafe<SellerCompletedSalesResponse>(response);
-        if (!response.ok) {
-          throw new Error(json.error?.message ?? requestErrorLine(response.status));
-        }
-        return Number(json.data?.totalCompletedMeals ?? 0);
-      })
-      .then((count) => {
-        if (cancelled) return;
-        setSellerCompletedMealsSold(count);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setSellerCompletedMealsSold(0);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setSellerCompletedMealsLoading(false);
       });
     return () => {
       cancelled = true;
@@ -4965,9 +4890,14 @@ export default function HomeScreen({
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View style={styles.sellerHeader}>
                 <View style={styles.sellerAvatar}>
-                  <Text style={styles.sellerAvatarEmoji}>👩‍🍳</Text>
+                  {selectedSeller.image ? (
+                    <Image source={{ uri: selectedSeller.image }} style={styles.sellerAvatarImage} />
+                  ) : (
+                    <Ionicons name="person" size={26} color="#3D3229" />
+                  )}
                 </View>
                 <View style={styles.sellerHeaderText}>
+                  <Text style={styles.sellerHeaderEyebrow}>{t('headline.home.sellerAbout')}</Text>
                   <Text style={styles.sellerTitle}>{selectedSeller.name}</Text>
                   <Text style={styles.sellerSubtitle}>{t('status.home.sellerKitchen')}</Text>
                 </View>
@@ -4986,16 +4916,6 @@ export default function HomeScreen({
               {sellerProfile ? (
                 <View style={styles.sellerAboutCard}>
                   <Text style={styles.sellerAboutTitle}>{t('headline.home.sellerBio')}</Text>
-                  <Text style={styles.sellerAboutMeta}>
-                    {t('status.home.sellerExperience')
-                      .replace('{year}', String(sellerProfile.startedYear))
-                      .replace('{years}', String(sellerProfile.experienceYears))}
-                  </Text>
-                  <Text style={styles.sellerAboutSales}>
-                    {sellerCompletedMealsLoading
-                      ? t('status.home.sellerSalesLoading')
-                      : t('status.home.sellerTotalMealsSold').replace('{count}', String(sellerCompletedMealsSold ?? 0))}
-                  </Text>
                   <Text style={styles.sellerAboutText}>{sellerProfile.bio}</Text>
                 </View>
               ) : null}
@@ -7021,9 +6941,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
   },
-  sellerAvatarEmoji: { fontSize: 28 },
+  sellerAvatarImage: { width: '100%', height: '100%' },
   sellerHeaderText: { flex: 1, paddingRight: 34 },
+  sellerHeaderEyebrow: { color: '#8D8072', fontSize: 12, fontWeight: '700', marginBottom: 2 },
   sellerTitle: { color: '#3D3229', fontSize: 22, fontWeight: '700' },
   sellerSubtitle: { color: '#8D8072', fontSize: 13, fontWeight: '600', marginTop: 2 },
   sellerStatsRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
@@ -7048,8 +6970,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sellerAboutTitle: { color: '#3D3229', fontSize: 13, fontWeight: '700' },
-  sellerAboutMeta: { color: '#7E7163', fontSize: 12, fontWeight: '600', marginTop: 3 },
-  sellerAboutSales: { color: '#4A7C59', fontSize: 12, fontWeight: '700', marginTop: 4 },
   sellerAboutText: { color: '#6E6256', fontSize: 12, lineHeight: 18, marginTop: 5 },
   sellerReviewList: { marginBottom: 12 },
   sellerReviewsLoadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
