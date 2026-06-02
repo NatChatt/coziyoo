@@ -1,5 +1,12 @@
+import base64
+import binascii
 import hashlib
 import json
+import mimetypes
+import os
+import re
+import subprocess
+import tempfile
 import uuid
 from datetime import datetime as _dt
 from django import forms
@@ -7,7 +14,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib import messages
 from django.db import connection
-from django.http import JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -247,6 +254,58 @@ def _visible_identity(request, value):
 
 def _detail_tab_redirect(route_name, user_id, tab="notes"):
     return redirect(f"{reverse(route_name, args=[user_id])}?tab={tab}")
+
+
+_DATA_URL_RE = re.compile(r"^data:(?P<content_type>[^;,]+)?(?:;[^,]*)?,(?P<payload>.*)$", re.DOTALL)
+
+
+def _split_data_url(value):
+    match = _DATA_URL_RE.match(value or "")
+    if not match:
+        return None
+    content_type = (match.group("content_type") or "application/octet-stream").strip() or "application/octet-stream"
+    return content_type, match.group("payload") or ""
+
+
+def _infer_document_mime_type(file_url):
+    if not file_url:
+        return ""
+    data_url = _split_data_url(file_url)
+    if data_url:
+        return data_url[0]
+
+    parsed = s3_utils.parse_storage_pointer(file_url)
+    path = parsed["key"] if parsed else str(file_url).split("#", 1)[0].split("?", 1)[0]
+    guessed, _ = mimetypes.guess_type(path)
+    return guessed or ""
+
+
+def _preview_filename(content_type):
+    extensions = {
+        "application/pdf": "pdf",
+        "image/jpeg": "jpg",
+        "image/jpg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+    }
+    return f"seller-document.{extensions.get(str(content_type or '').lower(), 'bin')}"
+
+
+def _pdf_first_page_png(pdf_body):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pdf_path = os.path.join(tmpdir, "document.pdf")
+        output_prefix = os.path.join(tmpdir, "preview")
+        with open(pdf_path, "wb") as handle:
+            handle.write(pdf_body)
+        subprocess.run(
+            ["pdftoppm", "-png", "-singlefile", "-r", "110", pdf_path, output_prefix],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=20,
+        )
+        with open(f"{output_prefix}.png", "rb") as handle:
+            return handle.read()
 
 
 _COMMON_FIELDSETS = [
@@ -1009,6 +1068,7 @@ class SellerUsersAdmin(ModelAdmin):
             path("<uuid:seller_id>/compliance/presign/", self.admin_site.admin_view(self.compliance_presign_view), name="authentication_sellerusers_compliance_presign"),
             path("<uuid:seller_id>/compliance/confirm/", self.admin_site.admin_view(self.compliance_confirm_view), name="authentication_sellerusers_compliance_confirm"),
             path("<uuid:seller_id>/compliance/review/", self.admin_site.admin_view(self.compliance_review_view), name="authentication_sellerusers_compliance_review"),
+            path("<uuid:seller_id>/compliance/document/<uuid:doc_id>/preview.pdf", self.admin_site.admin_view(self.compliance_document_preview_view), name="authentication_sellerusers_compliance_document_preview"),
         ]
         return custom + urls
 
@@ -1108,16 +1168,22 @@ class SellerUsersAdmin(ModelAdmin):
             """, [uid])
             compliance_docs = []
             for r in cur.fetchall():
+                raw_file_url = r[7]
+                doc_id = r[4]
                 compliance_docs.append({
                     "document_list_id": r[0],
                     "code": r[1],
                     "name": r[2],
                     "is_required": r[3],
-                    "doc_id": r[4],
+                    "doc_id": doc_id,
                     "status": r[5] or "not_uploaded",
                     "status_tr": _humanize_status(r[5]) if r[5] else str(_("Not Uploaded")),
                     "uploaded_at": r[6],
-                    "file_url": s3_utils.hydrate_file_url(r[7]) if r[7] else None,
+                    "file_url": reverse(
+                        "admin:authentication_sellerusers_compliance_document_preview",
+                        args=[user_id, doc_id],
+                    ) if raw_file_url and doc_id else None,
+                    "mime_type": _infer_document_mime_type(raw_file_url),
                     "rejection_reason": r[8] or "",
                     "previous_rejection_reason": "",
                     "previous_rejected_at": None,
@@ -1339,9 +1405,64 @@ class SellerUsersAdmin(ModelAdmin):
             )
             row = cur.fetchone()
 
-        preview_url = s3_utils.hydrate_file_url(file_url) if s3_utils.is_configured() else None
+        preview_url = reverse(
+            "admin:authentication_sellerusers_compliance_document_preview",
+            args=[seller_id, row[0]],
+        )
 
-        return JsonResponse({"id": str(row[0]), "status": "uploaded", "preview_url": preview_url})
+        return JsonResponse({
+            "id": str(row[0]),
+            "status": "uploaded",
+            "preview_url": preview_url,
+            "mime_type": _infer_document_mime_type(file_url),
+        })
+
+    def compliance_document_preview_view(self, request, seller_id, doc_id):
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT file_url
+                FROM seller_compliance_documents
+                WHERE id = %s AND seller_id = %s
+                """,
+                [str(doc_id), str(seller_id)],
+            )
+            row = cur.fetchone()
+
+        if not row or not row[0]:
+            return HttpResponse("Document not found", status=404)
+
+        file_url = row[0]
+        data_url = _split_data_url(file_url)
+        if data_url:
+            content_type, payload = data_url
+            try:
+                body = base64.b64decode(payload, validate=False)
+            except (binascii.Error, ValueError):
+                return HttpResponse("Invalid document data", status=422)
+            if content_type == "application/pdf" and request.GET.get("as") == "image":
+                try:
+                    png_body = _pdf_first_page_png(body)
+                except (OSError, subprocess.SubprocessError, TimeoutError):
+                    return HttpResponse("Could not render PDF preview", status=422)
+                response = HttpResponse(png_body, content_type="image/png")
+                response["Content-Disposition"] = 'inline; filename="seller-document-preview.png"'
+                response["X-Frame-Options"] = "SAMEORIGIN"
+                response["X-Content-Type-Options"] = "nosniff"
+                return response
+            response = HttpResponse(body, content_type=content_type)
+            response["Content-Disposition"] = f'inline; filename="{_preview_filename(content_type)}"'
+            response["X-Content-Type-Options"] = "nosniff"
+            response["X-Frame-Options"] = "SAMEORIGIN"
+            return response
+
+        parsed = s3_utils.parse_storage_pointer(file_url)
+        if parsed:
+            if not s3_utils.is_configured():
+                return HttpResponse("S3 storage is not configured", status=503)
+            return HttpResponseRedirect(s3_utils.presign_get(file_url))
+
+        return HttpResponseRedirect(file_url)
 
     def compliance_review_view(self, request, seller_id):
         if request.method != "POST":

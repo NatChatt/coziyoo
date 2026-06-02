@@ -20,6 +20,11 @@ type IdentityDocDraft = {
   contentType: string;
 };
 
+type IdentityDocUploadState = {
+  national_id_front: { uploaded: boolean; fileUrl: string | null };
+  national_id_back: { uploaded: boolean; fileUrl: string | null };
+};
+
 const ID_CARD_ASPECT_RATIO = 1.586;
 const ID_CARD_UPLOAD_WIDTH = 1000;
 const ID_CARD_UPLOAD_TIMEOUT_MS = 45000;
@@ -36,6 +41,7 @@ type Props = {
   onOpenSettings: () => void;
   onLogout: () => void;
   onOpenAddresses: () => void;
+  onSwitchToBuyer?: () => void;
   onAuthRefresh?: (session: AuthSession) => void;
 };
 
@@ -97,6 +103,7 @@ export default function SellerProfileDetailScreen({
   onOpenSettings,
   onLogout,
   onOpenAddresses,
+  onSwitchToBuyer,
   onAuthRefresh,
 }: Props) {
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
@@ -120,6 +127,10 @@ export default function SellerProfileDetailScreen({
   const [tcKimlikNo, setTcKimlikNo] = useState(() => getSellerMeCache()?.nationalId ?? "");
   const [identityDocFront, setIdentityDocFront] = useState<IdentityDocDraft | null>(null);
   const [identityDocBack, setIdentityDocBack] = useState<IdentityDocDraft | null>(null);
+  const [uploadedIdentityDocs, setUploadedIdentityDocs] = useState<IdentityDocUploadState>({
+    national_id_front: { uploaded: false, fileUrl: null },
+    national_id_back: { uploaded: false, fileUrl: null },
+  });
   const [deliveryEnabled, setDeliveryEnabled] = useState(() => Boolean(getSellerProfileCache()?.deliveryEnabled));
   const [deliveryTerms, setDeliveryTerms] = useState(() => getSellerProfileCache()?.deliveryTerms?.trim() ?? "");
   const [deliveryRadiusKmInput, setDeliveryRadiusKmInput] = useState(() => String(getSellerProfileCache()?.deliveryRadiusKm ?? 3));
@@ -247,6 +258,39 @@ export default function SellerProfileDetailScreen({
         setContactCountryCode("");
         setTcKimlikNo("");
       }
+
+      const complianceRes = await authedFetch("/v1/seller/compliance/profile", baseUrl, undefined);
+      const compliancePayload = await readResponsePayload(complianceRes);
+      const complianceJson = compliancePayload.json as {
+        data?: {
+          documents?: Array<{
+            code?: string | null;
+            status?: string | null;
+            uploaded_at?: string | null;
+            uploadedAt?: string | null;
+            file_url?: string | null;
+            fileUrl?: string | null;
+          }>;
+        };
+      } | null;
+      if (complianceRes.ok && Array.isArray(complianceJson?.data?.documents)) {
+        const nextUploaded: IdentityDocUploadState = {
+          national_id_front: { uploaded: false, fileUrl: null },
+          national_id_back: { uploaded: false, fileUrl: null },
+        };
+        complianceJson.data.documents.forEach((doc) => {
+          const code = String(doc.code ?? "").trim();
+          if (code !== "national_id_front" && code !== "national_id_back") return;
+          const status = String(doc.status ?? "").trim();
+          const fileUrl = String(doc.file_url ?? doc.fileUrl ?? "").trim() || null;
+          const hasFile = Boolean(fileUrl ?? doc.uploaded_at ?? doc.uploadedAt);
+          nextUploaded[code] = {
+            uploaded: hasFile || ["uploaded", "pending", "approved"].includes(status),
+            fileUrl,
+          };
+        });
+        setUploadedIdentityDocs(nextUploaded);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t('error.seller.profileDetail.load'));
     } finally {
@@ -255,6 +299,11 @@ export default function SellerProfileDetailScreen({
   }
 
   useEffect(() => { void load(); }, []);
+
+  useEffect(() => {
+    if (!isEditModalOpen) return;
+    void load();
+  }, [isEditModalOpen]);
 
   async function handleAvatarPress() {
     try {
@@ -332,6 +381,10 @@ export default function SellerProfileDetailScreen({
       if (!res.ok || payload.json === null) {
         throw new Error(responseErrorMessage(res, payload, "Kimlik fotoğrafı kaydedilemedi"));
       }
+      setUploadedIdentityDocs((prev) => ({
+        ...prev,
+        [docType]: { uploaded: true, fileUrl: draft.uri },
+      }));
     } finally {
       clearTimeout(timeout);
     }
@@ -737,6 +790,10 @@ export default function SellerProfileDetailScreen({
   }
 
   const statusCfg = statusConfig(profile?.status ?? "incomplete");
+  const identityFrontDisplayUri = identityDocFront?.uri ?? uploadedIdentityDocs.national_id_front.fileUrl;
+  const identityBackDisplayUri = identityDocBack?.uri ?? uploadedIdentityDocs.national_id_back.fileUrl;
+  const isIdentityFrontUploaded = uploadedIdentityDocs.national_id_front.uploaded;
+  const isIdentityBackUploaded = uploadedIdentityDocs.national_id_back.uploaded;
   const initials = (profile?.displayName ?? "?")
     .split(" ")
     .slice(0, 2)
@@ -827,6 +884,12 @@ export default function SellerProfileDetailScreen({
             <Text style={styles.navBtnText}>{t('cta.seller.profileDetail.settings')}</Text>
             <Text style={styles.navArrow}>›</Text>
           </TouchableOpacity>
+          {onSwitchToBuyer ? (
+            <TouchableOpacity style={styles.navBtn} onPress={onSwitchToBuyer}>
+              <Text style={styles.navBtnText}>{t('cta.seller.home.switchToBuyer')}</Text>
+              <Text style={styles.navArrow}>›</Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
             <Text style={styles.logoutBtnText}>{t('cta.seller.profileDetail.logout')}</Text>
           </TouchableOpacity>
@@ -1034,20 +1097,34 @@ export default function SellerProfileDetailScreen({
 
               <View style={styles.identityDocumentRow}>
                 <TouchableOpacity
-                  style={[styles.identityDocumentButton, identityDocFront && styles.identityDocumentButtonWithPreview]}
+                  style={[
+                    styles.identityDocumentButton,
+                    identityFrontDisplayUri && styles.identityDocumentButtonWithPreview,
+                    !identityFrontDisplayUri && isIdentityFrontUploaded && styles.identityDocumentButtonUploaded,
+                  ]}
                   onPress={() => void pickIdentityDocument("national_id_front")}
                   disabled={contactSaving}
                 >
-                  {identityDocFront ? (
+                  {identityFrontDisplayUri ? (
                     <>
-                      <Image source={{ uri: identityDocFront.uri }} style={styles.identityDocumentPreview} />
+                      <Image source={{ uri: identityFrontDisplayUri }} style={styles.identityDocumentPreview} />
                       <View style={styles.identityDocumentOverlay}>
                         {identityDocUploading === "national_id_front" ? (
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
                           <Ionicons name="camera-outline" size={18} color="#fff" />
                         )}
-                        <Text style={styles.identityDocumentOverlayText}>Tekrar çek/seç</Text>
+                        <Text style={styles.identityDocumentOverlayText}>
+                          {identityDocFront ? "Tekrar çek/seç" : "Yüklendi · Tekrar seç"}
+                        </Text>
+                      </View>
+                    </>
+                  ) : isIdentityFrontUploaded ? (
+                    <>
+                      <Ionicons name="checkmark-circle" size={20} color="#2F6F4A" />
+                      <View style={styles.identityDocumentUploadedTextWrap}>
+                        <Text style={styles.identityDocumentButtonText}>Kimlik ön yüz</Text>
+                        <Text style={styles.identityDocumentUploadedText}>Yüklendi</Text>
                       </View>
                     </>
                   ) : (
@@ -1058,20 +1135,34 @@ export default function SellerProfileDetailScreen({
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.identityDocumentButton, identityDocBack && styles.identityDocumentButtonWithPreview]}
+                  style={[
+                    styles.identityDocumentButton,
+                    identityBackDisplayUri && styles.identityDocumentButtonWithPreview,
+                    !identityBackDisplayUri && isIdentityBackUploaded && styles.identityDocumentButtonUploaded,
+                  ]}
                   onPress={() => void pickIdentityDocument("national_id_back")}
                   disabled={contactSaving}
                 >
-                  {identityDocBack ? (
+                  {identityBackDisplayUri ? (
                     <>
-                      <Image source={{ uri: identityDocBack.uri }} style={styles.identityDocumentPreview} />
+                      <Image source={{ uri: identityBackDisplayUri }} style={styles.identityDocumentPreview} />
                       <View style={styles.identityDocumentOverlay}>
                         {identityDocUploading === "national_id_back" ? (
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
                           <Ionicons name="camera-outline" size={18} color="#fff" />
                         )}
-                        <Text style={styles.identityDocumentOverlayText}>Tekrar çek/seç</Text>
+                        <Text style={styles.identityDocumentOverlayText}>
+                          {identityDocBack ? "Tekrar çek/seç" : "Yüklendi · Tekrar seç"}
+                        </Text>
+                      </View>
+                    </>
+                  ) : isIdentityBackUploaded ? (
+                    <>
+                      <Ionicons name="checkmark-circle" size={20} color="#2F6F4A" />
+                      <View style={styles.identityDocumentUploadedTextWrap}>
+                        <Text style={styles.identityDocumentButtonText}>Kimlik arka yüz</Text>
+                        <Text style={styles.identityDocumentUploadedText}>Yüklendi</Text>
                       </View>
                     </>
                   ) : (
@@ -1400,6 +1491,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderColor: "#9DBBA6",
   },
+  identityDocumentButtonUploaded: {
+    borderColor: "#9DBBA6",
+    backgroundColor: "#EAF4ED",
+  },
   identityDocumentPreview: {
     width: "100%",
     height: "100%",
@@ -1427,6 +1522,15 @@ const styles = StyleSheet.create({
     color: "#2F6F4A",
     fontSize: 13,
     fontWeight: "700",
+  },
+  identityDocumentUploadedTextWrap: {
+    alignItems: "center",
+    gap: 3,
+  },
+  identityDocumentUploadedText: {
+    color: "#3F855C",
+    fontSize: 12,
+    fontWeight: "800",
   },
   deliveryToggleCard: {
     backgroundColor: "#E7E6E4",

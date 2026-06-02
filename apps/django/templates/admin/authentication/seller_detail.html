@@ -416,17 +416,18 @@
               return cleanPath.endsWith('.pdf');
             };
 
-            const pdfViewerUrl = (url) => {
-              const rawUrl = String(url || '');
-              if (!rawUrl || rawUrl.includes('#')) return rawUrl;
-              return `${rawUrl}#toolbar=1&navpanes=0&zoom=page-fit&view=Fit`;
-            };
+	            const pdfViewerUrl = (url) => {
+	              const rawUrl = String(url || '');
+	              if (!rawUrl) return rawUrl;
+                const separator = rawUrl.includes('?') ? '&' : '?';
+	              return `${rawUrl}${separator}as=image`;
+	            };
 
             Alpine.store('compliancePreview', {
 	              open: false, url: '', name: '', docId: null, sellerId: '',
-	              docStatus: '', rejectionReason: '', mimeType: '', isPdf: false,
-	              previousRejectionReason: '', previousRejectedAt: '',
-	              rejectMode: false, rejectInput: '', reviewing: false, error: '',
+		              docStatus: '', rejectionReason: '', mimeType: '', isPdf: false, loading: false,
+		              previousRejectionReason: '', previousRejectedAt: '',
+		              rejectMode: false, rejectInput: '', reviewing: false, error: '',
               get viewerUrl() {
                 return this.isPdf ? pdfViewerUrl(this.url) : this.url;
               },
@@ -437,24 +438,27 @@
 	                  sellerId: data.sellerId, docStatus: data.docStatus,
 	                  rejectionReason: data.rejectionReason || '',
 	                  mimeType: data.mimeType || '',
-	                  previousRejectionReason: data.previousRejectionReason || '',
-	                  previousRejectedAt: data.previousRejectedAt || '',
-	                });
-	                this.isPdf = isPdfPreview(data.url, data.mimeType);
+		                  previousRejectionReason: data.previousRejectionReason || '',
+		                  previousRejectedAt: data.previousRejectedAt || '',
+                      loading: true,
+		                });
+		                this.isPdf = isPdfPreview(data.url, data.mimeType);
+                    document.body.style.overflow = 'hidden';
+		              },
+		              reset() {
+		                Object.assign(this, {
+		                  url: '', name: '', docId: null, sellerId: '',
+		                  docStatus: '', rejectionReason: '', mimeType: '', isPdf: false, loading: false,
+		                  previousRejectionReason: '', previousRejectedAt: '',
+		                  rejectMode: false, rejectInput: '', reviewing: false, error: '',
+		                });
 	              },
-	              reset() {
-	                Object.assign(this, {
-	                  url: '', name: '', docId: null, sellerId: '',
-	                  docStatus: '', rejectionReason: '', mimeType: '', isPdf: false,
-	                  previousRejectionReason: '', previousRejectedAt: '',
-	                  rejectMode: false, rejectInput: '', reviewing: false, error: '',
-	                });
-	              },
-              close() {
-                this.open = false;
-                window.setTimeout(() => {
-                  if (!this.open) this.reset();
-                }, 120);
+	              close() {
+	                this.open = false;
+                  document.body.style.overflow = '';
+	                window.setTimeout(() => {
+	                  if (!this.open) this.reset();
+	                }, 120);
               },
               csrf() { return (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''; },
               async approve() {
@@ -489,16 +493,16 @@
             });
           });
 
-	          function docRow(docListId, docCode, sellerId, initialPreviewUrl, initialStatus, initialDocId, initialRejectionReason, docName, previousRejectionReason, previousRejectedAt) {
-	            return {
-	              docListId, docCode, sellerId, docName,
-	              previewUrl: initialPreviewUrl,
-	              status: initialStatus,
-	              docId: initialDocId || null,
-	              rejectionReason: initialRejectionReason || '',
-	              previousRejectionReason: previousRejectionReason || '',
-	              previousRejectedAt: previousRejectedAt || '',
-              mimeType: '',
+		          function docRow(docListId, docCode, sellerId, initialPreviewUrl, initialStatus, initialDocId, initialRejectionReason, docName, previousRejectionReason, previousRejectedAt, initialMimeType) {
+		            return {
+		              docListId, docCode, sellerId, docName,
+		              previewUrl: initialPreviewUrl,
+		              status: initialStatus,
+		              docId: initialDocId || null,
+		              rejectionReason: initialRejectionReason || '',
+		              previousRejectionReason: previousRejectionReason || '',
+		              previousRejectedAt: previousRejectedAt || '',
+              mimeType: initialMimeType || '',
               uploading: false,
               error: '',
               get statusClass() {
@@ -551,7 +555,7 @@
                   if (!r3.ok) { const e = await r3.json(); throw new Error(e.error || 'Confirm failed'); }
                   const res = await r3.json();
                   this.docId = res.id; this.status = res.status || 'uploaded';
-                  this.previewUrl = res.preview_url || null; this.mimeType = file.type || ''; this.rejectionReason = '';
+                  this.previewUrl = res.preview_url || null; this.mimeType = res.mime_type || file.type || ''; this.rejectionReason = '';
                 } catch (e) { this.error = e.message; } finally { this.uploading = false; }
               }
             };
@@ -560,7 +564,7 @@
 
         <div class="space-y-2">
           {% for doc in compliance_docs %}
-	          <div x-data="docRow('{{ doc.document_list_id }}', '{{ doc.code }}', '{{ user_obj.id }}', '{{ doc.file_url|default:''|escapejs }}', '{{ doc.status }}', '{{ doc.doc_id|default:''|escapejs }}', '{{ doc.rejection_reason|escapejs }}', '{{ doc.name|escapejs }}', '{{ doc.previous_rejection_reason|escapejs }}', '{{ doc.previous_rejected_at|date:"d.m.Y H:i"|default:''|escapejs }}')"
+		          <div x-data="docRow('{{ doc.document_list_id }}', '{{ doc.code }}', '{{ user_obj.id }}', '{{ doc.file_url|default:''|escapejs }}', '{{ doc.status }}', '{{ doc.doc_id|default:''|escapejs }}', '{{ doc.rejection_reason|escapejs }}', '{{ doc.name|escapejs }}', '{{ doc.previous_rejection_reason|escapejs }}', '{{ doc.previous_rejected_at|date:"d.m.Y H:i"|default:''|escapejs }}', '{{ doc.mime_type|default:''|escapejs }}')"
                @compliance-reviewed.window="if ($event.detail.docId === docId) { status = $event.detail.status; rejectionReason = $event.detail.rejectionReason || ''; }"
                class="flex flex-col gap-3 rounded-lg border border-base-200 px-4 py-3 transition-colors hover:bg-base-50 dark:border-base-700 dark:hover:bg-base-800/50 lg:flex-row lg:items-center lg:justify-between">
 
@@ -667,22 +671,24 @@
 	              </div>
 
 	              {# Document viewer — uses the same modal body pattern for images and PDFs #}
-	              <div class="relative shrink-0 overflow-hidden bg-base-100 dark:bg-base-950"
-	                   style="height: min(72vh, 760px); min-height: min(560px, calc(100vh - 13rem));">
-	                <template x-if="$store.compliancePreview.isPdf">
-	                  <iframe :src="$store.compliancePreview.viewerUrl"
-	                          class="absolute inset-0 block h-full w-full border-0"
-	                          style="width: 100%; height: 100%;"></iframe>
-	                </template>
-	                <template x-if="!$store.compliancePreview.isPdf && $store.compliancePreview.url">
-	                  <div class="absolute inset-0 flex w-full items-start justify-center overflow-auto p-4 md:p-6"
-	                       style="-webkit-overflow-scrolling: touch;">
-	                    <img :src="$store.compliancePreview.url"
-	                         class="rounded-lg shadow-lg"
-	                         style="display: block; width: min(560px, 100%); max-width: 100%; height: auto;">
-	                  </div>
-	                </template>
-	              </div>
+		              <div class="relative shrink-0 overflow-hidden bg-base-100 dark:bg-base-950"
+		                   style="height: min(72vh, 760px); min-height: min(560px, calc(100vh - 13rem));">
+		                <template x-if="$store.compliancePreview.url">
+		                  <div class="absolute inset-0 flex w-full items-center justify-center overflow-hidden p-4 md:p-6"
+		                       style="-webkit-overflow-scrolling: touch;">
+		                    <img :src="$store.compliancePreview.viewerUrl"
+                             @load="$store.compliancePreview.loading = false"
+                             @error="$store.compliancePreview.loading = false"
+		                         class="rounded-lg shadow-lg"
+		                         style="display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain;">
+		                  </div>
+		                </template>
+                    <div x-show="$store.compliancePreview.loading"
+                         x-cloak
+                         class="absolute inset-0 flex items-center justify-center bg-base-100 text-base-400 dark:bg-base-950 dark:text-base-500">
+                      <span class="material-symbols-outlined animate-spin text-3xl">progress_activity</span>
+                    </div>
+		              </div>
 
               {# Action footer — shown for every uploaded document record #}
               <div x-show="$store.compliancePreview.docId"

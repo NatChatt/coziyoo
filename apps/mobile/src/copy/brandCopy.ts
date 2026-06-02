@@ -855,7 +855,7 @@ export const brandCopy = {
   'status.seller.profileDetail.incomplete': 'Eksik',
   'headline.seller.compliance.profileStatus': 'Profil Durumu',
   'headline.seller.compliance.requiredDocuments': 'Zorunlu Belgeler',
-  'headline.seller.compliance.optionalUploads': 'Opsiyonel Yüklemeler',
+  'headline.seller.compliance.optionalUploads': 'Opsiyonel Belgeler',
   'status.seller.compliance.completed': 'Tamamlandı: {uploaded}/{required}',
   'status.seller.compliance.required': 'Zorunlu: {count}',
   'status.seller.compliance.approved': 'Onaylı: {count}',
@@ -2324,7 +2324,7 @@ const brandCopyEn: Partial<Record<BrandCopyKey, string>> = {
   // --- Seller compliance ---
   'headline.seller.compliance.profileStatus': 'Profile Status',
   'headline.seller.compliance.requiredDocuments': 'Required Documents',
-  'headline.seller.compliance.optionalUploads': 'Optional Uploads',
+  'headline.seller.compliance.optionalUploads': 'Optional Documents',
   'status.seller.compliance.completed': 'Completed: {uploaded}/{required}',
   'status.seller.compliance.required': 'Required: {count}',
   'status.seller.compliance.approved': 'Approved: {count}',

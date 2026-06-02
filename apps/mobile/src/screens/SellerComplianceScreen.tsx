@@ -107,19 +107,58 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
     [payload?.documents],
   );
 
-  async function uploadDocumentBase64(docCode: string, dataBase64: string, contentType: string) {
+  const optionalComplianceDocs = useMemo(
+    () => (payload?.documents ?? [])
+      .filter((doc) => {
+        const isRequired = Boolean(doc.is_required ?? doc.isRequired);
+        const code = String(doc.code ?? "").trim().toLowerCase();
+        return !isRequired && (code === "gtit7" || code === "gdtd5e" || code === "kvkk_taahhut");
+      })
+      .sort((a, b) => {
+        const order: Record<string, number> = { gtit7: 0, gdtd5e: 0, kvkk_taahhut: 1 };
+        return (order[String(a.code ?? "").trim().toLowerCase()] ?? 99)
+          - (order[String(b.code ?? "").trim().toLowerCase()] ?? 99);
+      }),
+    [payload?.documents],
+  );
+
+  async function uploadDocumentFile(docCode: string, uri: string, fileName: string, contentType: string) {
     setUploadingDocCode(docCode);
-    const res = await authedFetch("/v1/seller/compliance/documents", {
+    const presignRes = await authedFetch("/v1/seller/compliance/documents/presign", {
       method: "POST",
       body: JSON.stringify({
         docType: docCode,
-        dataBase64,
+        fileName,
         contentType,
       }),
     });
-    const json = (await res.json()) as CompliancePayload;
-    if (!res.ok) {
-      throw new Error(json.error?.message ?? t('error.seller.compliance.upload'));
+    const presignJson = (await presignRes.json()) as {
+      data?: { uploadUrl?: string; fileUrl?: string };
+      error?: { message?: string };
+    };
+    if (!presignRes.ok || !presignJson.data?.uploadUrl || !presignJson.data?.fileUrl) {
+      throw new Error(presignJson.error?.message ?? t('error.seller.compliance.upload'));
+    }
+
+    const uploadRes = await FileSystem.uploadAsync(presignJson.data.uploadUrl, uri, {
+      httpMethod: "PUT",
+      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+      headers: { "Content-Type": contentType },
+    });
+    if (uploadRes.status < 200 || uploadRes.status >= 300) {
+      throw new Error(t('error.seller.compliance.upload'));
+    }
+
+    const confirmRes = await authedFetch("/v1/seller/compliance/documents", {
+      method: "POST",
+      body: JSON.stringify({
+        docType: docCode,
+        fileUrl: presignJson.data.fileUrl,
+      }),
+    });
+    const confirmJson = (await confirmRes.json()) as CompliancePayload;
+    if (!confirmRes.ok) {
+      throw new Error(confirmJson.error?.message ?? t('error.seller.compliance.upload'));
     }
     await loadData();
     Alert.alert(t('headline.common.success'), t('status.seller.compliance.uploadedSuccess'));
@@ -135,16 +174,16 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
       allowsEditing: false,
-      base64: true,
     });
     if (result.canceled || !result.assets?.length) return;
     const asset = result.assets[0];
-    const dataBase64 = asset.base64;
-    if (!dataBase64) {
+    if (!asset.uri) {
       Alert.alert(t('headline.common.error'), t('error.seller.compliance.assetMissing'));
       return;
     }
-    await uploadDocumentBase64(docCode, dataBase64, asset.mimeType ?? "image/jpeg");
+    const contentType = asset.mimeType ?? "image/jpeg";
+    const fileName = asset.fileName || `document.${contentType === "image/png" ? "png" : "jpg"}`;
+    await uploadDocumentFile(docCode, asset.uri, fileName, contentType);
   }
 
   async function pickPdfDocument(docCode: string) {
@@ -155,14 +194,11 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
     });
     if (result.canceled || !result.assets?.length) return;
     const asset = result.assets[0];
-    const dataBase64 = await FileSystem.readAsStringAsync(asset.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    if (!dataBase64) {
+    if (!asset.uri) {
       Alert.alert(t('headline.common.error'), t('error.seller.compliance.assetMissing'));
       return;
     }
-    await uploadDocumentBase64(docCode, dataBase64, asset.mimeType ?? "application/pdf");
+    await uploadDocumentFile(docCode, asset.uri, asset.name || "document.pdf", asset.mimeType ?? "application/pdf");
   }
 
   function pickAndUploadDocument(docCode: string) {
@@ -243,14 +279,33 @@ export default function SellerComplianceScreen({ auth, onBack, onAuthRefresh }: 
             </View>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>{t('headline.seller.compliance.optionalUploads')}</Text>
-              {(payload.optionalUploads ?? []).length === 0 ? (
-                <Text style={styles.empty}>{t('helper.seller.compliance.emptyUploads')}</Text>
+              {optionalComplianceDocs.length === 0 ? (
+                <Text style={styles.empty}>{t('helper.seller.compliance.emptyDocuments')}</Text>
               ) : null}
-              {(payload.optionalUploads ?? []).map((upload) => (
-                <Text key={upload.id} style={styles.meta}>
-                  {upload.custom_title || upload.customTitle || upload.name || upload.id} · {upload.status || "-"}
-                </Text>
-              ))}
+              {optionalComplianceDocs.map((doc) => {
+                const isUploading = uploadingDocCode === (doc.code ?? "");
+                const uploadedAt = doc.uploaded_at ?? doc.uploadedAt ?? null;
+                const rejectionReason = doc.rejection_reason ?? doc.rejectionReason ?? null;
+                return (
+                  <View key={doc.id} style={styles.docRow}>
+                    <View style={styles.docMeta}>
+                      <Text style={styles.docTitle}>{doc.name || "GDTD 5E"}</Text>
+                      <Text style={styles.docStatus}>{formatCopy('status.seller.compliance.state', { status: doc.status || '-' })}</Text>
+                      {uploadedAt ? <Text style={styles.docHint}>{formatCopy('status.seller.compliance.lastUpload', {
+                        date: new Date(uploadedAt).toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'tr-TR'),
+                      })}</Text> : null}
+                      {rejectionReason ? <Text style={styles.docReject}>{formatCopy('status.seller.compliance.rejectReason', { reason: rejectionReason })}</Text> : null}
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.uploadBtn, isUploading ? styles.uploadBtnDisabled : null]}
+                      onPress={() => void pickAndUploadDocument(doc.code ?? "")}
+                      disabled={isUploading || !doc.code}
+                    >
+                      <Text style={styles.uploadBtnText}>{isUploading ? t('status.seller.compliance.uploading') : t('cta.seller.compliance.uploadDocument')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
             </View>
             <TouchableOpacity style={styles.refreshBtn} onPress={() => void loadData()}>
               <Text style={styles.refreshText}>{t('cta.seller.compliance.refresh')}</Text>

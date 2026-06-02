@@ -23,7 +23,6 @@ type Props = {
   onOpenMessages: () => void;
   onOpenFoodsManager: (foodId?: string) => void;
   onOpenOrder: (orderId: string) => void;
-  onSwitchToBuyer?: () => void;
 };
 
 type SellerOrder = {
@@ -333,7 +332,6 @@ export default function SellerHomeScreen({
   onOpenMessages,
   onOpenFoodsManager,
   onOpenOrder,
-  onSwitchToBuyer,
 }: Props) {
   const [apiUrl, setApiUrl] = useState("http://localhost:3000");
   const [currentAuth, setCurrentAuth] = useState(auth);
@@ -930,13 +928,6 @@ export default function SellerHomeScreen({
                 </View>
               </View>
             }
-            ListFooterComponent={onSwitchToBuyer ? (
-              <View style={styles.actions}>
-                <TouchableOpacity activeOpacity={0.86} style={styles.switchRoleButton} onPress={onSwitchToBuyer}>
-                  <Text style={styles.switchRoleButtonText}>{t('cta.seller.home.switchToBuyer')}</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
           />
         ) : (
           <SectionList
@@ -1167,13 +1158,6 @@ export default function SellerHomeScreen({
                 </View>
               );
             }}
-            ListFooterComponent={onSwitchToBuyer ? (
-              <View style={styles.actions}>
-                <TouchableOpacity activeOpacity={0.86} style={styles.switchRoleButton} onPress={onSwitchToBuyer}>
-                  <Text style={styles.switchRoleButtonText}>{t('cta.seller.home.switchToBuyer')}</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
           />
         )
       ) : (
@@ -1633,19 +1617,4 @@ const styles = StyleSheet.create({
   pinModalConfirmBtn: { backgroundColor: "#3F855C", borderColor: "#3F855C" },
   pinModalCancelText: { color: "#5B4F43", fontWeight: "700" },
   pinModalConfirmText: { color: "#fff", fontWeight: "700" },
-  actions: { gap: 12, marginTop: 8 },
-  switchRoleButton: {
-    height: 48,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#CFC5B6",
-    backgroundColor: "#F7F4EF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  switchRoleButtonText: {
-    color: "#5C4A3A",
-    fontSize: 14,
-    fontWeight: "700",
-  },
 });

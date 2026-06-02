@@ -172,15 +172,20 @@ type Screen =
   | 'chatList' | 'chat';
 
 type TabKey = 'home' | 'messages' | 'cart' | 'notifications' | 'profile';
+type ActorMode = 'buyer' | 'seller';
 type OrderDetailBackTarget = 'orders' | 'home';
 type TicketBackTarget = 'settings' | 'buyerProfile' | 'sellerProfileDetail';
 type SellerProfileBackTarget = 'sellerProfileDetail' | 'sellerFoods';
+
+function getDefaultActorMode(userType: AuthSession['userType']): ActorMode {
+  return userType === 'seller' || userType === 'both' ? 'seller' : 'buyer';
+}
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [homeTab, setHomeTab] = useState<TabKey>('home');
   const [auth, setAuth] = useState<AuthSession | null>(null);
-  const [actorMode, setActorMode] = useState<'buyer' | 'seller'>('buyer');
+  const [actorMode, setActorMode] = useState<ActorMode>('buyer');
 
   // Screen params
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -258,7 +263,7 @@ export default function App() {
   function applyAuthSession(session: AuthSession) {
     void saveAuthSession(session);
     setAuth(session);
-    setActorMode(session.userType === 'seller' ? 'seller' : 'buyer');
+    setActorMode(getDefaultActorMode(session.userType));
   }
 
   useEffect(() => {
@@ -827,6 +832,7 @@ export default function App() {
         }}
         onLogout={handleLogout}
         onOpenAddresses={() => setScreen('addresses')}
+        onSwitchToBuyer={auth.userType === 'both' ? () => { void switchToBuyerMode(); } : undefined}
         onAuthRefresh={setAuth}
       />
     );
@@ -956,7 +962,6 @@ export default function App() {
             setSellerOrderModalVisible(true);
           }}
           onAuthRefresh={setAuth}
-          onSwitchToBuyer={canSwitchRole ? () => { void switchToBuyerMode(); } : undefined}
         />
         {sellerOrderModalVisible && selectedOrderId ? (
           <KeyboardAvoidingView
