@@ -155,6 +155,10 @@ CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", default=False, cast=bo
 
 # --- S3 ---
 S3_ENDPOINT = config("S3_ENDPOINT", default="")
+# Public endpoint baked into presigned URLs (reachable by the mobile app);
+# defaults to S3_ENDPOINT. Set when Django reaches MinIO internally but clients
+# must use a public domain.
+S3_PUBLIC_ENDPOINT = config("S3_PUBLIC_ENDPOINT", default=S3_ENDPOINT)
 S3_REGION = config("S3_REGION", default="us-east-1")
 S3_BUCKET_SELLER_DOCS = config("S3_BUCKET_SELLER_DOCS", default="seller-documents")
 S3_ACCESS_KEY_ID = config("S3_ACCESS_KEY_ID", default="")

@@ -28,12 +28,12 @@ def is_configured() -> bool:
     )
 
 
-@lru_cache(maxsize=1)
-def _get_client():
-    """Return a cached boto3 S3 client. Re-import clears the cache."""
+@lru_cache(maxsize=2)
+def _build_client(endpoint_url: str):
+    """Return a cached boto3 S3 client for the given endpoint."""
     return boto3.client(
         "s3",
-        endpoint_url=settings.S3_ENDPOINT,
+        endpoint_url=endpoint_url,
         region_name=getattr(settings, "S3_REGION", "us-east-1"),
         aws_access_key_id=settings.S3_ACCESS_KEY_ID,
         aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY,
@@ -47,10 +47,28 @@ def _get_client():
     )
 
 
+def _get_client():
+    """Direct client — server-side ops (Django runs on the same network as MinIO)."""
+    return _build_client(settings.S3_ENDPOINT)
+
+
+def _presign_endpoint() -> str:
+    """Public endpoint baked into presigned URLs handed to off-server clients
+    (the mobile app, which can't reach the internal address). Falls back to
+    S3_ENDPOINT when no separate public endpoint is configured."""
+    return getattr(settings, "S3_PUBLIC_ENDPOINT", "") or settings.S3_ENDPOINT
+
+
 def get_client():
     if not is_configured():
         raise RuntimeError("S3_STORAGE_NOT_CONFIGURED")
     return _get_client()
+
+
+def get_presign_client():
+    if not is_configured():
+        raise RuntimeError("S3_STORAGE_NOT_CONFIGURED")
+    return _build_client(_presign_endpoint())
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +123,7 @@ def presign_get(storage_pointer: str | None, ttl: int | None = None) -> str | No
     parsed = parse_storage_pointer(storage_pointer)
     if parsed is None:
         return storage_pointer  # already a plain URL
-    client = get_client()
+    client = get_presign_client()
     return client.generate_presigned_url(
         "get_object",
         Params={"Bucket": parsed["bucket"], "Key": parsed["key"]},
@@ -115,7 +133,7 @@ def presign_get(storage_pointer: str | None, ttl: int | None = None) -> str | No
 
 def presign_put(bucket: str, key: str, content_type: str = "application/octet-stream", ttl: int | None = None) -> str:
     """Generate a presigned PUT URL for direct-to-S3 upload."""
-    client = get_client()
+    client = get_presign_client()
     return client.generate_presigned_url(
         "put_object",
         Params={"Bucket": bucket, "Key": key, "ContentType": content_type},
