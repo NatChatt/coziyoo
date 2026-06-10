@@ -74,7 +74,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "coziyoo.wsgi.application"
 
-# --- Database (Supabase PostgreSQL) ---
+# --- Database (local Coolify-managed PostgreSQL) ---
 DATABASES = {
     "default": dj_database_url.parse(
         config("DATABASE_URL"),

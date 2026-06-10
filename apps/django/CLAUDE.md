@@ -111,13 +111,17 @@ Admin kontrolü: `request.user.realm != 'admin'`
 
 ## Modeller
 
-Tüm modeller `managed = False` (Supabase'deki mevcut tablolara eşlenmiş, inspectdb çıktısı).
+Modeller `managed = True` — şema artık **Django migration'larının sahipliğinde** (lokal Coolify-managed Postgres). Önceden `managed = False` + Supabase-elle şema kullanılıyordu; Supabase'den çıkınca modeller inspectdb çıktısından Django-managed'e çevrildi.
 
-**`makemigrations` çalıştırma.** Şema değişiklikleri Supabase tarafında yapılır, ardından `models.py` güncellenir.
+**Şema değişikliği akışı:** `models.py`'yi düzenle → `python manage.py makemigrations <app>` → `migrate`. Migration'lar repo'ya commit'lenir (Coolify container build'i bunları çalıştırır).
+
+- UUID PK'ler `default=uuid.uuid4, editable=False`, `created_at`/`updated_at` `auto_now_add`/`auto_now` taşır (DB-side default yok, insert'ler Django'dan değer alır).
+- `foods` app'inin `label = "menu"` — FK referansları `menu.Foods`.
+- Raw-SQL ile kullanılan ama modelde olmayan kolonlar (örn. `admin_sales_commission_settings` home-hero alanları) ve seed veriler `authentication/migrations/0002_legacy_raw_columns_and_seed.py` içinde RunSQL ile korunur.
 
 ```python
 class Meta:
-    managed = False
+    managed = True
     db_table = 'tablo_adi'
 ```
 
@@ -248,6 +252,7 @@ python manage.py createsuperuser  # Admin kullanıcı oluştur
 | `DJANGO_SETTINGS_MODULE` | `coziyoo.settings.development` veya `production` |
 | `ALLOWED_HOSTS` | Virgülle ayrılmış hostlar (prod) |
 | `DATABASE_URL` | PostgreSQL bağlantı URL'i (dj-database-url formatı) |
+| `DB_SSL_REQUIRE` | DB SSL zorunlu mu (cloud için `true`, lokal Postgres için `false`; default `true`) |
 | `APP_JWT_SECRET` | Buyer/seller JWT imzalama anahtarı |
 | `ADMIN_JWT_SECRET` | Admin JWT imzalama anahtarı |
 | `ACCESS_TOKEN_TTL_MINUTES` | Access token ömrü (default `15`) |
@@ -280,7 +285,7 @@ Her hedef: `scripts/deploy/update.sh`.
 
 ## Dikkat Edilecekler
 
-- `models.py` → `managed=False` — asla `makemigrations` çalıştırma
+- `models.py` → `managed=True` — şema değişikliğinde `makemigrations` + `migrate` çalıştır, migration'ı commit'le (DB lokal Coolify Postgres)
 - `request.user` → `AuthUser` nesnesi, Django ORM User değil
 - Admin template değişikliklerinde `coziyoo-design-system` skill'ini çağır
 - `.github/workflows/` dosyalarına dokunma; değişiklik gerekiyorsa önce etki analizi sun
