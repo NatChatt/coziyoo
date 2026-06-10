@@ -1,38 +1,39 @@
-# Auto-generated from inspectdb — managed=False, do not run migrations against these.
+# Originally inspectdb output; now Django-managed (managed=True) — schema owned by migrations.
+import uuid
 from django.db import models
 
 class CommissionSettings(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     commission_rate = models.DecimalField(max_digits=5, decimal_places=4)
     is_active = models.BooleanField()
     effective_from = models.DateTimeField()
     created_by = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING, db_column='created_by', blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'commission_settings'
 
 
 
 class FinanceAdjustments(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.ForeignKey('orders.Orders', models.DO_NOTHING)
     seller = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     dispute_case = models.ForeignKey('payments.PaymentDisputeCases', models.DO_NOTHING, blank=True, null=True)
     type = models.CharField(max_length=50)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     reason = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'finance_adjustments'
 
 
 
 class FinanceReconciliationReports(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     actor_type = models.CharField(max_length=30)
     actor_id = models.UUIDField()
     report_type = models.CharField(max_length=50)
@@ -42,16 +43,16 @@ class FinanceReconciliationReports(models.Model):
     file_url = models.URLField(max_length=2048, blank=True, null=True)
     checksum = models.CharField(max_length=255, blank=True, null=True)
     generated_at = models.DateTimeField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'finance_reconciliation_reports'
 
 
 
 class PaymentAttempts(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.ForeignKey('orders.Orders', models.DO_NOTHING)
     buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     provider = models.CharField(max_length=50)
@@ -60,17 +61,17 @@ class PaymentAttempts(models.Model):
     status = models.CharField(max_length=30)
     callback_payload_json = models.JSONField(blank=True, null=True)
     signature_valid = models.BooleanField(blank=True, null=True)
-    created_at = models.DateTimeField()
-    updated_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'payment_attempts'
 
 
 
 class PaymentDisputeCases(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.ForeignKey('orders.Orders', models.DO_NOTHING)
     payment_attempt = models.ForeignKey('payments.PaymentAttempts', models.DO_NOTHING)
     provider_case_id = models.CharField(max_length=255, unique=True, blank=True, null=True)
@@ -82,11 +83,11 @@ class PaymentDisputeCases(models.Model):
     evidence_bundle_json = models.JSONField(blank=True, null=True)
     opened_at = models.DateTimeField()
     resolved_at = models.DateTimeField(blank=True, null=True)
-    created_at = models.DateTimeField()
-    updated_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'payment_dispute_cases'
 
 

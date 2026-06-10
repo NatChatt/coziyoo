@@ -1,9 +1,10 @@
-# Auto-generated from inspectdb — managed=False, do not run migrations against these.
+# Originally inspectdb output; now Django-managed (managed=True) — schema owned by migrations.
+import uuid
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 class AbuseRiskEvents(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     subject_type = models.CharField(max_length=50)
     subject_id = models.CharField(max_length=255)
     flow = models.CharField(max_length=50)
@@ -11,16 +12,16 @@ class AbuseRiskEvents(models.Model):
     decision = models.CharField(max_length=30)
     reason_codes_json = models.JSONField(blank=True, null=True)
     request_fingerprint = models.CharField(max_length=255, blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'abuse_risk_events'
 
 
 
 class AdminApiTokens(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     session_id = models.CharField(max_length=255, unique=True)
     label = models.CharField(max_length=255)
     role = models.CharField(max_length=50)
@@ -29,10 +30,10 @@ class AdminApiTokens(models.Model):
     claims_json = models.JSONField(blank=True, null=True)
     created_by_admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
     revoked_at = models.DateTimeField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'admin_api_tokens'
         verbose_name = "Admin API Token"
         verbose_name_plural = "Admin API Tokens"
@@ -40,7 +41,7 @@ class AdminApiTokens(models.Model):
 
 
 class AdminAuditLogs(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     actor_admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
     actor_email = models.CharField(max_length=255)
     actor_role = models.CharField(max_length=50)
@@ -49,10 +50,10 @@ class AdminAuditLogs(models.Model):
     entity_id = models.CharField(max_length=255, blank=True, null=True)
     before_json = models.JSONField(blank=True, null=True)
     after_json = models.JSONField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'admin_audit_logs'
         verbose_name = "Admin Audit Log"
         verbose_name_plural = "Admin Audit Logs"
@@ -60,14 +61,14 @@ class AdminAuditLogs(models.Model):
 
 
 class AdminSalesCommissionSettings(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     commission_rate_percent = models.DecimalField(max_digits=5, decimal_places=2)
     mobile_home_header_image_url = models.TextField(blank=True, null=True, verbose_name="Home Hero")
     created_by_admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'admin_sales_commission_settings'
         verbose_name = "Sales Commission Setting"
         verbose_name_plural = "Admin Sales Commission Settings"
@@ -75,7 +76,7 @@ class AdminSalesCommissionSettings(models.Model):
 
 
 class AdminUsers(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.CharField(max_length=255, unique=True)
     password_hash = models.CharField(max_length=255)
     role = models.CharField(max_length=50)
@@ -84,11 +85,11 @@ class AdminUsers(models.Model):
     name = models.CharField(max_length=100, blank=True, null=True)
     surname = models.CharField(max_length=100, blank=True, null=True)
     last_login_at = models.DateTimeField(blank=True, null=True)
-    created_at = models.DateTimeField()
-    updated_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'admin_users'
         verbose_name = "Admin User"
         verbose_name_plural = "Admin Users"
@@ -100,15 +101,15 @@ class AdminUsers(models.Model):
 
 
 class RolePermissions(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     role = models.CharField(max_length=50)
     permission_key = models.CharField(max_length=100)
     is_allowed = models.BooleanField(default=False)
-    created_at = models.DateTimeField()
-    updated_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'role_permissions'
         unique_together = [('role', 'permission_key')]
 
@@ -117,38 +118,38 @@ class RolePermissions(models.Model):
 
 
 class AuthAudit(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey('authentication.Users', models.DO_NOTHING, blank=True, null=True)
     event_type = models.CharField(max_length=50)
     ip = models.CharField(max_length=45, blank=True, null=True)
     user_agent = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'auth_audit'
 
 
 
 class AuthSessions(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     refresh_token_hash = models.CharField(max_length=255)
     expires_at = models.DateTimeField()
     revoked_at = models.DateTimeField(blank=True, null=True)
     device_info = models.CharField(max_length=255, blank=True, null=True)
     ip = models.CharField(max_length=45, blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'auth_sessions'
 
 
 
 class SecurityLoginEvents(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     realm = models.CharField(max_length=20)
     actor_user_id = models.UUIDField(blank=True, null=True)
     identifier = models.CharField(max_length=255)
@@ -158,10 +159,10 @@ class SecurityLoginEvents(models.Model):
     device_name = models.CharField(max_length=255, blank=True, null=True)
     ip = models.CharField(max_length=45, blank=True, null=True)
     user_agent = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'security_login_events'
         verbose_name = "Security Login Event"
         verbose_name_plural = "Security Login Events"
@@ -183,7 +184,7 @@ class SecurityLoginState(models.Model):
     unlock_token_expires_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'security_login_state'
         unique_together = (('realm', 'identifier'),)
 
@@ -194,28 +195,28 @@ class SchemaMigrations(models.Model):
     applied_at = models.DateTimeField()
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'schema_migrations'
 
 
 
 class UserAddresses(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField('Users', models.DO_NOTHING)
     title = models.CharField(max_length=100)
     address_line = models.TextField()
     is_default = models.BooleanField()
-    created_at = models.DateTimeField()
-    updated_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'user_addresses'
 
 
 
 class UserLoginLocations(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     session = models.ForeignKey('authentication.AuthSessions', models.DO_NOTHING, blank=True, null=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
@@ -224,16 +225,16 @@ class UserLoginLocations(models.Model):
     source = models.CharField(max_length=30)
     ip = models.CharField(max_length=45, blank=True, null=True)
     user_agent = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'user_login_locations'
 
 
 
 class UserPresenceEvents(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     subject_type = models.CharField(max_length=50)
     subject_id = models.UUIDField()
     session_id = models.UUIDField(blank=True, null=True)
@@ -243,13 +244,13 @@ class UserPresenceEvents(models.Model):
     happened_at = models.DateTimeField()
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'user_presence_events'
 
 
 
 class Users(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.CharField(max_length=255, unique=True)
     password_hash = models.CharField(max_length=255)
     display_name = models.CharField(max_length=255)
@@ -259,8 +260,8 @@ class Users(models.Model):
     is_active = models.BooleanField(verbose_name=_("Active"))
     country_code = models.CharField(max_length=10, blank=True, null=True)
     language = models.CharField(max_length=10, blank=True, null=True)
-    created_at = models.DateTimeField(verbose_name=_("Created At"))
-    updated_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created At"))
+    updated_at = models.DateTimeField(auto_now=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     profile_image_url = models.URLField(max_length=2048, blank=True, null=True)
@@ -283,7 +284,7 @@ class Users(models.Model):
         return self.display_name or self.full_name or self.username or str(self.id)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'users'
         verbose_name = _("User")
         verbose_name_plural = _("Users")
@@ -314,38 +315,38 @@ class AllUsers(Users):
 
 
 class SmsLogs(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
     message = models.TextField()
     status = models.CharField(max_length=30)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'sms_logs'
 
 
 
 class IdempotencyKeys(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     scope = models.CharField(max_length=50)
     key_hash = models.CharField(max_length=255)
     request_hash = models.CharField(max_length=255)
     response_status = models.IntegerField(blank=True, null=True)
     response_body_json = models.JSONField(blank=True, null=True)
     expires_at = models.DateTimeField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'idempotency_keys'
         unique_together = (('scope', 'key_hash'),)
 
 
 
 class MediaAssets(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner_user = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     provider = models.CharField(max_length=50)
     object_key = models.CharField(max_length=500)
@@ -357,61 +358,61 @@ class MediaAssets(models.Model):
     related_entity_id = models.UUIDField(blank=True, null=True)
     status = models.CharField(max_length=30)
     metadata_json = models.JSONField(blank=True, null=True)
-    created_at = models.DateTimeField()
-    updated_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'media_assets'
 
 
 
 class BuyerNotes(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
     note = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'buyer_notes'
 
 
 
 class BuyerTags(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     buyer = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     tag = models.CharField(max_length=100)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'buyer_tags'
         unique_together = (('buyer', 'tag'),)
 
 
 
 class SellerNotes(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     seller = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     admin = models.ForeignKey('authentication.AdminUsers', models.DO_NOTHING)
     note = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'seller_notes'
 
 
 
 class SellerTags(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     seller = models.ForeignKey('authentication.Users', models.DO_NOTHING)
     tag = models.CharField(max_length=100)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        managed = False
+        managed = True
         db_table = 'seller_tags'
         unique_together = (('seller', 'tag'),)
